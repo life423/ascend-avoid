@@ -95,19 +95,8 @@ function initializeMultiplayer() {
     }
 
     
-    // ✨ Initialize modern UI system (gradual migration)
-    initializeModernUISystem();
 }
 
-async function initializeModernUISystem() {
-    try {
-        const { initializeModernUI } = await import('./ui/modernUI');
-        initializeModernUI();
-        console.log('✨ Modern UI system initialized');
-    } catch (error) {
-        console.warn('Modern UI system failed to initialize (non-breaking):', error);
-    }
-}
 
 /**
  * Initialize UI controls (menu, modals, etc.)
