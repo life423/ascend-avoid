@@ -1,19 +1,14 @@
 import * as schema from "@colyseus/schema";
 const { Schema, type } = schema;
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
+import { movePlayer, newPresses, NO_KEYS } from "../game/movement.js";
+import type { Keys } from "../game/movement.js";
 
-const { PLAYER, PLAYER_STATE } = GAME_CONSTANTS;
-
-/** Which movement keys a player is holding, as last reported by their client */
-export interface MovementKeys {
-  up: boolean;
-  down: boolean;
-  left: boolean;
-  right: boolean;
-}
+const { ARENA_RULES, PLAYER_STATE } = GAME_CONSTANTS;
 
 /** Players per row when spreading them along the bottom of the arena */
 const PLAYERS_PER_ROW = 10;
+const DIRECTIONS = ["up", "down", "left", "right"] as const;
 
 /**
  * One player in the room. The server moves players; clients only report which keys are held.
@@ -30,10 +25,10 @@ class PlayerSchema extends Schema {
   score: number;
 
   /** Server-only: the keys this player's client says are held */
-  movementKeys: MovementKeys = { up: false, down: false, left: false, right: false };
-
-  /** Movement speed in pixels per second (BASE_SPEED was tuned per tick, at 30 ticks a second) */
-  static readonly SPEED = PLAYER.BASE_SPEED * 30;
+  private heldKeys: Keys = { ...NO_KEYS };
+  /** Server-only: presses not applied yet, so a tap released between ticks still hops */
+  private pendingPresses: Keys = { ...NO_KEYS };
+  private lastHopAt: Record<keyof Keys, number> = { up: 0, down: 0, left: 0, right: 0 };
 
   constructor(sessionId: string, playerIndex: number) {
     super();
@@ -42,8 +37,8 @@ class PlayerSchema extends Schema {
     this.name = `Player ${playerIndex + 1}`;
     this.x = 0;
     this.y = 0;
-    this.width = PLAYER.BASE_WIDTH;
-    this.height = PLAYER.BASE_HEIGHT;
+    this.width = ARENA_RULES.PLAYER_SIZE;
+    this.height = ARENA_RULES.PLAYER_SIZE;
     this.state = PLAYER_STATE.ALIVE;
     this.score = 0;
   }
@@ -55,20 +50,39 @@ class PlayerSchema extends Schema {
     const column = slot % PLAYERS_PER_ROW;
     const spacing = arenaWidth / (perRow + 1);
     this.x = Math.round(spacing * (column + 1) - this.width / 2);
-    this.y = arenaHeight - this.height - 10 - row * (this.height + 10);
-    this.movementKeys = { up: false, down: false, left: false, right: false };
+    this.y = arenaHeight - this.height - ARENA_RULES.BOTTOM_MARGIN - row * (this.height + 10);
+    this.pendingPresses = { ...NO_KEYS };
   }
 
-  /** Move according to the held keys, staying inside the arena */
-  updateMovement(deltaTime: number, arenaWidth: number, arenaHeight: number): void {
-    if (this.state !== PLAYER_STATE.ALIVE) return;
-    const step = PlayerSchema.SPEED * deltaTime;
-    const keys = this.movementKeys;
-    const dx = (keys.right ? step : 0) - (keys.left ? step : 0);
-    const dy = (keys.down ? step : 0) - (keys.up ? step : 0);
-    if (dx === 0 && dy === 0) return;
-    this.x = Math.max(0, Math.min(arenaWidth - this.width, this.x + dx));
-    this.y = Math.max(0, Math.min(arenaHeight - this.height, this.y + dy));
+  /** Record which keys the client says are held; each new press becomes a hop */
+  setKeys(keys: Keys): void {
+    const pressed = newPresses(this.heldKeys, keys);
+    for (const direction of DIRECTIONS) {
+      if (pressed[direction]) this.pendingPresses[direction] = true;
+    }
+    this.heldKeys = { ...keys };
+  }
+
+  /** Move the way solo play does (see game/movement.ts) */
+  updateMovement(deltaTime: number, arenaWidth: number, arenaHeight: number, now: number = Date.now()): void {
+    if (this.state !== PLAYER_STATE.ALIVE) {
+      this.pendingPresses = { ...NO_KEYS };
+      return;
+    }
+    // At most one hop per direction every HOP_COOLDOWN_MS (far faster than anyone taps);
+    // a press that comes sooner waits for the next tick instead of being lost
+    const hops: Keys = { ...NO_KEYS };
+    for (const direction of DIRECTIONS) {
+      if (this.pendingPresses[direction] && now - this.lastHopAt[direction] >= ARENA_RULES.HOP_COOLDOWN_MS) {
+        hops[direction] = true;
+        this.pendingPresses[direction] = false;
+        this.lastHopAt[direction] = now;
+      }
+    }
+    const box = { x: this.x, y: this.y, width: this.width, height: this.height };
+    movePlayer(box, hops, this.heldKeys.up, deltaTime, arenaWidth, arenaHeight);
+    if (box.x !== this.x) this.x = box.x;
+    if (box.y !== this.y) this.y = box.y;
   }
 
   markAsDead(): void {

@@ -37,12 +37,12 @@ export class GameRoom extends Room<GameState> {
     this.onMessage("input", (client, data: any) => {
       const player = this.state.players.get(client.sessionId);
       if (!player) return;
-      player.movementKeys = {
+      player.setKeys({
         up: data?.up === true,
         down: data?.down === true,
         left: data?.left === true,
         right: data?.right === true,
-      };
+      });
     });
 
     this.onMessage("updateName", (client, data: any) => {

@@ -2,7 +2,7 @@ import * as schema from "@colyseus/schema";
 const { Schema, type } = schema;
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 
-const { OBSTACLE } = GAME_CONSTANTS;
+const { OBSTACLE, ARENA_RULES } = GAME_CONSTANTS;
 
 interface PlayerPosition {
   x: number;
@@ -33,20 +33,23 @@ class ObstacleSchema extends Schema {
     this.x = 0;
     this.y = 0;
     this.width = OBSTACLE.MIN_WIDTH;
-    this.height = 20;
+    this.height = ARENA_RULES.OBSTACLE_HEIGHT;
     this.speed = OBSTACLE.BASE_SPEED;
     this.variant = Math.floor(Math.random() * 3);
     this.active = true;
   }
 
   /** Send the obstacle back to the left edge at a random height, not on top of a player */
-  reset(_arenaWidth: number, arenaHeight: number, playerPositions: PlayerPosition[] = []): boolean {
-    this.width = Math.round(OBSTACLE.MIN_WIDTH + Math.random() * (OBSTACLE.MAX_WIDTH - OBSTACLE.MIN_WIDTH));
+  reset(arenaWidth: number, arenaHeight: number, playerPositions: PlayerPosition[] = []): boolean {
+    const { OBSTACLE_MIN_WIDTH_RATIO: min, OBSTACLE_MAX_WIDTH_RATIO: max } = ARENA_RULES;
+    this.width = Math.round(arenaWidth * (min + Math.random() * (max - min)));
     this.x = -this.width;
 
     let validPosition = false;
     for (let attempt = 0; attempt < 10 && !validPosition; attempt++) {
-      this.y = Math.random() * (arenaHeight - 70) + 20;
+      // Between the top line and the starting row, which stays clear like solo's spawn zone
+      const lowest = arenaHeight - ARENA_RULES.PLAYER_SIZE - ARENA_RULES.BOTTOM_MARGIN - this.height - 10;
+      this.y = ARENA_RULES.TOP_LINE + Math.random() * (lowest - ARENA_RULES.TOP_LINE);
       // Not on top of anyone: the obstacle's entry point must miss every player's safe zone
       validPosition = playerPositions.every((player) => {
         const overlaps =
@@ -63,12 +66,12 @@ class ObstacleSchema extends Schema {
 
   /**
    * Move right. BASE_SPEED was tuned per frame at 60 frames a second, so it becomes pixels per
-   * second here; obstacles speed up as the round goes on (up to 2.5x after three minutes).
+   * second here; obstacles speed up as the round goes on (up to 1.6x, reached after about two minutes).
    * @returns true when the obstacle has left the arena and needs a reset
    */
   update(deltaTime: number, arenaWidth: number, elapsedSeconds: number = 0): boolean {
     if (this.x >= arenaWidth) return true;
-    const speed = OBSTACLE.BASE_SPEED * 60 * Math.min(2.5, 1 + elapsedSeconds / 120);
+    const speed = ARENA_RULES.OBSTACLE_SPEED * Math.min(1.6, 1 + elapsedSeconds / 180);
     this.x += speed * deltaTime;
     const rounded = Math.round(speed);
     if (this.speed !== rounded) this.speed = rounded;

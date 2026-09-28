@@ -7,6 +7,7 @@ import { InputState } from '../types'
 import { getSprite } from '../utils/sprites'
 import { GameEvents } from '../constants/client-constants'
 import { PLAYER_COLORS } from '../../server/constants/gameConstants'
+import { movePlayer, newPresses } from '../../server/game/movement'
 import type { MultiplayerManager } from '../managers/MultiplayerManager'
 
 // Forward reference for the Game type to avoid circular dependencies
@@ -463,6 +464,10 @@ const RECONNECT_DELAY_MS = 3000
 const JOIN_NOTICE_MS = 8000
 const FONT = 'Montserrat, system-ui, sans-serif'
 const NO_KEYS: InputState = { up: false, down: false, left: false, right: false }
+/** Your predicted position jumps to the server's when they're this far apart (arena units) */
+const PREDICTION_SNAP = 100
+/** Once your keys have been quiet this long, your position settles onto the server's */
+const SETTLE_AFTER_MS = 150
 
 type ConnectionStatus = 'connecting' | 'connected' | 'reconnecting'
 
@@ -485,6 +490,10 @@ export class MultiplayerMode extends GameMode {
     private lastJoin: { name: string; at: number } | null = null
     /** Where each player is drawn, eased toward the server position so movement looks smooth */
     private drawnPositions = new Map<string, { x: number; y: number }>()
+    /** Your own position, moved on your screen right away with the server's rules */
+    private predicted: { x: number; y: number } | null = null
+    private previousKeys: InputState = { ...NO_KEYS }
+    private lastKeyChangeAt = 0
 
     /** A hidden tab stops running the game loop, so let go of any held keys */
     private releaseKeysWhenHidden = (): void => {
@@ -561,6 +570,8 @@ export class MultiplayerMode extends GameMode {
             this.game.gameState = this.game.config.STATE.PLAYING
             this.drawnPositions.clear()
             this.lastSentInput = { ...NO_KEYS }
+            this.predicted = null
+            this.previousKeys = { ...NO_KEYS }
         } else {
             // Nobody else here, or not connected yet: a fresh solo run
             this.solo.completeReset()
@@ -570,9 +581,48 @@ export class MultiplayerMode extends GameMode {
     update(inputState: InputState, deltaTime: number, timestamp: number): void {
         this.syncView()
         if (this.showingMatch) {
+            this.predictLocalMove(inputState, deltaTime)
             this.sendInput(inputState)
         } else {
             this.solo.update(inputState, deltaTime, timestamp)
+        }
+    }
+
+    /**
+     * Move your own player right away with the same rules the server uses (a hop per key
+     * press, drifting up while up is held), so it responds like solo play instead of waiting
+     * for a round trip. The server still decides: when your keys go quiet, or if the two
+     * disagree by a lot (say you were knocked out), your player settles onto its position.
+     */
+    private predictLocalMove(input: InputState, deltaTime: number): void {
+        const previous = this.previousKeys
+        if (input.up !== previous.up || input.down !== previous.down || input.left !== previous.left || input.right !== previous.right) {
+            this.lastKeyChangeAt = performance.now()
+        }
+        const presses = newPresses(previous, input)
+        this.previousKeys = { up: input.up, down: input.down, left: input.left, right: input.right }
+
+        const state = this.multiplayerManager?.getState()
+        const localId = this.multiplayerManager?.localSessionId
+        const me = state && localId ? state.players.get(localId) : undefined
+        if (!state || !me) {
+            this.predicted = null
+            return
+        }
+        if (!this.predicted || state.gameState !== PHASE.PLAYING || me.state !== 'alive') {
+            this.predicted = { x: me.x, y: me.y }
+            return
+        }
+        const box = { x: this.predicted.x, y: this.predicted.y, width: me.width, height: me.height }
+        movePlayer(box, presses, input.up, deltaTime, state.arenaWidth, state.arenaHeight)
+        const dx = me.x - box.x
+        const dy = me.y - box.y
+        if (Math.hypot(dx, dy) > PREDICTION_SNAP) {
+            this.predicted = { x: me.x, y: me.y }
+        } else if (!input.up && performance.now() - this.lastKeyChangeAt > SETTLE_AFTER_MS) {
+            this.predicted = { x: box.x + dx * 0.25, y: box.y + dy * 0.25 }
+        } else {
+            this.predicted = { x: box.x, y: box.y }
         }
     }
 
@@ -678,9 +728,13 @@ export class MultiplayerMode extends GameMode {
     ): void {
         if (player.state === 'spectating') return
 
-        // Ease toward the server position so ~20 updates a second still look smooth at 60 fps
+        // Your own player is drawn where your keys put it; other players ease toward the
+        // server position so ~20 updates a second still look smooth at 60 fps
         let drawn = this.drawnPositions.get(sessionId)
-        if (!drawn || Math.hypot(player.x - drawn.x, player.y - drawn.y) > SNAP_DISTANCE) {
+        if (isLocal && this.predicted) {
+            drawn = { x: this.predicted.x, y: this.predicted.y }
+            this.drawnPositions.set(sessionId, drawn)
+        } else if (!drawn || Math.hypot(player.x - drawn.x, player.y - drawn.y) > SNAP_DISTANCE) {
             drawn = { x: player.x, y: player.y }
             this.drawnPositions.set(sessionId, drawn)
         } else {

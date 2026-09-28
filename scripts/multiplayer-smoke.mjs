@@ -64,16 +64,25 @@ try {
     state().obstacles.forEach((o) => obstacleStart.push(o.x));
     const bobStart = state().players.get(bob.sessionId).x;
     bob.send('input', { right: true });
+    bob.send('input', { right: false }); // a quick tap, released before the next server tick
+    await sleep(250);
+    const bobHop = state().players.get(bob.sessionId).x - bobStart;
+    check(Math.abs(bobHop - 60) < 1, `a quick tap is one hop, like solo play (${Math.round(bobHop)} units)`);
+    const bobY = state().players.get(bob.sessionId).y;
+    bob.send('input', { up: true });
     await sleep(500);
-    bob.send('input', { right: false });
+    bob.send('input', { up: false });
     await sleep(150);
-    const bobMoved = state().players.get(bob.sessionId).x - bobStart;
-    check(bobMoved > 30, `input moves the player (${Math.round(bobMoved)}px in 0.5s)`);
+    const bobRise = bobY - state().players.get(bob.sessionId).y;
+    check(bobRise > 110, `holding up hops, then drifts upward (${Math.round(bobRise)} units in 0.5s)`);
     let obstaclesMoved = 0;
     state().obstacles.forEach((o, i) => {
         if (o.x > obstacleStart[i] + 20) obstaclesMoved++;
     });
     check(obstaclesMoved > 0, `obstacles move (${obstaclesMoved} of ${obstacleStart.length} advanced 20px+ in 0.65s)`);
+    let intoStartRow = 0;
+    state().obstacles.forEach((o) => { if (o.y + o.height > 700 - 45 - 15) intoStartRow++; });
+    check(intoStartRow === 0, 'obstacles stay out of the starting row');
 
     await bob.leave();
     await waitFor(() => state().gameState === 'game_over', 2000, 'the round ends when one player is left');

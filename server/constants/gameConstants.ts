@@ -78,6 +78,25 @@ export const ARENA = {
   MIN_AREA_PERCENTAGE: 40, // Don't shrink below 40% of original size
 } as const;
 
+/**
+ * Solo play's feel in arena units (the 600x700 online arena), so a match moves and looks
+ * like solo play. Solo measures in screen pixels (a 30px player, ~39px hops, obstacles 22px
+ * tall moving 2.5-3.5px a frame); these are those sizes at a typical canvas scale of 0.65.
+ */
+export const ARENA_RULES = {
+  PLAYER_SIZE: 45,
+  HOP: 60, // one key press = one hop
+  ASCEND_SPEED: 180, // holding up also drifts you upward (solo: 3px a frame at 60 fps)
+  TOP_LINE: 51, // the highest you can go (solo's winning line)
+  SIDE_MARGIN: 8,
+  BOTTOM_MARGIN: 15,
+  OBSTACLE_HEIGHT: 34,
+  OBSTACLE_MIN_WIDTH_RATIO: 0.08,
+  OBSTACLE_MAX_WIDTH_RATIO: 0.18,
+  OBSTACLE_SPEED: 270, // units per second, about 2 seconds to cross like solo
+  HOP_COOLDOWN_MS: 60, // server-side cap per direction, far faster than anyone taps
+} as const;
+
 // Key mappings
 export const KEYS = {
   UP: ['ArrowUp', 'Up', 'w', 'W'],
@@ -154,6 +173,7 @@ export const GAME_CONSTANTS = {
   STATE,
   PLAYER_STATE,
   ARENA,
+  ARENA_RULES,
   KEYS,
   DEVICE_SETTINGS
 } as const;
