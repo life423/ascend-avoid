@@ -715,8 +715,8 @@ export default class Game {
             }
         }
 
-        // In multiplayer the whole scene comes from the server, drawn by the mode
-        if (this.isMultiplayerMode && this.currentGameMode) {
+        // During an online match the whole scene comes from the server, drawn by the mode
+        if (this.currentGameMode?.drawsOwnScene()) {
             this.currentGameMode.render(timestamp)
             if (this.touchControls && typeof this.touchControls.draw === 'function') {
                 this.touchControls.draw()
@@ -769,6 +769,9 @@ export default class Game {
 
         // Draw winning line
         this.drawWinningLine(timestamp)
+
+        // Anything the mode adds on top (the online status line)
+        this.currentGameMode?.renderOverlay(timestamp)
 
         // Draw debug information if enabled
         if (this.config.isDebugEnabled()) {

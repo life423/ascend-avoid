@@ -521,7 +521,12 @@
 
 /* Landscape phones: controls sit either side of the canvas instead of under it */
 @media (orientation: landscape) and (max-height: 520px) {
+    /* Title, scores and the Solo | Online switch share one row */
     .app-header {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-md);
         padding: var(--space-xs) var(--space-md);
     }
 
@@ -530,7 +535,8 @@
     }
 
     .score-panel {
-        display: none;
+        margin: 0;
+        padding: 2px var(--space-sm);
     }
 
     .game-canvas-container {
@@ -548,4 +554,41 @@
         height: 100%;
         padding: 0 calc(var(--space-md) + env(safe-area-inset-right, 0px)) 0 calc(var(--space-md) + env(safe-area-inset-left, 0px));
     }
+}
+
+/* ============================================
+   SOLO | ONLINE SWITCH (header)
+   ============================================ */
+.score-panel {
+    align-items: center;
+    flex-wrap: wrap;
+    row-gap: var(--space-xs);
+}
+
+.mode-switch {
+    display: inline-flex;
+    border: 1px solid var(--accent-primary);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.mode-option {
+    padding: 4px 14px;
+    border: 0;
+    background: transparent;
+    color: var(--text-light);
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.mode-option.active {
+    background: var(--accent-primary);
+    color: var(--primary-dark);
+}
+
+.mode-option:focus-visible {
+    outline: 2px solid var(--accent-secondary);
+    outline-offset: -2px;
 }

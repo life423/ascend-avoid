@@ -5,10 +5,7 @@ export class DrawerUI {
     private overlay!: HTMLDivElement;
     private isOpen: boolean = false;
 
-    private onToggleGameMode?: () => void;
-
-    constructor(options: { onToggleGameMode?: () => void } = {}) {
-        this.onToggleGameMode = options.onToggleGameMode;
+    constructor() {
         this.container = document.body;
         this.createElements();
         this.attachEventListeners();
@@ -53,16 +50,8 @@ export class DrawerUI {
                             Game speed increases as you score more points!
                         </div>
                         
-                        <p>Try to beat your high score and climb the leaderboard!</p>
+                        <p>Try to beat your high score. Online, anyone else who's here joins you for a last-one-standing round!</p>
                     </div>
-                </div>
-                
-                <div class="menu-section">
-                    <h3>Game Modes</h3>
-                    <button class="menu-button multiplayer-menu-btn">
-                        <span class="button-icon">👥</span>
-                        <span class="button-text">Multiplayer</span>
-                    </button>
                 </div>
             </div>
         `;
@@ -92,21 +81,8 @@ export class DrawerUI {
             e.stopPropagation();
         });
 
-        // Add multiplayer button handler
-        const multiplayerBtn = this.drawer.querySelector('.multiplayer-menu-btn');
-        if (multiplayerBtn) {
-            multiplayerBtn.addEventListener('click', () => {
-                this.handleMultiplayerClick();
-            });
-        }
     }
 
-    private handleMultiplayerClick(): void {
-        // Close drawer first
-        this.close();
-
-        this.onToggleGameMode?.();
-    }
 
     private injectStyles(): void {
         if (document.getElementById('drawer-styles')) return;

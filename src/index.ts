@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Canvas management is now handled by ResponsiveManager in Game.ts
 
     // Initialize drawer UI (always present)
-    const drawerUI = new DrawerUI({ onToggleGameMode: toggleGameMode })
+    const drawerUI = new DrawerUI()
 
     // Initialize the game
     const game = new Game()
@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ;(window as any).drawerUI = drawerUI
 
     // Everyone starts in the online game (Game.init joins it)
-    updateModeButtons(true)
+    setupModeSwitch()
 
     // Initialize UI controls
     initializeUIControls()
@@ -76,32 +76,42 @@ document.addEventListener('DOMContentLoaded', () => {
 })
 
 
+type GameModeName = 'singlePlayer' | 'multiplayer'
+
 /**
- * Switch between the shared online game and solo practice. Every mode button
- * (desktop sidebar, drawer, mobile menu) calls this; their labels follow the mode.
+ * The Solo | Online switch in the header. Online (the default) is the shared game: you
+ * play solo until someone else is on the site, then a match starts for everyone.
+ * Solo stays offline.
  */
-async function toggleGameMode(): Promise<void> {
+function setupModeSwitch(): void {
+    document.querySelectorAll<HTMLButtonElement>('.mode-option').forEach((button) => {
+        button.addEventListener('click', () => setGameMode(button.dataset.mode as GameModeName))
+    })
+    // Game.init joins the online game
+    showMode('multiplayer')
+}
+
+async function setGameMode(mode: GameModeName): Promise<void> {
     const game = (window as any).game
     if (!game) return
-    const next = game.isMultiplayerMode ? 'singlePlayer' : 'multiplayer'
+    const current: GameModeName = game.isMultiplayerMode ? 'multiplayer' : 'singlePlayer'
+    if (mode === current) return
+    showMode(mode)
     try {
-        await game.switchGameMode(next)
+        await game.switchGameMode(mode)
     } catch (err) {
         console.error('Failed to switch game mode:', err)
     }
-    updateModeButtons(game.isMultiplayerMode)
+    showMode(game.isMultiplayerMode ? 'multiplayer' : 'singlePlayer')
 }
 
-/** Label the mode buttons with what they'll do next */
-function updateModeButtons(isMultiplayer: boolean): void {
-    const label = isMultiplayer ? 'Practice solo' : 'Play online'
-    document.querySelectorAll<HTMLElement>('.multiplayer-btn-desktop, .multiplayer-btn-mobile').forEach((button) => {
-        button.textContent = label
-        button.setAttribute('aria-label', label)
-        button.title = label
+/** Highlight the active side of the switch */
+function showMode(mode: GameModeName): void {
+    document.querySelectorAll<HTMLButtonElement>('.mode-option').forEach((button) => {
+        const active = button.dataset.mode === mode
+        button.classList.toggle('active', active)
+        button.setAttribute('aria-pressed', String(active))
     })
-    const drawerLabel = document.querySelector('.multiplayer-menu-btn .button-text')
-    if (drawerLabel) drawerLabel.textContent = label
 }
 
 /**
@@ -113,14 +123,8 @@ function initializeUIControls() {
     const guideButton = document.querySelector(
         '.guide-btn-mobile'
     )
-    const multiplayerToggle = document.querySelector(
-        '.multiplayer-btn-mobile'
-    )
     const guideSidebarBtn = document.querySelector(
         '.guide-btn-desktop'
-    )
-    const multiplayerSidebarBtn = document.querySelector(
-        '.multiplayer-btn-desktop'
     )
     const instructionsModal = document.querySelector('.modal-panel')
     const closeModalBtn = document.querySelector('.close-modal')
@@ -184,23 +188,8 @@ function initializeUIControls() {
         })
     }
 
-    function toggleMultiplayer() {
-        toggleGameMode().then(closeMenu)
-    }
 
-    if (multiplayerToggle) {
-        multiplayerToggle.addEventListener(
-            'click',
-            toggleMultiplayer
-        )
-    }
 
-    if (multiplayerSidebarBtn) {
-        multiplayerSidebarBtn.addEventListener(
-            'click',
-            toggleMultiplayer
-        )
-    }
 
     document.addEventListener('click', function (e) {
         if (menuItems && !menuItems.classList.contains('hidden')) {

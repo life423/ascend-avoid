@@ -28,6 +28,10 @@
                         Score:
                         <span class="score-value current-score">0</span>
                     </h4>
+                    <div class="mode-switch" role="group" aria-label="Game mode">
+                        <button type="button" class="mode-option" data-mode="singlePlayer" aria-pressed="false">Solo</button>
+                        <button type="button" class="mode-option active" data-mode="multiplayer" aria-pressed="true">Online</button>
+                    </div>
                 </div>
             </header>
 
@@ -54,8 +58,7 @@
                             Game speed increases as you score more points!
                         </p>
                         <p>
-                            Try to beat your high score and challenge your
-                            friends in multiplayer mode!
+                            Try to beat your high score. Online, anyone else who's here joins you for a last-one-standing round!
                         </p>
                     </div>
                     <div class="info-actions">
@@ -64,12 +67,6 @@
                             aria-label="How to play"
                         >
                             Guide
-                        </button>
-                        <button
-                            class="nav-button btn-action multiplayer-btn-desktop"
-                            aria-label="Multiplayer mode"
-                        >
-                            Multiplayer
                         </button>
                     </div>
                     </aside>
@@ -93,13 +90,6 @@
                         title="How to play"
                     >
                         Guide
-                    </button>
-                    <button
-                        class="btn-action multiplayer-btn-mobile"
-                        aria-label="Multiplayer mode"
-                        title="Multiplayer mode"
-                    >
-                        Multiplayer
                     </button>
                 </div>
             </div>

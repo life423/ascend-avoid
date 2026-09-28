@@ -121,6 +121,16 @@ export abstract class GameMode {
     dispose(): void {
         // Default implementation is a no-op
     }
+
+    /** True when the mode draws the whole scene itself; otherwise Game draws the solo scene */
+    drawsOwnScene(): boolean {
+        return false
+    }
+
+    /** Drawn on top of the solo scene (the online mode's status line) */
+    renderOverlay(_timestamp: number): void {
+        // Nothing by default
+    }
 }
 
 /**
@@ -449,36 +459,47 @@ const SMOOTHING = 0.35
 const SNAP_DISTANCE = 120
 /** Wait this long before trying the server again */
 const RECONNECT_DELAY_MS = 3000
+/** How long "Name joined" stays in the countdown */
+const JOIN_NOTICE_MS = 8000
 const FONT = 'Montserrat, system-ui, sans-serif'
+const NO_KEYS: InputState = { up: false, down: false, left: false, right: false }
 
 type ConnectionStatus = 'connecting' | 'connected' | 'reconnecting'
 
 /**
- * Multiplayer: everyone who opens the site plays in one shared room. The server runs the
- * game; this mode tells it which keys are held and draws the server's state, scaled to
- * fit the canvas.
+ * Online: everyone on the site shares one room. While you're the only one there you play
+ * the regular solo game; when someone else arrives the server counts down and a
+ * last-one-standing match starts for everyone. During a match the server runs the game:
+ * this mode sends the keys you hold and draws the server's state, scaled to the canvas.
  */
 export class MultiplayerMode extends GameMode {
     private multiplayerManager: MultiplayerManager | null = null
+    /** The solo game, played whenever nobody else is online */
+    private solo: SinglePlayerMode
     private status: ConnectionStatus = 'connecting'
     private disposed = false
     private reconnectTimer: ReturnType<typeof setTimeout> | null = null
-    private lastSentInput: InputState = { up: false, down: false, left: false, right: false }
+    private lastSentInput: InputState = { ...NO_KEYS }
+    /** Whether the match view (rather than solo play) is on screen; null before the first check */
+    private showingMatch: boolean | null = null
+    private lastJoin: { name: string; at: number } | null = null
     /** Where each player is drawn, eased toward the server position so movement looks smooth */
     private drawnPositions = new Map<string, { x: number; y: number }>()
 
     /** A hidden tab stops running the game loop, so let go of any held keys */
     private releaseKeysWhenHidden = (): void => {
-        if (document.hidden) this.update({ up: false, down: false, left: false, right: false }, 0, 0)
+        if (document.hidden) this.sendInput(NO_KEYS)
     }
 
     constructor(game: Game) {
         super(game)
+        this.solo = new SinglePlayerMode(game)
     }
 
     async initialize(): Promise<void> {
         await super.initialize()
         this.game.isMultiplayerMode = true
+        this.syncView() // a fresh solo run while we connect
 
         const [{ MultiplayerManager }, { EventBus }, { default: AssetManager }] = await Promise.all([
             import('../managers/MultiplayerManager'),
@@ -487,10 +508,16 @@ export class MultiplayerMode extends GameMode {
         ])
         const eventBus = new EventBus()
         this.multiplayerManager = new MultiplayerManager(eventBus, new AssetManager())
+        eventBus.on(GameEvents.MULTIPLAYER_STATE_UPDATE, () => this.syncView())
+        eventBus.on(GameEvents.PLAYER_JOINED, (data: any) => {
+            if (data?.id && data.id !== this.multiplayerManager?.localSessionId) {
+                this.lastJoin = { name: String(data.name ?? 'Someone'), at: Date.now() }
+            }
+        })
         eventBus.on(GameEvents.MULTIPLAYER_DISCONNECTED, () => this.reconnectSoon())
         document.addEventListener('visibilitychange', this.releaseKeysWhenHidden)
 
-        // Connect in the background; the canvas says "Connecting…" meanwhile
+        // Connect in the background; solo play carries on meanwhile
         this.connect()
     }
 
@@ -500,7 +527,7 @@ export class MultiplayerMode extends GameMode {
         if (this.disposed) return
         if (connected) {
             this.status = 'connected'
-            this.lastSentInput = { up: false, down: false, left: false, right: false }
+            this.syncView()
         } else if (!this.multiplayerManager.isConnected()) {
             this.reconnectSoon()
         }
@@ -509,53 +536,69 @@ export class MultiplayerMode extends GameMode {
     private reconnectSoon(): void {
         if (this.disposed || this.reconnectTimer) return
         this.status = 'reconnecting'
-        this.drawnPositions.clear()
+        this.syncView()
         this.reconnectTimer = setTimeout(() => {
             this.reconnectTimer = null
             this.connect()
         }, RECONNECT_DELAY_MS)
     }
 
-    /** The server moves everyone; we only tell it which keys are held, whenever that changes */
-    update(inputState: InputState, _deltaTime: number, _timestamp: number): void {
+    /** Match view whenever the server is running a round: countdown, play or results */
+    private inMatch(): boolean {
+        if (this.status !== 'connected') return false
+        const phase = this.multiplayerManager?.getState()?.gameState
+        return !!phase && phase !== PHASE.WAITING
+    }
+
+    /** Switch between solo play and the match view when the server's phase changes */
+    private syncView(): void {
+        const match = this.inMatch()
+        if (match === this.showingMatch) return
+        this.showingMatch = match
+        if (match) {
+            // A match is starting: put the solo run (and any game-over screen) away
+            this.game.uiManager?.hideGameOver()
+            this.game.gameState = this.game.config.STATE.PLAYING
+            this.drawnPositions.clear()
+            this.lastSentInput = { ...NO_KEYS }
+        } else {
+            // Nobody else here, or not connected yet: a fresh solo run
+            this.solo.completeReset()
+        }
+    }
+
+    update(inputState: InputState, deltaTime: number, timestamp: number): void {
+        this.syncView()
+        if (this.showingMatch) {
+            this.sendInput(inputState)
+        } else {
+            this.solo.update(inputState, deltaTime, timestamp)
+        }
+    }
+
+    /** The server moves everyone in a match; tell it which keys are held whenever that changes */
+    private sendInput(input: InputState): void {
         if (this.status !== 'connected' || !this.multiplayerManager) return
         const last = this.lastSentInput
-        if (
-            inputState.up === last.up &&
-            inputState.down === last.down &&
-            inputState.left === last.left &&
-            inputState.right === last.right
-        ) {
+        if (input.up === last.up && input.down === last.down && input.left === last.left && input.right === last.right) {
             return
         }
-        this.lastSentInput = {
-            up: inputState.up,
-            down: inputState.down,
-            left: inputState.left,
-            right: inputState.right,
-        }
+        this.lastSentInput = { up: input.up, down: input.down, left: input.left, right: input.right }
         this.multiplayerManager.sendInput(this.lastSentInput)
+    }
+
+    /** During a match this mode draws everything; during solo play Game draws the usual scene */
+    drawsOwnScene(): boolean {
+        return this.showingMatch === true
     }
 
     render(timestamp: number): void {
         const { ctx, canvas } = this.game
-        if (!ctx || !canvas) return
-        const state = this.status === 'connected' ? this.multiplayerManager?.getState() : null
+        const state = this.multiplayerManager?.getState()
+        if (!ctx || !canvas || !state || !state.arenaWidth) return
 
         ctx.save()
         ctx.setTransform(1, 0, 0, 1, 0, 0)
-        if (!state || !state.arenaWidth) {
-            const reconnecting = this.status === 'reconnecting'
-            this.drawMessage(
-                ctx,
-                canvas,
-                reconnecting ? 'Reconnecting…' : 'Connecting…',
-                reconnecting ? 'Lost the game server, trying again' : 'Joining the game'
-            )
-            ctx.restore()
-            return
-        }
-
         // Draw the arena in its own units (600×700), scaled to fit and centered
         const scale = Math.min(canvas.width / state.arenaWidth, canvas.height / state.arenaHeight)
         ctx.translate(
@@ -587,6 +630,42 @@ export class MultiplayerMode extends GameMode {
         ctx.setTransform(1, 0, 0, 1, 0, 0)
         this.drawHud(ctx, canvas, state)
         this.drawPhase(ctx, canvas, state, localId)
+        ctx.restore()
+    }
+
+    /** Solo play: a small line at the top saying you're online and others can join */
+    renderOverlay(_timestamp: number): void {
+        const { ctx, canvas } = this.game
+        if (!ctx || !canvas) return
+        const text =
+            this.status === 'connected'
+                ? 'Online · others can jump in'
+                : this.status === 'reconnecting'
+                  ? 'Offline · reconnecting…'
+                  : 'Connecting…'
+        const size = Math.max(11, Math.round(canvas.height * 0.022))
+        ctx.save()
+        ctx.setTransform(1, 0, 0, 1, 0, 0)
+        ctx.font = `600 ${size}px ${FONT}`
+        const padding = size * 0.8
+        const dotRadius = size * 0.3
+        const height = Math.round(size * 1.8)
+        const width = ctx.measureText(text).width + padding * 2 + dotRadius * 2 + size * 0.5
+        const x = (canvas.width - width) / 2
+        const y = 6
+        ctx.fillStyle = 'rgba(5, 12, 24, 0.6)'
+        ctx.beginPath()
+        if (typeof ctx.roundRect === 'function') ctx.roundRect(x, y, width, height, height / 2)
+        else ctx.rect(x, y, width, height)
+        ctx.fill()
+        ctx.fillStyle = this.status === 'connected' ? '#4ade80' : '#fbbf24'
+        ctx.beginPath()
+        ctx.arc(x + padding + dotRadius, y + height / 2, dotRadius, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.88)'
+        ctx.textAlign = 'left'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(text, x + padding + dotRadius * 2 + size * 0.5, y + height / 2)
         ctx.restore()
     }
 
@@ -673,19 +752,27 @@ export class MultiplayerMode extends GameMode {
     ): void {
         const me = localId ? state.players.get(localId) : undefined
         switch (state.gameState) {
-            case PHASE.WAITING:
-                this.drawMessage(ctx, canvas, 'Waiting for players', 'The round starts as soon as someone else joins')
+            case PHASE.STARTING: {
+                const joined =
+                    this.lastJoin && Date.now() - this.lastJoin.at < JOIN_NOTICE_MS ? this.lastJoin.name : null
+                this.drawMessage(
+                    ctx,
+                    canvas,
+                    String(state.countdownTime || ''),
+                    joined ? `${joined} joined · get ready` : `${state.players.size} players · get ready`,
+                    true
+                )
                 break
-            case PHASE.STARTING:
-                this.drawMessage(ctx, canvas, String(state.countdownTime || ''), `Get ready · ${state.players.size} players`, true)
-                break
+            }
             case PHASE.GAME_OVER: {
                 const youWon = me?.state === 'alive' && state.winnerName !== 'No one'
+                const next =
+                    state.players.size >= 2 ? `Next round in ${state.countdownTime}` : `Back to solo in ${state.countdownTime}`
                 this.drawMessage(
                     ctx,
                     canvas,
                     youWon ? 'You win!' : state.winnerName === 'No one' ? 'No winner' : `${state.winnerName} wins`,
-                    `Next round in ${state.countdownTime}`
+                    next
                 )
                 break
             }
@@ -733,15 +820,16 @@ export class MultiplayerMode extends GameMode {
     }
 
     postUpdate(): void {
-        // Rounds, deaths and winners are all decided by the server
+        // Solo scoring runs between matches; in a match the server decides everything
+        if (!this.showingMatch) this.solo.postUpdate()
     }
 
     reset(): void {
-        // Rounds restart on the server by themselves
+        if (!this.showingMatch) this.solo.reset()
     }
 
     completeReset(): void {
-        // Rounds restart on the server by themselves
+        if (!this.showingMatch) this.solo.completeReset()
     }
 
     dispose(): void {
