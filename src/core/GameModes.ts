@@ -3,7 +3,11 @@
  * This file contains the base GameMode class and all its implementations.
  */
 import Player from '../entities/Player'
-import { InputState, NetworkPlayer } from '../types'
+import { InputState } from '../types'
+import { getSprite } from '../utils/sprites'
+import { GameEvents } from '../constants/client-constants'
+import { PLAYER_COLORS } from '../constants/gameConstants'
+import type { MultiplayerManager } from '../managers/MultiplayerManager'
 
 // Forward reference for the Game type to avoid circular dependencies
 interface Game {
@@ -431,362 +435,323 @@ export class SinglePlayerMode extends GameMode {
 /**
  * Implementation of multiplayer game mode.
  */
-export class MultiplayerMode extends GameMode {
-    private multiplayerManager: any | null
-    private remotePlayers: Record<string, NetworkPlayer>
-    private lastSentInput?: InputState
-    private lastInputSendTime: number
-    // private inputChangeCount = 0; // Currently unused
+/** Round phases, as the server sends them in state.gameState */
+const PHASE = {
+    WAITING: 'waiting',
+    STARTING: 'starting',
+    PLAYING: 'playing',
+    GAME_OVER: 'game_over',
+} as const
 
-    /**
-     * Creates a new MultiplayerMode instance
-     */
+/** How much of the gap to the server position a drawn player closes each frame */
+const SMOOTHING = 0.35
+/** Jump straight to the server position when it's this far off (arena pixels), e.g. a new round */
+const SNAP_DISTANCE = 120
+/** Wait this long before trying the server again */
+const RECONNECT_DELAY_MS = 3000
+const FONT = 'Montserrat, system-ui, sans-serif'
+
+type ConnectionStatus = 'connecting' | 'connected' | 'reconnecting'
+
+/**
+ * Multiplayer: everyone who opens the site plays in one shared room. The server runs the
+ * game; this mode tells it which keys are held and draws the server's state, scaled to
+ * fit the canvas.
+ */
+export class MultiplayerMode extends GameMode {
+    private multiplayerManager: MultiplayerManager | null = null
+    private status: ConnectionStatus = 'connecting'
+    private disposed = false
+    private reconnectTimer: ReturnType<typeof setTimeout> | null = null
+    private lastSentInput: InputState = { up: false, down: false, left: false, right: false }
+    /** Where each player is drawn, eased toward the server position so movement looks smooth */
+    private drawnPositions = new Map<string, { x: number; y: number }>()
+
+    /** A hidden tab stops running the game loop, so let go of any held keys */
+    private releaseKeysWhenHidden = (): void => {
+        if (document.hidden) this.update({ up: false, down: false, left: false, right: false }, 0, 0)
+    }
+
     constructor(game: Game) {
         super(game)
-
-        // Initialize multiplayer-specific state
-        this.multiplayerManager = null
-        this.remotePlayers = {}
-        this.lastInputSendTime = 0
-
-        // Bind methods to maintain proper 'this' context
-        this.handleNetworkUpdate = this.handleNetworkUpdate.bind(this)
     }
 
-    /**
-     * Initialize the multiplayer mode
-     */
     async initialize(): Promise<void> {
         await super.initialize()
-
-        // Set state for multiplayer mode
         this.game.isMultiplayerMode = true
 
-        // Dynamically import multiplayer manager
-        try {
-            const { MultiplayerManager } = await import(
-                '../managers/MultiplayerManager'
-            )
+        const [{ MultiplayerManager }, { EventBus }, { default: AssetManager }] = await Promise.all([
+            import('../managers/MultiplayerManager'),
+            import('./EventBus'),
+            import('../managers/AssetManager'),
+        ])
+        const eventBus = new EventBus()
+        this.multiplayerManager = new MultiplayerManager(eventBus, new AssetManager())
+        eventBus.on(GameEvents.MULTIPLAYER_DISCONNECTED, () => this.reconnectSoon())
+        document.addEventListener('visibilitychange', this.releaseKeysWhenHidden)
 
-            // Create and initialize the multiplayer manager
-            const EventBus = (await import('../core/EventBus')).EventBus
-            const AssetManager = (await import('../managers/AssetManager'))
-                .default
-
-            const eventBus = new EventBus()
-            const assetManager = new AssetManager()
-
-            this.multiplayerManager = new MultiplayerManager(
-                eventBus,
-                assetManager
-            )
-            await this.multiplayerManager.connect()
-
-            // Set up multiplayer event handlers
-            this.setupEventHandlers()
-
-            console.log('MultiplayerMode initialized')
-        } catch (error) {
-            console.error('Failed to initialize multiplayer mode:', error)
-            throw error
-        }
-
-        return Promise.resolve()
+        // Connect in the background; the canvas says "Connecting…" meanwhile
+        this.connect()
     }
 
-    /**
-     * Set up event handlers for multiplayer events
-     */
-    private setupEventHandlers(): void {
-        if (!this.multiplayerManager) return
-
-        console.log('✅ Setting up multiplayer event handlers...')
-
-        // The MultiplayerManager uses EventBus, not direct callbacks
-        // For now, we'll implement basic event handling
-        // TODO: Implement proper EventBus listeners for:
-        // - GameEvents.MULTIPLAYER_STATE_UPDATE
-        // - GameEvents.PLAYER_JOINED  
-        // - GameEvents.PLAYER_LEFT
-        // - GameEvents.MULTIPLAYER_ERROR
-
-        console.log('✅ Multiplayer event handlers setup complete')
-    }
-
-
-    /**
-     * Handle network state update from the server
-     */
-    private handleNetworkUpdate(gameState: any): void {
-        // Update local game state based on server state
-        this.game.gameState = gameState.gameState
-
-        // Update remote players
-        if (this.multiplayerManager) {
-            this.remotePlayers = this.multiplayerManager.getRemotePlayers()
+    private async connect(): Promise<void> {
+        if (!this.multiplayerManager || this.disposed) return
+        const connected = await this.multiplayerManager.connect()
+        if (this.disposed) return
+        if (connected) {
+            this.status = 'connected'
+            this.lastSentInput = { up: false, down: false, left: false, right: false }
+        } else if (!this.multiplayerManager.isConnected()) {
+            this.reconnectSoon()
         }
     }
 
-    /**
-     * Update game state for multiplayer mode
-     */
-    update(
-        inputState: InputState,
-        _deltaTime: number,
-        timestamp: number
-    ): void {
-        // Skip if game is not in playing state
-        if (this.game.gameState !== this.game.config.STATE.PLAYING) {
+    private reconnectSoon(): void {
+        if (this.disposed || this.reconnectTimer) return
+        this.status = 'reconnecting'
+        this.drawnPositions.clear()
+        this.reconnectTimer = setTimeout(() => {
+            this.reconnectTimer = null
+            this.connect()
+        }, RECONNECT_DELAY_MS)
+    }
+
+    /** The server moves everyone; we only tell it which keys are held, whenever that changes */
+    update(inputState: InputState, _deltaTime: number, _timestamp: number): void {
+        if (this.status !== 'connected' || !this.multiplayerManager) return
+        const last = this.lastSentInput
+        if (
+            inputState.up === last.up &&
+            inputState.down === last.down &&
+            inputState.left === last.left &&
+            inputState.right === last.right
+        ) {
+            return
+        }
+        this.lastSentInput = {
+            up: inputState.up,
+            down: inputState.down,
+            left: inputState.left,
+            right: inputState.right,
+        }
+        this.multiplayerManager.sendInput(this.lastSentInput)
+    }
+
+    render(timestamp: number): void {
+        const { ctx, canvas } = this.game
+        if (!ctx || !canvas) return
+        const state = this.status === 'connected' ? this.multiplayerManager?.getState() : null
+
+        ctx.save()
+        ctx.setTransform(1, 0, 0, 1, 0, 0)
+        if (!state || !state.arenaWidth) {
+            const reconnecting = this.status === 'reconnecting'
+            this.drawMessage(
+                ctx,
+                canvas,
+                reconnecting ? 'Reconnecting…' : 'Connecting…',
+                reconnecting ? 'Lost the game server, trying again' : 'Joining the game'
+            )
+            ctx.restore()
             return
         }
 
-        // Get local player from multiplayer manager
-        const localPlayer = this.multiplayerManager?.getLocalPlayer()
-
-        // Update local player based on input
-        if (localPlayer && this.game.player) {
-            // Apply input to player (visual representation only)
-            this.updatePlayerMovement(inputState)
-
-            // Move local player - this will be overridden by server updates
-            // but provides immediate visual feedback
-            this.game.player.move()
-
-            // Network optimization: Only send inputs when they change or periodically
-            this.throttledInputSend(inputState, timestamp)
+        // Draw the arena in its own units (600×700), scaled to fit and centered
+        const scale = Math.min(canvas.width / state.arenaWidth, canvas.height / state.arenaHeight)
+        ctx.translate(
+            (canvas.width - state.arenaWidth * scale) / 2,
+            (canvas.height - state.arenaHeight * scale) / 2
+        )
+        ctx.scale(scale, scale)
+        this.drawSafeArea(ctx, state)
+        state.obstacles.forEach((obstacle: any) => {
+            ctx.drawImage(
+                getSprite('obstacle', obstacle.variant, timestamp),
+                obstacle.x,
+                obstacle.y,
+                obstacle.width,
+                obstacle.height
+            )
+        })
+        const localId = this.multiplayerManager?.localSessionId ?? null
+        const present = new Set<string>()
+        state.players.forEach((player: any, sessionId: string) => {
+            present.add(sessionId)
+            this.drawPlayer(ctx, player, sessionId, sessionId === localId, timestamp)
+        })
+        for (const id of this.drawnPositions.keys()) {
+            if (!present.has(id)) this.drawnPositions.delete(id)
         }
+
+        // Screen-space overlays
+        ctx.setTransform(1, 0, 0, 1, 0, 0)
+        this.drawHud(ctx, canvas, state)
+        this.drawPhase(ctx, canvas, state, localId)
+        ctx.restore()
     }
 
-    /**
-     * Throttled input sending to reduce network traffic
-     */
-    private throttledInputSend(
-        currentInput: InputState,
+    private drawPlayer(
+        ctx: CanvasRenderingContext2D,
+        player: any,
+        sessionId: string,
+        isLocal: boolean,
         timestamp: number
     ): void {
-        // Initialize last input values if not set
-        if (!this.lastSentInput) {
-            this.lastSentInput = {
-                up: false,
-                down: false,
-                left: false,
-                right: false,
+        if (player.state === 'spectating') return
+
+        // Ease toward the server position so ~20 updates a second still look smooth at 60 fps
+        let drawn = this.drawnPositions.get(sessionId)
+        if (!drawn || Math.hypot(player.x - drawn.x, player.y - drawn.y) > SNAP_DISTANCE) {
+            drawn = { x: player.x, y: player.y }
+            this.drawnPositions.set(sessionId, drawn)
+        } else {
+            drawn.x += (player.x - drawn.x) * SMOOTHING
+            drawn.y += (player.y - drawn.y) * SMOOTHING
+        }
+
+        ctx.save()
+        if (player.state !== 'alive') ctx.globalAlpha = 0.3
+        if (isLocal) {
+            ctx.drawImage(getSprite('player', 0, timestamp), drawn.x, drawn.y, player.width, player.height)
+        } else {
+            ctx.fillStyle = PLAYER_COLORS[player.playerIndex % PLAYER_COLORS.length]
+            ctx.beginPath()
+            if (typeof ctx.roundRect === 'function') {
+                ctx.roundRect(drawn.x, drawn.y, player.width, player.height, 6)
+            } else {
+                ctx.rect(drawn.x, drawn.y, player.width, player.height)
             }
-            this.lastInputSendTime = 0
+            ctx.fill()
         }
+        ctx.font = `600 13px ${FONT}`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'bottom'
+        ctx.fillStyle = isLocal ? '#ffffff' : '#cfd8dc'
+        ctx.fillText(isLocal ? 'You' : player.name, drawn.x + player.width / 2, drawn.y - 4)
+        ctx.restore()
+    }
 
-        // Track if input has changed since last send
-        const hasChanged =
-            currentInput.up !== this.lastSentInput.up ||
-            currentInput.down !== this.lastSentInput.down ||
-            currentInput.left !== this.lastSentInput.left ||
-            currentInput.right !== this.lastSentInput.right
+    /** Shade what's outside the safe area and outline it (the server's GameState.safeArea) */
+    private drawSafeArea(ctx: CanvasRenderingContext2D, state: any): void {
+        if (state.areaPercentage >= 100) return
+        const scale = state.areaPercentage / 100
+        const width = state.arenaWidth * scale
+        const height = state.arenaHeight * scale
+        const left = (state.arenaWidth - width) / 2
+        const top = (state.arenaHeight - height) / 2
+        ctx.save()
+        ctx.fillStyle = 'rgba(255, 82, 82, 0.12)'
+        ctx.beginPath()
+        ctx.rect(0, 0, state.arenaWidth, state.arenaHeight)
+        ctx.rect(left, top, width, height)
+        ctx.fill('evenodd')
+        ctx.strokeStyle = 'rgba(255, 82, 82, 0.85)'
+        ctx.lineWidth = 3
+        ctx.setLineDash([12, 8])
+        ctx.strokeRect(left, top, width, height)
+        ctx.restore()
+    }
 
-        // Time since last send
-        const timeSinceLastSend = timestamp - this.lastInputSendTime
+    private drawHud(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, state: any): void {
+        if (state.gameState !== PHASE.PLAYING) return
+        let inRound = 0
+        state.players.forEach((player: any) => {
+            if (player.state !== 'spectating') inRound++
+        })
+        ctx.font = `600 ${Math.max(12, Math.round(canvas.height * 0.028))}px ${FONT}`
+        ctx.textAlign = 'right'
+        ctx.textBaseline = 'top'
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
+        ctx.fillText(`${state.aliveCount} of ${inRound} still in`, canvas.width - 10, 10)
+    }
 
-        // Send if changed or heartbeat interval elapsed (100ms)
-        if (hasChanged || timeSinceLastSend > 100) {
-            // Send to server
-            if (this.multiplayerManager) {
-                this.multiplayerManager.sendInput(currentInput)
+    private drawPhase(
+        ctx: CanvasRenderingContext2D,
+        canvas: HTMLCanvasElement,
+        state: any,
+        localId: string | null
+    ): void {
+        const me = localId ? state.players.get(localId) : undefined
+        switch (state.gameState) {
+            case PHASE.WAITING:
+                this.drawMessage(ctx, canvas, 'Waiting for players', 'The round starts as soon as someone else joins')
+                break
+            case PHASE.STARTING:
+                this.drawMessage(ctx, canvas, String(state.countdownTime || ''), `Get ready · ${state.players.size} players`, true)
+                break
+            case PHASE.GAME_OVER: {
+                const youWon = me?.state === 'alive' && state.winnerName !== 'No one'
+                this.drawMessage(
+                    ctx,
+                    canvas,
+                    youWon ? 'You win!' : state.winnerName === 'No one' ? 'No winner' : `${state.winnerName} wins`,
+                    `Next round in ${state.countdownTime}`
+                )
+                break
             }
-
-            // Update tracking values
-            this.lastSentInput = { ...currentInput }
-            this.lastInputSendTime = timestamp
+            case PHASE.PLAYING:
+                if (me?.state === 'dead') this.drawBanner(ctx, canvas, "You're out. Watching until the next round")
+                else if (me?.state === 'spectating') this.drawBanner(ctx, canvas, 'Round in progress. You join the next one')
+                break
         }
     }
 
-    /**
-     * Update player movement based on input state
-     */
-    private updatePlayerMovement(inputState: InputState): void {
-        if (!this.game.player) return
-
-        // Apply input to player movement
-        this.game.player.setMovementKey('up', inputState.up)
-        this.game.player.setMovementKey('down', inputState.down)
-        this.game.player.setMovementKey('left', inputState.left)
-        this.game.player.setMovementKey('right', inputState.right)
+    /** Dim the arena and show a centered title and subtitle */
+    private drawMessage(
+        ctx: CanvasRenderingContext2D,
+        canvas: HTMLCanvasElement,
+        title: string,
+        subtitle: string,
+        bigTitle = false
+    ): void {
+        ctx.save()
+        ctx.fillStyle = 'rgba(5, 12, 24, 0.55)'
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillStyle = '#4fd1c5'
+        ctx.font = `700 ${Math.round(canvas.height * (bigTitle ? 0.16 : 0.055))}px ${FONT}`
+        ctx.fillText(title, canvas.width / 2, canvas.height * 0.45, canvas.width * 0.9)
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
+        ctx.font = `500 ${Math.max(12, Math.round(canvas.height * 0.03))}px ${FONT}`
+        ctx.fillText(subtitle, canvas.width / 2, canvas.height * (bigTitle ? 0.58 : 0.53), canvas.width * 0.9)
+        ctx.restore()
     }
 
-    /**
-     * Render multiplayer mode specific elements
-     */
-    render(_timestamp: number): void {
-        // Render remote players
-        for (const id in this.remotePlayers) {
-            const remotePlayer = this.remotePlayers[id]
-
-            // Draw remote player - implementation depends on your player visualization
-            if (remotePlayer.x !== undefined && remotePlayer.y !== undefined) {
-                // Draw remote player at position
-                this.drawRemotePlayer(remotePlayer)
-            }
-        }
-
-        // Render any multiplayer-specific UI elements
-        this.renderMultiplayerUI()
+    /** A strip along the bottom of the canvas */
+    private drawBanner(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, text: string): void {
+        const height = Math.round(canvas.height * 0.07)
+        ctx.save()
+        ctx.fillStyle = 'rgba(5, 12, 24, 0.75)'
+        ctx.fillRect(0, canvas.height - height, canvas.width, height)
+        ctx.fillStyle = '#ffffff'
+        ctx.font = `600 ${Math.round(height * 0.4)}px ${FONT}`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(text, canvas.width / 2, canvas.height - height / 2, canvas.width * 0.92)
+        ctx.restore()
     }
 
-    /**
-     * Draw a remote player
-     */
-    private drawRemotePlayer(playerData: NetworkPlayer): void {
-        if (!this.game.ctx) return
-
-        // Get player color based on index or other property
-        const color = this.getPlayerColor(playerData.index || 0)
-
-        // Draw remote player with distinct color
-        this.game.ctx.fillStyle = color
-        this.game.ctx.fillRect(
-            playerData.x,
-            playerData.y,
-            this.game.player ? this.game.player.width : 30,
-            this.game.player ? this.game.player.height : 30
-        )
-
-        // Draw player name above
-        if (playerData.name) {
-            this.game.ctx.fillStyle = 'white'
-            this.game.ctx.font = '12px Arial'
-            this.game.ctx.textAlign = 'center'
-            this.game.ctx.fillText(
-                playerData.name,
-                playerData.x +
-                    (this.game.player ? this.game.player.width / 2 : 15),
-                playerData.y - 5
-            )
-        }
-    }
-
-    /**
-     * Get player color based on index
-     */
-    private getPlayerColor(index: number): string {
-        // Define a set of distinct colors for players
-        const colors = [
-            '#FF5252', // Red
-            '#FF9800', // Orange
-            '#FFEB3B', // Yellow
-            '#4CAF50', // Green
-            '#2196F3', // Blue
-            '#9C27B0', // Purple
-            '#E91E63', // Pink
-        ]
-
-        return colors[index % colors.length]
-    }
-
-    /**
-     * Render multiplayer-specific UI elements
-     */
-    private renderMultiplayerUI(): void {
-        if (!this.game.ctx || !this.multiplayerManager) return
-
-        // Draw player count
-        const totalPlayers = this.multiplayerManager.getTotalPlayers()
-        const alivePlayers = this.multiplayerManager.getAliveCount()
-
-        this.game.ctx.fillStyle = 'white'
-        this.game.ctx.font = '14px Arial'
-        this.game.ctx.textAlign = 'right'
-        this.game.ctx.fillText(
-            `Players: ${alivePlayers}/${totalPlayers}`,
-            this.game.canvas.width - 10,
-            20
-        )
-
-        // Draw arena boundary if applicable
-        const arenaStats = this.multiplayerManager.getArenaStats()
-        if (arenaStats && arenaStats.areaPercentage < 100) {
-            // Draw shrinking arena boundary
-            this.drawArenaBoundary(arenaStats)
-        }
-    }
-
-    /**
-     * Draw arena boundary for battle royale mode
-     */
-    private drawArenaBoundary(arenaStats: any): void {
-        if (!this.game.ctx) return
-
-        // Calculate arena dimensions based on percentage
-        const margin = (100 - arenaStats.areaPercentage) / 100
-        const marginX = this.game.canvas.width * (margin / 2)
-        const marginY = this.game.canvas.height * (margin / 2)
-
-        // Draw arena boundary
-        this.game.ctx.strokeStyle = 'rgba(255, 0, 0, 0.7)'
-        this.game.ctx.lineWidth = 2
-        this.game.ctx.strokeRect(
-            marginX,
-            marginY,
-            this.game.canvas.width - marginX * 2,
-            this.game.canvas.height - marginY * 2
-        )
-    }
-
-    /**
-     * Post-update operations for multiplayer mode
-     */
     postUpdate(): void {
-        // Most game logic is server-driven in multiplayer mode
+        // Rounds, deaths and winners are all decided by the server
     }
 
-    /**
-     * Reset game state
-     */
     reset(): void {
-        // In multiplayer, reset is mostly server-driven
-        // This handles local cleanup
-
-        if (this.game.uiManager) {
-            this.game.uiManager.updateScore(0)
-        }
-
-        if (this.game.player) {
-            this.game.player.resetPosition()
-        }
-
-        // Clear particles
-        if (this.game.particleSystem) {
-            this.game.particleSystem.clear()
-        }
+        // Rounds restart on the server by themselves
     }
 
-    /**
-     * Complete reset after game over
-     */
     completeReset(): void {
-        // Hide any game over UI
-        if (this.game.uiManager) {
-            this.game.uiManager.hideGameOver()
-        }
-
-        // Request server restart if user is host
-        if (this.multiplayerManager) {
-            this.multiplayerManager.requestRestart()
-        }
-
-        // Reset local elements
-        this.reset()
+        // Rounds restart on the server by themselves
     }
 
-    /**
-     * Clean up resources
-     */
     dispose(): void {
-        // Disconnect from server
-        if (this.multiplayerManager) {
-            this.multiplayerManager.disconnect()
-            this.multiplayerManager = null
-        }
-
-        this.remotePlayers = {}
-        console.log('MultiplayerMode disposed')
+        this.disposed = true
+        document.removeEventListener('visibilitychange', this.releaseKeysWhenHidden)
+        if (this.reconnectTimer) clearTimeout(this.reconnectTimer)
+        this.reconnectTimer = null
+        this.multiplayerManager?.disconnect()
+        this.multiplayerManager = null
+        this.drawnPositions.clear()
     }
 }
 
