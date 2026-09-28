@@ -3,7 +3,7 @@
  * Handles canvas scaling, UI adjustments, and performance optimizations
  * based on device/screen size and capabilities
  */
-import { CANVAS, DEVICE_SETTINGS } from '../constants/gameConstants'
+import { CANVAS, DEVICE_SETTINGS } from '../../server/constants/gameConstants'
 import { ScalingInfo } from '../types'
 
 // Define types for ResponsiveManager
@@ -107,14 +107,8 @@ export default class ResponsiveManager {
         // Set up event listeners
         this.setupEventListeners()
 
-        // Detect device capabilities
-        this.detectDeviceCapabilities().then(capabilities => {
-            this.capabilities = capabilities
-            console.log('Device capabilities detected:', this.capabilities)
-
-            // Apply performance settings based on capabilities
-            this.applyPerformanceSettings()
-        })
+        // Apply the default performance settings (the capabilities set in the constructor)
+        this.applyPerformanceSettings()
 
         // Initial resize
         this.handleResize()
@@ -285,204 +279,6 @@ export default class ResponsiveManager {
                 (this.scalingInfo.widthScale + this.scalingInfo.heightScale) / 2
             return baseValue * avgScale
         }
-    }
-
-    /**
-     * Detect device capabilities for performance optimizations
-     * @returns A promise that resolves to device capabilities
-     */
-    async detectDeviceCapabilities(): Promise<DeviceCapabilities> {
-        const capabilities: DeviceCapabilities = {
-            highPerformance: true,
-            canUseWebGL: false,
-            maxParticles: 500,
-            targetFPS: 60,
-            deviceTier: 'high',
-            memoryLimit: 'high', // 'high', 'medium', 'low'
-            deviceProfile: null,
-        }
-
-        // Check for mobile/low-end devices based on user agent
-        const isMobile = /Android|iPhone|iPad|iPod|IEMobile|Opera Mini/i.test(
-            navigator.userAgent
-        )
-        const isLowEndMobile =
-            /Android 4|Android 5|iPhone 6|iPhone 7|iPhone 8|iPad Mini/i.test(
-                navigator.userAgent
-            )
-
-        // Check hardware capabilities
-        const hardwareConcurrency = navigator.hardwareConcurrency || 2
-        const deviceMemory = (navigator as any).deviceMemory || 4
-
-        // Check WebGL support
-        try {
-            const canvas = document.createElement('canvas')
-            const gl =
-                canvas.getContext('webgl') ||
-                (canvas.getContext(
-                    'experimental-webgl'
-                ) as WebGLRenderingContext | null)
-            capabilities.canUseWebGL = !!gl
-
-            // Additional WebGL capabilities check if supported
-            if (gl) {
-                // Check for WebGL extensions
-                interface WebGLDebugRendererInfo {
-                    UNMASKED_VENDOR_WEBGL: number
-                    UNMASKED_RENDERER_WEBGL: number
-                }
-
-                const debugInfo = gl.getExtension(
-                    'WEBGL_debug_renderer_info'
-                ) as WebGLDebugRendererInfo | null
-                if (debugInfo) {
-                    const renderer = gl.getParameter(
-                        debugInfo.UNMASKED_RENDERER_WEBGL
-                    ) as string
-                    console.log(`WebGL Renderer: ${renderer}`)
-
-                    // Detect low-end GPUs
-                    const isLowEndGPU =
-                        /Intel|HD Graphics|GMA|Mali-4|Mali-T|Adreno 3|PowerVR/i.test(
-                            renderer
-                        )
-                    if (isLowEndGPU) {
-                        capabilities.highPerformance = false
-                    }
-                }
-            }
-        } catch (e) {
-            capabilities.canUseWebGL = false
-            console.warn('WebGL detection failed:', e)
-        }
-
-        // Run a quick performance test
-        const perfScore = await this.runPerformanceTest()
-
-        // Determine device tier based on all factors
-        if (
-            isLowEndMobile ||
-            hardwareConcurrency <= 2 ||
-            deviceMemory <= 2 ||
-            perfScore < 10
-        ) {
-            capabilities.deviceTier = 'low'
-            capabilities.highPerformance = false
-            capabilities.maxParticles = 50
-            capabilities.targetFPS = 30
-            capabilities.memoryLimit = 'low'
-        } else if (
-            isMobile ||
-            hardwareConcurrency <= 4 ||
-            deviceMemory <= 4 ||
-            perfScore < 25
-        ) {
-            capabilities.deviceTier = 'medium'
-            capabilities.highPerformance = false
-            capabilities.maxParticles = 150
-            capabilities.targetFPS = 45
-            capabilities.memoryLimit = 'medium'
-        }
-
-        // Create device profile for analytics
-        capabilities.deviceProfile = {
-            userAgent: navigator.userAgent,
-            hardwareConcurrency,
-            deviceMemory,
-            screenSize: {
-                width: window.screen.width,
-                height: window.screen.height,
-                pixelRatio: window.devicePixelRatio || 1,
-            },
-            perfScore,
-            webGL: capabilities.canUseWebGL,
-        }
-
-        return capabilities
-    }
-
-    /**
-     * Run a quick performance test to estimate device capabilities
-     * @returns Performance score (higher is better)
-     */
-    async runPerformanceTest(): Promise<number> {
-        return new Promise(resolve => {
-            console.log('Running performance test...')
-
-            let frameCount = 0
-            const startTime = performance.now()
-            const iterations = 1000
-
-            // Test array operations
-            const arrays: Float32Array[] = []
-            for (let i = 0; i < 10; i++) {
-                arrays.push(new Float32Array(1000))
-            }
-
-            // Test rendering performance
-            const testCanvas = document.createElement('canvas')
-            testCanvas.width = 200
-            testCanvas.height = 200
-            const ctx = testCanvas.getContext('2d')
-
-            // Run the test
-            const runIteration = (iter: number): void => {
-                if (iter >= iterations) {
-                    // Test complete
-                    const duration = performance.now() - startTime
-                    const score = Math.round((iterations / duration) * 1000)
-                    console.log(
-                        `Performance test completed with score: ${score}`
-                    )
-
-                    // Cleanup
-                    arrays.length = 0
-
-                    resolve(score)
-                    return
-                }
-
-                // Test array manipulations (CPU)
-                for (let i = 0; i < arrays.length; i++) {
-                    const arr = arrays[i]
-                    for (let j = 0; j < 100; j++) {
-                        arr[j] = Math.sin(j) * Math.cos(j)
-                    }
-                }
-
-                // Test canvas drawing (GPU)
-                if (ctx) {
-                    ctx.clearRect(0, 0, 200, 200)
-                    for (let i = 0; i < 10; i++) {
-                        ctx.fillStyle = `rgba(${Math.random() * 255}, ${
-                            Math.random() * 255
-                        }, ${Math.random() * 255}, 0.5)`
-                        ctx.beginPath()
-                        ctx.arc(
-                            Math.random() * 200,
-                            Math.random() * 200,
-                            10 + Math.random() * 20,
-                            0,
-                            Math.PI * 2
-                        )
-                        ctx.fill()
-                    }
-                }
-
-                frameCount++
-
-                // Continue test asynchronously to avoid blocking UI
-                if (iter % 50 === 0) {
-                    setTimeout(() => runIteration(iter + 1), 0)
-                } else {
-                    runIteration(iter + 1)
-                }
-            }
-
-            // Start the test
-            runIteration(0)
-        })
     }
 
     /**

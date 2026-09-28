@@ -1,7 +1,8 @@
 import { Client, Room } from 'colyseus.js';
 import { EventBus } from '../core/EventBus';
 import AssetManager from './AssetManager';
-import { GAME_CONFIG, GameEvents } from '../constants/client-constants';
+import { GameEvents } from '../constants/client-constants';
+import { GAME } from '../../server/constants/gameConstants';
 
 export class MultiplayerManager {
     private client: Client | null = null;
@@ -56,7 +57,7 @@ export class MultiplayerManager {
         this.client = new Client(wsUrl);
         
         // Everyone joins the same room; the server decides the arena size
-        this.room = await this.client.joinOrCreate(GAME_CONFIG.ROOM_NAME, {
+        this.room = await this.client.joinOrCreate(GAME.ROOM_NAME, {
             name: this.getPlayerName(),
         });
         

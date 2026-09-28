@@ -1,11 +1,3 @@
-// Game configuration constants
-export const GAME_CONFIG = {
-    ROOM_NAME: 'game_room',
-    DEFAULT_PLAYER_NAME: 'Anonymous',
-    RECONNECT_ATTEMPTS: 3,
-    RECONNECT_DELAY: 2000,
-} as const;
-
 // Game event types for EventBus
 export const GameEvents = {
     // Connection events

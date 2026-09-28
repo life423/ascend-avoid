@@ -48,7 +48,7 @@ export const GAME = {
   WINNING_LINE: 40,
   MAX_PLAYERS: 30,
   STATE_UPDATE_RATE: 1000 / 30, // 30 updates per second
-  ROOM_NAME: "last_player_standing",
+  ROOM_NAME: "game_room",
   MAX_OBSTACLES: 12,
   DIFFICULTY_INCREASE_RATE: 0.15,
 } as const;

@@ -6,6 +6,7 @@ import { createServer } from "http";
 import express from "express";
 import cors from "cors";
 import { GameRoom } from "./rooms/GameRoom";
+import { GAME_CONSTANTS } from "./constants/serverConstants";
 import config from "./config";
 import logger from "./utils/logger";
 
@@ -36,7 +37,7 @@ const gameServer = new Server({
 });
 
 // Register your game room
-gameServer.define("game_room", GameRoom);
+gameServer.define(GAME_CONSTANTS.GAME.ROOM_NAME, GameRoom);
 
 // Colyseus monitor: a dashboard that can inspect and shut down rooms, so development only
 if (process.env.NODE_ENV !== "production") {

@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Canvas management is now handled by ResponsiveManager in Game.ts
 
     // Initialize drawer UI (always present)
-    const drawerUI = new DrawerUI()
+    const drawerUI = new DrawerUI({ onToggleGameMode: toggleGameMode })
 
     // Initialize the game
     const game = new Game()
@@ -58,8 +58,8 @@ document.addEventListener('DOMContentLoaded', () => {
     ;(window as any).game = game
     ;(window as any).drawerUI = drawerUI
 
-    // Make initializeMultiplayer available globally for drawer
-    ;(window as any).initializeMultiplayer = initializeMultiplayer
+    // Everyone starts in the online game (Game.init joins it)
+    updateModeButtons(true)
 
     // Initialize UI controls
     initializeUIControls()
@@ -77,26 +77,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 /**
- * Initializes multiplayer functionality on demand using the Game mode system
- * Delegates to Game.switchGameMode for proper mode initialization
+ * Switch between the shared online game and solo practice. Every mode button
+ * (desktop sidebar, drawer, mobile menu) calls this; their labels follow the mode.
  */
-function initializeMultiplayer() {
+async function toggleGameMode(): Promise<void> {
     const game = (window as any).game
-    if (!game) {
-        console.error('Game instance not found. Cannot start multiplayer.')
-        return
+    if (!game) return
+    const next = game.isMultiplayerMode ? 'singlePlayer' : 'multiplayer'
+    try {
+        await game.switchGameMode(next)
+    } catch (err) {
+        console.error('Failed to switch game mode:', err)
     }
-
-    // Everyone starts in multiplayer; this only matters after switching to single player
-    if (!game.isMultiplayerMode) {
-        game.switchGameMode('multiplayer').catch((err: any) => {
-            console.error('Failed to switch to multiplayer:', err)
-        })
-    }
-
-    
+    updateModeButtons(game.isMultiplayerMode)
 }
 
+/** Label the mode buttons with what they'll do next */
+function updateModeButtons(isMultiplayer: boolean): void {
+    const label = isMultiplayer ? 'Practice solo' : 'Play online'
+    document.querySelectorAll<HTMLElement>('.multiplayer-btn-desktop, .multiplayer-btn-mobile').forEach((button) => {
+        button.textContent = label
+        button.setAttribute('aria-label', label)
+        button.title = label
+    })
+    const drawerLabel = document.querySelector('.multiplayer-menu-btn .button-text')
+    if (drawerLabel) drawerLabel.textContent = label
+}
 
 /**
  * Initialize UI controls (menu, modals, etc.)
@@ -179,23 +185,7 @@ function initializeUIControls() {
     }
 
     function toggleMultiplayer() {
-        const game = (window as any).game
-        if (game && typeof game.switchGameMode === 'function') {
-            const newMode = game.isMultiplayerMode
-                ? 'singlePlayer'
-                : 'multiplayer'
-            game.switchGameMode(newMode)
-                .then(() => {
-                    console.log(`Switched to ${newMode} mode`)
-                    closeMenu()
-                })
-                .catch((err: Error) => {
-                    console.error(
-                        'Failed to switch game mode:',
-                        err
-                    )
-                })
-        }
+        toggleGameMode().then(closeMenu)
     }
 
     if (multiplayerToggle) {

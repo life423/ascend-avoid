@@ -65,6 +65,8 @@ export default defineConfig(({ mode }) => {
       open: true,
       host: '0.0.0.0', // Allow external connections
       port: 5173,
+      // src/ imports the shared rules from server/constants
+      fs: { allow: [__dirname] },
       allowedHosts: ['*.azurecontainerapps.io',
         'ascend.drewclark.io',
         'ascend-avoid.livelyisland-db4ad2db.eastus.azurecontainerapps.io'],

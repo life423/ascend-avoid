@@ -5,7 +5,10 @@ export class DrawerUI {
     private overlay!: HTMLDivElement;
     private isOpen: boolean = false;
 
-    constructor() {
+    private onToggleGameMode?: () => void;
+
+    constructor(options: { onToggleGameMode?: () => void } = {}) {
+        this.onToggleGameMode = options.onToggleGameMode;
         this.container = document.body;
         this.createElements();
         this.attachEventListeners();
@@ -102,14 +105,7 @@ export class DrawerUI {
         // Close drawer first
         this.close();
 
-        // Get game reference and initialize multiplayer
-        const game = (window as any).game;
-        if (game) {
-            // Use the same multiplayer initialization logic from index.ts
-            if (typeof (window as any).initializeMultiplayer === 'function') {
-                (window as any).initializeMultiplayer();
-            }
-        }
+        this.onToggleGameMode?.();
     }
 
     private injectStyles(): void {

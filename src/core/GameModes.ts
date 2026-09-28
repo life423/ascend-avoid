@@ -6,7 +6,7 @@ import Player from '../entities/Player'
 import { InputState } from '../types'
 import { getSprite } from '../utils/sprites'
 import { GameEvents } from '../constants/client-constants'
-import { PLAYER_COLORS } from '../constants/gameConstants'
+import { PLAYER_COLORS } from '../../server/constants/gameConstants'
 import type { MultiplayerManager } from '../managers/MultiplayerManager'
 
 // Forward reference for the Game type to avoid circular dependencies
