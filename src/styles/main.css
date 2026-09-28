@@ -7,6 +7,7 @@
     width: 100%;
     max-width: 1200px;
     height: 100vh;
+    height: 100dvh; /* the visible height on phones, excluding browser toolbars */
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -60,6 +61,8 @@
 
 .game-canvas-container {
     flex: 0 0 auto;
+    min-width: 0;
+    min-height: 0;
     display: flex;
     justify-content: center;
     align-items: flex-start;
@@ -67,7 +70,7 @@
 }
 
 .touch-controls-area {
-    flex: 0 0 var(--ctrl-h);
+    flex: 0 0 auto;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -391,6 +394,7 @@
 @media (max-width: 1199px) {
     .app-root {
         height: 100vh;
+        height: 100dvh;
         display: flex;
         flex-direction: column;
     }
@@ -402,12 +406,17 @@
         flex-direction: column;
     }
     
+    /* The canvas area gets whatever the header and touch controls leave; */
+    /* ResponsiveManager fits the canvas inside it */
     .game-canvas-container {
-        /* padding: 0; */
+        flex: 1 1 0;
+        min-height: 0;
+        align-items: center;
+        padding: var(--space-sm);
     }
-    
+
     .touch-controls-area {
-        flex: 1;
+        flex: 0 0 auto;
     }
     
     .game-canvas {
@@ -437,5 +446,187 @@
         margin: 0;
         opacity: 0.7;
         letter-spacing: 0.025em;
+    }
+}
+
+/* ============================================
+   TOUCH CONTROLS (built by TouchControls.ts)
+   Sized with the screen instead of in JavaScript.
+   ============================================ */
+.touch-controller {
+    --btn: clamp(44px, 13vw, 64px);
+    --gap: clamp(4px, 1.5vw, 10px);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: var(--space-sm) var(--space-md) calc(var(--space-md) + env(safe-area-inset-bottom, 0px));
+    pointer-events: none;
+}
+
+.left-controls,
+.right-controls {
+    pointer-events: auto;
+}
+
+.dpad-controls {
+    display: grid;
+    grid-template-areas:
+        '. up .'
+        'left . right'
+        '. down .';
+    grid-template-columns: repeat(3, var(--btn));
+    grid-template-rows: repeat(3, var(--btn));
+    gap: var(--gap);
+}
+
+.dpad-button[data-direction='up'] { grid-area: up; }
+.dpad-button[data-direction='down'] { grid-area: down; }
+.dpad-button[data-direction='left'] { grid-area: left; }
+.dpad-button[data-direction='right'] { grid-area: right; }
+
+/* B sits lower-left of A, like a Game Boy */
+.action-buttons {
+    display: flex;
+    align-items: flex-start;
+    gap: calc(var(--gap) * 2.5);
+}
+
+.action-button[data-action='boost'] {
+    margin-top: calc(var(--btn) * 0.6);
+}
+
+.control-button {
+    width: var(--btn);
+    height: var(--btn);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 50%;
+    background: rgba(0, 188, 212, 0.3);
+    border: 3px solid var(--accent-primary, #00bcd4);
+    box-shadow: 0 3px 5px rgba(0, 0, 0, 0.3);
+    color: #fff;
+    font-weight: 700;
+    font-size: calc(var(--btn) * 0.38);
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+}
+
+/* The drawer menu replaced the old floating menu */
+.float-menu {
+    display: none !important;
+}
+
+/* Landscape phones: controls sit either side of the canvas instead of under it */
+@media (orientation: landscape) and (max-height: 520px) {
+    /* Title, scores and the Solo | Online switch share one row */
+    .app-header {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-md);
+        padding: var(--space-xs) var(--space-md);
+    }
+
+    .app-header h1 {
+        font-size: 1.25rem;
+    }
+
+    .score-panel {
+        margin: 0;
+        padding: 2px var(--space-sm);
+    }
+
+    .game-canvas-container {
+        padding: var(--space-xs);
+    }
+
+    .touch-controls-area {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+    }
+
+    .touch-controller {
+        --btn: clamp(36px, 11vh, 56px);
+        height: 100%;
+        padding: 0 calc(var(--space-md) + env(safe-area-inset-right, 0px)) 0 calc(var(--space-md) + env(safe-area-inset-left, 0px));
+    }
+}
+
+/* ============================================
+   SOLO | ONLINE SWITCH (header)
+   ============================================ */
+.score-panel {
+    align-items: center;
+    flex-wrap: wrap;
+    row-gap: var(--space-xs);
+}
+
+.mode-switch {
+    display: inline-flex;
+    border: 1px solid var(--accent-primary);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.mode-option {
+    padding: 4px 14px;
+    border: 0;
+    background: transparent;
+    color: var(--text-light);
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.mode-option.active {
+    background: var(--accent-primary);
+    color: var(--primary-dark);
+}
+
+.mode-option:focus-visible {
+    outline: 2px solid var(--accent-secondary);
+    outline-offset: -2px;
+}
+
+/* ============================================
+   CANVAS FRAME
+   The canvas's own box, beside the How to Play panel on desktop. The online world fills it;
+   solo keeps its 6:7 shape, centered inside.
+   ============================================ */
+.canvas-frame {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 0;
+    align-self: stretch;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+@media (min-width: 1200px) {
+    /* A wider page on big monitors, with the game filling the height */
+    .app-root {
+        max-width: 1600px;
+        height: 100vh;
+        height: 100dvh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* The panel scrolls when the window is too short for all of it */
+    .info-panel {
+        overflow-y: auto;
+    }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+    /* Keep the canvas between the touch controls on either side */
+    .canvas-frame {
+        padding: 0 calc(clamp(36px, 11vh, 56px) * 3.6 + var(--space-md));
     }
 }

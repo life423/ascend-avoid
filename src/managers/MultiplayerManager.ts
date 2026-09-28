@@ -1,7 +1,8 @@
 import { Client, Room } from 'colyseus.js';
 import { EventBus } from '../core/EventBus';
 import AssetManager from './AssetManager';
-import { GAME_CONFIG, GameEvents } from '../constants/client-constants';
+import { GameEvents } from '../constants/client-constants';
+import { GAME } from '../../server/constants/gameConstants';
 
 export class MultiplayerManager {
     private client: Client | null = null;
@@ -10,7 +11,7 @@ export class MultiplayerManager {
     // private _assetManager: AssetManager; // Removed unused property
     private isConnecting: boolean = false;
     private reconnectAttempts: number = 0;
-    private maxReconnectAttempts: number = 3;
+    private maxReconnectAttempts: number = 0; // MultiplayerMode handles reconnecting
 
     constructor(eventBus: EventBus, _assetManager: AssetManager) {
         this.eventBus = eventBus;
@@ -55,19 +56,9 @@ export class MultiplayerManager {
         // Create Colyseus client
         this.client = new Client(wsUrl);
         
-        // Get available rooms (optional, for debugging)
-        try {
-            const rooms = await this.client.getAvailableRooms(GAME_CONFIG.ROOM_NAME);
-            console.log('📋 Available rooms:', rooms);
-        } catch (e) {
-            console.log('⚠️ Could not fetch available rooms (this is okay):', e);
-        }
-        
-        // Join or create room
-        this.room = await this.client.joinOrCreate(GAME_CONFIG.ROOM_NAME, {
-            playerName: this.getPlayerName(),
-            width: window.innerWidth,
-            height: window.innerHeight
+        // Everyone joins the same room; the server decides the arena size
+        this.room = await this.client.joinOrCreate(GAME.ROOM_NAME, {
+            name: this.getPlayerName(),
         });
         
         console.log('✅ Successfully joined room:', this.room.id);
@@ -165,7 +156,6 @@ export class MultiplayerManager {
 
         // Handle state changes
         this.room.onStateChange((state) => {
-            console.log('📡 Room state changed:', state);
             this.eventBus.emit(GameEvents.MULTIPLAYER_STATE_UPDATE, state);
         });
 
@@ -180,15 +170,6 @@ export class MultiplayerManager {
             this.eventBus.emit(GameEvents.PLAYER_LEFT, data);
         });
 
-        this.room.onMessage('gameStart', (data) => {
-            console.log('Game starting:', data);
-            this.eventBus.emit(GameEvents.GAME_START, data);
-        });
-
-        this.room.onMessage('gameOver', (data) => {
-            console.log('Game over:', data);
-            this.eventBus.emit(GameEvents.GAME_OVER, data);
-        });
 
         // Handle errors
         this.room.onError((code, message) => {
@@ -323,6 +304,16 @@ export class MultiplayerManager {
     /**
      * Update player name
      */
+    /** The synchronized game state from the server, or null when not connected */
+    getState(): any {
+        return this.room ? this.room.state : null;
+    }
+
+    /** This client's session id in the room, or null when not connected */
+    get localSessionId(): string | null {
+        return this.room ? this.room.sessionId : null;
+    }
+
     updatePlayerName(name: string): void {
         sessionStorage.setItem('playerName', name);
         

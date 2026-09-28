@@ -9,8 +9,9 @@ import {
     KEYS,
     OBSTACLE,
     PLAYER,
-} from '../constants/gameConstants'
-import { GAME_STATE } from '../constants/gameState'
+} from '../../server/constants/gameConstants'
+// The same state names the multiplayer server uses
+import { STATE as GAME_STATE } from '../../server/constants/gameConstants'
 import { GameConfig as GameConfigInterface } from '../types'
 
 interface GameSettings {

@@ -10,7 +10,7 @@ import {
   GAME, 
   STATE, 
   PLAYER_STATE, 
-  ARENA,
+  WORLD,
   PLAYER_COLORS 
 } from './gameConstants.js';
 
@@ -36,6 +36,6 @@ export {
   GAME,
   STATE,
   PLAYER_STATE,
-  ARENA,
+  WORLD,
   PLAYER_COLORS
 };

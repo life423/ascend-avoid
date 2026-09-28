@@ -270,8 +270,9 @@ export default class Game {
         // Set up touch controls if needed
         this.setupTouchControls()
 
-        // Initialize the default game mode (single player)
-        await this.initializeGameMode('singlePlayer')
+        // Everyone who opens the site joins the shared multiplayer game
+        // (initializeGameMode falls back to single player if multiplayer can't load)
+        await this.initializeGameMode('multiplayer')
 
         // Hide loading screen
         this.uiManager.hideLoading()
@@ -314,6 +315,8 @@ export default class Game {
 
             // Initialize the game mode
             await this.currentGameMode.initialize()
+            // The online world fills the page; solo keeps its shape
+            this.responsiveManager?.handleResize()
 
             console.log(`Game mode initialized: ${mode}`)
             return Promise.resolve()
@@ -714,6 +717,15 @@ export default class Game {
             }
         }
 
+        // During an online match the whole scene comes from the server, drawn by the mode
+        if (this.currentGameMode?.drawsOwnScene()) {
+            this.currentGameMode.render(timestamp)
+            if (this.touchControls && typeof this.touchControls.draw === 'function') {
+                this.touchControls.draw()
+            }
+            return
+        }
+
         // Get obstacles - with error handling
         let obstacles: GameObject[] = []
         try {
@@ -759,6 +771,9 @@ export default class Game {
 
         // Draw winning line
         this.drawWinningLine(timestamp)
+
+        // Anything the mode adds on top (the online status line)
+        this.currentGameMode?.renderOverlay(timestamp)
 
         // Draw debug information if enabled
         if (this.config.isDebugEnabled()) {

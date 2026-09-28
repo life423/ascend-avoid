@@ -4,10 +4,6 @@ import checker from 'vite-plugin-checker';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
-// ✨ Cutting-edge: SWC transformer (10x faster than default)
-import react from '@vitejs/plugin-react-swc';
-// ✨ Cutting-edge: Type-safe CSS-in-TS
-import { vanillaExtractPlugin } from '@vanilla-extract/vite-plugin';
 
 // ←–– add these two lines so __dirname exists in ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -20,10 +16,6 @@ export default defineConfig(({ mode }) => {
     root: 'src',
     publicDir: '../public',
     plugins: [
-      // ✨ SWC transformer for lightning-fast builds
-      react(),
-      // ✨ Type-safe CSS-in-TS with vanilla-extract
-      vanillaExtractPlugin(),
       legacy({ targets: ['defaults', 'not IE 11'] }),
       checker({ typescript: true }),
       nodePolyfills({
@@ -73,6 +65,8 @@ export default defineConfig(({ mode }) => {
       open: true,
       host: '0.0.0.0', // Allow external connections
       port: 5173,
+      // src/ imports the shared rules from server/constants
+      fs: { allow: [__dirname] },
       allowedHosts: ['*.azurecontainerapps.io',
         'ascend.drewclark.io',
         'ascend-avoid.livelyisland-db4ad2db.eastus.azurecontainerapps.io'],
@@ -80,13 +74,6 @@ export default defineConfig(({ mode }) => {
     preview: {
       host: '0.0.0.0',
       port: 5173
-    },
-    test: {
-      globals: true,
-      environment: 'jsdom',
-      setupFiles: ['./tests/setup.ts'],
-      include: ['**/*.{test,spec}.{js,ts,tsx}'],
-      exclude: ['**/node_modules/**', '**/dist/**'],
     },
   };
 });

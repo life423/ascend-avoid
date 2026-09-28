@@ -48,7 +48,7 @@ export const GAME = {
   WINNING_LINE: 40,
   MAX_PLAYERS: 30,
   STATE_UPDATE_RATE: 1000 / 30, // 30 updates per second
-  ROOM_NAME: "last_player_standing",
+  ROOM_NAME: "game_room",
   MAX_OBSTACLES: 12,
   DIFFICULTY_INCREASE_RATE: 0.15,
 } as const;
@@ -70,12 +70,40 @@ export const PLAYER_STATE = {
   SPECTATING: "spectating",
 } as const;
 
-// Arena settings
-export const ARENA = {
-  INITIAL_AREA_PERCENTAGE: 100,
-  SHRINK_INTERVAL: 30000, // 30 seconds between shrinks
-  SHRINK_PERCENTAGE: 10, // Shrink by 10% each time
-  MIN_AREA_PERCENTAGE: 40, // Don't shrink below 40% of original size
+/**
+ * The online world: one big open arena several screens across. The camera follows each player
+ * and every screen sees the same amount of it (VIEW_AREA, in square units), shaped to the screen
+ * within the aspect limits, so a bigger monitor doesn't see more.
+ */
+export const WORLD = {
+  WIDTH: 2100,
+  HEIGHT: 2100,
+  VIEW_AREA: 720000,
+  MIN_VIEW_ASPECT: 0.6,
+  MAX_VIEW_ASPECT: 1.8,
+  OBSTACLE_COUNT: 36,
+  RESPAWN_DELAY_MS: 2000,
+  SPAWN_PROTECTION_MS: 1500,
+  /** A respawn spot this far from all traffic is good enough */
+  SPAWN_CLEARANCE: 220,
+} as const;
+
+/**
+ * Sizes and speeds in world units, matching solo play's feel. Solo measures in screen pixels (a
+ * 30px player, ~39px hops, obstacles 22px thick moving 2.5-3.5px a frame); these are those at a
+ * typical canvas scale of 0.65.
+ */
+export const ARENA_RULES = {
+  PLAYER_SIZE: 45,
+  HOP: 60, // one tap = one hop
+  HOP_REPEAT_DELAY: 0.2, // holding a direction: the first repeat hop comes after this many seconds,
+  HOP_REPEAT: 1 / 6, // then one every this many seconds (six a second)
+  EDGE_MARGIN: 8, // closest you can get to the edge of the world
+  OBSTACLE_THICKNESS: 34,
+  OBSTACLE_MIN_LENGTH: 48,
+  OBSTACLE_MAX_LENGTH: 108,
+  OBSTACLE_SPEED: 270, // units per second; each obstacle varies by up to 20% either way
+  HOP_COOLDOWN_MS: 60, // server-side limit per direction, far faster than anyone taps
 } as const;
 
 // Key mappings
@@ -153,7 +181,8 @@ export const GAME_CONSTANTS = {
   GAME,
   STATE,
   PLAYER_STATE,
-  ARENA,
+  ARENA_RULES,
+  WORLD,
   KEYS,
   DEVICE_SETTINGS
 } as const;

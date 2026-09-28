@@ -2,7 +2,7 @@
  * Player class representing the player entity in the game.
  * Updated with TypeScript support and improved collision detection.
  */
-import { GAME, PLAYER } from '../constants/gameConstants';
+import { GAME, PLAYER } from '../../server/constants/gameConstants';
 import { getSprite } from '../utils/sprites';
 import { SCALE_FACTOR, BASE_CANVAS_WIDTH, BASE_CANVAS_HEIGHT } from '../utils/utils';
 import { GameObject, InputState } from '../types';

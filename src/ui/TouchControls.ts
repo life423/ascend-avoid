@@ -4,7 +4,6 @@
  */
 import Game from '../core/Game'
 import Player from '../entities/Player'
-import { TouchControlsAdapter } from '../adapters/TouchControlsAdapter'
 
 // Interface for control button definition
 interface ControlButton {
@@ -30,7 +29,6 @@ interface ButtonElements {
 export default class TouchControls {
     private game: Game
     private player: Player
-    private controlsAdapter: TouchControlsAdapter | null = null
 
     // Control button properties with symbols
     private buttons: Record<string, ControlButton>
@@ -92,10 +90,6 @@ export default class TouchControls {
         this.createControlElements()
         this.setupTouchListeners()
 
-        // Initialize the adapter with the container
-        if (this.container) {
-            this.controlsAdapter = new TouchControlsAdapter(this.container);
-        }
 
         // Hide controls on desktop/mouse-based devices or when desktop layout is forced
         if (
@@ -145,14 +139,6 @@ export default class TouchControls {
             this.container = document.createElement('div')
             this.container.className = 'touch-controller'
             this.container.setAttribute('data-controller', 'main')
-            this.container.style.position = 'relative'
-            this.container.style.width = '100%'
-            this.container.style.height = '100%'
-            this.container.style.display = 'flex'
-            this.container.style.justifyContent = 'space-between'
-            this.container.style.alignItems = 'center'
-            this.container.style.padding = '0 var(--space-md)'
-            this.container.style.pointerEvents = 'none'
             
             touchControlsArea.appendChild(this.container)
         } else {
@@ -160,16 +146,6 @@ export default class TouchControls {
             // Fallback to body if touch-controls-area doesn't exist
             this.container = document.createElement('div')
             this.container.className = 'touch-controller'
-            this.container.style.position = 'fixed'
-            this.container.style.bottom = '0'
-            this.container.style.left = '0'
-            this.container.style.right = '0'
-            this.container.style.height = 'var(--ctrl-h)'
-            this.container.style.display = 'flex'
-            this.container.style.justifyContent = 'space-between'
-            this.container.style.alignItems = 'center'
-            this.container.style.padding = '0 var(--space-md)'
-            this.container.style.pointerEvents = 'none'
             
             document.body.appendChild(this.container)
         }
@@ -177,19 +153,12 @@ export default class TouchControls {
         // Create left side controls (D-pad)
         const leftControls = document.createElement('div')
         leftControls.className = 'left-controls'
-        leftControls.style.display = 'flex'
-        leftControls.style.justifyContent = 'center'
-        leftControls.style.alignItems = 'center'
-        leftControls.style.flex = '1'
-        leftControls.style.pointerEvents = 'auto' // Enable pointer events for controls
 
         // Create d-pad container with grid layout (GameBoy style)
         this.directionControls = document.createElement('div')
         this.directionControls.className = 'dpad-controls'
-        this.directionControls.style.display = 'grid'
         this.directionControls.style.gridTemplateAreas =
             '". up ." "left . right" ". down ."'
-        this.directionControls.style.gap = '5px'
 
         // Create directional buttons
         for (const direction of ['up', 'down', 'left', 'right']) {
@@ -199,20 +168,8 @@ export default class TouchControls {
             button.dataset.direction = direction
             button.textContent = this.buttons[direction].symbol
 
-            // Basic button styling (adapter will handle responsive sizing)
-            button.style.backgroundColor = 'rgba(0, 188, 212, 0.3)'
-            button.style.border = '3px solid var(--accent-primary, #00bcd4)'
-            button.style.borderRadius = '50%'
-            button.style.display = 'flex'
-            button.style.justifyContent = 'center'
-            button.style.alignItems = 'center'
-            button.style.color = 'white'
-            button.style.userSelect = 'none'
-            button.style.touchAction = 'none'
-            button.style.boxShadow = '0 3px 5px rgba(0,0,0,0.3)'
 
             // Position in grid based on direction
-            button.style.gridArea = direction
 
             this.directionControls.appendChild(button)
         }
@@ -222,18 +179,10 @@ export default class TouchControls {
         // Create right side controls (action buttons in GameBoy layout)
         const rightControls = document.createElement('div')
         rightControls.className = 'right-controls'
-        rightControls.style.display = 'flex'
-        rightControls.style.justifyContent = 'center'
-        rightControls.style.alignItems = 'center'
-        rightControls.style.flex = '1'
-        rightControls.style.pointerEvents = 'auto'
 
         // Create action buttons container - horizontal layout for GameBoy style
         const actionButtons = document.createElement('div')
         actionButtons.className = 'action-buttons'
-        actionButtons.style.display = 'flex'
-        actionButtons.style.flexDirection = 'row' // Horizontal layout
-        actionButtons.style.gap = '25px' // Increased spacing between buttons
 
         // Create two action buttons: boost and missile (GameBoy A and B style)
         for (const action of ['boost', 'missile']) {
@@ -244,18 +193,6 @@ export default class TouchControls {
             // Only use the letter label (A or B), no icon
             button.textContent = action === 'boost' ? 'B' : 'A' // GameBoy style labels
             
-            // Basic button styling (adapter will handle responsive sizing)
-            button.style.backgroundColor = 'rgba(0, 188, 212, 0.3)'
-            button.style.border = '3px solid var(--accent-primary, #00bcd4)'
-            button.style.borderRadius = '50%'
-            button.style.display = 'flex'
-            button.style.justifyContent = 'center' // Center horizontally
-            button.style.alignItems = 'center' // Center vertically
-            button.style.color = 'white'
-            button.style.fontWeight = 'bold'
-            button.style.userSelect = 'none'
-            button.style.touchAction = 'none'
-            button.style.boxShadow = '0 3px 5px rgba(0,0,0,0.3)'
 
             actionButtons.appendChild(button)
         }
@@ -467,9 +404,7 @@ export default class TouchControls {
             this.createControlElements()
             this.setupTouchListeners()
 
-            // Reinitialize the adapter
             if (this.container) {
-                this.controlsAdapter = new TouchControlsAdapter(this.container);
                 (this.container as HTMLElement).style.display = 'flex';
             }
         }
@@ -507,11 +442,6 @@ export default class TouchControls {
             })
         }
 
-        // Clean up the adapter
-        if (this.controlsAdapter) {
-            this.controlsAdapter.dispose();
-            this.controlsAdapter = null;
-        }
 
         // Remove container if needed
         if (this.container && this.container.parentNode) {

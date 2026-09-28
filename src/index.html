@@ -28,34 +28,40 @@
                         Score:
                         <span class="score-value current-score">0</span>
                     </h4>
+                    <div class="mode-switch" role="group" aria-label="Game mode">
+                        <button type="button" class="mode-option" data-mode="singlePlayer" aria-pressed="false">Solo</button>
+                        <button type="button" class="mode-option active" data-mode="multiplayer" aria-pressed="true">Online</button>
+                    </div>
                 </div>
             </header>
 
             <main class="game-main">
                 <div class="game-canvas-container">
-                    <canvas
-                        class="game-canvas"
-                        aria-label="Cross the Box game"
-                        role="img"
-                    ></canvas>
+                    <div class="canvas-frame">
+                        <canvas
+                            class="game-canvas"
+                            aria-label="Ascend Avoid game"
+                            role="img"
+                        ></canvas>
+                    </div>
 
                     <aside class="info-panel desktop-only">
                     <div class="panel-content">
                         <h3>How to Play:</h3>
                         <p>
-                            Move the white block to the top without hitting
-                            the blue blocks.
+                            Hop around the arena and dodge the traffic.
+                            Everyone on the site plays in the same world.
                         </p>
                         <ul>
-                            <li>Use arrow keys or WASD to move</li>
-                            <li>Press 'R' to restart the game</li>
+                            <li>Tap an arrow key or WASD to hop</li>
+                            <li>Hold it to keep hopping</li>
                         </ul>
                         <p class="note">
-                            Game speed increases as you score more points!
+                            Get hit and you're back in two seconds.
                         </p>
                         <p>
-                            Try to beat your high score and challenge your
-                            friends in multiplayer mode!
+                            Solo is the classic game: reach the top without
+                            getting hit, and press R to restart.
                         </p>
                     </div>
                     <div class="info-actions">
@@ -64,12 +70,6 @@
                             aria-label="How to play"
                         >
                             Guide
-                        </button>
-                        <button
-                            class="nav-button btn-action multiplayer-btn-desktop"
-                            aria-label="Multiplayer mode"
-                        >
-                            Multiplayer
                         </button>
                     </div>
                     </aside>
@@ -93,13 +93,6 @@
                         title="How to play"
                     >
                         Guide
-                    </button>
-                    <button
-                        class="btn-action multiplayer-btn-mobile"
-                        aria-label="Multiplayer mode"
-                        title="Multiplayer mode"
-                    >
-                        Multiplayer
                     </button>
                 </div>
             </div>

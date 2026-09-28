@@ -50,16 +50,8 @@ export class DrawerUI {
                             Game speed increases as you score more points!
                         </div>
                         
-                        <p>Try to beat your high score and climb the leaderboard!</p>
+                        <p>Try to beat your high score. Online, everyone on the site shares one big arena: hop around, dodge the traffic, and you're back two seconds after a hit.</p>
                     </div>
-                </div>
-                
-                <div class="menu-section">
-                    <h3>Game Modes</h3>
-                    <button class="menu-button multiplayer-menu-btn">
-                        <span class="button-icon">👥</span>
-                        <span class="button-text">Multiplayer</span>
-                    </button>
                 </div>
             </div>
         `;
@@ -89,28 +81,8 @@ export class DrawerUI {
             e.stopPropagation();
         });
 
-        // Add multiplayer button handler
-        const multiplayerBtn = this.drawer.querySelector('.multiplayer-menu-btn');
-        if (multiplayerBtn) {
-            multiplayerBtn.addEventListener('click', () => {
-                this.handleMultiplayerClick();
-            });
-        }
     }
 
-    private handleMultiplayerClick(): void {
-        // Close drawer first
-        this.close();
-
-        // Get game reference and initialize multiplayer
-        const game = (window as any).game;
-        if (game) {
-            // Use the same multiplayer initialization logic from index.ts
-            if (typeof (window as any).initializeMultiplayer === 'function') {
-                (window as any).initializeMultiplayer();
-            }
-        }
-    }
 
     private injectStyles(): void {
         if (document.getElementById('drawer-styles')) return;

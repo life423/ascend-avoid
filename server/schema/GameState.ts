@@ -4,344 +4,125 @@ import { PlayerSchema } from "./PlayerSchema.js";
 import { ObstacleSchema } from "./ObstacleSchema.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 
-/**
- * Interface for player positions used in obstacle placement
- */
-interface PlayerPosition {
-  x: number;
-  y: number;
+const { WORLD, ARENA_RULES, PLAYER_STATE } = GAME_CONSTANTS;
+
+/** How many random spots to try when looking for a safe place to (re)spawn */
+const SPAWN_TRIES = 24;
+
+/** Distance from a point to a rectangle (0 when the point is inside it) */
+function distanceToRect(px: number, py: number, x: number, y: number, width: number, height: number): number {
+  const dx = Math.max(x - px, 0, px - (x + width));
+  const dy = Math.max(y - py, 0, py - (y + height));
+  return Math.hypot(dx, dy);
 }
 
 /**
- * GameState defines the full synchronized game state
+ * The online world: one big open arena that never stops. Players drop in the moment they
+ * join, dodge traffic crossing the map in every direction, and come back two seconds after a
+ * hit, somewhere safe and protected for a moment. There are no rounds and nobody waits.
  */
 class GameState extends Schema {
-  // Game state properties
-  gameState: string;
-  elapsedTime: number;
-  startTime: number;
-  countdownTime: number; 
-  
-  // Arena settings
-  arenaWidth: number;
-  arenaHeight: number;
-  areaPercentage: number;
-  nextShrinkTime: number;
-  
-  // Collections for players and obstacles
   players: schema.MapSchema<PlayerSchema>;
   obstacles: schema.ArraySchema<ObstacleSchema>;
-  
-  // Game statistics
-  aliveCount: number;
-  totalPlayers: number;
-  winnerName: string;
-  
-  // Last update time for delta calculations
-  lastUpdateTime: number;
+  worldWidth: number;
+  worldHeight: number;
+
+  /** Server-only: gives each new player the next color */
+  private nextPlayerIndex = 0;
 
   constructor() {
     super();
-    
-    // Initialize game state
-    this.gameState = GAME_CONSTANTS.STATE.WAITING;
-    this.elapsedTime = 0;
-    this.startTime = 0;
-    this.countdownTime = 5; // 5 second countdown before game starts
-    
-    // Arena settings
-    this.arenaWidth = 800;
-    this.arenaHeight = 600;
-    this.areaPercentage = GAME_CONSTANTS.ARENA.INITIAL_AREA_PERCENTAGE;
-    this.nextShrinkTime = 0;
-    
-    // Create collections for players and obstacles
     this.players = new MapSchema<PlayerSchema>();
     this.obstacles = new ArraySchema<ObstacleSchema>();
-    
-    // Game statistics
-    this.aliveCount = 0;
-    this.totalPlayers = 0;
-    this.winnerName = "";
-    
-    // Last update time for delta calculations
-    this.lastUpdateTime = Date.now();
+    this.worldWidth = WORLD.WIDTH;
+    this.worldHeight = WORLD.HEIGHT;
+    for (let i = 0; i < WORLD.OBSTACLE_COUNT; i++) {
+      const obstacle = new ObstacleSchema();
+      obstacle.launch(this.worldWidth, this.worldHeight, true);
+      this.obstacles.push(obstacle);
+    }
   }
-  
-  /**
-   * Initialize a new player
-   * @param sessionId - The client session ID
-   * @returns The created player
-   */
-  createPlayer(sessionId: string): PlayerSchema {
-    const playerIndex = this.totalPlayers;
-    const player = new PlayerSchema(sessionId, playerIndex);
-    
-    // Position player at bottom of screen
-    player.resetPosition(this.arenaWidth, this.arenaHeight);
-    
+
+  /** A new visitor: straight into the world, somewhere safe */
+  addPlayer(sessionId: string, name: string | null, now: number = Date.now()): PlayerSchema {
+    const player = new PlayerSchema(sessionId, this.nextPlayerIndex++);
+    if (name) player.name = name;
     this.players.set(sessionId, player);
-    this.aliveCount++;
-    this.totalPlayers++;
-    
+    this.spawn(player, now);
     return player;
   }
-  
-  /**
-   * Remove a player by session ID
-   * @param sessionId - The client session ID
-   */
+
   removePlayer(sessionId: string): void {
-    const player = this.players.get(sessionId);
-    if (player) {
-      // If player was alive, decrement alive count
-      if (player.state === GAME_CONSTANTS.PLAYER_STATE.ALIVE) {
-        this.aliveCount--;
-      }
-      
-      this.players.delete(sessionId);
-    }
+    this.players.delete(sessionId);
   }
-  
-  /**
-   * Initialize obstacles
-   * @param initialCount - Initial number of obstacles
-   */
-  initializeObstacles(initialCount = 5): void {
-    this.obstacles = new ArraySchema<ObstacleSchema>();
-    
-    for (let i = 0; i < initialCount; i++) {
-      this.createObstacle();
-    }
-  }
-  
-  /**
-   * Create a new obstacle
-   * @returns The created obstacle
-   */
-  createObstacle(): ObstacleSchema {
-    const obstacle = new ObstacleSchema(this.obstacles.length);
-    
-    // Get player positions for obstacle placement
-    const playerPositions: PlayerPosition[] = [];
-    this.players.forEach((player, _sessionId) => {
-      if (player.state === GAME_CONSTANTS.PLAYER_STATE.ALIVE) {
-        playerPositions.push({ x: player.x, y: player.y });
+
+  /** One server tick: move traffic and players, check hits, bring knocked-out players back */
+  update(deltaTime: number, now: number = Date.now()): void {
+    this.obstacles.forEach((obstacle) => {
+      if (!obstacle.update(deltaTime, this.worldWidth, this.worldHeight)) {
+        obstacle.launch(this.worldWidth, this.worldHeight);
       }
     });
-    
-    // Initialize obstacle position
-    obstacle.reset(this.arenaWidth, this.arenaHeight, playerPositions);
-    
-    this.obstacles.push(obstacle);
-    return obstacle;
-  }
-  
-  /**
-   * Check for win condition
-   * @returns Whether the game is over
-   */
-  checkWinCondition(): boolean {
-    // Game is won when only one player remains alive
-    if (this.aliveCount === 1 && this.totalPlayers > 1) {
-      // Find the last player standing
-      this.players.forEach((player, _sessionId) => {
-        if (player.state === GAME_CONSTANTS.PLAYER_STATE.ALIVE) {
-          this.winnerName = player.name;
-          this.gameState = GAME_CONSTANTS.STATE.GAME_OVER;
-        }
+
+    this.players.forEach((player) => {
+      if (player.state !== PLAYER_STATE.ALIVE) {
+        if (now >= player.respawnAt) this.spawn(player, now);
+        return;
+      }
+      player.updateMovement(this.worldWidth, this.worldHeight, now);
+      if (player.spawnProtected) return;
+      let hit = false;
+      this.obstacles.forEach((obstacle) => {
+        if (!hit && obstacle.checkCollision(player)) hit = true;
       });
-      return true;
-    }
-    
-    // No players left alive (shouldn't happen normally)
-    if (this.aliveCount === 0 && this.gameState === GAME_CONSTANTS.STATE.PLAYING) {
-      this.gameState = GAME_CONSTANTS.STATE.GAME_OVER;
-      this.winnerName = "No one";
-      return true;
-    }
-    
-    return false;
-  }
-  
-  /**
-   * Update game state
-   * @param deltaTime - Time since last update
-   */
-  update(deltaTime: number): void {
-    // Update based on current game state
-    switch (this.gameState) {
-      case GAME_CONSTANTS.STATE.WAITING:
-        // Check if enough players to start
-        if (this.totalPlayers >= 2) { // Minimum of 2 players for testing (can be increased later)
-          this.gameState = GAME_CONSTANTS.STATE.STARTING;
-          this.startTime = Date.now() + (this.countdownTime * 1000);
-        }
-        break;
-        
-      case GAME_CONSTANTS.STATE.STARTING:
-        // Update countdown
-        const currentTime = Date.now();
-        const remainingTime = Math.max(0, this.startTime - currentTime);
-        this.countdownTime = Math.ceil(remainingTime / 1000);
-        
-        // Start game when countdown reaches zero
-        if (this.countdownTime <= 0) {
-          this.gameState = GAME_CONSTANTS.STATE.PLAYING;
-          this.elapsedTime = 0;
-          this.nextShrinkTime = Date.now() + GAME_CONSTANTS.ARENA.SHRINK_INTERVAL;
-          
-          // Initialize obstacles
-          this.initializeObstacles(5 + Math.floor(this.totalPlayers / 5));
-        }
-        break;
-        
-      case GAME_CONSTANTS.STATE.PLAYING:
-        // Update elapsed time
-        this.elapsedTime += deltaTime;
-        
-        // Update arena shrinking
-        if (Date.now() >= this.nextShrinkTime && 
-            this.areaPercentage > GAME_CONSTANTS.ARENA.MIN_AREA_PERCENTAGE) {
-          // Shrink the play area
-          this.areaPercentage -= GAME_CONSTANTS.ARENA.SHRINK_PERCENTAGE;
-          this.areaPercentage = Math.max(this.areaPercentage, GAME_CONSTANTS.ARENA.MIN_AREA_PERCENTAGE);
-          
-          // Schedule next shrink
-          this.nextShrinkTime = Date.now() + GAME_CONSTANTS.ARENA.SHRINK_INTERVAL;
-        }
-        
-        // Update all players
-        this.players.forEach((player, _sessionId) => {
-          if (player.state === GAME_CONSTANTS.PLAYER_STATE.ALIVE) {
-            player.updateMovement(deltaTime, this.arenaWidth, this.arenaHeight);
-            
-            // Check if player is outside shrinking arena
-            this.checkPlayerInArena(player);
-          }
-        });
-        
-        // Update all obstacles
-        for (let i = 0; i < this.obstacles.length; i++) {
-          const obstacle = this.obstacles[i];
-          if (obstacle) {
-            const needsReset = obstacle.update(deltaTime, this.arenaWidth);
-            
-            if (needsReset) {
-              // Get player positions for obstacle placement
-              const playerPositions: PlayerPosition[] = [];
-              this.players.forEach((player, _sessionId) => {
-                if (player.state === GAME_CONSTANTS.PLAYER_STATE.ALIVE) {
-                  playerPositions.push({ x: player.x, y: player.y });
-                }
-              });
-              
-              obstacle.reset(this.arenaWidth, this.arenaHeight, playerPositions);
-            }
-            
-            // Check collisions with all alive players
-            this.checkObstacleCollisions(obstacle);
-          }
-        }
-        
-        // Check if the game is over
-        this.checkWinCondition();
-        break;
-        
-      case GAME_CONSTANTS.STATE.GAME_OVER:
-        // Game is over, wait for restart
-        break;
-    }
-  }
-  
-  /**
-   * Check if player is inside the arena boundaries
-   * @param player - The player to check
-   */
-  checkPlayerInArena(player: PlayerSchema): void {
-    if (this.areaPercentage < 100) {
-      // Calculate arena boundaries based on shrinking percentage
-      const shrinkScale = this.areaPercentage / 100;
-      
-      // Original arena center
-      const centerX = this.arenaWidth / 2;
-      const centerY = this.arenaHeight / 2;
-      
-      // Shrunken arena dimensions
-      const shrunkWidth = this.arenaWidth * shrinkScale;
-      const shrunkHeight = this.arenaHeight * shrinkScale;
-      
-      // Shrunken arena boundaries
-      const minX = centerX - (shrunkWidth / 2);
-      const maxX = centerX + (shrunkWidth / 2);
-      const minY = centerY - (shrunkHeight / 2);
-      const maxY = centerY + (shrunkHeight / 2);
-      
-      // Check if player is outside arena
-      if (player.x < minX || player.x + player.width > maxX || 
-          player.y < minY || player.y + player.height > maxY) {
-        // Player is outside arena, mark as dead
-        player.markAsDead();
-        this.aliveCount--;
-      }
-    }
-  }
-  
-  /**
-   * Check if obstacle collides with any players
-   * @param obstacle - The obstacle to check
-   */
-  checkObstacleCollisions(obstacle: ObstacleSchema): void {
-    this.players.forEach((player, _sessionId) => {
-      // Only check collisions for active players
-      if (player.state === GAME_CONSTANTS.PLAYER_STATE.ALIVE) {
-        if (obstacle.checkCollision(player)) {
-          // Mark player as dead
-          player.markAsDead();
-          this.aliveCount--;
-        }
-      }
+      if (hit) player.knockOut(now);
     });
   }
-  
+
   /**
-   * Reset game state for a new round
+   * Put a player somewhere safe: the best of several random spots, judged by distance from
+   * traffic (where it is and where it's headed) and from other players. Once gems exist, the
+   * leader counts as a danger too.
    */
-  resetGame(): void {
-    this.gameState = GAME_CONSTANTS.STATE.WAITING;
-    this.elapsedTime = 0;
-    this.winnerName = "";
-    this.areaPercentage = GAME_CONSTANTS.ARENA.INITIAL_AREA_PERCENTAGE;
-    
-    // Reset alive count
-    this.aliveCount = 0;
-    
-    // Reset players
-    this.players.forEach((player, _sessionId) => {
-      player.resetPosition(this.arenaWidth, this.arenaHeight);
-      player.score = 0;
-      player.state = GAME_CONSTANTS.PLAYER_STATE.ALIVE;
-      this.aliveCount++;
+  private spawn(player: PlayerSchema, now: number): void {
+    const margin = ARENA_RULES.EDGE_MARGIN + 40;
+    const size = player.width;
+    let best = { x: (this.worldWidth - size) / 2, y: (this.worldHeight - size) / 2 };
+    let bestClearance = -Infinity;
+    for (let attempt = 0; attempt < SPAWN_TRIES; attempt++) {
+      const x = margin + Math.random() * (this.worldWidth - size - 2 * margin);
+      const y = margin + Math.random() * (this.worldHeight - size - 2 * margin);
+      const clearance = this.clearanceAt(x + size / 2, y + size / 2, player);
+      if (clearance > bestClearance) {
+        best = { x, y };
+        bestClearance = clearance;
+      }
+      if (clearance >= WORLD.SPAWN_CLEARANCE) break;
+    }
+    player.spawnAt(Math.round(best.x), Math.round(best.y), now);
+  }
+
+  /** How far a point is from the nearest danger: traffic over the next second, or another player */
+  private clearanceAt(cx: number, cy: number, self: PlayerSchema): number {
+    let nearest = Infinity;
+    this.obstacles.forEach((o) => {
+      for (const t of [0, 0.5, 1]) {
+        nearest = Math.min(nearest, distanceToRect(cx, cy, o.x + o.vx * t, o.y + o.vy * t, o.width, o.height));
+      }
     });
-    
-    // Clear obstacles
-    this.obstacles = new ArraySchema<ObstacleSchema>();
+    this.players.forEach((other) => {
+      if (other === self || other.state !== PLAYER_STATE.ALIVE) return;
+      // Other players matter less than traffic: spawning 300 units away counts as 150
+      nearest = Math.min(nearest, Math.hypot(other.x + other.width / 2 - cx, other.y + other.height / 2 - cy) / 2);
+    });
+    return nearest;
   }
 }
 
-// Define the schema types for network synchronization
-type("string")(GameState.prototype, "gameState");
-type("number")(GameState.prototype, "elapsedTime");
-type("number")(GameState.prototype, "startTime");
-type("number")(GameState.prototype, "countdownTime");
-type("number")(GameState.prototype, "arenaWidth");
-type("number")(GameState.prototype, "arenaHeight");
-type("number")(GameState.prototype, "areaPercentage");
-type("number")(GameState.prototype, "nextShrinkTime");
+// Fields sent to clients
 type({ map: PlayerSchema })(GameState.prototype, "players");
 type([ObstacleSchema])(GameState.prototype, "obstacles");
-type("number")(GameState.prototype, "aliveCount");
-type("number")(GameState.prototype, "totalPlayers");
-type("string")(GameState.prototype, "winnerName");
+type("number")(GameState.prototype, "worldWidth");
+type("number")(GameState.prototype, "worldHeight");
 
 export { GameState };
