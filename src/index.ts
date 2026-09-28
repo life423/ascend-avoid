@@ -7,7 +7,6 @@
 
 // Import core game components
 import Game from './core/Game'
-import { ResponsiveSystem } from './systems/UnifiedResponsiveSystem'
 import { DrawerUI } from './ui/DrawerUI'
 
 // Helper function for device detection
@@ -95,12 +94,6 @@ function initializeMultiplayer() {
         })
     }
 
-    // Enable ResponsiveSystem for development testing
-    const isDevelopment = process.env.NODE_ENV !== 'production';
-    if (isDevelopment) {
-        // Make it available in the console for testing
-        (window as any).ResponsiveSystem = ResponsiveSystem;
-    }
     
     // ✨ Initialize modern UI system (gradual migration)
     initializeModernUISystem();

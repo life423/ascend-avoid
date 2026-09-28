@@ -61,6 +61,10 @@ export default class ResponsiveManager {
      * Creates a new ResponsiveManager instance
      * @param game - Reference to the game instance
      */
+    private resizeObserver: ResizeObserver | null = null
+    private boundResize = (): void => this.handleResize()
+    private boundVisibilityChange = (): void => this.handleVisibilityChange()
+
     constructor(game: Game) {
         this.game = game
         this.canvas = null
@@ -120,20 +124,17 @@ export default class ResponsiveManager {
      * Set up event listeners for responsive behavior
      */
     setupEventListeners(): void {
-        // Listen for window resize
-        window.addEventListener('resize', this.handleResize.bind(this))
+        window.addEventListener('resize', this.boundResize)
+        window.addEventListener('orientationchange', this.boundResize)
+        document.addEventListener('visibilitychange', this.boundVisibilityChange)
 
-        // Listen for orientation change on mobile
-        window.addEventListener(
-            'orientationchange',
-            this.handleResize.bind(this)
-        )
-
-        // Listen for visibility change to handle tab switching
-        document.addEventListener(
-            'visibilitychange',
-            this.handleVisibilityChange.bind(this)
-        )
+        // Refit whenever the canvas's container changes size: rotation, mobile toolbars
+        // showing or hiding, touch controls appearing
+        const container = this.canvas?.parentElement
+        if (container && typeof ResizeObserver !== 'undefined') {
+            this.resizeObserver = new ResizeObserver(this.boundResize)
+            this.resizeObserver.observe(container)
+        }
     }
 
     /**
@@ -195,145 +196,49 @@ export default class ResponsiveManager {
     }
 
     /**
-     * Resize canvas to match viewport, maintaining aspect ratio
+     * Fit the canvas (600×700 proportions) inside its container. CSS decides how much room
+     * the container gets (the header, touch controls and sidebar take theirs first), so this
+     * never has to guess the size of anything else on the page.
      */
     resizeCanvas(): void {
         if (!this.canvas) return
+        const container = this.canvas.parentElement
+        if (!container) return
 
-        // Canvas is now directly in game-main, no viewport wrapper needed
-        const gameMain = this.canvas.closest('.game-main') as HTMLElement
-        if (!gameMain) {
-            console.warn('Game main container not found')
-            return
-        }
+        const box = getComputedStyle(container)
+        const availableWidth =
+            container.clientWidth - parseFloat(box.paddingLeft) - parseFloat(box.paddingRight)
+        const availableHeight =
+            container.clientHeight - parseFloat(box.paddingTop) - parseFloat(box.paddingBottom)
+        if (availableWidth <= 0 || availableHeight <= 0) return
 
-        // Calculate available space based on device type
-        let availableWidth: number
-        let availableHeight: number
+        // The canvas border sits inside its CSS size (border-box), so leave room for it
+        const canvasBox = getComputedStyle(this.canvas)
+        const borderX = parseFloat(canvasBox.borderLeftWidth) + parseFloat(canvasBox.borderRightWidth)
+        const borderY = parseFloat(canvasBox.borderTopWidth) + parseFloat(canvasBox.borderBottomWidth)
 
-        if (this.isDesktop) {
-            // Desktop: Calculate based on the CSS Grid layout
-            // The grid is: grid-template-columns: 1fr 280px with gap: 16px
-            const gameMain = document.querySelector(
-                '.game-main'
-            ) as HTMLElement | null
-            
-            if (gameMain) {
-                const gameMainRect = gameMain.getBoundingClientRect()
-                const sidebarWidth = 280 // Fixed sidebar width from CSS
-                const gridGap = 24 // CSS gap from --space-lg
-                const padding = 32 // Main padding (16px each side)
-                
-                // Calculate available space for canvas (first grid column)
-                availableWidth = Math.max(gameMainRect.width - sidebarWidth - gridGap - padding, 600)
-                availableHeight = Math.max(gameMainRect.height - padding, 500)
-                
-                console.log(
-                    `Desktop canvas sizing: ${availableWidth}x${availableHeight} available (gameMain: ${gameMainRect.width}x${gameMainRect.height}, sidebar: ${sidebarWidth}px)`
-                )
-            } else {
-                // Fallback for desktop
-                const sidebarWidth = 280
-                const gridGap = 24
-                const padding = 64 // Conservative padding estimate
-                
-                availableWidth = Math.max(window.innerWidth - sidebarWidth - gridGap - padding, 600)
-                availableHeight = Math.max(window.innerHeight - 200, 500) // Account for header
-                
-                console.log(
-                    `Desktop canvas sizing (fallback): ${availableWidth}x${availableHeight}`
-                )
-            }
-        } else {
-            // Mobile: Calculate based on actual layout structure
-            const header = document.querySelector(
-                '.app-header'
-            ) as HTMLElement | null
-            const controlPanel = document.querySelector(
-                '.control-panel'
-            ) as HTMLElement | null
-
-            // Get actual heights of fixed elements - use modern measurement approach
-            const headerHeight = header ? header.offsetHeight : 80
-            
-            // Dynamic control height calculation - accounts for responsive CSS
-            let controlsHeight: number
-            if (controlPanel) {
-                // Force layout calculation to get accurate size after CSS changes
-                controlPanel.offsetHeight // Trigger reflow
-                controlsHeight = controlPanel.offsetHeight
-            } else {
-                // Use CSS custom property as fallback instead of hardcoded value
-                const ctrlH = getComputedStyle(document.documentElement).getPropertyValue('--ctrl-h')
-                controlsHeight = parseFloat(ctrlH) || 120 // Parse clamp() result or fallback
-            }
-            const margin = 20 // Total margin (10px each side)
-
-            // Calculate available space more accurately
-            const totalReservedHeight = headerHeight + controlsHeight + margin
-            availableHeight = Math.max(
-                window.innerHeight - totalReservedHeight,
-                250
-            ) // Minimum 250px height
-            availableWidth = Math.max(window.innerWidth - margin, 280) // Minimum 280px width
-
-            // Apply mobile-specific limits - increased to give more canvas space
-            availableWidth = Math.min(availableWidth, CANVAS.MAX_MOBILE_WIDTH * 1.2)
-
-            console.log(
-                `Mobile canvas sizing: ${availableWidth}x${availableHeight} available (header: ${headerHeight}px, controls: ${controlsHeight}px)`
-            )
-        }
-
-        // Calculate scaling factors to fit within available space
-        const widthScale = availableWidth / this.baseCanvasWidth
-        const heightScale = availableHeight / this.baseCanvasHeight
-
-        // Use the smaller scale to maintain aspect ratio and fit within bounds
-        const scale = Math.min(widthScale, heightScale)
-
-        // Calculate final canvas dimensions
-        const canvasWidth = Math.floor(this.baseCanvasWidth * scale)
-        const canvasHeight = Math.floor(this.baseCanvasHeight * scale)
-
-        // Ensure minimum playable size - more aggressive mobile sizing
-        const minHeight = this.isDesktop ? 500 : 200 // Reduced mobile minimum
-        const minWidth = Math.floor(
-            (minHeight / this.baseCanvasHeight) * this.baseCanvasWidth
+        const scale = Math.min(
+            (availableWidth - borderX) / this.baseCanvasWidth,
+            (availableHeight - borderY) / this.baseCanvasHeight
         )
+        const width = Math.max(1, Math.floor(this.baseCanvasWidth * scale))
+        const height = Math.max(1, Math.floor(this.baseCanvasHeight * scale))
 
-        const finalCanvasWidth = Math.max(canvasWidth, minWidth)
-        const finalCanvasHeight = Math.max(canvasHeight, minHeight)
-
-        // Apply CSS dimensions for visual scaling
-        this.canvas.style.width = `${finalCanvasWidth}px`
-        this.canvas.style.height = `${finalCanvasHeight}px`
-        this.canvas.style.display = 'block'
-        this.canvas.style.margin = '0 auto'
-
-        // Set internal canvas dimensions to match visual size exactly
-        this.canvas.width = finalCanvasWidth
-        this.canvas.height = finalCanvasHeight
-
-        // Reset context transform for 1:1 pixel mapping
-        const ctx = this.canvas.getContext('2d')
-        if (ctx) {
-            ctx.setTransform(1, 0, 0, 1, 0, 0)
-        }
-
-        // Update scaling info for game logic
         this.scalingInfo = {
-            widthScale: finalCanvasWidth / this.baseCanvasWidth,
-            heightScale: finalCanvasHeight / this.baseCanvasHeight,
+            widthScale: width / this.baseCanvasWidth,
+            heightScale: height / this.baseCanvasHeight,
             pixelRatio: 1,
             reducedResolution: false,
         }
+        // Resizing clears the canvas, so skip it when nothing changed
+        if (this.canvas.width === width && this.canvas.height === height) return
 
-        console.log(
-            `Canvas resized: ${finalCanvasWidth}×${finalCanvasHeight} (scale: ${this.scalingInfo.widthScale.toFixed(
-                2
-            )})`
-        )
+        this.canvas.style.width = `${width + borderX}px`
+        this.canvas.style.height = `${height + borderY}px`
+        this.canvas.style.display = 'block'
+        this.canvas.width = width
+        this.canvas.height = height
+        this.canvas.getContext('2d')?.setTransform(1, 0, 0, 1, 0, 0)
     }
 
     /**
@@ -636,15 +541,11 @@ export default class ResponsiveManager {
      * Clean up resources (important for memory management)
      */
     dispose(): void {
-        // Remove event listeners
-        window.removeEventListener('resize', this.handleResize.bind(this))
-        window.removeEventListener(
-            'orientationchange',
-            this.handleResize.bind(this)
-        )
-        document.removeEventListener(
-            'visibilitychange',
-            this.handleVisibilityChange.bind(this)
-        )
+        // The same function objects that were added, so these actually remove them
+        window.removeEventListener('resize', this.boundResize)
+        window.removeEventListener('orientationchange', this.boundResize)
+        document.removeEventListener('visibilitychange', this.boundVisibilityChange)
+        this.resizeObserver?.disconnect()
+        this.resizeObserver = null
     }
 }
