@@ -38,8 +38,10 @@ const gameServer = new Server({
 // Register your game room
 gameServer.define("game_room", GameRoom);
 
-// Add Colyseus monitor interface
-app.use(config.monitorPath, monitor());
+// Colyseus monitor: a dashboard that can inspect and shut down rooms, so development only
+if (process.env.NODE_ENV !== "production") {
+  app.use(config.monitorPath, monitor());
+}
 
 // Add a simple health check endpoint
 app.get("/health", (_req, res) => {
@@ -56,7 +58,9 @@ gameServer.listen(PORT);
 
 logger.info(`🎮 Ascend & Avoid Game Server is running on port ${PORT}`);
 logger.info(`🌐 Health check available at http://localhost:${PORT}/health`);
-logger.info(`📊 Colyseus Monitor available at http://localhost:${PORT}${config.monitorPath}`);
+if (process.env.NODE_ENV !== "production") {
+  logger.info(`📊 Colyseus Monitor available at http://localhost:${PORT}${config.monitorPath}`);
+}
 
 // Log environment mode
 if (process.env.NODE_ENV === "production") {

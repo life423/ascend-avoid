@@ -29,6 +29,7 @@
         "clean:all": "rimraf node_modules server/node_modules package-lock.json server/package-lock.json",
         "install:all": "npm install && cd server && npm install",
         "test": "jest",
+        "test:multiplayer": "npm run build:server && node scripts/multiplayer-smoke.mjs",
         "deploy:local": "npm run build:prod && npm run start:prod",
         "debug:server": "cd server && tsx index.ts",
         "debug:server:compiled": "cd server && node --inspect dist/index.js"

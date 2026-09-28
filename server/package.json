@@ -25,7 +25,7 @@
         "@colyseus/ws-transport": "^0.15.0",
         "colyseus": "^0.15.0",
         "cors": "^2.8.5",
-        "express": "^4.19.2"
+        "express": "^4.22.3"
     },
     "devDependencies": {
         "@types/body-parser": "^1.19.6",

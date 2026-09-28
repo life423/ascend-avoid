@@ -2,18 +2,21 @@ import * as schema from "@colyseus/schema";
 const { Schema, type } = schema;
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 
-/**
- * Interface for movement keys
- */
-interface MovementKeys {
+const { PLAYER, PLAYER_STATE } = GAME_CONSTANTS;
+
+/** Which movement keys a player is holding, as last reported by their client */
+export interface MovementKeys {
   up: boolean;
   down: boolean;
   left: boolean;
   right: boolean;
 }
 
+/** Players per row when spreading them along the bottom of the arena */
+const PLAYERS_PER_ROW = 10;
+
 /**
- * PlayerSchema defines the synchronized properties for each player
+ * One player in the room. The server moves players; clients only report which keys are held.
  */
 class PlayerSchema extends Schema {
   sessionId: string;
@@ -25,89 +28,55 @@ class PlayerSchema extends Schema {
   height: number;
   state: string;
   score: number;
-  movementKeys: MovementKeys;
-  lastUpdateTime: number;
+
+  /** Server-only: the keys this player's client says are held */
+  movementKeys: MovementKeys = { up: false, down: false, left: false, right: false };
+
+  /** Movement speed in pixels per second (BASE_SPEED was tuned per tick, at 30 ticks a second) */
+  static readonly SPEED = PLAYER.BASE_SPEED * 30;
 
   constructor(sessionId: string, playerIndex: number) {
     super();
-    
-    // Initialize player properties
     this.sessionId = sessionId;
     this.playerIndex = playerIndex;
     this.name = `Player ${playerIndex + 1}`;
     this.x = 0;
     this.y = 0;
-    this.width = GAME_CONSTANTS.PLAYER.BASE_WIDTH;
-    this.height = GAME_CONSTANTS.PLAYER.BASE_HEIGHT;
-    this.state = GAME_CONSTANTS.PLAYER_STATE.ALIVE;
+    this.width = PLAYER.BASE_WIDTH;
+    this.height = PLAYER.BASE_HEIGHT;
+    this.state = PLAYER_STATE.ALIVE;
     this.score = 0;
-    this.movementKeys = {
-      up: false,
-      down: false,
-      left: false,
-      right: false
-    };
-    this.lastUpdateTime = Date.now();
   }
-  
-  /**
-   * Reset player position for a new game
-   * @param canvasWidth - Width of the game canvas
-   * @param canvasHeight - Height of the game canvas
-   */
-  resetPosition(canvasWidth: number, canvasHeight: number): void {
-    this.x = canvasWidth / 2 - this.width / 2;
-    this.y = canvasHeight - this.height - 10;
-    this.state = GAME_CONSTANTS.PLAYER_STATE.ALIVE;
+
+  /** Put this player in its starting spot: spread evenly along the bottom, in rows of 10 */
+  placeAt(slot: number, playerCount: number, arenaWidth: number, arenaHeight: number): void {
+    const perRow = Math.max(1, Math.min(playerCount, PLAYERS_PER_ROW));
+    const row = Math.floor(slot / PLAYERS_PER_ROW);
+    const column = slot % PLAYERS_PER_ROW;
+    const spacing = arenaWidth / (perRow + 1);
+    this.x = Math.round(spacing * (column + 1) - this.width / 2);
+    this.y = arenaHeight - this.height - 10 - row * (this.height + 10);
+    this.movementKeys = { up: false, down: false, left: false, right: false };
   }
-  
-  /**
-   * Update player movement based on input
-   * @param deltaTime - Time since last update in seconds
-   * @param canvasWidth - Width of the game canvas
-   * @param canvasHeight - Height of the game canvas
-   */
-  updateMovement(_deltaTime: number, canvasWidth: number, canvasHeight: number): void {
-    if (this.state !== GAME_CONSTANTS.PLAYER_STATE.ALIVE) return;
-    
-    // Calculate movement step
-    const moveX = GAME_CONSTANTS.PLAYER.BASE_SPEED;
-    const moveY = GAME_CONSTANTS.PLAYER.BASE_SPEED;
-    
-    // Apply movement based on keys
-    if (this.movementKeys.up && this.y > GAME_CONSTANTS.GAME.WINNING_LINE) {
-      this.y -= moveY;
-    }
-    
-    if (this.movementKeys.down && this.y + this.height < canvasHeight - 10) {
-      this.y += moveY;
-    }
-    
-    if (this.movementKeys.left && this.x > 5) {
-      this.x -= moveX;
-    }
-    
-    if (this.movementKeys.right && this.x + this.width < canvasWidth - 5) {
-      this.x += moveX;
-    }
+
+  /** Move according to the held keys, staying inside the arena */
+  updateMovement(deltaTime: number, arenaWidth: number, arenaHeight: number): void {
+    if (this.state !== PLAYER_STATE.ALIVE) return;
+    const step = PlayerSchema.SPEED * deltaTime;
+    const keys = this.movementKeys;
+    const dx = (keys.right ? step : 0) - (keys.left ? step : 0);
+    const dy = (keys.down ? step : 0) - (keys.up ? step : 0);
+    if (dx === 0 && dy === 0) return;
+    this.x = Math.max(0, Math.min(arenaWidth - this.width, this.x + dx));
+    this.y = Math.max(0, Math.min(arenaHeight - this.height, this.y + dy));
   }
-  
-  /**
-   * Mark player as dead
-   */
+
   markAsDead(): void {
-    this.state = GAME_CONSTANTS.PLAYER_STATE.DEAD;
-  }
-  
-  /**
-   * Convert to spectator
-   */
-  becomeSpectator(): void {
-    this.state = GAME_CONSTANTS.PLAYER_STATE.SPECTATING;
+    this.state = PLAYER_STATE.DEAD;
   }
 }
 
-// Define the schema types for network synchronization
+// Fields sent to clients
 type("string")(PlayerSchema.prototype, "sessionId");
 type("number")(PlayerSchema.prototype, "playerIndex");
 type("string")(PlayerSchema.prototype, "name");

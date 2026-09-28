@@ -1,160 +1,73 @@
-// server/rooms/GameRoom.ts
-
 import { Room, Client } from "colyseus";
-// import { GameState } from "../schema/GameState";
-// import { GameState } from "../schema/GameState";
 import { GAME_CONSTANTS } from "../constants/serverConstants";
 import logger from "../utils/logger";
-import { GameState } from '../schema/GameState';
-/**
- * Options sent by clients when joining a room
- */
+import { GameState } from "../schema/GameState";
+
+/** What a client may send when joining; anything else is ignored */
 interface JoinOptions {
-  name?: string;
-  width?: number;
-  height?: number;
+  name?: unknown;
+  /** Older clients send the name under this key */
+  playerName?: unknown;
+}
+
+/** Clean up a player-supplied name: printable characters only, at most 20. Returns null if unusable. */
+export function sanitizeName(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const name = raw.replace(/[\u0000-\u001f\u007f<>]/g, "").trim().slice(0, 20);
+  return name || null;
 }
 
 /**
- * Structure of an input message from the client
- */
-interface InputMessage {
-  up: boolean;
-  down: boolean;
-  left: boolean;
-  right: boolean;
-}
-
-/**
- * Structure of a name‑update message from the client
- */
-interface NameUpdateMessage {
-  name: string;
-}
-
-/**
- * Last‑Player‑Standing Game Room
+ * Last Player Standing. The server runs the whole game; clients only send which movement
+ * keys are held. Rounds start, end and restart on their own (see GameState), and the room
+ * closes when the last player leaves.
  */
 export class GameRoom extends Room<GameState> {
-  private updateInterval: NodeJS.Timeout | null = null;
+  maxClients = GAME_CONSTANTS.GAME.MAX_PLAYERS;
 
-  constructor() {
-    super();
-    // Configure room settings
-    this.maxClients = GAME_CONSTANTS.GAME.MAX_PLAYERS;
-    this.autoDispose = false; // keep room alive even when empty
-    logger.info("Last Player Standing Game Room instantiated");
-  }
-
-  /**
-   * Called when the room is first created
-   */
-  onCreate(options: JoinOptions = {}): void {
-    logger.info("Creating Last Player Standing Game Room");
-
-    // Initialize the state schema
+  onCreate(): void {
     this.setState(new GameState());
 
-    // Override arena dimensions if provided
-    if (options.width && options.height) {
-      this.state.arenaWidth = options.width;
-      this.state.arenaHeight = options.height;
-    }
-
-    // Start the game loop
-    const updateRate = GAME_CONSTANTS.GAME.STATE_UPDATE_RATE;
-    this.updateInterval = setInterval(() => this.gameLoop(), updateRate);
-
-    // Register message handlers
-    this.setupMessageHandlers();
-
-    logger.info(
-      `Room ready - Arena: ${this.state.arenaWidth}×${this.state.arenaHeight}`
+    // Runs on the room's clock, so it stops by itself when the room is disposed
+    this.setSimulationInterval(
+      (deltaMs) => this.state.update(deltaMs / 1000),
+      GAME_CONSTANTS.GAME.STATE_UPDATE_RATE
     );
-  }
 
-  /**
-   * Register handlers for incoming messages
-   */
-  private setupMessageHandlers(): void {
-    this.onMessage("input", (client: Client, data: InputMessage) => {
+    this.onMessage("input", (client, data: any) => {
       const player = this.state.players.get(client.sessionId);
       if (!player) return;
-
       player.movementKeys = {
-        up: data.up ?? false,
-        down: data.down ?? false,
-        left: data.left ?? false,
-        right: data.right ?? false,
+        up: data?.up === true,
+        down: data?.down === true,
+        left: data?.left === true,
+        right: data?.right === true,
       };
     });
 
-    this.onMessage("updateName", (client: Client, data: NameUpdateMessage) => {
+    this.onMessage("updateName", (client, data: any) => {
       const player = this.state.players.get(client.sessionId);
-      if (player && data.name) {
-        player.name = data.name.substring(0, 20);
-      }
+      const name = sanitizeName(data?.name);
+      if (player && name) player.name = name;
     });
 
-    this.onMessage("restartGame", (client: Client) => {
-      if (this.state.gameState === GAME_CONSTANTS.STATE.GAME_OVER) {
-        logger.info("Restart requested by", client.sessionId);
-        this.state.resetGame();
-      }
-    });
+    logger.info(`Room ${this.roomId} created (arena ${this.state.arenaWidth}×${this.state.arenaHeight})`);
   }
 
-  /**
-   * Called when a client successfully joins
-   */
   onJoin(client: Client, options: JoinOptions = {}): void {
-    logger.info(`Player ${client.sessionId} joined`);
-
-    const player = this.state.createPlayer(client.sessionId);
-    if (options.name) {
-      player.name = options.name.substring(0, 20);
-    }
-
-    this.broadcast("playerJoined", {
-      id: client.sessionId,
-      name: player.name,
-    });
-
-    logger.info(`Current players: ${this.state.totalPlayers}`);
+    const player = this.state.addPlayer(client.sessionId, sanitizeName(options.name ?? options.playerName));
+    this.broadcast("playerJoined", { id: client.sessionId, name: player.name });
+    logger.info(`${player.name} joined room ${this.roomId} (${this.state.players.size} players)`);
   }
 
-  /**
-   * Called when a client leaves
-   */
-  onLeave(client: Client, _consented: boolean): void {
-    logger.info(`Player ${client.sessionId} left`);
-
+  onLeave(client: Client): void {
+    const name = this.state.players.get(client.sessionId)?.name ?? client.sessionId;
     this.state.removePlayer(client.sessionId);
     this.broadcast("playerLeft", { id: client.sessionId });
-    this.state.checkWinCondition();
-
-    logger.info(`Current players: ${this.state.totalPlayers}`);
+    logger.info(`${name} left room ${this.roomId} (${this.state.players.size} players)`);
   }
 
-  /**
-   * Main game loop, called at a fixed interval
-   */
-  private gameLoop(): void {
-    const now = Date.now();
-    const deltaTime = (now - this.state.lastUpdateTime) / 1000;
-    this.state.lastUpdateTime = now;
-
-    this.state.update(deltaTime);
-  }
-
-  /**
-   * Clean up when the room is disposed
-   */
   onDispose(): void {
-    logger.info("Last Player Standing Game Room disposed");
-    if (this.updateInterval) {
-      clearInterval(this.updateInterval);
-      this.updateInterval = null;
-    }
+    logger.info(`Room ${this.roomId} closed`);
   }
 }

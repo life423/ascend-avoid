@@ -2,16 +2,20 @@ import * as schema from "@colyseus/schema";
 const { Schema, type } = schema;
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 
-/**
- * Interface for player position (used in obstacle placement)
- */
+const { OBSTACLE } = GAME_CONSTANTS;
+
 interface PlayerPosition {
   x: number;
   y: number;
 }
 
+/** Keep new obstacles at least this far from any living player */
+const SAFE_ZONE = 100;
+/** Hitboxes are 80% of the drawn size, which feels fairer */
+const HITBOX_SHRINK = 0.2;
+
 /**
- * ObstacleSchema defines the synchronized properties for each obstacle
+ * An obstacle that crosses the arena from left to right, then re-enters at a new height.
  */
 class ObstacleSchema extends Schema {
   id: number;
@@ -25,126 +29,66 @@ class ObstacleSchema extends Schema {
 
   constructor(id: number) {
     super();
-    
-    // Initialize obstacle properties
     this.id = id;
     this.x = 0;
     this.y = 0;
-    this.width = GAME_CONSTANTS.OBSTACLE.MIN_WIDTH;
-    this.height = 20; // Will be recalculated based on canvas dimensions
-    this.speed = GAME_CONSTANTS.OBSTACLE.BASE_SPEED;
-    this.variant = Math.floor(Math.random() * 3); // Random variant (0-2)
+    this.width = OBSTACLE.MIN_WIDTH;
+    this.height = 20;
+    this.speed = OBSTACLE.BASE_SPEED;
+    this.variant = Math.floor(Math.random() * 3);
     this.active = true;
   }
-  
-  /**
-   * Reset obstacle to a new position
-   * @param canvasWidth - Width of the game canvas
-   * @param canvasHeight - Height of the game canvas
-   * @param playerPositions - Array of player positions to avoid when placing obstacle
-   * @returns Whether the reset was successful
-   */
-  reset(_canvasWidth: number, canvasHeight: number, playerPositions: PlayerPosition[] = []): boolean {
-    // Set starting position off-screen to the left
+
+  /** Send the obstacle back to the left edge at a random height, not on top of a player */
+  reset(_arenaWidth: number, arenaHeight: number, playerPositions: PlayerPosition[] = []): boolean {
+    this.width = Math.round(OBSTACLE.MIN_WIDTH + Math.random() * (OBSTACLE.MAX_WIDTH - OBSTACLE.MIN_WIDTH));
     this.x = -this.width;
-    
-    // Randomize y position, avoiding player positions
+
     let validPosition = false;
-    let attempts = 0;
-    
-    while (!validPosition && attempts < 10) {
-      // Generate random y position
-      this.y = Math.random() * (canvasHeight - 70) + 20;
-      
-      // Check if too close to any player's spawn area
-      validPosition = true;
-      
-      for (const playerPos of playerPositions) {
-        const safeZoneWidth = 100;
-        const safeZoneHeight = 100;
-        
-        const safeLeft = playerPos.x - safeZoneWidth / 2;
-        const safeRight = playerPos.x + safeZoneWidth / 2;
-        const safeTop = playerPos.y - safeZoneHeight / 2;
-        const safeBottom = playerPos.y + safeZoneHeight / 2;
-        
-        // Check if obstacle overlaps with safe zone
-        if (
-          this.x < safeRight &&
-          this.x + this.width > safeLeft &&
-          this.y < safeBottom &&
-          this.y + this.height > safeTop
-        ) {
-          validPosition = false;
-          break;
-        }
-      }
-      
-      attempts++;
+    for (let attempt = 0; attempt < 10 && !validPosition; attempt++) {
+      this.y = Math.random() * (arenaHeight - 70) + 20;
+      // Not on top of anyone: the obstacle's entry point must miss every player's safe zone
+      validPosition = playerPositions.every((player) => {
+        const overlaps =
+          this.x < player.x + SAFE_ZONE / 2 && this.x + this.width > player.x - SAFE_ZONE / 2 &&
+          this.y < player.y + SAFE_ZONE / 2 && this.y + this.height > player.y - SAFE_ZONE / 2;
+        return !overlaps;
+      });
     }
-    
-    // Randomize variant for visual diversity
+
     this.variant = Math.floor(Math.random() * 3);
-    
-    // Reset speed based on current score
-    this.speed = GAME_CONSTANTS.OBSTACLE.BASE_SPEED;
-    
-    // Set active
     this.active = true;
-    
-    // Return whether we found a valid position
     return validPosition;
   }
-  
+
   /**
-   * Update obstacle position
-   * @param deltaTime - Time since last update in seconds
-   * @param canvasWidth - Width of the game canvas
-   * @param score - Current game score
-   * @returns Whether the obstacle needs to be reset
+   * Move right. BASE_SPEED was tuned per frame at 60 frames a second, so it becomes pixels per
+   * second here; obstacles speed up as the round goes on (up to 2.5x after three minutes).
+   * @returns true when the obstacle has left the arena and needs a reset
    */
-  update(deltaTime: number, canvasWidth: number, score: number = 0): boolean {
-    // Update speed based on score (increases difficulty)
-    this.speed = GAME_CONSTANTS.OBSTACLE.BASE_SPEED + (score / 10);
-    
-    // Move the obstacle
-    if (this.x < canvasWidth) {
-      this.x += this.speed * deltaTime;
-    } else {
-      // Mark for reset when off screen
-      return true; // Needs reset
-    }
-    
-    return false; // No need to reset
+  update(deltaTime: number, arenaWidth: number, elapsedSeconds: number = 0): boolean {
+    if (this.x >= arenaWidth) return true;
+    const speed = OBSTACLE.BASE_SPEED * 60 * Math.min(2.5, 1 + elapsedSeconds / 120);
+    this.x += speed * deltaTime;
+    const rounded = Math.round(speed);
+    if (this.speed !== rounded) this.speed = rounded;
+    return false;
   }
-  
-  /**
-   * Check for collision with a player
-   * @param player - The player to check collision against
-   * @returns Whether a collision occurred
-   */
+
   checkCollision(player: { x: number; y: number; width: number; height: number }): boolean {
-    // Add a smaller hitbox for better gameplay experience (80% of visual size)
-    const hitboxReduction = 0.2; // 20% reduction
-    
-    // Player hitbox
-    const pLeft = player.x + player.width * hitboxReduction;
-    const pRight = player.x + player.width * (1 - hitboxReduction);
-    const pTop = player.y + player.height * hitboxReduction;
-    const pBottom = player.y + player.height * (1 - hitboxReduction);
-    
-    // Obstacle hitbox
-    const oLeft = this.x + this.width * hitboxReduction;
-    const oRight = this.x + this.width * (1 - hitboxReduction);
-    const oTop = this.y + this.height * hitboxReduction;
-    const oBottom = this.y + this.height * (1 - hitboxReduction);
-    
-    // Check if hitboxes overlap
-    return oLeft < pRight && oRight > pLeft && oTop < pBottom && oBottom > pTop;
+    const pLeft = player.x + player.width * HITBOX_SHRINK;
+    const pRight = player.x + player.width * (1 - HITBOX_SHRINK);
+    const pTop = player.y + player.height * HITBOX_SHRINK;
+    const pBottom = player.y + player.height * (1 - HITBOX_SHRINK);
+    const oLeft = this.x + this.width * HITBOX_SHRINK;
+    const oRight = this.x + this.width * (1 - HITBOX_SHRINK);
+    const oTop = this.y + this.height * HITBOX_SHRINK;
+    const oBottom = this.y + this.height * (1 - HITBOX_SHRINK);
+    return pLeft < oRight && pRight > oLeft && pTop < oBottom && pBottom > oTop;
   }
 }
 
-// Define the schema types for network synchronization
+// Fields sent to clients
 type("number")(ObstacleSchema.prototype, "id");
 type("number")(ObstacleSchema.prototype, "x");
 type("number")(ObstacleSchema.prototype, "y");
