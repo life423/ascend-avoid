@@ -592,3 +592,41 @@
     outline: 2px solid var(--accent-secondary);
     outline-offset: -2px;
 }
+
+/* ============================================
+   CANVAS FRAME
+   The canvas's own box, beside the How to Play panel on desktop. The online world fills it;
+   solo keeps its 6:7 shape, centered inside.
+   ============================================ */
+.canvas-frame {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 0;
+    align-self: stretch;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+@media (min-width: 1200px) {
+    /* A wider page on big monitors, with the game filling the height */
+    .app-root {
+        max-width: 1600px;
+        height: 100vh;
+        height: 100dvh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* The panel scrolls when the window is too short for all of it */
+    .info-panel {
+        overflow-y: auto;
+    }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+    /* Keep the canvas between the touch controls on either side */
+    .canvas-frame {
+        padding: 0 calc(clamp(36px, 11vh, 56px) * 3.6 + var(--space-md));
+    }
+}

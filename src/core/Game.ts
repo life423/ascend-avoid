@@ -315,6 +315,8 @@ export default class Game {
 
             // Initialize the game mode
             await this.currentGameMode.initialize()
+            // The online world fills the page; solo keeps its shape
+            this.responsiveManager?.handleResize()
 
             console.log(`Game mode initialized: ${mode}`)
             return Promise.resolve()

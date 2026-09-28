@@ -70,31 +70,40 @@ export const PLAYER_STATE = {
   SPECTATING: "spectating",
 } as const;
 
-// Arena settings
-export const ARENA = {
-  INITIAL_AREA_PERCENTAGE: 100,
-  SHRINK_INTERVAL: 30000, // 30 seconds between shrinks
-  SHRINK_PERCENTAGE: 10, // Shrink by 10% each time
-  MIN_AREA_PERCENTAGE: 40, // Don't shrink below 40% of original size
+/**
+ * The online world: one big open arena several screens across. The camera follows each player
+ * and every screen sees the same amount of it (VIEW_AREA, in square units), shaped to the screen
+ * within the aspect limits, so a bigger monitor doesn't see more.
+ */
+export const WORLD = {
+  WIDTH: 2100,
+  HEIGHT: 2100,
+  VIEW_AREA: 720000,
+  MIN_VIEW_ASPECT: 0.6,
+  MAX_VIEW_ASPECT: 1.8,
+  OBSTACLE_COUNT: 36,
+  RESPAWN_DELAY_MS: 2000,
+  SPAWN_PROTECTION_MS: 1500,
+  /** A respawn spot this far from all traffic is good enough */
+  SPAWN_CLEARANCE: 220,
 } as const;
 
 /**
- * Solo play's feel in arena units (the 600x700 online arena), so a match moves and looks
- * like solo play. Solo measures in screen pixels (a 30px player, ~39px hops, obstacles 22px
- * tall moving 2.5-3.5px a frame); these are those sizes at a typical canvas scale of 0.65.
+ * Sizes and speeds in world units, matching solo play's feel. Solo measures in screen pixels (a
+ * 30px player, ~39px hops, obstacles 22px thick moving 2.5-3.5px a frame); these are those at a
+ * typical canvas scale of 0.65.
  */
 export const ARENA_RULES = {
   PLAYER_SIZE: 45,
-  HOP: 60, // one key press = one hop
-  ASCEND_SPEED: 180, // holding up also drifts you upward (solo: 3px a frame at 60 fps)
-  TOP_LINE: 51, // the highest you can go (solo's winning line)
-  SIDE_MARGIN: 8,
-  BOTTOM_MARGIN: 15,
-  OBSTACLE_HEIGHT: 34,
-  OBSTACLE_MIN_WIDTH_RATIO: 0.08,
-  OBSTACLE_MAX_WIDTH_RATIO: 0.18,
-  OBSTACLE_SPEED: 270, // units per second, about 2 seconds to cross like solo
-  HOP_COOLDOWN_MS: 60, // server-side cap per direction, far faster than anyone taps
+  HOP: 60, // one tap = one hop
+  HOP_REPEAT_DELAY: 0.2, // holding a direction: the first repeat hop comes after this many seconds,
+  HOP_REPEAT: 1 / 6, // then one every this many seconds (six a second)
+  EDGE_MARGIN: 8, // closest you can get to the edge of the world
+  OBSTACLE_THICKNESS: 34,
+  OBSTACLE_MIN_LENGTH: 48,
+  OBSTACLE_MAX_LENGTH: 108,
+  OBSTACLE_SPEED: 270, // units per second; each obstacle varies by up to 20% either way
+  HOP_COOLDOWN_MS: 60, // server-side limit per direction, far faster than anyone taps
 } as const;
 
 // Key mappings
@@ -172,8 +181,8 @@ export const GAME_CONSTANTS = {
   GAME,
   STATE,
   PLAYER_STATE,
-  ARENA,
   ARENA_RULES,
+  WORLD,
   KEYS,
   DEVICE_SETTINGS
 } as const;

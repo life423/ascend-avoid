@@ -32,6 +32,7 @@ interface DeviceProfile {
 
 // Game interface (minimal for type safety)
 interface Game {
+    currentGameMode?: { wantsFullCanvas?(): boolean } | null
     particleSystem?: {
         setMaxParticles: (max: number) => void
     } | null
@@ -190,9 +191,9 @@ export default class ResponsiveManager {
     }
 
     /**
-     * Fit the canvas (600×700 proportions) inside its container. CSS decides how much room
-     * the container gets (the header, touch controls and sidebar take theirs first), so this
-     * never has to guess the size of anything else on the page.
+     * Size the canvas to its frame (measured, so the header, touch controls and side panel keep
+     * their space). The online world fills the frame; solo keeps its 600×700 shape inside it.
+     * The canvas border sits inside its CSS size (border-box).
      */
     resizeCanvas(): void {
         if (!this.canvas) return
@@ -211,12 +212,21 @@ export default class ResponsiveManager {
         const borderX = parseFloat(canvasBox.borderLeftWidth) + parseFloat(canvasBox.borderRightWidth)
         const borderY = parseFloat(canvasBox.borderTopWidth) + parseFloat(canvasBox.borderBottomWidth)
 
-        const scale = Math.min(
-            (availableWidth - borderX) / this.baseCanvasWidth,
-            (availableHeight - borderY) / this.baseCanvasHeight
-        )
-        const width = Math.max(1, Math.floor(this.baseCanvasWidth * scale))
-        const height = Math.max(1, Math.floor(this.baseCanvasHeight * scale))
+        let width: number
+        let height: number
+        if (this.game?.currentGameMode?.wantsFullCanvas?.()) {
+            // The online world is bigger than the screen: use all the space there is
+            width = Math.max(1, Math.floor(availableWidth - borderX))
+            height = Math.max(1, Math.floor(availableHeight - borderY))
+        } else {
+            // Solo keeps its 600×700 shape, as large as fits
+            const scale = Math.min(
+                (availableWidth - borderX) / this.baseCanvasWidth,
+                (availableHeight - borderY) / this.baseCanvasHeight
+            )
+            width = Math.max(1, Math.floor(this.baseCanvasWidth * scale))
+            height = Math.max(1, Math.floor(this.baseCanvasHeight * scale))
+        }
 
         this.scalingInfo = {
             widthScale: width / this.baseCanvasWidth,

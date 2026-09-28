@@ -50,7 +50,7 @@ export class DrawerUI {
                             Game speed increases as you score more points!
                         </div>
                         
-                        <p>Try to beat your high score. Online, anyone else who's here joins you for a last-one-standing round!</p>
+                        <p>Try to beat your high score. Online, everyone on the site shares one big arena: hop around, dodge the traffic, and you're back two seconds after a hit.</p>
                     </div>
                 </div>
             </div>

@@ -1,5 +1,5 @@
-// End-to-end multiplayer check: starts the built server, connects scripted players and
-// walks through a full round cycle. Run with: npm run test:multiplayer
+// End-to-end multiplayer check: starts the built server, connects scripted players and walks
+// through the shared world. Run with: npm run test:multiplayer
 import { spawn } from 'node:child_process';
 import { Client } from 'colyseus.js';
 
@@ -28,6 +28,19 @@ async function join(name) {
     return room;
 }
 
+/** Distance from a player's center to the nearest obstacle */
+function clearance(state, player) {
+    const cx = player.x + player.width / 2;
+    const cy = player.y + player.height / 2;
+    let nearest = Infinity;
+    state.obstacles.forEach((o) => {
+        const dx = Math.max(o.x - cx, 0, cx - (o.x + o.width));
+        const dy = Math.max(o.y - cy, 0, cy - (o.y + o.height));
+        nearest = Math.min(nearest, Math.hypot(dx, dy));
+    });
+    return nearest;
+}
+
 const server = spawn(process.execPath, ['server/dist/index.js'], {
     env: { ...process.env, PORT: String(PORT), NODE_ENV: 'test' },
     stdio: ['ignore', 'ignore', 'inherit'],
@@ -45,57 +58,79 @@ try {
 
     const alice = await join('Alice');
     const state = () => alice.state;
-    await waitFor(() => state().gameState === 'waiting' && state().players.size === 1, 2000, 'a lone player waits for others');
-    check(state().arenaWidth === 600 && state().arenaHeight === 700, 'arena is the fixed 600×700');
-    check(state().players.get(alice.sessionId)?.name === 'Alice', 'player names reach clients');
+    const me = () => state().players.get(alice.sessionId);
+    await waitFor(() => state().players?.size === 1, 2000, 'the first visitor is in the world right away');
+    check(me().state === 'alive', 'no waiting room: you start in play');
+    check(state().worldWidth === 2100 && state().worldHeight === 2100, `the world is several screens across (${state().worldWidth}×${state().worldHeight})`);
+    check(me().spawnProtected === true, 'a new arrival starts protected');
+    check(state().obstacles.length >= 30, `traffic fills the world (${state().obstacles.length} obstacles)`);
 
     const bob = await join('Bob');
-    check(bob.roomId === alice.roomId, 'the second player lands in the same room');
-    await waitFor(() => state().gameState === 'starting', 2000, 'a second player starts the countdown');
-    const a = state().players.get(alice.sessionId);
-    const b = state().players.get(bob.sessionId);
-    check(a && b && a.x !== b.x, `players start in different spots (x ${a?.x} and ${b?.x})`);
-    check(state().countdownTime >= 4, `countdown starts near 5 (${state().countdownTime})`);
+    check(bob.roomId === alice.roomId, 'a second visitor joins the same world');
+    const bobState = () => state().players.get(bob.sessionId);
+    await waitFor(() => bobState()?.name === 'Bob', 2000, 'names reach other players');
+    const apart = Math.hypot(me().x - bobState().x, me().y - bobState().y);
+    check(apart > 150, `players spawn apart (${Math.round(apart)} units)`);
 
-    await waitFor(() => state().gameState === 'playing', 7000, 'the round starts when the countdown ends');
-    check(state().obstacles.length >= 5, `obstacles spawn (${state().obstacles.length})`);
-
-    const obstacleStart = [];
-    state().obstacles.forEach((o) => obstacleStart.push(o.x));
-    const bobStart = state().players.get(bob.sessionId).x;
-    bob.send('input', { right: true });
-    bob.send('input', { right: false }); // a quick tap, released before the next server tick
+    // Movement, while Bob is still protected from traffic
+    const bobX = bobState().x;
+    bob.send('hop', { direction: bobX > state().worldWidth / 2 ? 'left' : 'right' });
     await sleep(250);
-    const bobHop = state().players.get(bob.sessionId).x - bobStart;
-    check(Math.abs(bobHop - 60) < 1, `a quick tap is one hop, like solo play (${Math.round(bobHop)} units)`);
-    const bobY = state().players.get(bob.sessionId).y;
-    bob.send('input', { up: true });
+    const hopped = Math.abs(bobState().x - bobX);
+    check(Math.abs(hopped - 60) < 1, `a hop is 60 units, like solo play (${Math.round(hopped)})`);
+    const bobY = bobState().y;
+    const vertical = bobY > state().worldHeight / 2 ? 'up' : 'down';
+    for (let i = 0; i < 3; i++) bob.send('hop', { direction: vertical }); // a burst, like a laggy network
+    await sleep(350);
+    const burst = Math.abs(bobState().y - bobY);
+    check(Math.abs(burst - 180) < 1, `hops that arrive together all count (${Math.round(burst)} units for 3)`);
+    const floodY = bobState().y;
+    for (let i = 0; i < 20; i++) bob.send('hop', { direction: vertical === 'up' ? 'down' : 'up' });
+    await sleep(600);
+    const flooded = Math.round(Math.abs(bobState().y - floodY) / 60);
+    check(flooded <= 5, `flooding hops can't speed anyone up (${flooded} of 20 applied)`);
+    await waitFor(() => bobState().spawnProtected === false, 2500, 'protection wears off after a moment');
+
+    // Traffic
+    const before = [];
+    state().obstacles.forEach((o) => before.push({ x: o.x, y: o.y }));
     await sleep(500);
-    bob.send('input', { up: false });
-    await sleep(150);
-    const bobRise = bobY - state().players.get(bob.sessionId).y;
-    check(bobRise > 110, `holding up hops, then drifts upward (${Math.round(bobRise)} units in 0.5s)`);
-    let obstaclesMoved = 0;
+    const directions = new Set();
+    let moving = 0;
     state().obstacles.forEach((o, i) => {
-        if (o.x > obstacleStart[i] + 20) obstaclesMoved++;
+        const dx = o.x - before[i].x;
+        const dy = o.y - before[i].y;
+        const moved = Math.hypot(dx, dy);
+        if (moved > 20 && moved < 400) {
+            moving++;
+            directions.add(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up');
+        }
     });
-    check(obstaclesMoved > 0, `obstacles move (${obstaclesMoved} of ${obstacleStart.length} advanced 20px+ in 0.65s)`);
-    let intoStartRow = 0;
-    state().obstacles.forEach((o) => { if (o.y + o.height > 700 - 45 - 15) intoStartRow++; });
-    check(intoStartRow === 0, 'obstacles stay out of the starting row');
+    check(moving >= state().obstacles.length * 0.8, `obstacles move (${moving} of ${state().obstacles.length})`);
+    check(directions.size >= 3, `traffic runs in several directions (${[...directions].join(', ')})`);
 
+    // Hits
+    alice.send('test:knockout');
+    await waitFor(() => me().state === 'dead', 1000, 'a hit knocks you out');
+    const outAt = Date.now();
+    await waitFor(() => me().state === 'alive', 3500, 'and you come back');
+    const outFor = (Date.now() - outAt) / 1000;
+    check(outFor > 1.5 && outFor < 2.8, `about two seconds later (${outFor.toFixed(1)}s)`);
+    check(me().spawnProtected === true, 'protected when you come back');
+    const room = clearance(state(), me());
+    check(room >= 100, `somewhere clear of traffic (${Math.round(room)} units from the nearest obstacle)`);
+
+    // Leaving and joining
     await bob.leave();
-    await waitFor(() => state().gameState === 'game_over', 2000, 'the round ends when one player is left');
-    check(state().winnerName === 'Alice', `the last player standing wins (winner: ${state().winnerName})`);
-
-    await waitFor(() => state().gameState === 'waiting', 7000, 'after the results, a lone player goes back to waiting');
-
+    await waitFor(() => state().players.size === 1, 2000, 'a player who leaves disappears for everyone');
     const carol = await join('Carol');
-    check(carol.roomId === alice.roomId, 'a new visitor joins the same room');
-    await waitFor(() => state().gameState === 'starting' && state().countdownTime >= 4, 2000, 'the next round gets a fresh countdown');
-
+    check(carol.roomId === alice.roomId, 'the world keeps running: a new visitor joins it');
     await alice.leave();
     await carol.leave();
+    await sleep(400);
+    const dave = await join('Dave');
+    check(dave.roomId !== alice.roomId, 'the room closes once everyone has left');
+    await dave.leave();
 } catch (error) {
     check(false, `unexpected error: ${error.message}`);
 } finally {
