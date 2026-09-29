@@ -722,6 +722,8 @@ class GameState extends Schema {
     let collected = 0;
     const taken: string[] = [];
     this.gems.forEach((gem, id) => {
+      // Full size is the cap, like Agar.io: no more pickups (the gems stay for everyone else)
+      if (player.gems + collected >= GEMS.MAX_HELD) return;
       if (!gem.touches(path, now, player.sessionId)) return;
       collected += gem.value;
       taken.push(id);

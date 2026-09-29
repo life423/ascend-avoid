@@ -224,7 +224,7 @@ class PlayerSchema extends Schema {
 
   /** Change the gem count; the player grows or shrinks around their center, staying inside the world */
   setGems(count: number, worldWidth: number, worldHeight: number): void {
-    this.gems = Math.max(0, Math.round(count));
+    this.gems = Math.max(0, Math.min(GEMS.MAX_HELD, Math.round(count)));
     const size = sizeFor(this.gems);
     if (size === this.width) return;
     const centerX = this.x + this.width / 2;

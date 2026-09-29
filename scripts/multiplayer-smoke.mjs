@@ -203,6 +203,11 @@ try {
     alice.send('test:setGems', { count: 100 });
     await waitFor(() => me().gems >= 99, 1000, 'Alice now holds 100 gems');
     check(me().width >= 78 && me().width <= 80.5, `gems make you much bigger (${me().width} units wide at 100 gems)`);
+    alice.send('test:setGems', { count: 300 });
+    await sleep(200);
+    check(me().gems <= 178 && me().width === 100, `full size is as big as it gets, like Agar.io (${me().gems} gems, ${me().width} units)`);
+    alice.send('test:setGems', { count: 100 });
+    await sleep(200);
     alice.send('steer', { x: sideways() === 'right' ? 1 : -1, y: 0 });
     await sleep(400);
     const bigFrom = me().x;

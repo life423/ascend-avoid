@@ -100,7 +100,8 @@ export const GEMS = {
   FIELD_COUNT: 60, // loose gems lying around the world
   RADIUS: 9,
   SIZE_PER_ROOT: 6, // size = PLAYER_SIZE + this x the square root of your gems (26 at 1 gem, 80 at 100)...
-  MAX_SIZE: 100, // ...up to this
+  MAX_SIZE: 100, // ...up to this...
+  MAX_HELD: 178, // ...which you reach at this many gems. Like Agar.io, that is the cap: a full-size player picks up no more (the gems stay for others)
   SPRAY_SHARE: 0.5, // a hit sprays out this share of your gems...
   SURVIVE_AT: 3, // ...but with fewer than this, a hit knocks you out (your last gems burst out)
   SPRAY_PIECES: 24, // at most this many gems fly out; big piles make bigger gems
