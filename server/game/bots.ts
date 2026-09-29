@@ -56,7 +56,10 @@ function timeToImpact(box: Box, world: GameState): number {
  * carelessness and appetite for shoving.
  */
 export class BotBrain {
-  private nextThinkAt = 0;
+  /** When the bot next decides (it keeps steering the same way until then) */
+  nextThinkAt = 0;
+  /** Who the bot is hunting, if anyone (it dashes into them once close) */
+  victim: PlayerSchema | null = null;
   private goal: Goal | null = null;
   private readonly thinkMs: number;
   private readonly mistakeChance: number;
@@ -115,6 +118,7 @@ export class BotBrain {
 
   /** Where the bot is heading: someone to shove, the best gem in sight, or somewhere to wander */
   private target(bot: PlayerSchema, world: GameState, now: number): { x: number; y: number } {
+    this.victim = null;
     const cx = bot.x + bot.width / 2;
     const cy = bot.y + bot.height / 2;
     // A new floor is coming: get onto it
@@ -122,6 +126,7 @@ export class BotBrain {
     // Low on gems (or just reckless): go for the jackpot
     if (world.jackpotOn && (bot.gems < 20 || this.reckless)) return { x: world.jackpotX, y: world.jackpotY };
     const victim = this.shoveTarget(bot, world);
+    this.victim = victim;
     if (victim) return { x: victim.x + victim.width / 2, y: victim.y + victim.height / 2 };
 
     // A bot with plenty of gems stops hunting them, so people can outgrow it (except during a shift)

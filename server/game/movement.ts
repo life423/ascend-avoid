@@ -64,6 +64,48 @@ export function hopsThisFrame(
   return hops;
 }
 
+/** Top speed for a player this wide: quick when small, a little slower at full size */
+export function moveSpeed(width: number): number {
+  const growth = Math.max(0, Math.min(1, (width - ARENA_RULES.PLAYER_SIZE) / (GEMS.MAX_SIZE - ARENA_RULES.PLAYER_SIZE)));
+  return ARENA_RULES.MOVE_SPEED + (ARENA_RULES.MOVE_SPEED_BIG - ARENA_RULES.MOVE_SPEED) * growth;
+}
+
+/**
+ * One step of walking, the same on the server and in the browser: velocity eases toward where
+ * you're steering (so you start and stop smoothly), or holds a dash's burst, then the box moves,
+ * staying inside the world. `steer` is no longer than 1; a light push walks slower.
+ */
+export function walk(
+  box: Box,
+  velocity: { x: number; y: number },
+  steer: { x: number; y: number },
+  deltaTime: number,
+  worldWidth: number,
+  worldHeight: number,
+  dash: { x: number; y: number } | null = null
+): void {
+  const speed = moveSpeed(box.width);
+  if (dash) {
+    velocity.x = dash.x * ARENA_RULES.DASH_SPEED;
+    velocity.y = dash.y * ARENA_RULES.DASH_SPEED;
+  } else {
+    // Coming out of a dash, drop straight back to walking speed
+    const current = Math.hypot(velocity.x, velocity.y);
+    if (current > speed) {
+      velocity.x *= speed / current;
+      velocity.y *= speed / current;
+    }
+    const blend = 1 - Math.exp(-ARENA_RULES.MOVE_RESPONSE * deltaTime);
+    velocity.x += (steer.x * speed - velocity.x) * blend;
+    velocity.y += (steer.y * speed - velocity.y) * blend;
+    if (steer.x === 0 && Math.abs(velocity.x) < 2) velocity.x = 0;
+    if (steer.y === 0 && Math.abs(velocity.y) < 2) velocity.y = 0;
+  }
+  const margin = ARENA_RULES.EDGE_MARGIN;
+  box.x = Math.max(margin, Math.min(box.x + velocity.x * deltaTime, worldWidth - box.width - margin));
+  box.y = Math.max(margin, Math.min(box.y + velocity.y * deltaTime, worldHeight - box.height - margin));
+}
+
 /** How far one hop goes for a player this wide: HOP while small, then a little more than your own size */
 export function hopLength(width: number): number {
   return Math.max(ARENA_RULES.HOP, width + ARENA_RULES.HOP_BEYOND_SIZE);

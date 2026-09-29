@@ -81,6 +81,34 @@ export class OnlineControls {
     }
 
     /**
+     * The joystick or mouse steering as a direction no longer than 1 (a light push, or the cursor
+     * close by, walks slower), or null when neither is in use. (playerX, playerY) is where your
+     * player is on the canvas.
+     */
+    vector(playerX: number, playerY: number, playerSize: number): { x: number; y: number } | null {
+        if (this.stick) {
+            const dx = (this.stick.x - this.stick.originX) / STICK_RADIUS
+            const dy = (this.stick.y - this.stick.originY) / STICK_RADIUS
+            const reach = Math.hypot(dx, dy)
+            if (reach < DEAD_ZONE) return { x: 0, y: 0 }
+            // Full speed a little before the edge of the stick
+            const push = Math.min(1, ((reach - DEAD_ZONE) / (1 - DEAD_ZONE)) * 1.25)
+            return { x: (dx / reach) * push, y: (dy / reach) * push }
+        }
+        if (this.mouse) {
+            const dx = this.mouse.x - playerX
+            const dy = this.mouse.y - playerY
+            const distance = Math.hypot(dx, dy)
+            const stopAt = Math.max(8, playerSize / 2)
+            if (distance < stopAt) return { x: 0, y: 0 }
+            // Slowing as you reach the cursor
+            const push = Math.min(1, (distance - stopAt) / (playerSize * 2 + 40))
+            return { x: (dx / distance) * push, y: (dy / distance) * push }
+        }
+        return null
+    }
+
+    /**
      * Draw the controls. On a touchscreen: the joystick (or, until you touch it, a faint pulsing
      * one where thumbs usually land) and the DASH button with its recharge sweep. With a keyboard:
      * a small label for space.
