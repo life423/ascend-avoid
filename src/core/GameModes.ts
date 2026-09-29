@@ -674,6 +674,8 @@ export class MultiplayerMode extends GameMode {
     private charging = false
     private chargeStartedAt = 0
     private aim = { x: 0, y: -1 }
+    /** Whether this frame's steering came from the keys (then, while charging, they turn the aim) */
+    private steerFromKeys = false
     /** Your own flight after a slingshot (for the arc), and everyone's landings (for the impact ring) */
     private launchedAt = 0
     private airborneUntil = 0
@@ -798,8 +800,12 @@ export class MultiplayerMode extends GameMode {
             const x = (position.x + me.width / 2 - view.x) * view.scale + canvas.width / 2
             const y = (position.y + me.height / 2 - view.y) * view.scale + canvas.height / 2
             const pointer = this.controls.vector(x, y, me.width * view.scale)
-            if (pointer) return pointer
+            if (pointer) {
+                this.steerFromKeys = false
+                return pointer
+            }
         }
+        this.steerFromKeys = true
         const x = (input.right ? 1 : 0) - (input.left ? 1 : 0)
         const y = (input.down ? 1 : 0) - (input.up ? 1 : 0)
         const length = Math.hypot(x, y)
@@ -877,7 +883,19 @@ export class MultiplayerMode extends GameMode {
 
         const steering = Math.hypot(steer.x, steer.y)
         if (steering > 0.2) this.facing = { x: steer.x / steering, y: steer.y / steering }
-        this.aim = steering > 0.2 ? { x: steer.x / steering, y: steer.y / steering } : { ...this.facing }
+        if (!this.charging || !this.steerFromKeys) {
+            // The joystick and mouse aim directly (any angle); before a charge, the aim is where you're going
+            this.aim = steering > 0.2 ? { x: steer.x / steering, y: steer.y / steering } : { ...this.facing }
+        } else if (steering > 0.2) {
+            // Charging with the keys: the arrow turns toward them at a steady speed (about 200 degrees a
+            // second), and stays put when you let go, so any angle is reachable
+            const target = Math.atan2(steer.y, steer.x)
+            const current = Math.atan2(this.aim.y, this.aim.x)
+            const turn = Math.atan2(Math.sin(target - current), Math.cos(target - current))
+            const step = Math.PI * 1.1 * deltaTime
+            const angle = current + Math.max(-step, Math.min(step, turn))
+            this.aim = { x: Math.cos(angle), y: Math.sin(angle) }
+        }
         for (const event of events) {
             if (event === 'dash' && now >= this.dashReadyAt && !this.charging) {
                 // A burst the way you're steering (or last went)
