@@ -53,7 +53,7 @@ export class DrawerUI {
                         <p>The leader wears a crown. A slingshot hit also knocks gems loose, more for a harder charge, and they can't grab them back for a moment. A dash just shoves, but shoving someone into traffic or off an island costs them plenty.</p>
 
                         <h4>Getting hit</h4>
-                        <p>Traffic, bouncing balls and the edge of the floor all knock you around. Take a hit and you skid, drop half your gems, and blink for a moment while nothing can touch you.</p>
+                        <p>Traffic, comets, bouncing balls and the edge of the floor all knock you around. Take a hit and you skid, drop half your gems, and blink for a moment while nothing can touch you.</p>
                         <p>Your dropped gems take a second before you can grab them back, but anyone else can grab them right away. With fewer than 3 gems, a hit knocks you out (a dashed red outline warns you), and you're back in two seconds.</p>
 
                         <h4>Arena shifts</h4>

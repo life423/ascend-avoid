@@ -85,7 +85,7 @@ export const WORLD = {
    * smallest size and at the biggest, as a share of the view VIEW_AREA gives */
   VIEW_ZOOM_SMALL: 0.8,
   VIEW_ZOOM_BIG: 1.3,
-  OBSTACLE_COUNT: 36,
+  OBSTACLE_COUNT: 14, // lane traffic (comets and balls cross it at other angles)
   RESPAWN_DELAY_MS: 2000,
   SPAWN_PROTECTION_MS: 1500,
   /** A respawn spot this far from all traffic is good enough */
@@ -201,6 +201,23 @@ export const BALLS = {
   COUNT: 5,
   RADIUS: 24,
   SPEED: 170, // units per second
+} as const;
+
+/**
+ * Comets fly in from the edges at a slant (never along the traffic lanes), so the gaps between
+ * lane traffic keep moving. The first STRAIGHT fly straight; the next CURVED bend gently, a few
+ * degrees over a whole crossing. Readable, never random.
+ */
+export const COMETS = {
+  STRAIGHT: 8,
+  CURVED: 5,
+  RADIUS: 20,
+  SPEED_MIN: 200, // units per second
+  SPEED_MAX: 270,
+  MIN_SLANT: 25, // degrees off straight in from the edge...
+  MAX_SLANT: 65, // ...so always well off the lanes' axes
+  CURVE_MIN: 20, // degrees a curving comet bends over a whole crossing
+  CURVE_MAX: 30,
 } as const;
 
 export const SHIFT = {
@@ -344,6 +361,7 @@ export const GAME_CONSTANTS = {
   BOTS,
   TRAFFIC,
   BALLS,
+  COMETS,
   SHIFT,
   KEYS,
   DEVICE_SETTINGS

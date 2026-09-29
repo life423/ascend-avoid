@@ -551,6 +551,31 @@ function bounce(position: number, distance: number, low: number, high: number): 
     return low + (p > span ? 2 * span - p : p)
 }
 
+/** A comet: a glowing violet head with a tail trailing back along its path */
+function drawComet(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, vx: number, vy: number): void {
+    const speed = Math.hypot(vx, vy) || 1
+    const ux = vx / speed
+    const uy = vy / speed
+    for (let i = 5; i >= 1; i--) {
+        ctx.fillStyle = `rgba(167, 139, 250, ${0.34 - i * 0.055})`
+        ctx.beginPath()
+        ctx.arc(x - ux * radius * 0.85 * i, y - uy * radius * 0.85 * i, radius * (1 - i * 0.15), 0, Math.PI * 2)
+        ctx.fill()
+    }
+    ctx.fillStyle = 'rgba(167, 139, 250, 0.25)'
+    ctx.beginPath()
+    ctx.arc(x, y, radius * 1.45, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = '#c4b5fd'
+    ctx.beginPath()
+    ctx.arc(x, y, radius, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
+    ctx.beginPath()
+    ctx.arc(x + ux * radius * 0.25, y + uy * radius * 0.25, radius * 0.42, 0, Math.PI * 2)
+    ctx.fill()
+}
+
 /** A ball: a glowing orb with a highlight */
 function drawBall(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number): void {
     ctx.fillStyle = 'rgba(255, 92, 138, 0.22)'
@@ -1040,6 +1065,13 @@ export class MultiplayerMode extends GameMode {
             const y = bounce(ball.y, (ball.vy ?? 0) * lead, ball.radius, state.worldHeight - ball.radius)
             if (x + ball.radius < left || x - ball.radius > right || y + ball.radius < top || y - ball.radius > bottom) return
             drawBall(ctx, x, y, ball.radius)
+        })
+        state.comets?.forEach((comet: any) => {
+            const x = comet.x + (comet.vx ?? 0) * lead
+            const y = comet.y + (comet.vy ?? 0) * lead
+            const reach = comet.radius * 6
+            if (x + reach < left || x - reach > right || y + reach < top || y - reach > bottom) return
+            drawComet(ctx, x, y, comet.radius, comet.vx ?? 0, comet.vy ?? 0)
         })
         const present = new Set<string>()
         state.players.forEach((player: any, sessionId: string) => {

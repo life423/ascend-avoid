@@ -33,6 +33,18 @@ function timeToImpact(box: Box, world: GameState): number {
       }
     }
   });
+  world.comets.forEach((comet) => {
+    for (let t = 0; t <= BOTS.LOOK_AHEAD && t < soonest; t += 0.1) {
+      const cx = comet.x + comet.vx * t;
+      const cy = comet.y + comet.vy * t;
+      const dx = Math.max(box.x - cx, 0, cx - (box.x + box.width));
+      const dy = Math.max(box.y - cy, 0, cy - (box.y + box.height));
+      if (Math.hypot(dx, dy) <= comet.radius + margin) {
+        soonest = t;
+        break;
+      }
+    }
+  });
   world.balls.forEach((ball) => {
     for (let t = 0; t <= BOTS.LOOK_AHEAD && t < soonest; t += 0.1) {
       const bx = ball.x + ball.vx * t;

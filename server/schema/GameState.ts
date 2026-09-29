@@ -4,6 +4,7 @@ import { PlayerSchema } from "./PlayerSchema.js";
 import { ObstacleSchema } from "./ObstacleSchema.js";
 import { GemSchema } from "./GemSchema.js";
 import { BallSchema } from "./BallSchema.js";
+import { CometSchema } from "./CometSchema.js";
 import { BotBrain } from "../game/bots.js";
 import { closestFloorPoint, isFloor, jackpotSpot, layoutToString, pickLayout, randomFloorPoint } from "../game/layouts.js";
 import type { Layout } from "../game/layouts.js";
@@ -11,7 +12,7 @@ import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 import { moveSpeed } from "../game/movement.js";
 import type { Direction } from "../game/movement.js";
 
-const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS } = GAME_CONSTANTS;
+const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS, COMETS } = GAME_CONSTANTS;
 /** Which way each of a bot's decisions steers it */
 const STEER: Record<Direction, { x: number; y: number }> = {
   up: { x: 0, y: -1 },
@@ -41,6 +42,7 @@ class GameState extends Schema {
   players: schema.MapSchema<PlayerSchema>;
   obstacles: schema.ArraySchema<ObstacleSchema>;
   balls: schema.ArraySchema<BallSchema>;
+  comets: schema.ArraySchema<CometSchema>;
   gems: schema.MapSchema<GemSchema>;
   worldWidth: number;
   worldHeight: number;
@@ -86,6 +88,7 @@ class GameState extends Schema {
     this.players = new MapSchema<PlayerSchema>();
     this.obstacles = new ArraySchema<ObstacleSchema>();
     this.balls = new ArraySchema<BallSchema>();
+    this.comets = new ArraySchema<CometSchema>();
     this.gems = new MapSchema<GemSchema>();
     this.worldWidth = WORLD.WIDTH;
     this.worldHeight = WORLD.HEIGHT;
@@ -107,6 +110,11 @@ class GameState extends Schema {
       this.obstacles.push(obstacle);
     }
     for (let i = 0; i < BALLS.COUNT; i++) this.balls.push(new BallSchema(this.worldWidth, this.worldHeight));
+    for (let i = 0; i < COMETS.STRAIGHT + COMETS.CURVED; i++) {
+      const comet = new CometSchema();
+      comet.launch(this.worldWidth, this.worldHeight, i >= COMETS.STRAIGHT, true);
+      this.comets.push(comet);
+    }
     this.topUpField();
   }
 
@@ -136,6 +144,9 @@ class GameState extends Schema {
       }
     });
     this.balls.forEach((ball) => ball.update(deltaTime, this.worldWidth, this.worldHeight));
+    this.comets.forEach((comet, index) => {
+      if (!comet.update(deltaTime, this.worldWidth, this.worldHeight)) comet.launch(this.worldWidth, this.worldHeight, index >= COMETS.STRAIGHT);
+    });
 
     const expired: string[] = [];
     const layout = this.shiftPhase === "shift" ? this.layout : null;
@@ -238,6 +249,9 @@ class GameState extends Schema {
         if (!hit.push && ball.checkCollision(path)) {
           hit.push = { x: player.x + player.width / 2 - ball.x, y: player.y + player.height / 2 - ball.y };
         }
+      });
+      this.comets.forEach((comet) => {
+        if (!hit.push && comet.checkCollision(path)) hit.push = { x: comet.vx, y: comet.vy };
       });
       if (hit.push) {
         this.credit(player, "traffic", now);
@@ -782,6 +796,11 @@ class GameState extends Schema {
         nearest = Math.min(nearest, distanceToRect(cx, cy, o.x + o.vx * t, o.y + o.vy * t, o.width, o.height));
       }
     });
+    this.comets.forEach((comet) => {
+      for (const t of [0, 0.5, 1]) {
+        nearest = Math.min(nearest, Math.hypot(comet.x + comet.vx * t - cx, comet.y + comet.vy * t - cy) - comet.radius);
+      }
+    });
     this.balls.forEach((ball) => {
       for (const t of [0, 0.5, 1]) {
         nearest = Math.min(nearest, Math.hypot(ball.x + ball.vx * t - cx, ball.y + ball.vy * t - cy) - ball.radius);
@@ -801,6 +820,7 @@ class GameState extends Schema {
 type({ map: PlayerSchema })(GameState.prototype, "players");
 type([ObstacleSchema])(GameState.prototype, "obstacles");
 type([BallSchema])(GameState.prototype, "balls");
+type([CometSchema])(GameState.prototype, "comets");
 type({ map: GemSchema })(GameState.prototype, "gems");
 type("number")(GameState.prototype, "worldWidth");
 type("number")(GameState.prototype, "worldHeight");

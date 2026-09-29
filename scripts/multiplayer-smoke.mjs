@@ -68,7 +68,8 @@ try {
     check(state().worldWidth === 2100 && state().worldHeight === 2100, `the world is several screens across (${state().worldWidth}×${state().worldHeight})`);
     check(me().spawnProtected === true, 'a new arrival starts protected');
     check(me().width === 20, `and starts small (${me().width} units)`);
-    check(state().obstacles.length >= 30, `traffic fills the world (${state().obstacles.length} obstacles)`);
+    const hazards = state().obstacles.length + (state().comets?.length ?? 0) + (state().balls?.length ?? 0);
+    check(hazards >= 30, `traffic fills the world (${state().obstacles.length} in lanes, ${state().comets?.length} comets, ${state().balls?.length} balls)`);
 
     const bob = await join('Bob');
     check(bob.roomId === alice.roomId, 'a second visitor joins the same world');
@@ -137,6 +138,24 @@ try {
     }
     check(tightest >= 140, `obstacles in a lane keep a gap wider than any player (closest ${Math.round(tightest)} units)`);
     check(state().balls?.length === 5, `balls roll around the arena (${state().balls?.length})`);
+    const comets = [];
+    state().comets?.forEach((c) => comets.push({ vx: c.vx, vy: c.vy, turn: c.turn }));
+    check(comets.length === 13, `comets fly across the arena (${comets.length})`);
+    const slanted = comets.filter((c) => {
+        const speed = Math.hypot(c.vx, c.vy);
+        return Math.abs(c.vx) > speed * 0.35 && Math.abs(c.vy) > speed * 0.35;
+    }).length;
+    check(slanted === comets.length, `always at a slant, never along the lanes (${slanted} of ${comets.length})`);
+    const cometsBefore = [];
+    state().comets.forEach((c) => cometsBefore.push({ heading: Math.atan2(c.vy, c.vx), turn: c.turn }));
+    await sleep(600);
+    const bends = [];
+    state().comets.forEach((c, i) => {
+        if (!cometsBefore[i].turn || c.turn !== cometsBefore[i].turn) return; // straight, or it came round again meanwhile
+        const change = Math.atan2(c.vy, c.vx) - cometsBefore[i].heading;
+        bends.push(Math.abs(Math.atan2(Math.sin(change), Math.cos(change))));
+    });
+    check(bends.length >= 3 && bends.every((b) => b > 0.004 && b < 0.2), `some bend gently as they fly (${bends.map((b) => (b * 180 / Math.PI).toFixed(1) + '°').join(', ')} in 0.6s)`);
     let diagonal = 0;
     const ballsBefore = [];
     state().balls.forEach((b) => {
@@ -427,6 +446,15 @@ try {
     }
     check(await ballStruck((h) => ({ dx: h + 14, dy: 0 })), 'a ball touching your side is a hit');
     check(!(await ballStruck((h) => ({ dx: h + 16, dy: h + 16 }))), "a ball just off your corner is a miss (it's round)");
+    alice.send('test:setGems', { count: 3 });
+    await sleep(120);
+    alice.send('test:placeComet', { dx: me().width / 2 + 12, dy: 0 });
+    await sleep(250);
+    check(me().recovering || me().state !== 'alive', 'a comet hits you too');
+    alice.send('test:placeComet', { dx: 0, dy: -900 });
+    await waitFor(() => me().state === 'alive' && !me().recovering && !me().sliding, 4000, 'Alice is steady');
+    alice.send('test:moveTo', { x: 1000, y: 1000 });
+    await sleep(120);
     // After a hit you skid away from what hit you, and can't hop until you've recovered
     alice.send('test:setGems', { count: 4 });
     alice.send('test:moveTo', { x: 1000, y: 1000 });
