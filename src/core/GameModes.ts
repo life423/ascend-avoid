@@ -654,6 +654,13 @@ export class MultiplayerMode extends GameMode {
     private airborneUntil = 0
     private inFlight = new Set<string>()
     private landings = new Map<string, number>()
+    /** Gem bursts and hard hits to draw, the banner for hits you cause, and the shake they bring */
+    private gemBursts: { x: number; y: number; count: number; at: number }[] = []
+    private impacts: { x: number; y: number; size: number; at: number }[] = []
+    private banner: { title: string; sub: string; at: number } | null = null
+    private hitShake = { until: 0, strength: 0 }
+    /** Where each player was drawn last frame (a dash's streak trails behind that way) */
+    private lastCenters = new Map<string, { x: number; y: number }>()
     private facing = { x: 0, y: -1 }
     /** The steering last sent to the server */
     private sentSteer = { x: 0, y: 0 }
@@ -714,6 +721,8 @@ export class MultiplayerMode extends GameMode {
             this.clockGap = gap < this.clockGap ? gap : this.clockGap + (gap - this.clockGap) * 0.005
         })
         eventBus.on('multiplayer:credit', (data: any) => this.noteCredit(data))
+        eventBus.on('multiplayer:burst', (data: any) => this.noteBurst(data))
+        eventBus.on('multiplayer:impact', (data: any) => this.noteImpact(data))
         eventBus.on('multiplayer:jackpot', (data: any) => {
             this.addNotice(`${this.nameOf(data?.byId, data?.by)} took the jackpot! +${data?.value ?? ''}`, true)
         })
@@ -996,6 +1005,9 @@ export class MultiplayerMode extends GameMode {
             view.x += (Math.random() - 0.5) * 2 * strength
             view.y += (Math.random() - 0.5) * 2 * strength
         }
+        const jolt = this.extraShake()
+        view.x += jolt.x
+        view.y += jolt.y
         this.lastView = view
         const leaderId = this.leaderId(state)
         this.inGrace = state.shiftPhase === 'grace'
@@ -1014,6 +1026,7 @@ export class MultiplayerMode extends GameMode {
         const top = view.y - view.height / 2 - margin
         const bottom = view.y + view.height / 2 + margin
         this.drawGems(ctx, state, left, right, top, bottom, timestamp)
+        this.drawGemBursts(ctx)
         this.drawJackpot(ctx, state, localId, timestamp)
         const lead = this.trafficLead(timestamp)
         state.obstacles.forEach((obstacle: any) => {
@@ -1039,6 +1052,9 @@ export class MultiplayerMode extends GameMode {
         for (const id of this.drawnSizes.keys()) {
             if (!present.has(id)) this.drawnSizes.delete(id)
         }
+        for (const id of this.lastCenters.keys()) {
+            if (!present.has(id)) this.lastCenters.delete(id)
+        }
 
         this.drawBursts(ctx, timestamp)
         this.drawPickups(ctx, me, timestamp)
@@ -1049,6 +1065,7 @@ export class MultiplayerMode extends GameMode {
         this.drawLeaderboard(ctx, canvas, state, localId, leaderId)
         this.drawNotices(ctx, canvas)
         this.drawShiftChip(ctx, canvas, state, timestamp)
+        this.drawBanner(ctx, canvas)
         this.controls?.draw(ctx, timestamp, Math.max(0, Math.min(1, 1 - (this.dashReadyAt - performance.now()) / this.cooldownMs)), this.charging ? this.aim : null)
         if (me && me.state !== 'alive') this.drawKnockedOut(ctx, canvas)
         ctx.restore()
@@ -1206,6 +1223,23 @@ export class MultiplayerMode extends GameMode {
         const top = drawn.y + (player.height - size) / 2 - lift - this.aim.y * pull
         const centerX = drawn.x + player.width / 2
         const centerY = drawn.y + player.height / 2
+        // A dash leaves a streak behind it, bigger for bigger players
+        const last = this.lastCenters.get(sessionId)
+        this.lastCenters.set(sessionId, { x: centerX, y: centerY })
+        const dashingNow = isLocal ? clock < this.dashUntil : Boolean(player.bursting)
+        if (dashingNow && last) {
+            const moved = Math.hypot(centerX - last.x, centerY - last.y)
+            if (moved > 0.5) {
+                const ux = (centerX - last.x) / moved
+                const uy = (centerY - last.y) / moved
+                for (let i = 1; i <= 4; i++) {
+                    ctx.fillStyle = `rgba(255, 255, 255, ${0.28 - i * 0.06})`
+                    ctx.beginPath()
+                    ctx.arc(centerX - ux * size * 0.45 * i, centerY - uy * size * 0.45 * i, size * (0.42 - i * 0.07), 0, Math.PI * 2)
+                    ctx.fill()
+                }
+            }
+        }
         if (flying) {
             ctx.fillStyle = 'rgba(0, 0, 0, 0.35)'
             ctx.beginPath()
@@ -1249,7 +1283,13 @@ export class MultiplayerMode extends GameMode {
         const labelX = drawn.x + player.width / 2
         ctx.fillText(label, labelX, drawn.y - 6)
         if (player.isBot) drawRobot(ctx, labelX - ctx.measureText(label).width / 2 - 11, drawn.y - 14, 12)
-        if (isLeader) drawCrown(ctx, drawn.x + player.width / 2, drawn.y - 26, 22)
+        if (isLeader) {
+            drawCrown(ctx, drawn.x + player.width / 2, drawn.y - 26, 22)
+            // What the leader is worth
+            ctx.font = `800 14px ${FONT}`
+            ctx.fillStyle = GOLD
+            ctx.fillText(`${player.gems}`, drawn.x + player.width / 2, drawn.y - 50)
+        }
         ctx.restore()
     }
 
@@ -1312,6 +1352,19 @@ export class MultiplayerMode extends GameMode {
                 drawCrown(ctx, x + (position.x + player.width / 2) * scale, y + (position.y + player.height / 2) * scale - 4, 10)
             }
         })
+        if (state.jackpotOn) {
+            // The jackpot is the one thing the minimap points out
+            const jx = x + state.jackpotX * scale
+            const jy = y + state.jackpotY * scale
+            ctx.fillStyle = GOLD
+            ctx.beginPath()
+            ctx.moveTo(jx, jy - 5)
+            ctx.lineTo(jx + 4, jy)
+            ctx.lineTo(jx, jy + 5)
+            ctx.lineTo(jx - 4, jy)
+            ctx.closePath()
+            ctx.fill()
+        }
         ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
         ctx.font = `600 11px ${FONT}`
         ctx.textAlign = 'right'
@@ -1335,13 +1388,136 @@ export class MultiplayerMode extends GameMode {
         return id && id === this.multiplayerManager?.localSessionId ? 'You' : String(name ?? 'Someone')
     }
 
-    /** Someone was shoved off the edge or into traffic: say who did it */
+    /** Someone knocked someone else into trouble: say who did it, with a big banner if it was you */
     private noteCredit(data: any): void {
-        const targetIsYou = data?.targetId === this.multiplayerManager?.localSessionId
+        const localId = this.multiplayerManager?.localSessionId
+        const targetIsYou = data?.targetId === localId
         const target = targetIsYou ? 'you' : String(data?.target ?? 'someone')
-        const where = data?.how === 'edge' ? 'off the edge' : 'into traffic'
-        const out = data?.out ? (targetIsYou ? ' and knocked you out!' : ' and knocked them out!') : ''
-        this.addNotice(`${this.nameOf(data?.byId, data?.by)} shoved ${target} ${where}${out}`, data?.out === true)
+        const how = String(data?.how ?? '')
+        const verb = how === 'crush' ? 'crushed' : how === 'sling' || data?.kind === 'sling' ? 'slingshotted' : 'shoved'
+        const where = how === 'edge' ? 'off the edge' : how === 'traffic' ? 'into traffic' : ''
+        if (data?.byId === localId) {
+            const name = String(data?.target ?? 'someone')
+            const title = how === 'crush' ? `You crushed ${name}!` : how === 'sling' ? `Direct hit on ${name}!` : `You wrecked ${name}!`
+            const parts = how === 'sling' ? [`${Number(data?.gems) || 0} gems knocked loose`] : [where, data?.out ? 'knocked out' : '']
+            this.banner = { title, sub: parts.filter(Boolean).join(' · ').toUpperCase(), at: performance.now() }
+            return
+        }
+        const out = how !== 'crush' && data?.out ? (targetIsYou ? ' and knocked you out' : ' and knocked them out') : ''
+        this.addNotice(`${this.nameOf(data?.byId, data?.by)} ${verb} ${target}${where ? ' ' + where : ''}${out}!`, data?.out === true)
+    }
+
+    /** A pile of gems burst out somewhere: draw it, and shake the screen if it was big and close */
+    private noteBurst(data: any): void {
+        const x = Number(data?.x)
+        const y = Number(data?.y)
+        const count = Number(data?.count) || 0
+        if (!Number.isFinite(x) || !Number.isFinite(y)) return
+        this.gemBursts.push({ x, y, count, at: performance.now() })
+        if (this.gemBursts.length > 12) this.gemBursts.shift()
+        const me = this.predicted
+        if (me && count >= 6 && Math.hypot(me.x - x, me.y - y) < 700) this.addShake(Math.min(10, 2 + count * 0.3))
+    }
+
+    /** A dash or body-check connected: a shockwave, and a jolt for the two players involved */
+    private noteImpact(data: any): void {
+        const x = Number(data?.x)
+        const y = Number(data?.y)
+        const size = Number(data?.size) || 20
+        if (!Number.isFinite(x) || !Number.isFinite(y)) return
+        this.impacts.push({ x, y, size, at: performance.now() })
+        if (this.impacts.length > 12) this.impacts.shift()
+        const localId = this.multiplayerManager?.localSessionId
+        if (data?.byId === localId || data?.targetId === localId) this.addShake(3 + size * 0.08)
+    }
+
+    private addShake(strength: number): void {
+        const now = performance.now()
+        const current = now < this.hitShake.until ? this.hitShake.strength : 0
+        this.hitShake = { until: now + 280, strength: Math.max(strength, current) }
+    }
+
+    /** This frame's extra screen shake from bursts and hits */
+    private extraShake(): { x: number; y: number } {
+        const now = performance.now()
+        const left = this.hitShake.until - now
+        if (left <= 0) return { x: 0, y: 0 }
+        const amount = this.hitShake.strength * (left / 280)
+        return { x: Math.sin(now * 0.09) * amount, y: Math.cos(now * 0.13) * amount }
+    }
+
+    /** Bursts of gems (a flash, a ring and sparks, bigger for bigger piles) and shockwaves from hits */
+    private drawGemBursts(ctx: CanvasRenderingContext2D): void {
+        const now = performance.now()
+        this.gemBursts = this.gemBursts.filter((burst) => now - burst.at < 500)
+        this.impacts = this.impacts.filter((impact) => now - impact.at < 320)
+        ctx.save()
+        for (const burst of this.gemBursts) {
+            const t = (now - burst.at) / 500
+            const reach = 24 + t * Math.min(260, 50 + burst.count * 7)
+            if (t < 0.3) {
+                ctx.fillStyle = `rgba(255, 236, 160, ${(0.3 - t) * 1.6})`
+                ctx.beginPath()
+                ctx.arc(burst.x, burst.y, reach * 0.6, 0, Math.PI * 2)
+                ctx.fill()
+            }
+            ctx.strokeStyle = `rgba(255, 209, 102, ${0.8 * (1 - t)})`
+            ctx.lineWidth = 3
+            ctx.beginPath()
+            ctx.arc(burst.x, burst.y, reach, 0, Math.PI * 2)
+            ctx.stroke()
+            const sparks = Math.min(28, 6 + burst.count)
+            ctx.lineWidth = 2
+            for (let i = 0; i < sparks; i++) {
+                const angle = (i / sparks) * Math.PI * 2 + burst.count
+                ctx.beginPath()
+                ctx.moveTo(burst.x + Math.cos(angle) * reach * 0.7, burst.y + Math.sin(angle) * reach * 0.7)
+                ctx.lineTo(burst.x + Math.cos(angle) * reach * 1.05, burst.y + Math.sin(angle) * reach * 1.05)
+                ctx.stroke()
+            }
+        }
+        for (const impact of this.impacts) {
+            const t = (now - impact.at) / 320
+            ctx.strokeStyle = `rgba(255, 255, 255, ${0.7 * (1 - t)})`
+            ctx.lineWidth = 2 + impact.size * 0.06
+            ctx.beginPath()
+            ctx.arc(impact.x, impact.y, impact.size * (0.5 + t * 2), 0, Math.PI * 2)
+            ctx.stroke()
+        }
+        ctx.restore()
+    }
+
+    /** The big banner for hits you caused: it pops in, holds, and fades */
+    private drawBanner(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement): void {
+        if (!this.banner) return
+        const age = performance.now() - this.banner.at
+        if (age > 1700) {
+            this.banner = null
+            return
+        }
+        const pop = age < 160 ? 1.35 - (age / 160) * 0.35 : 1
+        ctx.save()
+        ctx.setTransform(1, 0, 0, 1, 0, 0)
+        ctx.globalAlpha = age > 1350 ? Math.max(0, 1 - (age - 1350) / 350) : 1
+        ctx.translate(canvas.width / 2, canvas.height * 0.3)
+        ctx.scale(pop, pop)
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.lineJoin = 'round'
+        ctx.font = `900 ${Math.round(Math.min(34, canvas.width / 14))}px ${FONT}`
+        ctx.lineWidth = 6
+        ctx.strokeStyle = 'rgba(5, 12, 24, 0.85)'
+        ctx.strokeText(this.banner.title, 0, 0)
+        ctx.fillStyle = GOLD
+        ctx.fillText(this.banner.title, 0, 0)
+        if (this.banner.sub) {
+            ctx.font = `800 ${Math.round(Math.min(15, canvas.width / 28))}px ${FONT}`
+            ctx.lineWidth = 4
+            ctx.strokeText(this.banner.sub, 0, 30)
+            ctx.fillStyle = '#ffffff'
+            ctx.fillText(this.banner.sub, 0, 30)
+        }
+        ctx.restore()
     }
 
     /**

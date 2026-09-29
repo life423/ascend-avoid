@@ -296,11 +296,13 @@ class GameState extends Schema {
       if ((moving.x * dx + moving.y * dy) / distance < PUSH.BODY_CHECK_SPEED * moveSpeed(attacker.width)) return false;
     }
     if (!victim.takeBounty(now)) return false;
+    this.impact(attacker, victim);
     if (ratio >= PUSH.BODY_CHECK_KO_AT && victim.gems < GEMS.SURVIVE_AT) {
       this.knockOutWithGems(victim, now);
+      this.credit(victim, "crush", now, attacker.sessionId);
       return true;
     }
-    if (!dashed) victim.shoveAlong(dx, dy, tier.shove, attacker.sessionId, now);
+    if (!dashed) victim.shoveAlong(dx, dy, tier.shove, attacker.sessionId, now, "crush");
     const loose = Math.min(victim.gems, PUSH.BODY_CHECK_MAX_SPILL, Math.max(1, Math.ceil(victim.gems * tier.spill)));
     if (loose > 0) {
       const centerX = victim.x + victim.width / 2;
@@ -347,7 +349,8 @@ class GameState extends Schema {
         : // A slingshot mostly ignores weight: the small player's equalizer
           (PUSH.SLING_PUSH_MIN + (PUSH.SLING_PUSH_MAX - PUSH.SLING_PUSH_MIN) * power) *
           Math.min(PUSH.SLING_WEIGHT_MAX, Math.max(PUSH.SLING_WEIGHT_MIN, Math.pow(weightRatio, PUSH.SLING_WEIGHT_POWER)));
-    if (!target.shoveAlong(along.x, along.y, distance, dasher.sessionId, now)) return;
+    if (!target.shoveAlong(along.x, along.y, distance, dasher.sessionId, now, power < 0 ? "dash" : "sling")) return;
+    this.impact(dasher, target);
     dasher.dropProtection();
     // A plain dash from a clearly bigger player spills gems like any body-check
     if (power < 0) this.bodyCheck(dasher, target, now, true);
@@ -364,6 +367,7 @@ class GameState extends Schema {
       const centerY = target.y + target.height / 2;
       target.setGems(target.gems - loose, this.worldWidth, this.worldHeight);
       this.sprayGems(centerX, centerY, loose, now, target.sessionId);
+      this.credit(target, "sling", now, dasher.sessionId, { gems: loose });
     }
   }
 
@@ -605,11 +609,31 @@ class GameState extends Schema {
   }
 
   /** If someone shoved this player just before they were hit or fell, tell everyone who did it */
-  private credit(target: PlayerSchema, how: string, now: number): void {
-    const byId = target.shovedBy(now, SHIFT.CREDIT_MS);
-    const by = byId ? this.players.get(byId) : undefined;
+  private credit(target: PlayerSchema, how: string, now: number, byId?: string, extra: Record<string, unknown> = {}): void {
+    const who = byId ?? target.shovedBy(now, SHIFT.CREDIT_MS);
+    const by = who ? this.players.get(who) : undefined;
     if (!by || !this.onEvent) return;
-    this.onEvent("credit", { byId, by: by.name, targetId: target.sessionId, target: target.name, how, out: target.gems <= 0 });
+    this.onEvent("credit", {
+      byId: who,
+      by: by.name,
+      targetId: target.sessionId,
+      target: target.name,
+      how,
+      kind: target.lastShoveKind,
+      out: target.gems <= 0,
+      ...extra,
+    });
+  }
+
+  /** A dash or body-check connected: browsers draw a shockwave (and jolt the two players involved) */
+  private impact(attacker: PlayerSchema, victim: PlayerSchema): void {
+    this.onEvent?.("impact", {
+      x: Math.round((attacker.x + attacker.width / 2 + victim.x + victim.width / 2) / 2),
+      y: Math.round((attacker.y + attacker.height / 2 + victim.y + victim.height / 2) / 2),
+      size: attacker.width,
+      byId: attacker.sessionId,
+      targetId: victim.sessionId,
+    });
   }
 
   /** Keep the world lively: bots fill in until `botFill` are playing, and make room as people arrive */
@@ -696,6 +720,8 @@ class GameState extends Schema {
 
   /** Burst gems outward from a point, spread around the circle; big piles make bigger gems */
   private sprayGems(centerX: number, centerY: number, total: number, now: number, owner = ""): void {
+    // Browsers draw a burst for anything more than a gem or two
+    if (total >= 3) this.onEvent?.("burst", { x: Math.round(centerX), y: Math.round(centerY), count: total });
     const room = Math.max(1, GEMS.MAX_GEMS - this.gems.size);
     const pieces = Math.min(total, GEMS.SPRAY_PIECES, room);
     const turn = Math.random() * Math.PI * 2;

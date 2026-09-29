@@ -183,6 +183,8 @@ export class MultiplayerManager {
         // Moments worth showing everyone: who shoved whom off the edge, who took the jackpot
         this.room.onMessage('credit', (data) => this.eventBus.emit('multiplayer:credit', data));
         this.room.onMessage('jackpot', (data) => this.eventBus.emit('multiplayer:jackpot', data));
+        this.room.onMessage('burst', (data) => this.eventBus.emit('multiplayer:burst', data));
+        this.room.onMessage('impact', (data) => this.eventBus.emit('multiplayer:impact', data));
 
 
         // Handle errors

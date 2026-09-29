@@ -60,6 +60,10 @@ class PlayerSchema extends Schema {
   private dashX = 0;
   private dashY = 0;
   private dashUntil = 0;
+  /** Mid-dash (everyone draws the streak) */
+  bursting: boolean;
+  /** How the last shove came: "shove", "dash", "sling" or "crush" (for credits) */
+  lastShoveKind = "";
   private dashSpeed: number = ARENA_RULES.DASH_SPEED;
   /** How hard the dash under way hits: -1 for a plain dash, 0 to 1 for a slingshot's charge */
   private launchPower = -1;
@@ -75,6 +79,7 @@ class PlayerSchema extends Schema {
     super();
     this.charging = false;
     this.airborne = false;
+    this.bursting = false;
     this.sessionId = sessionId;
     this.playerIndex = playerIndex;
     this.name = `Player ${playerIndex + 1}`;
@@ -165,10 +170,11 @@ class PlayerSchema extends Schema {
   }
 
   /** Shoved along (dx, dy), in any direction: see shove() */
-  shoveAlong(dx: number, dy: number, distance: number, by: string, now: number): boolean {
+  shoveAlong(dx: number, dy: number, distance: number, by: string, now: number, kind = "shove"): boolean {
     if (by === this.lastShoveBy && now - this.lastShoveAt < PUSH.SAME_SHOVER_COOLDOWN_MS) return false;
     this.lastShoveBy = by;
     this.lastShoveAt = now;
+    this.lastShoveKind = kind;
     const length = Math.hypot(dx, dy) || 1;
     const speed = distance * PUSH.FRICTION;
     this.vx += (dx / length) * speed;
@@ -351,6 +357,7 @@ class PlayerSchema extends Schema {
       this.walkX = 0;
       this.walkY = 0;
       this.queuedDash = null;
+      if (this.bursting) this.bursting = false;
       this.slide(deltaTime, worldWidth, worldHeight);
       return;
     }
@@ -388,6 +395,8 @@ class PlayerSchema extends Schema {
     walk(box, velocity, steer, deltaTime, worldWidth, worldHeight, now < this.dashUntil ? { x: this.dashX * this.dashSpeed, y: this.dashY * this.dashSpeed } : null);
     this.walkX = velocity.x;
     this.walkY = velocity.y;
+    const bursting = now < this.dashUntil;
+    if (this.bursting !== bursting) this.bursting = bursting;
     if (box.x !== this.x) this.x = box.x;
     if (box.y !== this.y) this.y = box.y;
     const steering = Math.hypot(steer.x, steer.y);
@@ -442,6 +451,7 @@ type("boolean")(PlayerSchema.prototype, "recovering");
 type("boolean")(PlayerSchema.prototype, "sliding");
 type("boolean")(PlayerSchema.prototype, "charging");
 type("boolean")(PlayerSchema.prototype, "airborne");
+type("boolean")(PlayerSchema.prototype, "bursting");
 type("boolean")(PlayerSchema.prototype, "isBot");
 
 export { PlayerSchema };

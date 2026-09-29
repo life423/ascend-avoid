@@ -319,6 +319,8 @@ try {
     await sleep(250);
     const bobAfterSling = bobState().gems;
     const aliceDropped = 100 - me().gems;
+    check(bob.messages.some((m) => m.type === 'credit' && m.message.how === 'sling' && m.message.targetId === alice.sessionId), 'a slingshot hit is credited to whoever landed it');
+    check(bob.messages.some((m) => m.type === 'burst' && m.message.count >= 10), 'and the gems burst out for everyone to see');
     await sleep(1150);
     const flung = me().x - heavyStart;
     check(flung > 200 && flung > light * 4, `a slingshot launches even a heavy player (${Math.round(flung)} units, where a dash moved them ${Math.round(light)})`);
@@ -351,8 +353,10 @@ try {
     check(sameSize.lost === 0 && sameSize.state === 'alive', `walking into someone your size just pushes them (${sameSize.lost} gems lost)`);
     const bullied = await bodyCheck(100, 10);
     check(bullied.lost >= 2 && bullied.moved > 150, `a much bigger player barging into you spills your gems (${bullied.lost} lost, knocked ${bullied.moved} units)`);
+    bob.messages.length = 0;
     const crushed = await bodyCheck(100, 2);
     check(crushed.state !== 'alive', 'and knocks you out if you have fewer than 3');
+    check(bob.messages.some((m) => m.type === 'credit' && m.message.how === 'crush' && m.message.byId === alice.sessionId), 'and everyone hears who crushed them');
     await waitFor(() => bobState().state === 'alive' && !bobState().spawnProtected, 6000, 'Bob is back');
 
     // The 3-gem rule: with fewer than 3 gems, any hit knocks you out
