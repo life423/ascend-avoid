@@ -50,7 +50,7 @@ export class DrawerUI {
                         <h4>Dash, slingshot and shove</h4>
                         <p>Tap the <span class="highlight">right side</span> of the screen (<span class="highlight">space</span> on a computer) to dash: a quick burst that costs a gem. Dash into another player to shove them. The heavier you are, the farther they go.</p>
                         <p>Hold the button instead of tapping to charge a <span class="highlight">slingshot</span>. You stop, a ring fills around you, and the joystick aims (the mouse or arrow keys on a computer, holding space). Let go to launch: the longer you held, the farther you fly and the harder you hit, even the biggest players. You fly over the void, so a good slingshot can jump the gap between islands during a shift. It costs 2 gems and takes a few seconds to recharge. Slide off the button to cancel.</p>
-                        <p>The leader wears a crown. Every hit knocks some gems loose (more for a harder hit, and always a few from the leader), and they can't grab them back for a moment.</p>
+                        <p>The leader wears a crown. A slingshot hit also knocks gems loose, more for a harder charge, and they can't grab them back for a moment. A dash just shoves, but shoving someone into traffic or off an island costs them plenty.</p>
 
                         <h4>Getting hit</h4>
                         <p>Traffic, bouncing balls and the edge of the floor all knock you around. Take a hit and you skid, drop half your gems, and blink for a moment while nothing can touch you.</p>

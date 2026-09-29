@@ -228,7 +228,7 @@ try {
     await sleep(700);
     const spilled = [];
     state().gems.forEach((g) => {
-        if (Math.hypot(g.x - spillX, g.y - spillY) < 300) spilled.push({ x: g.x, y: g.y });
+        if (g.locked && g.owner === alice.sessionId) spilled.push({ x: g.x, y: g.y });
     });
     let markedMine = 0;
     state().gems.forEach((g) => {
@@ -296,7 +296,7 @@ try {
     check(light < even * 0.6, `and are harder to shove (${Math.round(light)} units)`);
 
     const knockedLoose = 100 - me().gems;
-    check(knockedLoose >= 2 && knockedLoose <= 12, `shoving the leader knocks some of their gems loose (${knockedLoose})`);
+    check(knockedLoose <= 2, `a dash just shoves: even the leader keeps their gems (${knockedLoose} lost, only the usual shedding)`);
 
     // Hold DASH to charge a slingshot: you stand still, everyone sees it, and it launches even a heavy player
     bob.send('test:setGems', { count: 4 });
@@ -494,10 +494,11 @@ try {
         }
     }
     if (!jumpGap) {
-        check(true, 'a slingshot flies over the void (this layout has no one-tile jumpGap to jump; skipped)');
+        check(true, 'a slingshot flies over the void (this layout has no one-tile gap to jump; skipped)');
     } else {
         const gemsBeforeJump = me().gems;
         alice.send('test:protect', { ms: 0 });
+        bob.send('test:protect', { ms: 2500 }); // dashes pass through protected players, so Bob can't be in the way
         alice.send('test:setGems', { count: 6 });
         await sleep(150);
         alice.send('test:moveTo', { x: (jumpGap.col + 0.5) * jumpTile - me().width / 2, y: (jumpGap.row + 0.5) * jumpTile - me().height / 2 });
