@@ -113,6 +113,23 @@ try {
     });
     check(moving >= state().obstacles.length * 0.8, `obstacles move (${moving} of ${state().obstacles.length})`);
     check(directions.size >= 3, `traffic runs in several directions (${[...directions].join(', ')})`);
+    const cruising = [];
+    state().obstacles.forEach((o) => {
+        if (o.vx || o.vy) cruising.push(o);
+    });
+    const acrossOf = (o) => (o.vx ? [o.y, o.height] : [o.x, o.width]);
+    const laneOf = (o) => Math.floor((acrossOf(o)[0] + acrossOf(o)[1] / 2) / 150);
+    const insideLane = (o) => acrossOf(o)[0] >= laneOf(o) * 150 - 0.5 && acrossOf(o)[0] + acrossOf(o)[1] <= (laneOf(o) + 1) * 150 + 0.5;
+    check(cruising.every(insideLane), `traffic keeps to lanes (${cruising.length} obstacles)`);
+    let tightest = Infinity;
+    for (const a of cruising) {
+        for (const b of cruising) {
+            if (a === b || !a.vx !== !b.vx || laneOf(a) !== laneOf(b)) continue;
+            const [as, al, bs, bl] = a.vx ? [a.x, a.width, b.x, b.width] : [a.y, a.height, b.y, b.height];
+            tightest = Math.min(tightest, Math.max(bs - (as + al), as - (bs + bl)));
+        }
+    }
+    check(tightest >= 140, `obstacles in a lane keep a gap wider than any player (closest ${Math.round(tightest)} units)`);
 
     // Gems (Alice is kept safe from traffic so the counts stay exact)
     alice.send('test:protect', { ms: 20000 });

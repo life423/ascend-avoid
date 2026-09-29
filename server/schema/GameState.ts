@@ -10,7 +10,7 @@ import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 import { stopAgainst } from "../game/movement.js";
 import type { Direction } from "../game/movement.js";
 
-const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT } = GAME_CONSTANTS;
+const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC } = GAME_CONSTANTS;
 
 /** How many random spots to try when looking for a safe place to (re)spawn */
 const SPAWN_TRIES = 24;
@@ -58,6 +58,8 @@ class GameState extends Schema {
   private brains = new Map<string, BotBrain>();
   private nextBotId = 1;
   private startedAt = 0;
+  /** Server-only: each traffic lane's direction (1 or -1) and speed; across lanes first, then down */
+  private lanes: { direction: number; speed: number }[] = [];
   private layout: Layout | null = null;
   private lastLayoutName = "";
   private nextShowerAt = 0;
@@ -88,9 +90,10 @@ class GameState extends Schema {
     this.jackpotHolder = "";
     this.jackpotProgress = 0;
     this.fieldGemTarget = fieldGemTarget;
+    this.reshuffleLanes();
     for (let i = 0; i < WORLD.OBSTACLE_COUNT; i++) {
       const obstacle = new ObstacleSchema();
-      obstacle.launch(this.worldWidth, this.worldHeight, true);
+      if (!this.launchObstacle(obstacle, true)) obstacle.park();
       this.obstacles.push(obstacle);
     }
     this.topUpField();
@@ -118,7 +121,7 @@ class GameState extends Schema {
     this.updateShift(deltaTime, now);
     this.obstacles.forEach((obstacle) => {
       if (!obstacle.update(deltaTime, this.worldWidth, this.worldHeight)) {
-        obstacle.launch(this.worldWidth, this.worldHeight);
+        if (!this.launchObstacle(obstacle, false)) obstacle.park();
       }
     });
 
@@ -229,6 +232,60 @@ class GameState extends Schema {
     }
   }
 
+  /** Give every traffic lane a new direction and speed */
+  private reshuffleLanes(): void {
+    this.lanes = [];
+    for (let i = 0; i < 2 * TRAFFIC.LANES; i++) {
+      this.lanes.push({
+        direction: Math.random() < 0.5 ? 1 : -1,
+        speed: ARENA_RULES.OBSTACLE_SPEED * (0.8 + Math.random() * 0.4),
+      });
+    }
+  }
+
+  /**
+   * Send an obstacle into a lane where it keeps a fair distance from the rest of the traffic:
+   * entering at the lane's edge (or, with `spread`, anywhere along it when the world starts).
+   * Returns false if no lane is safe to enter right now.
+   */
+  private launchObstacle(obstacle: ObstacleSchema, spread: boolean): boolean {
+    const { OBSTACLE_MIN_LENGTH, OBSTACLE_MAX_LENGTH } = ARENA_RULES;
+    const laneWidth = this.worldWidth / TRAFFIC.LANES;
+    for (let attempt = 0; attempt < 12; attempt++) {
+      const lane = Math.floor(Math.random() * this.lanes.length);
+      const horizontal = lane < TRAFFIC.LANES;
+      const { direction, speed } = this.lanes[lane];
+      const length = Math.round(OBSTACLE_MIN_LENGTH + Math.random() * (OBSTACLE_MAX_LENGTH - OBSTACLE_MIN_LENGTH));
+      const span = horizontal ? this.worldWidth : this.worldHeight;
+      const start = spread ? Math.random() * (span - length) : direction > 0 ? -length : span;
+      if (!this.laneIsClear(obstacle, lane, start, length)) continue;
+      // Anywhere across the lane's width, so traffic reaches every spot over time
+      const across = ((lane % TRAFFIC.LANES) + 0.5) * laneWidth + (Math.random() - 0.5) * (laneWidth - ARENA_RULES.OBSTACLE_THICKNESS);
+      obstacle.enter(lane, horizontal, direction, speed, start, length, across);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Whether an obstacle spanning `start`..`start + length` along a lane keeps its distance:
+   * TRAFFIC.MIN_GAP from others in the same lane, TRAFFIC.STAGGER from those in the lanes beside it
+   */
+  private laneIsClear(self: ObstacleSchema, lane: number, start: number, length: number): boolean {
+    const horizontal = lane < TRAFFIC.LANES;
+    let clear = true;
+    this.obstacles.forEach((o) => {
+      if (!clear || o === self || o.lane < 0 || (o.lane < TRAFFIC.LANES) !== horizontal) return;
+      const apart = Math.abs(o.lane - lane);
+      if (apart > 1) return;
+      const oStart = horizontal ? o.x : o.y;
+      const oLength = horizontal ? o.width : o.height;
+      const distance = Math.max(oStart - (start + length), start - (oStart + oLength));
+      if (distance < (apart === 0 ? TRAFFIC.MIN_GAP : TRAFFIC.STAGGER)) clear = false;
+    });
+    return clear;
+  }
+
   /** Whether a point is on the floor: always outside a shift; during one (or its grace period), the new floor */
   isFloorAt(x: number, y: number): boolean {
     return !this.layout || isFloor(this.layout, x, y);
@@ -264,6 +321,8 @@ class GameState extends Schema {
 
   /** Show the new shape. Nobody can be hurt while everyone gets onto it, and gems drop there to lead the way */
   private startGrace(now: number): void {
+    // New traffic patterns too, so nobody memorizes them
+    this.reshuffleLanes();
     const people: { x: number; y: number }[] = [];
     this.players.forEach((player) => {
       if (player.state === PLAYER_STATE.ALIVE) people.push({ x: player.x + player.width / 2, y: player.y + player.height / 2 });

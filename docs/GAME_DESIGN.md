@@ -27,7 +27,10 @@ lobby, no waiting, and you're back two seconds after a knockout.
 
 ## Hazards
 
-- Traffic crosses the arena in all four directions.
+- Traffic crosses the arena in all four directions, in lanes (14 across, 14 down, 150 units
+  apart), each with its own direction and speed, reshuffled at every arena shift. Obstacles in a
+  lane keep a gap wider than the biggest player, and neighboring lanes are staggered so traffic
+  never lines up into a wall; an obstacle waits out of sight until a lane is safe to enter.
 - The spawner always leaves gaps wide enough for the biggest possible player.
 - Later: bouncing balls, spiky mines you can shove people into, and narrow gaps between posts that
   only small players fit through.

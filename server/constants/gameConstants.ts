@@ -153,6 +153,17 @@ export const BOTS = {
  * grace period in which nobody can be hurt; then the rest of the arena drops away into a void
  * (going over the edge counts as a hit) until the whole arena returns.
  */
+/**
+ * Traffic runs in lanes, Frogger-style: 14 across and 14 down, each with its own direction and
+ * speed (reshuffled at every arena shift). Obstacles in a lane keep a gap wider than the biggest
+ * player, and lanes side by side are staggered, so traffic never lines up into a wall.
+ */
+export const TRAFFIC = {
+  LANES: 14, // in each direction (across and down), so lanes are 150 units apart
+  MIN_GAP: 150, // between obstacles in the same lane
+  STAGGER: 110, // between an entering obstacle and those in the lanes beside it
+} as const;
+
 export const SHIFT = {
   GRID: 10, // shapes are drawn on a 10x10 grid of tiles (210 units each)
   FIRST_AFTER_MS: 90000, // the first shift comes this long after a world starts...
@@ -276,6 +287,7 @@ export const GAME_CONSTANTS = {
   GEMS,
   PUSH,
   BOTS,
+  TRAFFIC,
   SHIFT,
   KEYS,
   DEVICE_SETTINGS
