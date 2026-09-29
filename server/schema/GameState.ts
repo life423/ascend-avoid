@@ -304,14 +304,14 @@ class GameState extends Schema {
           Math.min(PUSH.SLING_WEIGHT_MAX, Math.max(PUSH.SLING_WEIGHT_MIN, Math.pow(weightRatio, PUSH.SLING_WEIGHT_POWER)));
     if (!target.shoveAlong(along.x, along.y, distance, dasher.sessionId, now)) return;
     dasher.dropProtection();
-    // The hit knocks gems loose, more the harder it was (the leader always drops a few), at most
-    // once every PUSH.LEADER_BOUNTY_COOLDOWN_MS per player so nobody can be farmed
-    if (target.gems > 0 && target.takeBounty(now)) {
-      const share = power < 0 ? PUSH.KNOCK_SHARE_DASH : PUSH.KNOCK_SHARE_SLING_MIN + (PUSH.KNOCK_SHARE_SLING_MAX - PUSH.KNOCK_SHARE_SLING_MIN) * power;
-      let loose = Math.min(Math.max(1, Math.ceil(target.gems * share)), power < 0 ? PUSH.KNOCK_MAX_DASH : PUSH.KNOCK_MAX_SLING);
-      if (target === leader) {
-        loose = Math.max(loose, Math.min(PUSH.LEADER_BOUNTY_MAX, Math.max(PUSH.LEADER_BOUNTY_MIN, Math.ceil(target.gems * PUSH.LEADER_BOUNTY_SHARE))));
-      }
+    // A dash only shoves. A slingshot hit also knocks gems loose: more for a harder charge, scaled
+    // a little by size, and at least a couple from the leader; at most once every
+    // PUSH.LEADER_BOUNTY_COOLDOWN_MS per player so nobody can be farmed
+    if (power >= 0 && target.gems > 0 && target.takeBounty(now)) {
+      const size = Math.min(PUSH.KNOCK_SIZE_MAX, Math.max(PUSH.KNOCK_SIZE_MIN, Math.sqrt(weightRatio)));
+      const share = (PUSH.KNOCK_SHARE_SLING_MIN + (PUSH.KNOCK_SHARE_SLING_MAX - PUSH.KNOCK_SHARE_SLING_MIN) * power) * size;
+      let loose = Math.min(Math.max(1, Math.ceil(target.gems * share)), PUSH.KNOCK_MAX_SLING);
+      if (target === leader) loose = Math.max(loose, PUSH.LEADER_BOUNTY_MIN);
       loose = Math.min(loose, target.gems);
       const centerX = target.x + target.width / 2;
       const centerY = target.y + target.height / 2;
