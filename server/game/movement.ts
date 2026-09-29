@@ -72,7 +72,7 @@ export function moveSpeed(width: number): number {
 
 /**
  * One step of walking, the same on the server and in the browser: velocity eases toward where
- * you're steering (so you start and stop smoothly), or holds a dash's burst, then the box moves,
+ * you're steering (so you start and stop smoothly), or holds a dash's velocity, then the box moves,
  * staying inside the world. `steer` is no longer than 1; a light push walks slower.
  */
 export function walk(
@@ -86,8 +86,8 @@ export function walk(
 ): void {
   const speed = moveSpeed(box.width);
   if (dash) {
-    velocity.x = dash.x * ARENA_RULES.DASH_SPEED;
-    velocity.y = dash.y * ARENA_RULES.DASH_SPEED;
+    velocity.x = dash.x;
+    velocity.y = dash.y;
   } else {
     // Coming out of a dash, drop straight back to walking speed
     const current = Math.hypot(velocity.x, velocity.y);

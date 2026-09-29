@@ -60,10 +60,21 @@ class PlayerSchema extends Schema {
   private dashX = 0;
   private dashY = 0;
   private dashUntil = 0;
+  private dashSpeed: number = ARENA_RULES.DASH_SPEED;
+  /** How hard the dash under way hits: -1 for a plain dash, 0 to 1 for a slingshot's charge */
+  private launchPower = -1;
+  /** Holding DASH to charge a slingshot (everyone sees it), and flying after one */
+  charging: boolean;
+  airborne: boolean;
+  private chargeStartedAt = 0;
+  private queuedSling: { x: number; y: number } | null = null;
+  private airborneUntil = 0;
   private dashReadyAt = 0;
 
   constructor(sessionId: string, playerIndex: number) {
     super();
+    this.charging = false;
+    this.airborne = false;
     this.sessionId = sessionId;
     this.playerIndex = playerIndex;
     this.name = `Player ${playerIndex + 1}`;
@@ -89,6 +100,10 @@ class PlayerSchema extends Schema {
     this.protectFor(WORLD.SPAWN_PROTECTION_MS, now);
     this.queuedDash = null;
     this.dashUntil = 0;
+    this.charging = false;
+    this.queuedSling = null;
+    this.airborneUntil = 0;
+    this.airborne = false;
   }
 
   /** Traffic passes through for `ms` (drawn in a bubble) */
@@ -116,6 +131,10 @@ class PlayerSchema extends Schema {
     this.respawnAt = now + WORLD.RESPAWN_DELAY_MS;
     this.queuedDash = null;
     this.dashUntil = 0;
+    this.charging = false;
+    this.queuedSling = null;
+    this.airborneUntil = 0;
+    this.airborne = false;
     this.stopSliding();
   }
 
@@ -157,6 +176,10 @@ class PlayerSchema extends Schema {
     this.sliding = true;
     this.queuedDash = null;
     this.dashUntil = 0;
+    this.charging = false;
+    this.queuedSling = null;
+    this.airborneUntil = 0;
+    this.airborne = false;
     return true;
   }
 
@@ -175,6 +198,10 @@ class PlayerSchema extends Schema {
     this.sliding = true;
     this.queuedDash = null;
     this.dashUntil = 0;
+    this.charging = false;
+    this.queuedSling = null;
+    this.airborneUntil = 0;
+    this.airborne = false;
   }
 
   /** Who shoved this player within the last `withinMs` (their session id), if anyone */
@@ -233,6 +260,36 @@ class PlayerSchema extends Schema {
     this.queuedDash = Number.isFinite(length) && length > 1e-6 ? { x: x / length, y: y / length } : { x: this.facingX, y: this.facingY };
   }
 
+  /** Start charging a slingshot (DASH held past a tap); the player stands still meanwhile */
+  startCharge(now: number): void {
+    if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering || now < this.dashReadyAt) return;
+    this.charging = true;
+    this.chargeStartedAt = now;
+  }
+
+  /** Let go of a charge: launch along (x, y), or the way the player last moved */
+  requestSling(x: number, y: number): void {
+    if (!this.charging) return;
+    const length = Math.hypot(x, y);
+    this.queuedSling = Number.isFinite(length) && length > 1e-6 ? { x: x / length, y: y / length } : { x: this.facingX, y: this.facingY };
+  }
+
+  /** Slid off DASH (or pressed Esc): nothing happens and nothing is spent */
+  cancelCharge(): void {
+    this.charging = false;
+    this.queuedSling = null;
+  }
+
+  /** Whether the player is flying after a slingshot (the void can't catch them until they land) */
+  inAir(now: number): boolean {
+    return now < this.airborneUntil;
+  }
+
+  /** How hard the dash under way hits: -1 for a plain dash, 0 to 1 for a slingshot's charge */
+  hitPower(): number {
+    return this.launchPower;
+  }
+
   /** Where the browser is steering: a direction no longer than 1 (a light push walks slower) */
   steer(x: number, y: number): void {
     const length = Math.hypot(x, y);
@@ -284,6 +341,7 @@ class PlayerSchema extends Schema {
     if (this.state !== PLAYER_STATE.ALIVE) return;
     if (this.spawnProtected && now >= this.protectedUntil) this.spawnProtected = false;
     if (this.recovering && now >= this.recoverUntil) this.recovering = false;
+    if (this.airborne && now >= this.airborneUntil) this.airborne = false;
     if (this.sliding) {
       this.walkX = 0;
       this.walkY = 0;
@@ -291,18 +349,38 @@ class PlayerSchema extends Schema {
       this.slide(deltaTime, worldWidth, worldHeight);
       return;
     }
-    if (this.queuedDash && now >= this.dashReadyAt && !this.recovering) {
+    if (this.queuedSling && this.charging && !this.recovering) {
+      // Launch: farther the longer DASH was held, flying over the void on the way
+      const power = Math.max(0, Math.min(1, (now - this.chargeStartedAt) / ARENA_RULES.CHARGE_FULL_MS));
+      const distance = ARENA_RULES.SLING_MIN + (ARENA_RULES.SLING_MAX - ARENA_RULES.SLING_MIN) * power;
+      this.dashX = this.queuedSling.x;
+      this.dashY = this.queuedSling.y;
+      this.dashSpeed = ARENA_RULES.SLING_SPEED;
+      this.dashUntil = now + (distance / ARENA_RULES.SLING_SPEED) * 1000;
+      this.airborneUntil = this.dashUntil;
+      this.airborne = true;
+      this.launchPower = power;
+      this.dashReadyAt = now + ARENA_RULES.SLING_COOLDOWN_MS;
+      this.charging = false;
+      const cost = this.gems >= ARENA_RULES.SLING_COST_BIG_AT ? ARENA_RULES.SLING_COST_BIG : ARENA_RULES.SLING_COST;
+      if (this.gems > 0) this.setGems(Math.max(0, this.gems - cost), worldWidth, worldHeight);
+    }
+    this.queuedSling = null;
+    if (this.queuedDash && now >= this.dashReadyAt && !this.recovering && !this.charging) {
       this.dashX = this.queuedDash.x;
       this.dashY = this.queuedDash.y;
+      this.dashSpeed = ARENA_RULES.DASH_SPEED;
+      this.launchPower = -1;
       this.dashUntil = now + ARENA_RULES.DASH_MS;
       this.dashReadyAt = now + ARENA_RULES.DASH_COOLDOWN_MS;
       if (this.gems > 0) this.setGems(this.gems - ARENA_RULES.DASH_COST, worldWidth, worldHeight);
     }
     this.queuedDash = null;
-    const steer = this.recovering ? { x: 0, y: 0 } : { x: this.steerX, y: this.steerY };
+    // Charging holds you still: the stick aims instead
+    const steer = this.recovering || this.charging ? { x: 0, y: 0 } : { x: this.steerX, y: this.steerY };
     const box = { x: this.x, y: this.y, width: this.width, height: this.height };
     const velocity = { x: this.walkX, y: this.walkY };
-    walk(box, velocity, steer, deltaTime, worldWidth, worldHeight, now < this.dashUntil ? { x: this.dashX, y: this.dashY } : null);
+    walk(box, velocity, steer, deltaTime, worldWidth, worldHeight, now < this.dashUntil ? { x: this.dashX * this.dashSpeed, y: this.dashY * this.dashSpeed } : null);
     this.walkX = velocity.x;
     this.walkY = velocity.y;
     if (box.x !== this.x) this.x = box.x;
@@ -357,6 +435,8 @@ type("number")(PlayerSchema.prototype, "gems");
 type("boolean")(PlayerSchema.prototype, "spawnProtected");
 type("boolean")(PlayerSchema.prototype, "recovering");
 type("boolean")(PlayerSchema.prototype, "sliding");
+type("boolean")(PlayerSchema.prototype, "charging");
+type("boolean")(PlayerSchema.prototype, "airborne");
 type("boolean")(PlayerSchema.prototype, "isBot");
 
 export { PlayerSchema };
