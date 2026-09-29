@@ -7,7 +7,7 @@ import { InputState } from '../types'
 import { getSprite } from '../utils/sprites'
 import { GameEvents } from '../constants/client-constants'
 import { ARENA_RULES, GEMS, PLAYER_COLORS, SHIFT, WORLD } from '../../server/constants/gameConstants'
-import { hop, hopsThisFrame, newHopTimers, newPresses } from '../../server/game/movement'
+import { holdRepeat, hop, hopsThisFrame, newHopTimers, newPresses, stopAgainst } from '../../server/game/movement'
 import type { HopTimers } from '../../server/game/movement'
 import type { MultiplayerManager } from '../managers/MultiplayerManager'
 
@@ -601,6 +601,10 @@ export class MultiplayerMode extends GameMode {
     /** The world point at the center of the screen */
     private camera: { x: number; y: number } | null = null
     private lastRenderAt = 0
+    /** How far the camera is zoomed out (grows with your size, eased so it never jumps) */
+    private zoom: number = WORLD.VIEW_ZOOM_SMALL
+    /** Each player's drawn size, springing toward their real size so growing and shrinking pop */
+    private drawnSizes = new Map<string, { size: number; speed: number }>()
     /** When your player was knocked out, for the "back in" countdown */
     private knockedOutAt: number | null = null
     /** Messages at the top right: who joined, who shoved whom off the edge, who took the jackpot */
@@ -741,12 +745,20 @@ export class MultiplayerMode extends GameMode {
         }
 
         // Bigger players keep a slower rhythm when holding a direction
-        const repeat = ARENA_RULES.HOP_REPEAT * (me.width / ARENA_RULES.PLAYER_SIZE)
+        const repeat = holdRepeat(me.width)
         const hops = hopsThisFrame(input, presses, this.hopTimers, deltaTime, repeat)
         if (hops.length > 0) {
             const box = { x: this.predicted.x, y: this.predicted.y, width: me.width, height: me.height }
+            // Anyone in the way stops your hop, as they do on the server
+            const others: { x: number; y: number; width: number; height: number }[] = []
+            state.players.forEach((player: any, id: string) => {
+                if (id !== localId && player.state === 'alive') others.push({ x: player.x, y: player.y, width: player.width, height: player.height })
+            })
             for (const direction of hops) {
+                const fromX = box.x
+                const fromY = box.y
                 hop(box, direction, state.worldWidth, state.worldHeight)
+                stopAgainst(box, direction, fromX, fromY, others)
                 this.multiplayerManager?.sendMessage('hop', { direction })
             }
             this.predicted = { x: box.x, y: box.y }
@@ -823,6 +835,9 @@ export class MultiplayerMode extends GameMode {
         for (const id of this.drawnPositions.keys()) {
             if (!present.has(id)) this.drawnPositions.delete(id)
         }
+        for (const id of this.drawnSizes.keys()) {
+            if (!present.has(id)) this.drawnSizes.delete(id)
+        }
 
         this.drawBursts(ctx, timestamp)
         this.drawPickups(ctx, me, timestamp)
@@ -843,9 +858,13 @@ export class MultiplayerMode extends GameMode {
      */
     private updateCamera(canvas: HTMLCanvasElement, state: any, me: any, timestamp: number): View {
         const aspect = Math.min(WORLD.MAX_VIEW_ASPECT, Math.max(WORLD.MIN_VIEW_ASPECT, canvas.width / canvas.height))
+        // Small players see a closer view, big ones farther
+        const growth = me ? Math.max(0, Math.min(1, (me.width - ARENA_RULES.PLAYER_SIZE) / (GEMS.MAX_SIZE - ARENA_RULES.PLAYER_SIZE))) : 0
+        this.zoom += (WORLD.VIEW_ZOOM_SMALL + (WORLD.VIEW_ZOOM_BIG - WORLD.VIEW_ZOOM_SMALL) * growth - this.zoom) * 0.05
+        const area = WORLD.VIEW_AREA * this.zoom * this.zoom
         const scale = Math.max(
-            canvas.width / Math.sqrt(WORLD.VIEW_AREA * aspect),
-            canvas.height / Math.sqrt(WORLD.VIEW_AREA / aspect)
+            canvas.width / Math.sqrt(area * aspect),
+            canvas.height / Math.sqrt(area / aspect)
         )
         const width = canvas.width / scale
         const height = canvas.height / scale
@@ -966,11 +985,22 @@ export class MultiplayerMode extends GameMode {
             // Just hit: blink until traffic can touch you again
             ctx.globalAlpha = Math.floor(timestamp / 90) % 2 ? 0.25 : 0.9
         }
+        // Size changes pop: a quick overshoot and settle, centered on where the player is
+        let grow = this.drawnSizes.get(sessionId)
+        if (!grow) {
+            grow = { size: player.width, speed: 0 }
+            this.drawnSizes.set(sessionId, grow)
+        }
+        grow.speed = (grow.speed + (player.width - grow.size) * 0.3) * 0.6
+        grow.size += grow.speed
+        const size = Math.max(4, grow.size)
+        const left = drawn.x + (player.width - size) / 2
+        const top = drawn.y + (player.height - size) / 2
         if (isLocal) {
-            ctx.drawImage(getSprite('player', 0, timestamp), drawn.x, drawn.y, player.width, player.height)
+            ctx.drawImage(getSprite('player', 0, timestamp), left, top, size, size)
         } else {
             ctx.fillStyle = PLAYER_COLORS[player.playerIndex % PLAYER_COLORS.length]
-            roundedRect(ctx, drawn.x, drawn.y, player.width, player.height, 8)
+            roundedRect(ctx, left, top, size, size, size * 0.18)
             ctx.fill()
         }
         ctx.globalAlpha = 1

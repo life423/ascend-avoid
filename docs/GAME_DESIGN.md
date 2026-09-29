@@ -35,9 +35,13 @@ lobby, no waiting, and you're back two seconds after a knockout.
 ## Gems
 
 - Scattered around the arena. They're your score and your weight.
-- More gems make you bigger (square-root curve, capped around 1.5×; the hitbox grows less than
-  the sprite), heavier (harder to push, and you push harder) and slower when holding a direction
-  (six hops a second when small, about four at the cap).
+- Everyone starts small (20 units) and grows with the square root of their gems: 26 at one gem,
+  50 at 25, 80 at 100, capped at 100. Size changes pop. What traffic hits is what you see (minus
+  a sliver of grace), so being big means being a bigger target. Bigger players are heavier
+  (harder to push, and they push harder) and hold a slower rhythm (six hops a second when small,
+  four at full size); hops are 60 units while small, then a little more than your own size.
+- The camera widens as you grow: small players see a closer view, big players about 60% more
+  (about 30% farther than the base view).
 - Very big players slowly shed gems, like Agar's mass decay, so sitting on a pile isn't safe.
 - A live top-5 leaderboard; the leader wears a crown on everyone's minimap.
 

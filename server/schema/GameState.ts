@@ -7,7 +7,8 @@ import { BotBrain } from "../game/bots.js";
 import { closestFloorPoint, isFloor, jackpotSpot, layoutToString, pickLayout, randomFloorPoint } from "../game/layouts.js";
 import type { Layout } from "../game/layouts.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
-import type { Box, Direction } from "../game/movement.js";
+import { stopAgainst } from "../game/movement.js";
+import type { Direction } from "../game/movement.js";
 
 const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT } = GAME_CONSTANTS;
 
@@ -19,11 +20,6 @@ function distanceToRect(px: number, py: number, x: number, y: number, width: num
   const dx = Math.max(x - px, 0, px - (x + width));
   const dy = Math.max(y - py, 0, py - (y + height));
   return Math.hypot(dx, dy);
-}
-
-/** Whether two boxes overlap */
-function overlaps(a: Box, b: Box): boolean {
-  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
 }
 
 /**
@@ -147,7 +143,7 @@ class GameState extends Schema {
       const fromX = player.x;
       const fromY = player.y;
       const hops = player.updateMovement(this.worldWidth, this.worldHeight, now, deltaTime);
-      if (hops.length > 0) this.checkShoves(player, hops[hops.length - 1], now);
+      if (hops.length > 0) this.checkShoves(player, hops[hops.length - 1], fromX, fromY, now);
       this.collectGems(player, now);
       player.decay(deltaTime, this.worldWidth, this.worldHeight);
       // Over the edge during a shift
@@ -199,30 +195,38 @@ class GameState extends Schema {
   }
 
   /**
-   * A hop that lands on another player shoves them that way, farther the heavier the shover is
+   * A hop that runs into another player stops against them and shoves them that way, farther the heavier the shover is
    * compared with them. Shoving the leader knocks a few of their gems loose. Players who just
    * arrived can't be shoved, and shoving someone ends your own protection.
    */
-  private checkShoves(shover: PlayerSchema, direction: Direction, now: number): void {
-    const leader = this.leader();
-    this.players.forEach((target) => {
-      if (target === shover || target.state !== PLAYER_STATE.ALIVE || target.spawnProtected) return;
-      if (!overlaps(shover, target)) return;
-      const ratio = Math.min(PUSH.MAX_RATIO, Math.max(PUSH.MIN_RATIO, shover.weight() / target.weight()));
-      if (!target.shove(direction, PUSH.DISTANCE * ratio, shover.sessionId, now)) return;
-      shover.dropProtection();
-      if (target === leader && target.gems > 0 && target.takeBounty(now)) {
-        const loose = Math.min(
-          target.gems,
-          PUSH.LEADER_BOUNTY_MAX,
-          Math.max(PUSH.LEADER_BOUNTY_MIN, Math.ceil(target.gems * PUSH.LEADER_BOUNTY_SHARE))
-        );
-        const centerX = target.x + target.width / 2;
-        const centerY = target.y + target.height / 2;
-        target.setGems(target.gems - loose, this.worldWidth, this.worldHeight);
-        this.sprayGems(centerX, centerY, loose, now);
-      }
+  private checkShoves(shover: PlayerSchema, direction: Direction, fromX: number, fromY: number, now: number): void {
+    const others: PlayerSchema[] = [];
+    this.players.forEach((other) => {
+      if (other !== shover && other.state === PLAYER_STATE.ALIVE) others.push(other);
     });
+    // The hop stops against the first player in its way
+    const box = { x: shover.x, y: shover.y, width: shover.width, height: shover.height };
+    const hit = stopAgainst(box, direction, fromX, fromY, others);
+    if (hit < 0) return;
+    if (box.x !== shover.x) shover.x = box.x;
+    if (box.y !== shover.y) shover.y = box.y;
+    const target = others[hit];
+    if (target.spawnProtected) return;
+    const leader = this.leader();
+    const ratio = Math.min(PUSH.MAX_RATIO, Math.max(PUSH.MIN_RATIO, shover.weight() / target.weight()));
+    if (!target.shove(direction, PUSH.DISTANCE * ratio, shover.sessionId, now)) return;
+    shover.dropProtection();
+    if (target === leader && target.gems > 0 && target.takeBounty(now)) {
+      const loose = Math.min(
+        target.gems,
+        PUSH.LEADER_BOUNTY_MAX,
+        Math.max(PUSH.LEADER_BOUNTY_MIN, Math.ceil(target.gems * PUSH.LEADER_BOUNTY_SHARE))
+      );
+      const centerX = target.x + target.width / 2;
+      const centerY = target.y + target.height / 2;
+      target.setGems(target.gems - loose, this.worldWidth, this.worldHeight);
+      this.sprayGems(centerX, centerY, loose, now);
+    }
   }
 
   /** Whether a point is on the floor: always outside a shift; during one (or its grace period), the new floor */

@@ -1,4 +1,4 @@
-import { ARENA_RULES } from "../constants/gameConstants.js";
+import { ARENA_RULES, GEMS } from "../constants/gameConstants.js";
 
 export type Direction = "up" | "down" | "left" | "right";
 export const DIRECTIONS: readonly Direction[] = ["up", "down", "left", "right"];
@@ -64,13 +64,57 @@ export function hopsThisFrame(
   return hops;
 }
 
+/** How far one hop goes for a player this wide: HOP while small, then a little more than your own size */
+export function hopLength(width: number): number {
+  return Math.max(ARENA_RULES.HOP, width + ARENA_RULES.HOP_BEYOND_SIZE);
+}
+
+/**
+ * A hop that runs into someone stops against them instead of passing over (a small player could
+ * otherwise hop clean over another). Moves `box` back to the contact point and returns which of
+ * `others` it ran into (the first along the hop), or -1. The server and the browser both use this.
+ */
+export function stopAgainst(box: Box, direction: Direction, fromX: number, fromY: number, others: Box[]): number {
+  const path = {
+    x: Math.min(fromX, box.x),
+    y: Math.min(fromY, box.y),
+    width: box.width + Math.abs(box.x - fromX),
+    height: box.height + Math.abs(box.y - fromY),
+  };
+  let hit = -1;
+  let nearest = Infinity;
+  for (let i = 0; i < others.length; i++) {
+    const o = others[i];
+    if (!(path.x < o.x + o.width && path.x + path.width > o.x && path.y < o.y + o.height && path.y + path.height > o.y)) continue;
+    const along =
+      direction === "right" ? o.x - fromX : direction === "left" ? fromX - o.x : direction === "down" ? o.y - fromY : fromY - o.y;
+    if (along < nearest) {
+      nearest = along;
+      hit = i;
+    }
+  }
+  if (hit < 0) return -1;
+  const o = others[hit];
+  if (direction === "right") box.x = Math.max(fromX, Math.min(box.x, o.x - box.width));
+  else if (direction === "left") box.x = Math.min(fromX, Math.max(box.x, o.x + o.width));
+  else if (direction === "down") box.y = Math.max(fromY, Math.min(box.y, o.y - box.height));
+  else box.y = Math.min(fromY, Math.max(box.y, o.y + o.height));
+  return hit;
+}
+
+/** Seconds between hops while holding a direction: six a second when small, four at full size */
+export function holdRepeat(width: number): number {
+  const growth = Math.max(0, Math.min(1, (width - ARENA_RULES.PLAYER_SIZE) / (GEMS.MAX_SIZE - ARENA_RULES.PLAYER_SIZE)));
+  return ARENA_RULES.HOP_REPEAT * (1 + 0.5 * growth);
+}
+
 /**
  * Move one hop in a direction, staying inside the world. Hops grow with the player, so one hop
  * always clears your own body. The server and the browser both use this.
  */
 export function hop(player: Box, direction: Direction, worldWidth: number, worldHeight: number): void {
-  const { HOP, EDGE_MARGIN, PLAYER_SIZE } = ARENA_RULES;
-  const length = HOP * (player.width / PLAYER_SIZE);
+  const { EDGE_MARGIN } = ARENA_RULES;
+  const length = hopLength(player.width);
   if (direction === "up") player.y -= length;
   else if (direction === "down") player.y += length;
   else if (direction === "left") player.x -= length;

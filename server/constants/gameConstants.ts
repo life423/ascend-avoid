@@ -81,6 +81,10 @@ export const WORLD = {
   VIEW_AREA: 720000,
   MIN_VIEW_ASPECT: 0.6,
   MAX_VIEW_ASPECT: 1.8,
+  /** Small players see a closer view and big ones see farther: the view's width at the
+   * smallest size and at the biggest, as a share of the view VIEW_AREA gives */
+  VIEW_ZOOM_SMALL: 0.8,
+  VIEW_ZOOM_BIG: 1.3,
   OBSTACLE_COUNT: 36,
   RESPAWN_DELAY_MS: 2000,
   SPAWN_PROTECTION_MS: 1500,
@@ -95,9 +99,8 @@ export const WORLD = {
 export const GEMS = {
   FIELD_COUNT: 60, // loose gems lying around the world
   RADIUS: 9,
-  GROWTH: 0.05, // size = 1 + GROWTH x the square root of your gems...
-  MAX_SCALE: 1.5, // ...up to this (reached at 100 gems)
-  HITBOX_GROWTH: 0.5, // the box traffic hits grows only this share as much
+  SIZE_PER_ROOT: 6, // size = PLAYER_SIZE + this x the square root of your gems (26 at 1 gem, 80 at 100)...
+  MAX_SIZE: 100, // ...up to this
   SPRAY_SHARE: 0.5, // a hit sprays out this share of your gems
   SPRAY_PIECES: 24, // at most this many gems fly out; big piles make bigger gems
   SPRAY_SPEED_MIN: 260, // units per second...
@@ -116,8 +119,8 @@ export const GEMS = {
  */
 export const PUSH = {
   DISTANCE: 140, // how far a shove sends someone your own weight (about two hops)...
-  MIN_RATIO: 0.4, // ...scaled by your weight over theirs, kept within these limits
-  MAX_RATIO: 2.5,
+  MIN_RATIO: 0.3, // ...scaled by your weight over theirs, kept within these limits
+  MAX_RATIO: 3,
   FRICTION: 7, // shoved players slow by this factor a second (about half a second of sliding)
   STOP_SPEED: 40, // units per second; slower than this and the slide is over
   SAME_SHOVER_COOLDOWN_MS: 300, // one shove per hop, not one per frame of contact
@@ -178,8 +181,9 @@ export const SHIFT = {
  * typical canvas scale of 0.65.
  */
 export const ARENA_RULES = {
-  PLAYER_SIZE: 45,
-  HOP: 60, // one tap = one hop
+  PLAYER_SIZE: 20, // a new player's size; gems make you bigger (GEMS.SIZE_PER_ROOT)
+  HOP: 60, // one tap = one hop, while you're small...
+  HOP_BEYOND_SIZE: 12, // ...and once you're big, your size plus this, so a hop always clears you
   HOP_REPEAT_DELAY: 0.2, // holding a direction: the first repeat hop comes after this many seconds,
   HOP_REPEAT: 1 / 6, // then one every this many seconds (six a second)
   EDGE_MARGIN: 8, // closest you can get to the edge of the world
@@ -188,7 +192,7 @@ export const ARENA_RULES = {
   OBSTACLE_MAX_LENGTH: 108,
   OBSTACLE_SPEED: 270, // units per second; each obstacle varies by up to 20% either way
   HOP_COOLDOWN_MS: 60, // server-side limit per direction, far faster than anyone taps
-  PLAYER_HIT_INSET: 4, // a hit needs this much overlap with a player's drawn edge...
+  PLAYER_HIT_SHRINK: 0.1, // a hit needs this share of a player's size in overlap (on each side)...
   OBSTACLE_HIT_INSET: 2, // ...and this much with an obstacle's drawn shape
 } as const;
 

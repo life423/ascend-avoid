@@ -67,6 +67,7 @@ try {
     check(me().state === 'alive', 'no waiting room: you start in play');
     check(state().worldWidth === 2100 && state().worldHeight === 2100, `the world is several screens across (${state().worldWidth}×${state().worldHeight})`);
     check(me().spawnProtected === true, 'a new arrival starts protected');
+    check(me().width === 20, `and starts small (${me().width} units)`);
     check(state().obstacles.length >= 30, `traffic fills the world (${state().obstacles.length} obstacles)`);
 
     const bob = await join('Bob');
@@ -125,12 +126,13 @@ try {
 
     alice.send('test:setGems', { count: 100 });
     await waitFor(() => me().gems >= 99, 1000, 'Alice now holds 100 gems');
-    check(Math.abs(me().width - 67.5) < 0.6, `gems make you bigger, up to 1.5x (${me().width} units wide)`);
+    check(me().width >= 78 && me().width <= 80.5, `gems make you much bigger (${me().width} units wide at 100 gems)`);
     const bigX = me().x;
+    const bigWidth = me().width;
     alice.send('hop', { direction: sideways() });
     await sleep(250);
     const bigHop = Math.abs(me().x - bigX);
-    check(Math.abs(bigHop - 90) < 1.5, `and hops grow with you (${Math.round(bigHop)} units)`);
+    check(Math.abs(bigHop - (bigWidth + 12)) < 2, `and hops grow with you (${Math.round(bigHop)} units)`);
     const shedFrom = me().gems;
     await sleep(2500);
     check(me().gems < shedFrom, `very big players slowly shed gems (${shedFrom} to ${me().gems} in 2.5s)`);

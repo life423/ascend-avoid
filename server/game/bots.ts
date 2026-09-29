@@ -1,5 +1,5 @@
-import { ARENA_RULES, BOTS, PLAYER_STATE } from "../constants/gameConstants.js";
-import { hop } from "./movement.js";
+import { BOTS, PLAYER_STATE } from "../constants/gameConstants.js";
+import { hop, hopLength } from "./movement.js";
 import type { Box, Direction } from "./movement.js";
 import type { GameState } from "../schema/GameState.js";
 import type { PlayerSchema } from "../schema/PlayerSchema.js";
@@ -142,7 +142,7 @@ export class BotBrain {
 
   /** Someone lined up within a hop that the bot fancies shoving: always the leader, lighter players more often */
   private shoveTarget(bot: PlayerSchema, world: GameState): PlayerSchema | null {
-    const reach = ARENA_RULES.HOP * (bot.width / ARENA_RULES.PLAYER_SIZE);
+    const reach = hopLength(bot.width);
     const cx = bot.x + bot.width / 2;
     const cy = bot.y + bot.height / 2;
     const leader = world.leader();
