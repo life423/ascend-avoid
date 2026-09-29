@@ -85,7 +85,7 @@ export const WORLD = {
    * smallest size and at the biggest, as a share of the view VIEW_AREA gives */
   VIEW_ZOOM_SMALL: 0.8,
   VIEW_ZOOM_BIG: 1.3,
-  OBSTACLE_COUNT: 10, // lane traffic (comets and balls cross it at other angles); open space to fight and charge in
+  OBSTACLE_COUNT: 6, // lane traffic (comets and balls cross it at other angles); open space to fight and charge in
   RESPAWN_DELAY_MS: 2000,
   SPAWN_PROTECTION_MS: 1500,
   /** A respawn spot this far from all traffic is good enough */
@@ -199,7 +199,7 @@ export const TRAFFIC = {
 
 /** Round hazards that roll diagonally and bounce off the arena's walls, cutting across the lanes */
 export const BALLS = {
-  COUNT: 5,
+  COUNT: 3,
   RADIUS: 24,
   SPEED: 170, // units per second
 } as const;
@@ -210,8 +210,8 @@ export const BALLS = {
  * degrees over a whole crossing. Readable, never random.
  */
 export const COMETS = {
-  STRAIGHT: 5,
-  CURVED: 3,
+  STRAIGHT: 3,
+  CURVED: 2,
   RADIUS: 20,
   SPEED_MIN: 200, // units per second
   SPEED_MAX: 270,
