@@ -36,6 +36,8 @@ export class GameRoom extends Room<GameState> {
     if (!IS_PRODUCTION && options.testCalm === true) this.state.trafficHits = false;
     // ...and one with no bots
     if (!IS_PRODUCTION && Number.isInteger(options.testBots)) this.state.botFill = options.testBots;
+    // Moments worth telling everyone about (who shoved whom off the edge, who took the jackpot)
+    this.state.onEvent = (type, data) => this.broadcast(type, data);
 
     // Runs on the room's clock, so it stops by itself when the room is disposed
     this.setSimulationInterval(
@@ -93,6 +95,13 @@ export class GameRoom extends Room<GameState> {
         const x = player.x + player.width / 2 + (Number(data?.dx) || 0);
         const y = player.y + player.height / 2 + (Number(data?.dy) || 0);
         obstacle.placeAt(x, y, Number(data?.width) || 30, Number(data?.height) || 30, Number(data?.variant) || 0);
+      });
+      this.onMessage("test:shift", (_client, data: any) => {
+        this.state.forcePhase(String(data?.phase || "grace"), Number(data?.msLeft) || 5000, Date.now());
+      });
+      this.onMessage("test:jackpot", (client) => {
+        const player = playerOf(client);
+        if (player) this.state.dropJackpot(player.x + player.width / 2, player.y + player.height / 2, 0);
       });
       this.onMessage("test:protect", (client, data: any) => {
         playerOf(client)?.protectFor(Number(data?.ms) || 0, Date.now());

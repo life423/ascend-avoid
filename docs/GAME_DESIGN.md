@@ -77,17 +77,28 @@ lobby, no waiting, and you're back two seconds after a knockout.
 - Respawn away from hazards and the leader, choosing the best of several candidate spots.
 - About 1.5 seconds of translucent protection, which ends the moment you ram, dash or slingshot.
 
-## The shrinking arena (an event, never permanent)
+## The arena shift (an event; the arena always returns)
 
-- Every few minutes the arena contracts to about half its size over 30–45 seconds, stays
-  compressed for about 20 seconds of chaos with gems raining into the middle, then reopens. A
-  long-running server never turns into one tiny arena.
-- Warnings stack: about 15 seconds ahead, a banner and a sound, with the new boundary drawn as a
-  dashed outline on the map and minimap. While it closes, the outside turns red and pulses, a
-  countdown shows, and an arrow points to safety when it's off screen. Near or past the edge,
-  the screen edges glow red and phones vibrate where supported.
-- Outside the zone you drop a gem every half second, and after a few seconds you're knocked out,
-  so there's a chance to run back instead of dying instantly.
+Not a battle royale: nobody is eliminated and the arena never stays small.
+
+- Every few minutes the floor reshapes. A 10-second heads-up, then the new shape is shown with an
+  8-second grace period in which nobody can be hurt; gems drop onto the new floor to lead the
+  way, and the tiles about to vanish pulse red, faster as time runs out.
+- Then the rest of the arena drops away into a void for 45 seconds. Going over the edge counts as
+  a hit: half your gems burst out and you land back on the nearest floor (with none, you're
+  knocked out and back in two seconds). Gem showers land on the floor every few seconds, richer
+  as the shift goes on.
+- With 12 seconds left a jackpot crystal (20 gems) drops. Stand on it alone for 0.6 seconds to
+  claim it; a shove resets your claim, and while two or more are on it nobody's claim moves.
+- Then the whole arena returns until the next shift.
+- Shapes come from a 10x10 grid of tiles: half hand-made (plus, ring, twin islands, hourglass,
+  stairs; turned and mirrored), half generated. Every shape covers 35-65% of the arena, is all
+  connected, has room to stand around in, and is within reach of everywhere during the grace
+  period. The floor grows slower than the player count. Several candidates are tried and the
+  best is used; sometimes it's near everyone, sometimes everyone has to cross the arena.
+- Bots stay on the floor, get hungrier and pushier during a shift, and the poorer (or reckless)
+  ones go for the jackpot.
+- Whoever shoved you just before you fell or were hit gets the credit, shown to everyone.
 
 ## Always playable
 
@@ -101,5 +112,5 @@ lobby, no waiting, and you're back two seconds after a knockout.
 1. Big arena, following camera, canvas filling the page, instant respawn with protection. **Done.**
 2. Gems: size, weight, pushing, hits that spray gems, leaderboard, minimap crown. **Done.**
 3. Bots. **Done.**
-4. The shrinking event and its warnings.
+4. The arena shift and its warnings. **Done.**
 5. Dash, slingshot, Bubble Shield, new hazards.

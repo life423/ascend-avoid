@@ -24,7 +24,9 @@ async function waitFor(condition, timeoutMs, label) {
 
 async function join(name, options = {}) {
     const room = await new Client(URL).joinOrCreate('game_room', { name, ...options });
-    room.onMessage('*', () => {}); // playerJoined / playerLeft notices aren't needed here
+    // Keep every message (playerJoined, credit, jackpot...) so checks can look for them
+    room.messages = [];
+    room.onMessage('*', (type, message) => room.messages.push({ type, message }));
     return room;
 }
 
@@ -235,6 +237,101 @@ try {
     check(!(await struck((h) => ({ dx: h - 12, dy: h - 12, width: 60, height: 34, variant: 1 }))), "a diamond's empty corner over yours is a miss");
     check(await struck((h) => ({ dx: h + 3, dy: -30, width: 11, height: 60, variant: 0 }), 'right'), 'hopping through a thin block is a hit');
     alice.send('test:trafficHits', { on: false });
+
+    // The arena shift
+    const tileCenter = (i) => ({ x: (i % 10) * 210 + 105, y: Math.floor(i / 10) * 210 + 105 });
+    const centerOf = (p) => ({ x: p.x + p.width / 2, y: p.y + p.height / 2 });
+    const onFloor = (p) => {
+        const floor = state().floor;
+        if (!floor) return true;
+        const c = centerOf(p);
+        return floor[Math.min(9, Math.floor(c.y / 210)) * 10 + Math.min(9, Math.floor(c.x / 210))] === '1';
+    };
+    const placeCenter = (room, player, point) =>
+        room.send('test:moveTo', { x: point.x - player.width / 2, y: point.y - player.height / 2 });
+    check(state().shiftPhase === 'normal' && state().phaseEndsAt >= 60000, `the arena starts whole, with the first shift ${Math.round(state().phaseEndsAt / 1000)}s in`);
+    alice.send('test:shift', { phase: 'grace', msLeft: 5000 });
+    await waitFor(() => state().shiftPhase === 'grace' && state().floor.length === 100, 1000, 'a shift starts by showing the new floor');
+    const floor = state().floor;
+    const floorTiles = [...floor].flatMap((c, i) => (c === '1' ? [i] : []));
+    check(floorTiles.length >= 35 && floorTiles.length <= 65, `it covers ${floorTiles.length}% of the arena`);
+    const reached = new Set([floorTiles[0]]);
+    for (const queue = [floorTiles[0]]; queue.length > 0; ) {
+        const i = queue.pop();
+        for (const j of [i - 10, i + 10, i % 10 > 0 ? i - 1 : -1, i % 10 < 9 ? i + 1 : -1]) {
+            if (j >= 0 && j < 100 && floor[j] === '1' && !reached.has(j)) {
+                reached.add(j);
+                queue.push(j);
+            }
+        }
+    }
+    check(reached.size === floorTiles.length, 'and all of it connects');
+    let dropping = 0;
+    state().gems.forEach((gem) => {
+        if (gem.falling && onFloor({ x: gem.x, y: gem.y, width: 0, height: 0 })) dropping++;
+    });
+    check(dropping >= 10, `gems drop onto the new floor (${dropping})`);
+    alice.send('test:trafficHits', { on: true });
+    alice.send('test:setGems', { count: 4 });
+    alice.send('test:placeObstacle', { dx: -30, dy: -17, width: 60, height: 34, variant: 0 });
+    await sleep(300);
+    check(!me().recovering && me().state === 'alive', 'nothing can hurt you during the grace period');
+    alice.send('test:placeObstacle', { dx: 0, dy: 700, width: 20, height: 20 });
+    alice.send('test:trafficHits', { on: false });
+    placeCenter(alice, me(), tileCenter(floorTiles[0]));
+    placeCenter(bob, bobState(), tileCenter(floorTiles[floorTiles.length - 1]));
+    await waitFor(() => state().shiftPhase === 'shift', 6000, 'then the rest of the arena drops away');
+    check(me().state === 'alive' && !me().recovering && onFloor(me()), 'players on the new floor are fine');
+
+    const voidTile = floor.indexOf('0');
+    alice.send('test:setGems', { count: 10 });
+    await sleep(150);
+    placeCenter(alice, me(), tileCenter(voidTile));
+    await waitFor(() => me().recovering, 1000, 'stepping over the edge counts as a hit');
+    check(me().gems <= 6, `half your gems burst out (${me().gems} left)`);
+    check(onFloor(me()), 'and you land back on the floor');
+    await waitFor(() => !me().recovering, 2000, 'Alice recovers');
+    alice.send('test:setGems', { count: 0 });
+    await sleep(150);
+    placeCenter(alice, me(), tileCenter(voidTile));
+    await waitFor(() => me().state === 'dead', 1000, 'with no gems, going over the edge knocks you out');
+    await waitFor(() => me().state === 'alive', 3500, 'and you come back');
+    check(onFloor(me()), 'on the floor');
+
+    const edge = floorTiles.find((i) => i % 10 < 9 && floor[i + 1] === '0');
+    await waitFor(() => !me().spawnProtected && !bobState().spawnProtected && !bobState().recovering, 3000, 'both players are ready');
+    alice.send('test:setGems', { count: 6 });
+    bob.send('test:setGems', { count: 0 });
+    await sleep(150);
+    const tileRight = ((edge % 10) + 1) * 210;
+    const rowMiddle = Math.floor(edge / 10) * 210 + 105;
+    alice.send('test:moveTo', { x: tileRight - me().width - 4, y: rowMiddle - me().height / 2 });
+    bob.send('test:moveTo', { x: tileRight - me().width - 4 - bobState().width - 20, y: rowMiddle - bobState().height / 2 });
+    await sleep(250);
+    bob.messages.length = 0;
+    bob.send('hop', { direction: 'right' });
+    await waitFor(() => bob.messages.some((m) => m.type === 'credit' && m.message.how === 'edge'), 2000, 'shoving someone off the edge is credited');
+    const credit = bob.messages.find((m) => m.type === 'credit')?.message;
+    check(credit?.by === 'Bob' && credit?.target === 'Alice', `everyone sees who did it (${credit?.by} shoved ${credit?.target})`);
+
+    await waitFor(() => !me().recovering && !me().sliding, 2000, 'Alice is steady');
+    const spot = tileCenter(floorTiles[Math.floor(floorTiles.length / 2)]);
+    placeCenter(alice, me(), spot);
+    placeCenter(bob, bobState(), { x: spot.x + 10, y: spot.y });
+    await sleep(250);
+    const aliceBefore = me().gems;
+    alice.messages.length = 0;
+    alice.send('test:jackpot');
+    await sleep(1200);
+    check(state().jackpotOn && state().jackpotProgress === 0, 'with two players on the jackpot, nobody claims it');
+    placeCenter(bob, bobState(), tileCenter(floorTiles[0]));
+    await waitFor(() => !state().jackpotOn && me().gems >= aliceBefore + 20, 2000, 'alone on it, you claim the jackpot (+20)');
+    check(alice.messages.some((m) => m.type === 'jackpot' && m.message.by === 'Alice'), 'and everyone hears about it');
+
+    alice.send('test:shift', { phase: 'shift', msLeft: 800 });
+    await waitFor(() => state().shiftPhase === 'normal' && state().floor === '', 3000, 'after a while the whole arena returns');
+    const untilNext = Math.round((state().phaseEndsAt - state().time) / 1000);
+    check(untilNext > 100, `with the next shift a couple of minutes away (${untilNext}s)`);
 
     // Leaving and joining
     await bob.leave();

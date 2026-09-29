@@ -146,6 +146,33 @@ export const BOTS = {
 } as const;
 
 /**
+ * The arena shift: every few minutes the floor reshapes. The new shape is shown first, with a
+ * grace period in which nobody can be hurt; then the rest of the arena drops away into a void
+ * (going over the edge counts as a hit) until the whole arena returns.
+ */
+export const SHIFT = {
+  GRID: 10, // shapes are drawn on a 10x10 grid of tiles (210 units each)
+  FIRST_AFTER_MS: 90000, // the first shift comes this long after a world starts...
+  EVERY_MS: 150000, // ...then this long after the arena returns
+  GRACE_MS: 8000, // the new shape is shown, and nobody can be hurt while they get onto it
+  SHIFT_MS: 45000, // then the rest drops away for this long, and the whole arena returns
+  FLOOR_SHARE_MIN: 0.35, // the floor covers 35-65% of the arena...
+  FLOOR_SHARE_MAX: 0.65,
+  BASE_SHARE: 0.42, // ...about this much with six players, growing slower than the player count
+  MAX_REACH_TILES: 5, // every spot is within this many tiles of the new floor
+  CANDIDATES: 6, // shapes tried each time; the best one is used
+  GRACE_GEMS: 12, // gems that drop onto the new floor during the grace period
+  SHOWER_EVERY_MS: 4000, // gem showers during the shift, richer as it goes on
+  SHOWER_GEMS: 6,
+  DROP_MS: 800, // a dropping gem can't be picked up until it lands
+  JACKPOT_VALUE: 20,
+  JACKPOT_DROPS_WITH_MS_LEFT: 12000,
+  JACKPOT_CLAIM_MS: 600, // stand on it alone this long to claim it (a shove resets it; two on it stalls it)
+  JACKPOT_RADIUS: 26,
+  CREDIT_MS: 2500, // a hit or fall this soon after a shove is credited to the shover
+} as const;
+
+/**
  * Sizes and speeds in world units, matching solo play's feel. Solo measures in screen pixels (a
  * 30px player, ~39px hops, obstacles 22px thick moving 2.5-3.5px a frame); these are those at a
  * typical canvas scale of 0.65.
@@ -245,6 +272,7 @@ export const GAME_CONSTANTS = {
   GEMS,
   PUSH,
   BOTS,
+  SHIFT,
   KEYS,
   DEVICE_SETTINGS
 } as const;

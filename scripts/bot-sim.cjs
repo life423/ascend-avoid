@@ -16,7 +16,9 @@ for (let i = 0; i < SECONDS * 30; i++) {
   state.update(1 / 30, now);
   state.players.forEach((p, id) => {
     if (id === 'host') return;
-    const s = stats.get(id) || { name: p.name + (p.isBot ? '' : ' (idle)'), hits: 0, knockouts: 0, mostGems: 0, gems: 0 };
+    const s = stats.get(id) || { name: p.name + (p.isBot ? '' : ' (idle)'), hits: 0, knockouts: 0, shiftHits: 0, mostGems: 0, gems: 0 };
+    const hit = (p.recovering && !(last.get(id) || {}).recovering) || (p.state !== 'alive' && (last.get(id) || { alive: true }).alive);
+    if (hit && state.shiftPhase === 'shift') s.shiftHits++;
     const b = last.get(id) || { alive: true, recovering: false };
     if (p.recovering && !b.recovering) s.hits++;
     if (p.state !== 'alive' && b.alive) s.knockouts++;
@@ -27,6 +29,9 @@ for (let i = 0; i < SECONDS * 30; i++) {
   });
 }
 const perMin = (n) => (n / (SECONDS / 60)).toFixed(1).padStart(4);
+const shiftSeconds = Math.max(1, Math.floor((SECONDS - 98) / 203) + (SECONDS > 98 ? 1 : 0)) * 45;
 for (const s of stats.values()) {
-  console.log(`${s.name.padEnd(12)} hits/min ${perMin(s.hits + s.knockouts)}  knockouts/min ${perMin(s.knockouts)}  most gems ${String(s.mostGems).padStart(3)}  at the end ${s.gems}`);
+  const normalPerMin = ((s.hits + s.knockouts - s.shiftHits) / ((SECONDS - shiftSeconds) / 60)).toFixed(1).padStart(4);
+  const shiftPerMin = (s.shiftHits / (shiftSeconds / 60)).toFixed(1).padStart(4);
+  console.log(`${s.name.padEnd(12)} hits/min normally ${normalPerMin}, during shifts ${shiftPerMin}  most gems ${String(s.mostGems).padStart(3)}  at the end ${s.gems}`);
 }

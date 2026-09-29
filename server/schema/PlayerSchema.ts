@@ -144,6 +144,11 @@ class PlayerSchema extends Schema {
     return true;
   }
 
+  /** Who shoved this player within the last `withinMs` (their session id), if anyone */
+  shovedBy(now: number, withinMs: number): string | null {
+    return this.lastShoveBy && now - this.lastShoveAt <= withinMs ? this.lastShoveBy : null;
+  }
+
   /** Whether shoving this player, as leader, can knock gems loose right now (starts the cooldown if so) */
   takeBounty(now: number): boolean {
     if (now < this.bountyAt) return false;
