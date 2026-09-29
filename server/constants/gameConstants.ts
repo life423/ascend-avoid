@@ -85,7 +85,7 @@ export const WORLD = {
    * smallest size and at the biggest, as a share of the view VIEW_AREA gives */
   VIEW_ZOOM_SMALL: 0.8,
   VIEW_ZOOM_BIG: 1.3,
-  OBSTACLE_COUNT: 14, // lane traffic (comets and balls cross it at other angles)
+  OBSTACLE_COUNT: 10, // lane traffic (comets and balls cross it at other angles); open space to fight and charge in
   RESPAWN_DELAY_MS: 2000,
   SPAWN_PROTECTION_MS: 1500,
   /** A respawn spot this far from all traffic is good enough */
@@ -134,9 +134,9 @@ export const PUSH = {
    * under GEMS.SURVIVE_AT gems is knocked out. Same immunity as a slingshot hit.
    */
   BODY_CHECK_TIERS: [
-    { at: 2, shove: 300, spill: 0.2 },
+    { at: 2, shove: 300, spill: 0.25 },
     { at: 1.5, shove: 220, spill: 0.12 },
-    { at: 1.2, shove: 140, spill: 0.06 },
+    { at: 1.25, shove: 160, spill: 0 }, // just a harder shove
   ],
   BODY_CHECK_SPEED: 0.5,
   BODY_CHECK_KO_AT: 2,
@@ -193,8 +193,8 @@ export const BOTS = {
  */
 export const TRAFFIC = {
   LANES: 14, // in each direction (across and down), so lanes are 150 units apart
-  MIN_GAP: 150, // between obstacles in the same lane
-  STAGGER: 110, // between an entering obstacle and those in the lanes beside it
+  MIN_GAP: 220, // between obstacles in the same lane
+  STAGGER: 150, // between an entering obstacle and those in the lanes beside it
 } as const;
 
 /** Round hazards that roll diagonally and bounce off the arena's walls, cutting across the lanes */
@@ -210,8 +210,8 @@ export const BALLS = {
  * degrees over a whole crossing. Readable, never random.
  */
 export const COMETS = {
-  STRAIGHT: 8,
-  CURVED: 5,
+  STRAIGHT: 5,
+  CURVED: 3,
   RADIUS: 20,
   SPEED_MIN: 200, // units per second
   SPEED_MAX: 270,

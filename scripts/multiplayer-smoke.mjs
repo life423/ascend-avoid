@@ -69,7 +69,7 @@ try {
     check(me().spawnProtected === true, 'a new arrival starts protected');
     check(me().width === 20, `and starts small (${me().width} units)`);
     const hazards = state().obstacles.length + (state().comets?.length ?? 0) + (state().balls?.length ?? 0);
-    check(hazards >= 30, `traffic fills the world (${state().obstacles.length} in lanes, ${state().comets?.length} comets, ${state().balls?.length} balls)`);
+    check(hazards >= 20, `traffic fills the world (${state().obstacles.length} in lanes, ${state().comets?.length} comets, ${state().balls?.length} balls)`);
 
     const bob = await join('Bob');
     check(bob.roomId === alice.roomId, 'a second visitor joins the same world');
@@ -140,7 +140,7 @@ try {
     check(state().balls?.length === 5, `balls roll around the arena (${state().balls?.length})`);
     const comets = [];
     state().comets?.forEach((c) => comets.push({ vx: c.vx, vy: c.vy, turn: c.turn }));
-    check(comets.length === 13, `comets fly across the arena (${comets.length})`);
+    check(comets.length === 8, `comets fly across the arena (${comets.length})`);
     const slanted = comets.filter((c) => {
         const speed = Math.hypot(c.vx, c.vy);
         return Math.abs(c.vx) > speed * 0.35 && Math.abs(c.vy) > speed * 0.35;
@@ -155,7 +155,7 @@ try {
         const change = Math.atan2(c.vy, c.vx) - cometsBefore[i].heading;
         bends.push(Math.abs(Math.atan2(Math.sin(change), Math.cos(change))));
     });
-    check(bends.length >= 3 && bends.every((b) => b > 0.004 && b < 0.2), `some bend gently as they fly (${bends.map((b) => (b * 180 / Math.PI).toFixed(1) + '°').join(', ')} in 0.6s)`);
+    check(bends.length >= 2 && bends.every((b) => b > 0.004 && b < 0.2), `some bend gently as they fly (${bends.map((b) => (b * 180 / Math.PI).toFixed(1) + '°').join(', ')} in 0.6s)`);
     let diagonal = 0;
     const ballsBefore = [];
     state().balls.forEach((b) => {

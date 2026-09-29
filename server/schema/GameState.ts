@@ -309,7 +309,8 @@ class GameState extends Schema {
       const moving = attacker.velocity();
       if ((moving.x * dx + moving.y * dy) / distance < PUSH.BODY_CHECK_SPEED * moveSpeed(attacker.width)) return false;
     }
-    if (!victim.takeBounty(now)) return false;
+    // The lowest tier only shoves harder; the bigger tiers strip gems, once per immunity window
+    if (tier.spill > 0 && !victim.takeBounty(now)) return false;
     this.impact(attacker, victim);
     if (ratio >= PUSH.BODY_CHECK_KO_AT && victim.gems < GEMS.SURVIVE_AT) {
       this.knockOutWithGems(victim, now);
@@ -317,7 +318,7 @@ class GameState extends Schema {
       return true;
     }
     if (!dashed) victim.shoveAlong(dx, dy, tier.shove, attacker.sessionId, now, "crush");
-    const loose = Math.min(victim.gems, PUSH.BODY_CHECK_MAX_SPILL, Math.max(1, Math.ceil(victim.gems * tier.spill)));
+    const loose = tier.spill > 0 ? Math.min(victim.gems, PUSH.BODY_CHECK_MAX_SPILL, Math.max(1, Math.ceil(victim.gems * tier.spill))) : 0;
     if (loose > 0) {
       const centerX = victim.x + victim.width / 2;
       const centerY = victim.y + victim.height / 2;
