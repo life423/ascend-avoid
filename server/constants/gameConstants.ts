@@ -81,6 +81,10 @@ export const WORLD = {
   VIEW_AREA: 720000,
   MIN_VIEW_ASPECT: 0.6,
   MAX_VIEW_ASPECT: 1.8,
+  /** Small players see a closer view and big ones see farther: the view's width at the
+   * smallest size and at the biggest, as a share of the view VIEW_AREA gives */
+  VIEW_ZOOM_SMALL: 0.8,
+  VIEW_ZOOM_BIG: 1.3,
   OBSTACLE_COUNT: 36,
   RESPAWN_DELAY_MS: 2000,
   SPAWN_PROTECTION_MS: 1500,
@@ -95,9 +99,8 @@ export const WORLD = {
 export const GEMS = {
   FIELD_COUNT: 60, // loose gems lying around the world
   RADIUS: 9,
-  GROWTH: 0.05, // size = 1 + GROWTH x the square root of your gems...
-  MAX_SCALE: 1.5, // ...up to this (reached at 100 gems)
-  HITBOX_GROWTH: 0.5, // the box traffic hits grows only this share as much
+  SIZE_PER_ROOT: 6, // size = PLAYER_SIZE + this x the square root of your gems (26 at 1 gem, 80 at 100)...
+  MAX_SIZE: 100, // ...up to this
   SPRAY_SHARE: 0.5, // a hit sprays out this share of your gems
   SPRAY_PIECES: 24, // at most this many gems fly out; big piles make bigger gems
   SPRAY_SPEED_MIN: 260, // units per second...
@@ -105,7 +108,8 @@ export const GEMS = {
   SPRAY_FRICTION: 2.5, // ...slowing by this factor a second, so they travel about 100-200 units
   SPRAY_PICKUP_DELAY_MS: 350, // they fly out before anyone can grab them
   SPRAY_LIFETIME_MS: 15000, // uncollected sprayed gems vanish
-  HIT_RECOVERY_MS: 1000, // after a hit, traffic passes through you for this long
+  HIT_RECOVERY_MS: 800, // after a hit you skid and blink: traffic passes through you and you can't hop
+  OWNER_PICKUP_DELAY_MS: 1500, // your own spilled gems wait this long for you, so whoever caused it gets first crack
   DECAY_START: 50, // above this many gems you slowly shed them (one a second at twice this)
   MAX_GEMS: 300, // cap on gems in the world at once
 } as const;
@@ -116,8 +120,8 @@ export const GEMS = {
  */
 export const PUSH = {
   DISTANCE: 140, // how far a shove sends someone your own weight (about two hops)...
-  MIN_RATIO: 0.4, // ...scaled by your weight over theirs, kept within these limits
-  MAX_RATIO: 2.5,
+  MIN_RATIO: 0.3, // ...scaled by your weight over theirs, kept within these limits
+  MAX_RATIO: 3,
   FRICTION: 7, // shoved players slow by this factor a second (about half a second of sliding)
   STOP_SPEED: 40, // units per second; slower than this and the slide is over
   SAME_SHOVER_COOLDOWN_MS: 300, // one shove per hop, not one per frame of contact
@@ -125,6 +129,8 @@ export const PUSH = {
   LEADER_BOUNTY_MIN: 2,
   LEADER_BOUNTY_MAX: 8,
   LEADER_BOUNTY_COOLDOWN_MS: 1500, // ...at most this often
+  SKID_BODY_LENGTHS: 2, // a hit that costs gems sends you skidding this many of your own sizes...
+  SKID_MIN: 60, // ...and at least this far
 } as const;
 
 /**
@@ -146,13 +152,59 @@ export const BOTS = {
 } as const;
 
 /**
+ * The arena shift: every few minutes the floor reshapes. The new shape is shown first, with a
+ * grace period in which nobody can be hurt; then the rest of the arena drops away into a void
+ * (going over the edge counts as a hit) until the whole arena returns.
+ */
+/**
+ * Traffic runs in lanes, Frogger-style: 14 across and 14 down, each with its own direction and
+ * speed (reshuffled at every arena shift). Obstacles in a lane keep a gap wider than the biggest
+ * player, and lanes side by side are staggered, so traffic never lines up into a wall.
+ */
+export const TRAFFIC = {
+  LANES: 14, // in each direction (across and down), so lanes are 150 units apart
+  MIN_GAP: 150, // between obstacles in the same lane
+  STAGGER: 110, // between an entering obstacle and those in the lanes beside it
+} as const;
+
+/** Round hazards that roll diagonally and bounce off the arena's walls, cutting across the lanes */
+export const BALLS = {
+  COUNT: 5,
+  RADIUS: 24,
+  SPEED: 170, // units per second
+} as const;
+
+export const SHIFT = {
+  GRID: 10, // shapes are drawn on a 10x10 grid of tiles (210 units each)
+  FIRST_AFTER_MS: 90000, // the first shift comes this long after a world starts...
+  EVERY_MS: 150000, // ...then this long after the arena returns
+  GRACE_MS: 8000, // the new shape is shown, and nobody can be hurt while they get onto it
+  SHIFT_MS: 45000, // then the rest drops away for this long, and the whole arena returns
+  FLOOR_SHARE_MIN: 0.35, // the floor covers 35-65% of the arena...
+  FLOOR_SHARE_MAX: 0.65,
+  BASE_SHARE: 0.42, // ...about this much with six players, growing slower than the player count
+  MAX_REACH_TILES: 5, // every spot is within this many tiles of the new floor
+  CANDIDATES: 6, // shapes tried each time; the best one is used
+  GRACE_GEMS: 12, // gems that drop onto the new floor during the grace period
+  SHOWER_EVERY_MS: 4000, // gem showers during the shift, richer as it goes on
+  SHOWER_GEMS: 6,
+  DROP_MS: 800, // a dropping gem can't be picked up until it lands
+  JACKPOT_VALUE: 20,
+  JACKPOT_DROPS_WITH_MS_LEFT: 12000,
+  JACKPOT_CLAIM_MS: 600, // stand on it alone this long to claim it (a shove resets it; two on it stalls it)
+  JACKPOT_RADIUS: 26,
+  CREDIT_MS: 2500, // a hit or fall this soon after a shove is credited to the shover
+} as const;
+
+/**
  * Sizes and speeds in world units, matching solo play's feel. Solo measures in screen pixels (a
  * 30px player, ~39px hops, obstacles 22px thick moving 2.5-3.5px a frame); these are those at a
  * typical canvas scale of 0.65.
  */
 export const ARENA_RULES = {
-  PLAYER_SIZE: 45,
-  HOP: 60, // one tap = one hop
+  PLAYER_SIZE: 20, // a new player's size; gems make you bigger (GEMS.SIZE_PER_ROOT)
+  HOP: 60, // one tap = one hop, while you're small...
+  HOP_BEYOND_SIZE: 12, // ...and once you're big, your size plus this, so a hop always clears you
   HOP_REPEAT_DELAY: 0.2, // holding a direction: the first repeat hop comes after this many seconds,
   HOP_REPEAT: 1 / 6, // then one every this many seconds (six a second)
   EDGE_MARGIN: 8, // closest you can get to the edge of the world
@@ -161,7 +213,7 @@ export const ARENA_RULES = {
   OBSTACLE_MAX_LENGTH: 108,
   OBSTACLE_SPEED: 270, // units per second; each obstacle varies by up to 20% either way
   HOP_COOLDOWN_MS: 60, // server-side limit per direction, far faster than anyone taps
-  PLAYER_HIT_INSET: 4, // a hit needs this much overlap with a player's drawn edge...
+  PLAYER_HIT_SHRINK: 0.1, // a hit needs this share of a player's size in overlap (on each side)...
   OBSTACLE_HIT_INSET: 2, // ...and this much with an obstacle's drawn shape
 } as const;
 
@@ -245,6 +297,9 @@ export const GAME_CONSTANTS = {
   GEMS,
   PUSH,
   BOTS,
+  TRAFFIC,
+  BALLS,
+  SHIFT,
   KEYS,
   DEVICE_SETTINGS
 } as const;

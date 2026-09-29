@@ -27,17 +27,26 @@ lobby, no waiting, and you're back two seconds after a knockout.
 
 ## Hazards
 
-- Traffic crosses the arena in all four directions.
+- Traffic crosses the arena in all four directions, in lanes (14 across, 14 down, 150 units
+  apart), each with its own direction and speed, reshuffled at every arena shift. Obstacles in a
+  lane keep a gap wider than the biggest player, and neighboring lanes are staggered so traffic
+  never lines up into a wall; an obstacle waits out of sight until a lane is safe to enter.
 - The spawner always leaves gaps wide enough for the biggest possible player.
+- Five balls roll diagonally and bounce off the arena's walls, cutting across the lanes; hits
+  use their true circle.
 - Later: bouncing balls, spiky mines you can shove people into, and narrow gaps between posts that
   only small players fit through.
 
 ## Gems
 
 - Scattered around the arena. They're your score and your weight.
-- More gems make you bigger (square-root curve, capped around 1.5×; the hitbox grows less than
-  the sprite), heavier (harder to push, and you push harder) and slower when holding a direction
-  (six hops a second when small, about four at the cap).
+- Everyone starts small (20 units) and grows with the square root of their gems: 26 at one gem,
+  50 at 25, 80 at 100, capped at 100. Size changes pop. What traffic hits is what you see (minus
+  a sliver of grace), so being big means being a bigger target. Bigger players are heavier
+  (harder to push, and they push harder) and hold a slower rhythm (six hops a second when small,
+  four at full size); hops are 60 units while small, then a little more than your own size.
+- The camera widens as you grow: small players see a closer view, big players about 60% more
+  (about 30% farther than the base view).
 - Very big players slowly shed gems, like Agar's mass decay, so sitting on a pile isn't safe.
 - A live top-5 leaderboard; the leader wears a crown on everyone's minimap.
 
@@ -45,6 +54,10 @@ lobby, no waiting, and you're back two seconds after a knockout.
 
 - A hit sprays out half your gems, which burst physically outward and scatter, so everyone
   nearby abandons what they were doing and dives into the pile. This is a signature moment.
+- A hit that costs gems sends you skidding about two body-lengths (along a car's path, away
+  from a ball, or back onto the floor after a fall) and you can't hop for 0.8 seconds. Your own
+  spilled gems wait 1.5 seconds before you can grab them back, so whoever shoved you (or anyone
+  quick) gets first crack. A skid never carries you off an edge.
 - You're only knocked out when you're hit with no gems left. Knocked out, you're back in about
   two seconds.
 
@@ -77,17 +90,28 @@ lobby, no waiting, and you're back two seconds after a knockout.
 - Respawn away from hazards and the leader, choosing the best of several candidate spots.
 - About 1.5 seconds of translucent protection, which ends the moment you ram, dash or slingshot.
 
-## The shrinking arena (an event, never permanent)
+## The arena shift (an event; the arena always returns)
 
-- Every few minutes the arena contracts to about half its size over 30–45 seconds, stays
-  compressed for about 20 seconds of chaos with gems raining into the middle, then reopens. A
-  long-running server never turns into one tiny arena.
-- Warnings stack: about 15 seconds ahead, a banner and a sound, with the new boundary drawn as a
-  dashed outline on the map and minimap. While it closes, the outside turns red and pulses, a
-  countdown shows, and an arrow points to safety when it's off screen. Near or past the edge,
-  the screen edges glow red and phones vibrate where supported.
-- Outside the zone you drop a gem every half second, and after a few seconds you're knocked out,
-  so there's a chance to run back instead of dying instantly.
+Not a battle royale: nobody is eliminated and the arena never stays small.
+
+- Every few minutes the floor reshapes. A 10-second heads-up, then the new shape is shown with an
+  8-second grace period in which nobody can be hurt; gems drop onto the new floor to lead the
+  way, and the tiles about to vanish pulse red, faster as time runs out.
+- Then the rest of the arena drops away into a void for 45 seconds. Going over the edge counts as
+  a hit: half your gems burst out and you land back on the nearest floor (with none, you're
+  knocked out and back in two seconds). Gem showers land on the floor every few seconds, richer
+  as the shift goes on.
+- With 12 seconds left a jackpot crystal (20 gems) drops. Stand on it alone for 0.6 seconds to
+  claim it; a shove resets your claim, and while two or more are on it nobody's claim moves.
+- Then the whole arena returns until the next shift.
+- Shapes come from a 10x10 grid of tiles: half hand-made (plus, ring, twin islands, hourglass,
+  stairs; turned and mirrored), half generated. Every shape covers 35-65% of the arena, is all
+  connected, has room to stand around in, and is within reach of everywhere during the grace
+  period. The floor grows slower than the player count. Several candidates are tried and the
+  best is used; sometimes it's near everyone, sometimes everyone has to cross the arena.
+- Bots stay on the floor, get hungrier and pushier during a shift, and the poorer (or reckless)
+  ones go for the jackpot.
+- Whoever shoved you just before you fell or were hit gets the credit, shown to everyone.
 
 ## Always playable
 
@@ -101,5 +125,5 @@ lobby, no waiting, and you're back two seconds after a knockout.
 1. Big arena, following camera, canvas filling the page, instant respawn with protection. **Done.**
 2. Gems: size, weight, pushing, hits that spray gems, leaderboard, minimap crown. **Done.**
 3. Bots. **Done.**
-4. The shrinking event and its warnings.
+4. The arena shift and its warnings. **Done.**
 5. Dash, slingshot, Bubble Shield, new hazards.

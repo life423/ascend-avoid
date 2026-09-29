@@ -7,8 +7,8 @@ const { ARENA_RULES } = GAME_CONSTANTS;
 
 
 /**
- * Traffic crossing the world. Each obstacle drives straight across (right, left, down or up)
- * and re-launches from a random edge once it has left.
+ * Traffic crossing the world. Each obstacle drives straight along its lane (see TRAFFIC and
+ * GameState.launchObstacle) and enters a lane again once it has left the world.
  */
 class ObstacleSchema extends Schema {
   x: number;
@@ -20,6 +20,8 @@ class ObstacleSchema extends Schema {
   /** Velocity in units per second (browsers use it to draw traffic in step with the server) */
   vx = 0;
   vy = 0;
+  /** Server-only: which traffic lane it's in (-1 while waiting for a safe lane, or placed by hand) */
+  lane = -1;
 
   constructor() {
     super();
@@ -30,29 +32,26 @@ class ObstacleSchema extends Schema {
     this.variant = 0;
   }
 
-  /**
-   * Send the obstacle across the world from a random edge: horizontal ones are long and flat,
-   * vertical ones tall and thin. With `spread` it starts somewhere along its path instead, so a
-   * new world doesn't begin with every obstacle at an edge.
-   */
-  launch(worldWidth: number, worldHeight: number, spread = false): void {
-    const { OBSTACLE_MIN_LENGTH, OBSTACLE_MAX_LENGTH, OBSTACLE_THICKNESS, OBSTACLE_SPEED } = ARENA_RULES;
-    const length = Math.round(OBSTACLE_MIN_LENGTH + Math.random() * (OBSTACLE_MAX_LENGTH - OBSTACLE_MIN_LENGTH));
-    const speed = OBSTACLE_SPEED * (0.8 + Math.random() * 0.4);
-    const direction = Math.floor(Math.random() * 4); // 0 right, 1 left, 2 down, 3 up
-    const horizontal = direction < 2;
-    this.width = horizontal ? length : OBSTACLE_THICKNESS;
-    this.height = horizontal ? OBSTACLE_THICKNESS : length;
-    this.vx = direction === 0 ? speed : direction === 1 ? -speed : 0;
-    this.vy = direction === 2 ? speed : direction === 3 ? -speed : 0;
-    if (horizontal) {
-      this.y = Math.round(Math.random() * (worldHeight - this.height));
-      this.x = spread ? Math.random() * (worldWidth - this.width) : direction === 0 ? -this.width : worldWidth;
-    } else {
-      this.x = Math.round(Math.random() * (worldWidth - this.width));
-      this.y = spread ? Math.random() * (worldHeight - this.height) : direction === 2 ? -this.height : worldHeight;
-    }
+  /** Put the obstacle in a traffic lane: long along the lane, `start` along it and centered on `across` */
+  enter(lane: number, horizontal: boolean, direction: number, speed: number, start: number, length: number, across: number): void {
+    const thickness = ARENA_RULES.OBSTACLE_THICKNESS;
+    this.lane = lane;
+    this.width = horizontal ? length : thickness;
+    this.height = horizontal ? thickness : length;
+    this.vx = horizontal ? direction * speed : 0;
+    this.vy = horizontal ? 0 : direction * speed;
+    this.x = horizontal ? start : Math.round(across - thickness / 2);
+    this.y = horizontal ? Math.round(across - thickness / 2) : start;
     this.variant = Math.floor(Math.random() * 3);
+  }
+
+  /** Out of sight, waiting for a lane where it can enter safely */
+  park(): void {
+    this.lane = -1;
+    this.vx = 0;
+    this.vy = 0;
+    this.x = -1000;
+    this.y = -1000;
   }
 
   /** Move along; returns false once the obstacle has left the world */
@@ -97,6 +96,7 @@ class ObstacleSchema extends Schema {
     this.variant = variant;
     this.vx = 0;
     this.vy = 0;
+    this.lane = -1;
   }
 }
 

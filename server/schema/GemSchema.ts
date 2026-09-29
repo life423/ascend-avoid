@@ -3,7 +3,7 @@ const { Schema, type } = schema;
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 import type { Box } from "../game/movement.js";
 
-const { GEMS } = GAME_CONSTANTS;
+const { GEMS, SHIFT } = GAME_CONSTANTS;
 
 /** Sprayed gems blink for this long before they vanish */
 const EXPIRY_WARNING_MS = 3000;
@@ -20,9 +20,14 @@ class GemSchema extends Schema {
   value: number;
   /** About to vanish: drawn blinking */
   expiring: boolean;
+  /** Still dropping from the sky: drawn as a shadow, and can't be picked up until it lands */
+  falling: boolean;
 
   /** Server-only */
   sprayed = false;
+  /** Who spilled it: they can't grab it back until ownerPickupAt */
+  private owner = "";
+  private ownerPickupAt = 0;
   private pickupAt = 0;
   private expiresAt = 0;
   private px = 0;
@@ -38,11 +43,32 @@ class GemSchema extends Schema {
     this.y = Math.round(y);
     this.value = value;
     this.expiring = false;
+    this.falling = false;
+  }
+
+  /** Drop from the sky onto a spot: it can be picked up once it lands, and vanishes if nobody does */
+  drop(now: number): void {
+    this.sprayed = true;
+    this.falling = true;
+    this.pickupAt = now + SHIFT.DROP_MS;
+    this.expiresAt = now + GEMS.SPRAY_LIFETIME_MS;
+  }
+
+  /** Move straight to a spot, stopping any slide */
+  moveTo(x: number, y: number): void {
+    this.px = x;
+    this.py = y;
+    this.vx = 0;
+    this.vy = 0;
+    this.x = Math.round(x);
+    this.y = Math.round(y);
   }
 
   /** Burst outward from a hit: it slides out, can't be grabbed for a moment, and vanishes if nobody does */
-  spray(angle: number, speed: number, now: number): void {
+  spray(angle: number, speed: number, now: number, owner = ""): void {
     this.sprayed = true;
+    this.owner = owner;
+    this.ownerPickupAt = now + GEMS.OWNER_PICKUP_DELAY_MS;
     this.vx = Math.cos(angle) * speed;
     this.vy = Math.sin(angle) * speed;
     this.pickupAt = now + GEMS.SPRAY_PICKUP_DELAY_MS;
@@ -51,6 +77,7 @@ class GemSchema extends Schema {
 
   /** Slide, bouncing off the world's walls; returns false once a sprayed gem has expired */
   update(deltaTime: number, worldWidth: number, worldHeight: number, now: number): boolean {
+    if (this.falling && now >= this.pickupAt) this.falling = false;
     if (!this.sprayed) return true;
     if (now >= this.expiresAt) return false;
     if (this.vx !== 0 || this.vy !== 0) {
@@ -89,8 +116,9 @@ class GemSchema extends Schema {
   }
 
   /** Whether a player's box touches this gem, once it can be picked up */
-  touches(box: Box, now: number): boolean {
+  touches(box: Box, now: number, who = ""): boolean {
     if (now < this.pickupAt) return false;
+    if (who && who === this.owner && now < this.ownerPickupAt) return false;
     const r = GEMS.RADIUS;
     return this.x > box.x - r && this.x < box.x + box.width + r && this.y > box.y - r && this.y < box.y + box.height + r;
   }
@@ -101,5 +129,6 @@ type("number")(GemSchema.prototype, "x");
 type("number")(GemSchema.prototype, "y");
 type("number")(GemSchema.prototype, "value");
 type("boolean")(GemSchema.prototype, "expiring");
+type("boolean")(GemSchema.prototype, "falling");
 
 export { GemSchema };

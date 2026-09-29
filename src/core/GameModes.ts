@@ -6,8 +6,8 @@ import Player from '../entities/Player'
 import { InputState } from '../types'
 import { getSprite } from '../utils/sprites'
 import { GameEvents } from '../constants/client-constants'
-import { ARENA_RULES, GEMS, PLAYER_COLORS, WORLD } from '../../server/constants/gameConstants'
-import { hop, hopsThisFrame, newHopTimers, newPresses } from '../../server/game/movement'
+import { ARENA_RULES, GEMS, PLAYER_COLORS, SHIFT, WORLD } from '../../server/constants/gameConstants'
+import { holdRepeat, hop, hopsThisFrame, newHopTimers, newPresses, stopAgainst } from '../../server/game/movement'
 import type { HopTimers } from '../../server/game/movement'
 import type { MultiplayerManager } from '../managers/MultiplayerManager'
 
@@ -458,8 +458,8 @@ const SMOOTHING = 0.35
 const SNAP_DISTANCE = 150
 /** Wait this long before trying the server again */
 const RECONNECT_DELAY_MS = 3000
-/** How long "Name joined" stays up */
-const JOIN_NOTICE_MS = 3000
+/** How long a notice (someone joined, a shove, the jackpot) stays up */
+const JOIN_NOTICE_MS = 3500
 /** How quickly the camera catches up with you (share of the distance per 60 fps frame) */
 const CAMERA_EASE = 0.2
 /** Grid spacing on the arena floor (world units) */
@@ -521,6 +521,58 @@ function drawGem(ctx: CanvasRenderingContext2D, x: number, y: number, radius: nu
     ctx.fill()
 }
 
+/** The jackpot crystal: a big violet gem with a glow */
+function drawCrystal(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number): void {
+    ctx.fillStyle = 'rgba(179, 136, 255, 0.25)'
+    ctx.beginPath()
+    ctx.arc(x, y, radius * 1.7, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.beginPath()
+    ctx.moveTo(x, y - radius)
+    ctx.lineTo(x + radius * 0.7, y - radius * 0.2)
+    ctx.lineTo(x + radius * 0.45, y + radius)
+    ctx.lineTo(x - radius * 0.45, y + radius)
+    ctx.lineTo(x - radius * 0.7, y - radius * 0.2)
+    ctx.closePath()
+    ctx.fillStyle = '#b388ff'
+    ctx.fill()
+    ctx.beginPath()
+    ctx.moveTo(x, y - radius)
+    ctx.lineTo(x + radius * 0.7, y - radius * 0.2)
+    ctx.lineTo(x, y + radius * 0.1)
+    ctx.closePath()
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)'
+    ctx.fill()
+}
+
+/** A coordinate moved by `distance` between `low` and `high`, bouncing off the ends (how balls move) */
+function bounce(position: number, distance: number, low: number, high: number): number {
+    const span = high - low
+    if (span <= 0) return low
+    let p = (position - low + distance) % (2 * span)
+    if (p < 0) p += 2 * span
+    return low + (p > span ? 2 * span - p : p)
+}
+
+/** A ball: a glowing orb with a highlight */
+function drawBall(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number): void {
+    ctx.fillStyle = 'rgba(255, 92, 138, 0.22)'
+    ctx.beginPath()
+    ctx.arc(x, y, radius * 1.5, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = '#ff5c8a'
+    ctx.beginPath()
+    ctx.arc(x, y, radius, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(255, 210, 225, 0.8)'
+    ctx.lineWidth = 2
+    ctx.stroke()
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.55)'
+    ctx.beginPath()
+    ctx.arc(x - radius * 0.35, y - radius * 0.35, radius * 0.3, 0, Math.PI * 2)
+    ctx.fill()
+}
+
 /** A little robot head, marking bots, centered on (centerX, centerY) */
 function drawRobot(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, size: number): void {
     const width = size
@@ -577,9 +629,18 @@ export class MultiplayerMode extends GameMode {
     /** The world point at the center of the screen */
     private camera: { x: number; y: number } | null = null
     private lastRenderAt = 0
+    /** How far the camera is zoomed out (grows with your size, eased so it never jumps) */
+    private zoom: number = WORLD.VIEW_ZOOM_SMALL
+    /** Each player's drawn size, springing toward their real size so growing and shrinking pop */
+    private drawnSizes = new Map<string, { size: number; speed: number }>()
     /** When your player was knocked out, for the "back in" countdown */
     private knockedOutAt: number | null = null
-    private lastJoin: { name: string; at: number } | null = null
+    /** Messages at the top right: who joined, who shoved whom off the edge, who took the jackpot */
+    private notices: { text: string; at: number; strong: boolean }[] = []
+    /** When each dropping gem was first seen, to draw its fall */
+    private fallingSince = new Map<string, number>()
+    /** Whether everyone is protected right now (a shift's grace period) */
+    private inGrace = false
     /**
      * Our clock minus the world's clock for the quickest update seen: lining the two up this way
      * places traffic by the server's own timing rather than by when updates happen to land
@@ -615,7 +676,7 @@ export class MultiplayerMode extends GameMode {
         this.multiplayerManager = new MultiplayerManager(eventBus, new AssetManager())
         eventBus.on(GameEvents.PLAYER_JOINED, (data: any) => {
             if (data?.id && data.id !== this.multiplayerManager?.localSessionId) {
-                this.lastJoin = { name: String(data.name ?? 'Someone'), at: performance.now() }
+                this.addNotice(`${String(data.name ?? 'Someone')} joined`)
             }
         })
         eventBus.on(GameEvents.MULTIPLAYER_DISCONNECTED, () => this.reconnectSoon())
@@ -624,6 +685,10 @@ export class MultiplayerMode extends GameMode {
             const gap = performance.now() - state.time
             // Keep the quickest arrival, drifting up slowly in case the clocks wander
             this.clockGap = gap < this.clockGap ? gap : this.clockGap + (gap - this.clockGap) * 0.005
+        })
+        eventBus.on('multiplayer:credit', (data: any) => this.noteCredit(data))
+        eventBus.on('multiplayer:jackpot', (data: any) => {
+            this.addNotice(`${this.nameOf(data?.byId, data?.by)} took the jackpot! +${data?.value ?? ''}`, true)
         })
 
         // Connect in the background; the canvas says so meanwhile
@@ -697,8 +762,8 @@ export class MultiplayerMode extends GameMode {
             return
         }
         if (!this.predicted) this.predicted = { x: me.x, y: me.y }
-        if (me.sliding) {
-            // Shoved: slide where the server says until you stop (no hopping until then)
+        if (me.sliding || me.recovering) {
+            // Shoved or knocked into a skid: slide where the server says, no hopping until you've recovered
             this.predicted = {
                 x: this.predicted.x + (me.x - this.predicted.x) * 0.5,
                 y: this.predicted.y + (me.y - this.predicted.y) * 0.5,
@@ -708,12 +773,20 @@ export class MultiplayerMode extends GameMode {
         }
 
         // Bigger players keep a slower rhythm when holding a direction
-        const repeat = ARENA_RULES.HOP_REPEAT * (me.width / ARENA_RULES.PLAYER_SIZE)
+        const repeat = holdRepeat(me.width)
         const hops = hopsThisFrame(input, presses, this.hopTimers, deltaTime, repeat)
         if (hops.length > 0) {
             const box = { x: this.predicted.x, y: this.predicted.y, width: me.width, height: me.height }
+            // Anyone in the way stops your hop, as they do on the server
+            const others: { x: number; y: number; width: number; height: number }[] = []
+            state.players.forEach((player: any, id: string) => {
+                if (id !== localId && player.state === 'alive') others.push({ x: player.x, y: player.y, width: player.width, height: player.height })
+            })
             for (const direction of hops) {
+                const fromX = box.x
+                const fromY = box.y
                 hop(box, direction, state.worldWidth, state.worldHeight)
+                stopAgainst(box, direction, fromX, fromY, others)
                 this.multiplayerManager?.sendMessage('hop', { direction })
             }
             this.predicted = { x: box.x, y: box.y }
@@ -758,6 +831,7 @@ export class MultiplayerMode extends GameMode {
             view.y += (Math.random() - 0.5) * 2 * strength
         }
         const leaderId = this.leaderId(state)
+        this.inGrace = state.shiftPhase === 'grace'
 
         ctx.save()
         ctx.setTransform(
@@ -766,18 +840,26 @@ export class MultiplayerMode extends GameMode {
             canvas.height / 2 - view.y * view.scale
         )
         this.drawFloor(ctx, state, view)
+        this.drawShiftFloor(ctx, state, view, timestamp)
         const margin = 120
         const left = view.x - view.width / 2 - margin
         const right = view.x + view.width / 2 + margin
         const top = view.y - view.height / 2 - margin
         const bottom = view.y + view.height / 2 + margin
         this.drawGems(ctx, state, left, right, top, bottom, timestamp)
+        this.drawJackpot(ctx, state, localId, timestamp)
         const lead = this.trafficLead(timestamp)
         state.obstacles.forEach((obstacle: any) => {
             const x = obstacle.x + (obstacle.vx ?? 0) * lead
             const y = obstacle.y + (obstacle.vy ?? 0) * lead
             if (x > right || x + obstacle.width < left || y > bottom || y + obstacle.height < top) return
             this.drawObstacle(ctx, { x, y, width: obstacle.width, height: obstacle.height, variant: obstacle.variant }, timestamp)
+        })
+        state.balls?.forEach((ball: any) => {
+            const x = bounce(ball.x, (ball.vx ?? 0) * lead, ball.radius, state.worldWidth - ball.radius)
+            const y = bounce(ball.y, (ball.vy ?? 0) * lead, ball.radius, state.worldHeight - ball.radius)
+            if (x + ball.radius < left || x - ball.radius > right || y + ball.radius < top || y - ball.radius > bottom) return
+            drawBall(ctx, x, y, ball.radius)
         })
         const present = new Set<string>()
         state.players.forEach((player: any, sessionId: string) => {
@@ -787,6 +869,9 @@ export class MultiplayerMode extends GameMode {
         for (const id of this.drawnPositions.keys()) {
             if (!present.has(id)) this.drawnPositions.delete(id)
         }
+        for (const id of this.drawnSizes.keys()) {
+            if (!present.has(id)) this.drawnSizes.delete(id)
+        }
 
         this.drawBursts(ctx, timestamp)
         this.drawPickups(ctx, me, timestamp)
@@ -795,7 +880,8 @@ export class MultiplayerMode extends GameMode {
         ctx.setTransform(1, 0, 0, 1, 0, 0)
         this.drawMinimap(ctx, canvas, state, view, localId, leaderId)
         this.drawLeaderboard(ctx, canvas, state, localId, leaderId)
-        this.drawJoinNotice(ctx, canvas)
+        this.drawNotices(ctx, canvas)
+        this.drawShiftChip(ctx, canvas, state, timestamp)
         if (me && me.state !== 'alive') this.drawKnockedOut(ctx, canvas)
         ctx.restore()
     }
@@ -806,9 +892,13 @@ export class MultiplayerMode extends GameMode {
      */
     private updateCamera(canvas: HTMLCanvasElement, state: any, me: any, timestamp: number): View {
         const aspect = Math.min(WORLD.MAX_VIEW_ASPECT, Math.max(WORLD.MIN_VIEW_ASPECT, canvas.width / canvas.height))
+        // Small players see a closer view, big ones farther
+        const growth = me ? Math.max(0, Math.min(1, (me.width - ARENA_RULES.PLAYER_SIZE) / (GEMS.MAX_SIZE - ARENA_RULES.PLAYER_SIZE))) : 0
+        this.zoom += (WORLD.VIEW_ZOOM_SMALL + (WORLD.VIEW_ZOOM_BIG - WORLD.VIEW_ZOOM_SMALL) * growth - this.zoom) * 0.05
+        const area = WORLD.VIEW_AREA * this.zoom * this.zoom
         const scale = Math.max(
-            canvas.width / Math.sqrt(WORLD.VIEW_AREA * aspect),
-            canvas.height / Math.sqrt(WORLD.VIEW_AREA / aspect)
+            canvas.width / Math.sqrt(area * aspect),
+            canvas.height / Math.sqrt(area / aspect)
         )
         const width = canvas.width / scale
         const height = canvas.height / scale
@@ -916,7 +1006,7 @@ export class MultiplayerMode extends GameMode {
         }
 
         ctx.save()
-        if (player.spawnProtected) {
+        if (player.spawnProtected || this.inGrace) {
             // Just back in: translucent inside a soft bubble until the protection wears off
             ctx.globalAlpha = 0.45 + 0.15 * Math.sin(timestamp / 90)
             ctx.strokeStyle = 'rgba(160, 235, 255, 0.95)'
@@ -929,11 +1019,31 @@ export class MultiplayerMode extends GameMode {
             // Just hit: blink until traffic can touch you again
             ctx.globalAlpha = Math.floor(timestamp / 90) % 2 ? 0.25 : 0.9
         }
+        // Size changes pop: a quick overshoot and settle, centered on where the player is
+        let grow = this.drawnSizes.get(sessionId)
+        if (!grow) {
+            grow = { size: player.width, speed: 0 }
+            this.drawnSizes.set(sessionId, grow)
+        }
+        grow.speed = (grow.speed + (player.width - grow.size) * 0.3) * 0.6
+        grow.size += grow.speed
+        const size = Math.max(4, grow.size)
+        const left = drawn.x + (player.width - size) / 2
+        const top = drawn.y + (player.height - size) / 2
+        if (player.sliding) {
+            // Dust kicked up by a slide or a skid
+            ctx.fillStyle = 'rgba(200, 210, 220, 0.35)'
+            for (let i = 0; i < 3; i++) {
+                ctx.beginPath()
+                ctx.arc(left + size * (0.2 + 0.3 * i), top + size + 3 + Math.sin(timestamp / 60 + i * 2) * 2, size * 0.14, 0, Math.PI * 2)
+                ctx.fill()
+            }
+        }
         if (isLocal) {
-            ctx.drawImage(getSprite('player', 0, timestamp), drawn.x, drawn.y, player.width, player.height)
+            ctx.drawImage(getSprite('player', 0, timestamp), left, top, size, size)
         } else {
             ctx.fillStyle = PLAYER_COLORS[player.playerIndex % PLAYER_COLORS.length]
-            roundedRect(ctx, drawn.x, drawn.y, player.width, player.height, 8)
+            roundedRect(ctx, left, top, size, size, size * 0.18)
             ctx.fill()
         }
         ctx.globalAlpha = 1
@@ -971,6 +1081,14 @@ export class MultiplayerMode extends GameMode {
         ctx.lineWidth = 1
         ctx.strokeStyle = 'rgba(79, 209, 197, 0.55)'
         ctx.strokeRect(x, y, width, height)
+        if (state.floor) {
+            // The (new) floor: the void is dark, or red while it's still coming
+            const tile = width / SHIFT.GRID
+            ctx.fillStyle = state.shiftPhase === 'grace' ? 'rgba(255, 90, 90, 0.35)' : 'rgba(0, 0, 0, 0.75)'
+            for (let i = 0; i < state.floor.length; i++) {
+                if (state.floor[i] === '0') ctx.fillRect(x + (i % SHIFT.GRID) * tile, y + Math.floor(i / SHIFT.GRID) * tile, tile, tile)
+            }
+        }
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)'
         ctx.strokeRect(
             x + (view.x - view.width / 2) * scale,
@@ -1003,6 +1121,137 @@ export class MultiplayerMode extends GameMode {
         ctx.textAlign = 'right'
         ctx.textBaseline = 'bottom'
         ctx.fillText(`${playing} playing`, x + width, y - 8)
+        ctx.restore()
+    }
+
+    /** Our best guess at the world's clock right now */
+    private worldNow(state: any, timestamp: number): number {
+        return Number.isFinite(this.clockGap) ? timestamp - this.clockGap : state.time
+    }
+
+    private addNotice(text: string, strong = false): void {
+        this.notices.push({ text, at: performance.now(), strong })
+        if (this.notices.length > 3) this.notices.shift()
+    }
+
+    /** "You" for your own player, their name for anyone else */
+    private nameOf(id: string | undefined, name: string | undefined): string {
+        return id && id === this.multiplayerManager?.localSessionId ? 'You' : String(name ?? 'Someone')
+    }
+
+    /** Someone was shoved off the edge or into traffic: say who did it */
+    private noteCredit(data: any): void {
+        const targetIsYou = data?.targetId === this.multiplayerManager?.localSessionId
+        const target = targetIsYou ? 'you' : String(data?.target ?? 'someone')
+        const where = data?.how === 'edge' ? 'off the edge' : 'into traffic'
+        const out = data?.out ? (targetIsYou ? ' and knocked you out!' : ' and knocked them out!') : ''
+        this.addNotice(`${this.nameOf(data?.byId, data?.by)} shoved ${target} ${where}${out}`, data?.out === true)
+    }
+
+    /**
+     * The shift on the floor: during the grace period the tiles about to drop away pulse red,
+     * faster as time runs out; during the shift they're a dark void. The floor's edge is outlined.
+     */
+    private drawShiftFloor(ctx: CanvasRenderingContext2D, state: any, view: View, timestamp: number): void {
+        const floor: string = state.floor
+        if (!floor) return
+        const grid = SHIFT.GRID
+        const tile = state.worldWidth / grid
+        const grace = state.shiftPhase === 'grace'
+        let fill = 'rgba(1, 3, 8, 0.93)'
+        if (grace) {
+            const left = Math.max(0, Math.min(1, (state.phaseEndsAt - this.worldNow(state, timestamp)) / SHIFT.GRACE_MS))
+            const speed = 4 + (1 - left) * 14
+            fill = `rgba(255, 80, 80, ${0.16 + 0.16 * (0.5 + 0.5 * Math.sin((timestamp / 1000) * speed))})`
+        }
+        const firstCol = Math.max(0, Math.floor((view.x - view.width / 2) / tile))
+        const lastCol = Math.min(grid - 1, Math.floor((view.x + view.width / 2) / tile))
+        const firstRow = Math.max(0, Math.floor((view.y - view.height / 2) / tile))
+        const lastRow = Math.min(grid - 1, Math.floor((view.y + view.height / 2) / tile))
+        const isVoid = (row: number, col: number) => row >= 0 && row < grid && col >= 0 && col < grid && floor[row * grid + col] === '0'
+        ctx.save()
+        ctx.fillStyle = fill
+        for (let row = firstRow; row <= lastRow; row++) {
+            for (let col = firstCol; col <= lastCol; col++) {
+                if (isVoid(row, col)) ctx.fillRect(col * tile, row * tile, tile, tile)
+            }
+        }
+        ctx.strokeStyle = grace ? 'rgba(255, 130, 130, 0.9)' : 'rgba(79, 209, 197, 0.7)'
+        ctx.lineWidth = 4
+        ctx.setLineDash(grace ? [16, 10] : [])
+        ctx.beginPath()
+        for (let row = firstRow; row <= lastRow; row++) {
+            for (let col = firstCol; col <= lastCol; col++) {
+                if (isVoid(row, col)) continue
+                const x = col * tile
+                const y = row * tile
+                if (isVoid(row - 1, col)) { ctx.moveTo(x, y); ctx.lineTo(x + tile, y) }
+                if (isVoid(row + 1, col)) { ctx.moveTo(x, y + tile); ctx.lineTo(x + tile, y + tile) }
+                if (isVoid(row, col - 1)) { ctx.moveTo(x, y); ctx.lineTo(x, y + tile) }
+                if (isVoid(row, col + 1)) { ctx.moveTo(x + tile, y); ctx.lineTo(x + tile, y + tile) }
+            }
+        }
+        ctx.stroke()
+        ctx.restore()
+    }
+
+    /** The jackpot crystal: a shadow while it drops, then a big crystal with a ring showing the claim */
+    private drawJackpot(ctx: CanvasRenderingContext2D, state: any, localId: string | null, timestamp: number): void {
+        if (!state.jackpotOn) return
+        const x = state.jackpotX
+        const y = state.jackpotY
+        const untilLanding = state.jackpotLandsAt - this.worldNow(state, timestamp)
+        ctx.save()
+        if (untilLanding > 0) {
+            const fall = 1 - Math.min(1, untilLanding / (SHIFT.DROP_MS * 1.5))
+            ctx.fillStyle = `rgba(0, 0, 0, ${0.2 + 0.35 * fall})`
+            ctx.beginPath()
+            ctx.ellipse(x, y + 16, 20 + 30 * fall, 8 + 12 * fall, 0, 0, Math.PI * 2)
+            ctx.fill()
+            drawCrystal(ctx, x, y - (1 - fall) * 160, 30)
+            ctx.restore()
+            return
+        }
+        drawCrystal(ctx, x, y, 30 * (1 + 0.06 * Math.sin(timestamp / 150)))
+        if (state.jackpotProgress > 0) {
+            ctx.strokeStyle = state.jackpotHolder === localId ? GOLD : '#ffffff'
+            ctx.lineWidth = 5
+            ctx.beginPath()
+            ctx.arc(x, y, 44, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * state.jackpotProgress)
+            ctx.stroke()
+        }
+        ctx.font = `700 16px ${FONT}`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'bottom'
+        ctx.fillStyle = GOLD
+        ctx.fillText(`+${SHIFT.JACKPOT_VALUE}`, x, y - 40)
+        ctx.restore()
+    }
+
+    /** A chip at the top: a shift coming up, its grace period, or how long until the arena returns */
+    private drawShiftChip(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, state: any, timestamp: number): void {
+        const left = Math.max(0, Math.ceil((state.phaseEndsAt - this.worldNow(state, timestamp)) / 1000))
+        let text = ''
+        if (state.shiftPhase === 'grace') text = `New floor! Get on it · ${left}`
+        else if (state.shiftPhase === 'shift') text = `Arena returns in ${left}`
+        else if (left <= 10) text = `Arena shift in ${left}`
+        if (!text) return
+        const urgent = state.shiftPhase === 'grace'
+        // On narrow screens the chip sits below the leaderboard
+        const y = canvas.width < 560 ? 30 + Math.min(6, state.players.size) * 18 : 12
+        ctx.save()
+        ctx.font = `700 ${urgent ? 15 : 13}px ${FONT}`
+        const width = ctx.measureText(text).width + 32
+        ctx.fillStyle = urgent ? 'rgba(120, 20, 20, 0.85)' : 'rgba(5, 12, 24, 0.8)'
+        roundedRect(ctx, (canvas.width - width) / 2, y, width, 30, 15)
+        ctx.fill()
+        ctx.strokeStyle = urgent ? 'rgba(255, 130, 130, 0.9)' : 'rgba(79, 209, 197, 0.7)'
+        ctx.lineWidth = 1.5
+        ctx.stroke()
+        ctx.fillStyle = '#ffffff'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(text, canvas.width / 2, y + 15)
         ctx.restore()
     }
 
@@ -1083,6 +1332,19 @@ export class MultiplayerMode extends GameMode {
             if (gem.expiring && Math.floor(timestamp / 120) % 2) return // blinking before it vanishes
             const phase = Number(id.slice(1)) || 0
             const radius = (GEMS.RADIUS + Math.min(6, (gem.value - 1) * 1.2)) * (1 + 0.08 * Math.sin(timestamp / 180 + phase))
+            if (gem.falling) {
+                // Still dropping: a shadow that grows as it comes down
+                const since = this.fallingSince.get(id) ?? timestamp
+                this.fallingSince.set(id, since)
+                const fall = Math.min(1, (timestamp - since) / SHIFT.DROP_MS)
+                ctx.fillStyle = `rgba(0, 0, 0, ${0.15 + 0.3 * fall})`
+                ctx.beginPath()
+                ctx.ellipse(drawn.x, drawn.y + radius * 0.6, radius * (0.4 + 0.8 * fall), radius * (0.2 + 0.35 * fall), 0, 0, Math.PI * 2)
+                ctx.fill()
+                drawGem(ctx, drawn.x, drawn.y - (1 - fall) * 90, radius)
+                return
+            }
+            this.fallingSince.delete(id)
             drawGem(ctx, drawn.x, drawn.y, radius)
         })
         for (const id of this.drawnGems.keys()) {
@@ -1176,26 +1438,26 @@ export class MultiplayerMode extends GameMode {
         ctx.restore()
     }
 
-    /** "Name joined", briefly, at the top right of the screen */
-    private drawJoinNotice(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement): void {
-        if (!this.lastJoin) return
-        const age = performance.now() - this.lastJoin.at
-        if (age > JOIN_NOTICE_MS) {
-            this.lastJoin = null
-            return
-        }
-        const text = `${this.lastJoin.name} joined`
+    /** Recent notices at the top right, newest first, fading out */
+    private drawNotices(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement): void {
+        const now = performance.now()
+        this.notices = this.notices.filter((notice) => now - notice.at < JOIN_NOTICE_MS)
+        let y = 12
         ctx.save()
-        ctx.globalAlpha = Math.min(1, (JOIN_NOTICE_MS - age) / 500)
-        ctx.font = `600 13px ${FONT}`
-        const width = ctx.measureText(text).width + 28
-        ctx.fillStyle = 'rgba(5, 12, 24, 0.75)'
-        roundedRect(ctx, canvas.width - width - 12, 12, width, 26, 13)
-        ctx.fill()
-        ctx.fillStyle = '#ffffff'
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'middle'
-        ctx.fillText(text, canvas.width - width / 2 - 12, 25)
+        for (const notice of [...this.notices].reverse()) {
+            ctx.globalAlpha = Math.min(1, (JOIN_NOTICE_MS - (now - notice.at)) / 500)
+            ctx.font = `${notice.strong ? 700 : 600} ${notice.strong ? 14 : 13}px ${FONT}`
+            // Leave room for the leaderboard on the left
+            const width = Math.min(canvas.width - 150, ctx.measureText(notice.text).width + 28)
+            ctx.fillStyle = notice.strong ? 'rgba(60, 40, 0, 0.85)' : 'rgba(5, 12, 24, 0.75)'
+            roundedRect(ctx, canvas.width - width - 12, y, width, 26, 13)
+            ctx.fill()
+            ctx.fillStyle = notice.strong ? GOLD : '#ffffff'
+            ctx.textAlign = 'center'
+            ctx.textBaseline = 'middle'
+            ctx.fillText(notice.text, canvas.width - width / 2 - 12, y + 13, width - 20)
+            y += 32
+        }
         ctx.restore()
     }
 

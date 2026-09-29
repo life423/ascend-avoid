@@ -180,6 +180,10 @@ export class MultiplayerManager {
         });
         this.startPinging();
 
+        // Moments worth showing everyone: who shoved whom off the edge, who took the jackpot
+        this.room.onMessage('credit', (data) => this.eventBus.emit('multiplayer:credit', data));
+        this.room.onMessage('jackpot', (data) => this.eventBus.emit('multiplayer:jackpot', data));
+
 
         // Handle errors
         this.room.onError((code, message) => {

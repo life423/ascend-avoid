@@ -9,10 +9,10 @@ const { ARENA_RULES, BOTS, GEMS, PLAYER_STATE, PUSH, WORLD } = GAME_CONSTANTS;
 /** At most this many hops wait to be applied; more are dropped, so flooding can't speed anyone up */
 const MAX_QUEUED_HOPS = 4;
 
-/** A player's size: grows with the square root of their gems, up to GEMS.MAX_SCALE */
+/** A player's size: small to start, growing with the square root of their gems, up to GEMS.MAX_SIZE */
 function sizeFor(gems: number): number {
-  const scale = Math.min(GEMS.MAX_SCALE, 1 + GEMS.GROWTH * Math.sqrt(gems));
-  return Math.round(ARENA_RULES.PLAYER_SIZE * scale * 2) / 2;
+  const size = Math.min(GEMS.MAX_SIZE, ARENA_RULES.PLAYER_SIZE + GEMS.SIZE_PER_ROOT * Math.sqrt(gems));
+  return Math.round(size * 2) / 2;
 }
 
 /**
@@ -108,10 +108,9 @@ class PlayerSchema extends Schema {
     this.stopSliding();
   }
 
-  /** How heavy the player is: grows with their area, from 1 up to 2.25 at full size */
+  /** How heavy the player is: grows with their size, from 1 for a new player up to 5 at full size */
   weight(): number {
-    const scale = this.width / ARENA_RULES.PLAYER_SIZE;
-    return scale * scale;
+    return this.width / ARENA_RULES.PLAYER_SIZE;
   }
 
   /** Move straight to a spot, stopping any slide */
@@ -144,6 +143,27 @@ class PlayerSchema extends Schema {
     return true;
   }
 
+  /** Knocked by a hit: skid `distance` along (dx, dy), in any direction, on top of any slide under way */
+  skid(dx: number, dy: number, distance: number): void {
+    let length = Math.hypot(dx, dy);
+    if (length < 1e-6) {
+      const angle = Math.random() * Math.PI * 2;
+      dx = Math.cos(angle);
+      dy = Math.sin(angle);
+      length = 1;
+    }
+    const speed = distance * PUSH.FRICTION;
+    this.vx += (dx / length) * speed;
+    this.vy += (dy / length) * speed;
+    this.sliding = true;
+    this.queuedHops = [];
+  }
+
+  /** Who shoved this player within the last `withinMs` (their session id), if anyone */
+  shovedBy(now: number, withinMs: number): string | null {
+    return this.lastShoveBy && now - this.lastShoveAt <= withinMs ? this.lastShoveBy : null;
+  }
+
   /** Whether shoving this player, as leader, can knock gems loose right now (starts the cooldown if so) */
   takeBounty(now: number): boolean {
     if (now < this.bountyAt) return false;
@@ -165,13 +185,9 @@ class PlayerSchema extends Schema {
     this.y = Math.max(margin, Math.min(centerY - size / 2, worldHeight - size - margin));
   }
 
-  /**
-   * The box traffic hits: a little inside the drawing, so grazing an edge doesn't count, and
-   * growing only part as much as the player, so being big isn't punished twice
-   */
+  /** The box traffic hits: what you see, a little inside the edges so grazing doesn't count */
   hitBox(): Box {
-    const scale = this.width / ARENA_RULES.PLAYER_SIZE;
-    const size = ARENA_RULES.PLAYER_SIZE * (1 + (scale - 1) * GEMS.HITBOX_GROWTH) - 2 * ARENA_RULES.PLAYER_HIT_INSET;
+    const size = this.width * (1 - 2 * ARENA_RULES.PLAYER_HIT_SHRINK);
     return { x: this.x + (this.width - size) / 2, y: this.y + (this.height - size) / 2, width: size, height: size };
   }
 
@@ -194,7 +210,7 @@ class PlayerSchema extends Schema {
 
   /** Queue a hop the browser asked for */
   requestHop(direction: Direction): void {
-    if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.queuedHops.length >= MAX_QUEUED_HOPS) return;
+    if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering || this.queuedHops.length >= MAX_QUEUED_HOPS) return;
     this.queuedHops.push(direction);
   }
 

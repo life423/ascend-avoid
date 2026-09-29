@@ -36,6 +36,8 @@ export class GameRoom extends Room<GameState> {
     if (!IS_PRODUCTION && options.testCalm === true) this.state.trafficHits = false;
     // ...and one with no bots
     if (!IS_PRODUCTION && Number.isInteger(options.testBots)) this.state.botFill = options.testBots;
+    // Moments worth telling everyone about (who shoved whom off the edge, who took the jackpot)
+    this.state.onEvent = (type, data) => this.broadcast(type, data);
 
     // Runs on the room's clock, so it stops by itself when the room is disposed
     this.setSimulationInterval(
@@ -84,6 +86,7 @@ export class GameRoom extends Room<GameState> {
         this.state.obstacles.forEach((obstacle, index) => {
           if (index > 0) obstacle.placeAt(worldWidth - 60, worldHeight - 60, 50, 34, 0);
         });
+        this.state.balls.forEach((ball) => ball.placeAt(worldWidth - 60, worldHeight - 60));
       });
       this.onMessage("test:placeObstacle", (client, data: any) => {
         // Stands the first obstacle still, relative to the player's center
@@ -93,6 +96,20 @@ export class GameRoom extends Room<GameState> {
         const x = player.x + player.width / 2 + (Number(data?.dx) || 0);
         const y = player.y + player.height / 2 + (Number(data?.dy) || 0);
         obstacle.placeAt(x, y, Number(data?.width) || 30, Number(data?.height) || 30, Number(data?.variant) || 0);
+      });
+      this.onMessage("test:shift", (_client, data: any) => {
+        this.state.forcePhase(String(data?.phase || "grace"), Number(data?.msLeft) || 5000, Date.now());
+      });
+      this.onMessage("test:jackpot", (client) => {
+        const player = playerOf(client);
+        if (player) this.state.dropJackpot(player.x + player.width / 2, player.y + player.height / 2, 0);
+      });
+      this.onMessage("test:placeBall", (client, data: any) => {
+        // Stands the first ball still, centered relative to the player's center
+        const player = playerOf(client);
+        const ball = this.state.balls.at(0);
+        if (!player || !ball) return;
+        ball.placeAt(player.x + player.width / 2 + (Number(data?.dx) || 0), player.y + player.height / 2 + (Number(data?.dy) || 0));
       });
       this.onMessage("test:protect", (client, data: any) => {
         playerOf(client)?.protectFor(Number(data?.ms) || 0, Date.now());

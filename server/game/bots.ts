@@ -1,5 +1,5 @@
-import { ARENA_RULES, BOTS, PLAYER_STATE } from "../constants/gameConstants.js";
-import { hop } from "./movement.js";
+import { BOTS, PLAYER_STATE } from "../constants/gameConstants.js";
+import { hop, hopLength } from "./movement.js";
 import type { Box, Direction } from "./movement.js";
 import type { GameState } from "../schema/GameState.js";
 import type { PlayerSchema } from "../schema/PlayerSchema.js";
@@ -33,6 +33,18 @@ function timeToImpact(box: Box, world: GameState): number {
       }
     }
   });
+  world.balls.forEach((ball) => {
+    for (let t = 0; t <= BOTS.LOOK_AHEAD && t < soonest; t += 0.1) {
+      const bx = ball.x + ball.vx * t;
+      const by = ball.y + ball.vy * t;
+      const dx = Math.max(box.x - bx, 0, bx - (box.x + box.width));
+      const dy = Math.max(box.y - by, 0, by - (box.y + box.height));
+      if (Math.hypot(dx, dy) <= ball.radius + margin) {
+        soonest = t;
+        break;
+      }
+    }
+  });
   return soonest;
 }
 
@@ -49,6 +61,8 @@ export class BotBrain {
   private readonly thinkMs: number;
   private readonly mistakeChance: number;
   private readonly aggression: number;
+  /** Some bots go for the jackpot however many gems they have */
+  private readonly reckless = Math.random() < 0.3;
 
   constructor() {
     this.thinkMs = BOTS.THINK_MS_MIN + Math.random() * (BOTS.THINK_MS_MAX - BOTS.THINK_MS_MIN);
@@ -60,8 +74,15 @@ export class BotBrain {
   think(bot: PlayerSchema, world: GameState, now: number): Direction | null {
     if (now < this.nextThinkAt) return null;
     this.nextThinkAt = now + this.thinkMs * (0.8 + Math.random() * 0.4);
-    if (bot.state !== PLAYER_STATE.ALIVE || bot.sliding) return null;
-    if (Math.random() < this.mistakeChance) return MOVES[Math.floor(Math.random() * MOVES.length)];
+    if (bot.state !== PLAYER_STATE.ALIVE || bot.sliding || bot.recovering) return null;
+    if (Math.random() < this.mistakeChance) {
+      // A careless hop (misjudging traffic), though never straight over the edge
+      const careless = MOVES[Math.floor(Math.random() * MOVES.length)];
+      if (!careless || world.shiftPhase === "normal") return careless;
+      const box = { x: bot.x, y: bot.y, width: bot.width, height: bot.height };
+      hop(box, careless, world.worldWidth, world.worldHeight);
+      if (world.isFloorAt(box.x + box.width / 2, box.y + box.height / 2)) return careless;
+    }
 
     const target = this.target(bot, world, now);
     const distanceFrom = (box: Box) =>
@@ -75,7 +96,15 @@ export class BotBrain {
       const impact = bot.isSafe() ? Infinity : timeToImpact(box, world);
       // Staying clear of traffic comes first (the later a hit would come, the better); then
       // getting closer to the goal
-      const score = (impact === Infinity ? 10000 : impact * 1000) + (here - distanceFrom(box)) + Math.random() * 5;
+      let score = (impact === Infinity ? 10000 : impact * 1000) + (here - distanceFrom(box)) + Math.random() * 5;
+      // Never hop over the edge during a shift, and keep to the new floor during its grace period
+      if (world.shiftPhase !== "normal") {
+        const x = box.x + box.width / 2;
+        const y = box.y + box.height / 2;
+        if (!world.isFloorAt(x, y)) score -= world.shiftPhase === "shift" ? 20000 : 500;
+        // Standing right at the edge invites a shove over it
+        else if (!world.isFloorAt(x + 35, y) || !world.isFloorAt(x - 35, y) || !world.isFloorAt(x, y + 35) || !world.isFloorAt(x, y - 35)) score -= 40;
+      }
       if (score > bestScore) {
         bestScore = score;
         best = move;
@@ -86,13 +115,17 @@ export class BotBrain {
 
   /** Where the bot is heading: someone to shove, the best gem in sight, or somewhere to wander */
   private target(bot: PlayerSchema, world: GameState, now: number): { x: number; y: number } {
+    const cx = bot.x + bot.width / 2;
+    const cy = bot.y + bot.height / 2;
+    // A new floor is coming: get onto it
+    if (world.shiftPhase !== "normal" && !world.isFloorAt(cx, cy)) return world.nearestFloorPoint(cx, cy);
+    // Low on gems (or just reckless): go for the jackpot
+    if (world.jackpotOn && (bot.gems < 20 || this.reckless)) return { x: world.jackpotX, y: world.jackpotY };
     const victim = this.shoveTarget(bot, world);
     if (victim) return { x: victim.x + victim.width / 2, y: victim.y + victim.height / 2 };
 
-    const cx = bot.x + bot.width / 2;
-    const cy = bot.y + bot.height / 2;
-    // A bot with plenty of gems stops hunting them, so people can outgrow it
-    const hungry = bot.gems < BOTS.CONTENT_AT;
+    // A bot with plenty of gems stops hunting them, so people can outgrow it (except during a shift)
+    const hungry = bot.gems < BOTS.CONTENT_AT || world.shiftPhase === "shift";
     if (hungry && this.goal?.gemId && now < this.goal.until && world.gems.has(this.goal.gemId)) return this.goal;
 
     // The most attractive gem in sight: bigger and closer is better
@@ -121,7 +154,7 @@ export class BotBrain {
 
   /** Someone lined up within a hop that the bot fancies shoving: always the leader, lighter players more often */
   private shoveTarget(bot: PlayerSchema, world: GameState): PlayerSchema | null {
-    const reach = ARENA_RULES.HOP * (bot.width / ARENA_RULES.PLAYER_SIZE);
+    const reach = hopLength(bot.width);
     const cx = bot.x + bot.width / 2;
     const cy = bot.y + bot.height / 2;
     const leader = world.leader();
@@ -135,7 +168,8 @@ export class BotBrain {
       const linedUp = (dy < halfHeights && dx < halfWidths + reach) || (dx < halfWidths && dy < halfHeights + reach);
       if (!linedUp) return;
       const keenness = other === leader ? 1 : other.weight() < bot.weight() ? this.aggression * 2 : this.aggression;
-      if (Math.random() < keenness) pick.target = other;
+      // Bots get pushier during a shift
+      if (Math.random() < keenness * (world.shiftPhase === "shift" ? 1.5 : 1)) pick.target = other;
     });
     return pick.target;
   }
