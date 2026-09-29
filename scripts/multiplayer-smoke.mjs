@@ -174,6 +174,12 @@ try {
     alice.send('dash', { x: way === 'right' ? 1 : -1, y: 0 });
     await sleep(200);
     check(Math.abs(me().x - afterDash) < 3, 'and needs a moment to recharge');
+    await sleep(900);
+    alice.send('test:placeGem', { dx: way === 'right' ? 70 : -70, dy: 0 });
+    await waitFor(() => state().gems.size === 1, 1000, 'another gem appears ahead');
+    const beforeSweep = me().gems;
+    alice.send('dash', { x: way === 'right' ? 1 : -1, y: 0 });
+    await waitFor(() => me().gems > beforeSweep, 1000, 'a dash picks up gems it passes over');
 
     alice.send('test:setGems', { count: 100 });
     await waitFor(() => me().gems >= 99, 1000, 'Alice now holds 100 gems');
@@ -224,6 +230,11 @@ try {
     state().gems.forEach((g) => {
         if (Math.hypot(g.x - spillX, g.y - spillY) < 300) spilled.push({ x: g.x, y: g.y });
     });
+    let markedMine = 0;
+    state().gems.forEach((g) => {
+        if (g.locked && g.owner === alice.sessionId) markedMine++;
+    });
+    check(markedMine >= 3, `your spilled gems are marked as yours (${markedMine})`);
     const aliceHeld = me().gems;
     alice.send('test:moveTo', { x: spilled[0].x - me().width / 2, y: spilled[0].y - me().height / 2 });
     await sleep(250);
@@ -237,6 +248,13 @@ try {
     });
     bob.send('test:moveTo', { x: aim.x - bobState().width / 2, y: aim.y - bobState().height / 2 });
     await waitFor(() => bobState().gems > bobHeld, 1000, 'but anyone else can grab them right away');
+    await waitFor(() => {
+        let stillLocked = 0;
+        state().gems.forEach((g) => {
+            if (g.locked) stillLocked++;
+        });
+        return stillLocked === 0;
+    }, 2000, 'then the wait ends and you can grab them too');
     await waitFor(() => !me().recovering, 2000, 'Alice recovers again');
 
     // Hits with nothing left

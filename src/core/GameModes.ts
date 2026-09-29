@@ -1385,6 +1385,7 @@ export class MultiplayerMode extends GameMode {
         timestamp: number
     ): void {
         const present = new Set<string>()
+        const localId = this.multiplayerManager?.localSessionId
         state.gems?.forEach((gem: any, id: string) => {
             present.add(id)
             let drawn = this.drawnGems.get(id)
@@ -1412,6 +1413,13 @@ export class MultiplayerMode extends GameMode {
                 return
             }
             this.fallingSince.delete(id)
+            if (gem.locked && gem.owner === localId) {
+                // Your own spilled gem: faded until you can grab it back
+                ctx.globalAlpha = 0.35
+                drawGem(ctx, drawn.x, drawn.y, radius)
+                ctx.globalAlpha = 1
+                return
+            }
             drawGem(ctx, drawn.x, drawn.y, radius)
         })
         for (const id of this.drawnGems.keys()) {

@@ -143,6 +143,7 @@ class GameState extends Schema {
         expired.push(id);
         return;
       }
+      gem.unlock(now);
       // During a shift, gems stop at the floor's edge instead of sliding out over the void
       if (layout && !isFloor(layout, gem.x, gem.y)) {
         const spot = closestFloorPoint(layout, gem.x, gem.y, 12);
@@ -185,7 +186,7 @@ class GameState extends Schema {
       player.updateMovement(this.worldWidth, this.worldHeight, now, deltaTime);
       if (player.dashing(now)) this.checkDash(player, fromX, fromY, now);
       this.nudgeApart(player);
-      this.collectGems(player, now);
+      this.collectGems(player, now, fromX, fromY);
       player.decay(deltaTime, this.worldWidth, this.worldHeight);
       // A skid after a hit never carries anyone off the edge
       if (this.shiftPhase === "shift" && player.recovering && this.layout && !this.isFloorAt(player.x + player.width / 2, player.y + player.height / 2)) {
@@ -592,11 +593,22 @@ class GameState extends Schema {
   }
 
   /** Pick up every gem the player is touching */
-  private collectGems(player: PlayerSchema, now: number): void {
+  private collectGems(player: PlayerSchema, now: number, fromX = player.x, fromY = player.y): void {
+    // Everything the player passed over this tick counts, so a dash or a skid can't skip a gem
+    // (unless they were moved somewhere else entirely, like a respawn)
+    const moved = Math.hypot(player.x - fromX, player.y - fromY);
+    const path = moved > 300
+      ? player
+      : {
+          x: Math.min(fromX, player.x),
+          y: Math.min(fromY, player.y),
+          width: player.width + Math.abs(player.x - fromX),
+          height: player.height + Math.abs(player.y - fromY),
+        };
     let collected = 0;
     const taken: string[] = [];
     this.gems.forEach((gem, id) => {
-      if (!gem.touches(player, now, player.sessionId)) return;
+      if (!gem.touches(path, now, player.sessionId)) return;
       collected += gem.value;
       taken.push(id);
       if (!gem.sprayed) this.fieldGems--;
