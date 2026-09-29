@@ -85,7 +85,7 @@ export const WORLD = {
    * smallest size and at the biggest, as a share of the view VIEW_AREA gives */
   VIEW_ZOOM_SMALL: 0.8,
   VIEW_ZOOM_BIG: 1.3,
-  OBSTACLE_COUNT: 36,
+  OBSTACLE_COUNT: 6, // lane traffic (comets and balls cross it at other angles); open space to fight and charge in
   RESPAWN_DELAY_MS: 2000,
   SPAWN_PROTECTION_MS: 1500,
   /** A respawn spot this far from all traffic is good enough */
@@ -100,8 +100,10 @@ export const GEMS = {
   FIELD_COUNT: 60, // loose gems lying around the world
   RADIUS: 9,
   SIZE_PER_ROOT: 6, // size = PLAYER_SIZE + this x the square root of your gems (26 at 1 gem, 80 at 100)...
-  MAX_SIZE: 100, // ...up to this
-  SPRAY_SHARE: 0.5, // a hit sprays out this share of your gems
+  MAX_SIZE: 100, // ...up to this...
+  MAX_HELD: 178, // ...which you reach at this many gems. Like Agar.io, that is the cap: a full-size player picks up no more (the gems stay for others)
+  SPRAY_SHARE: 0.5, // a hit sprays out this share of your gems...
+  SURVIVE_AT: 3, // ...but with fewer than this, a hit knocks you out (your last gems burst out)
   SPRAY_PIECES: 24, // at most this many gems fly out; big piles make bigger gems
   SPRAY_SPEED_MIN: 260, // units per second...
   SPRAY_SPEED_MAX: 520,
@@ -125,6 +127,20 @@ export const PUSH = {
   FRICTION: 7, // shoved players slow by this factor a second (about half a second of sliding)
   STOP_SPEED: 40, // units per second; slower than this and the slide is over
   SAME_SHOVER_COOLDOWN_MS: 300, // one shove per hop, not one per frame of contact
+  /**
+   * Body-checks: a clearly bigger player moving into a smaller one (toward them at BODY_CHECK_SPEED
+   * of their top speed or more, or dashing) shoves them hard and spills their gems, by how much
+   * bigger they are (width over width, biggest tier first). At BODY_CHECK_KO_AT and up, a victim
+   * under GEMS.SURVIVE_AT gems is knocked out. Same immunity as a slingshot hit.
+   */
+  BODY_CHECK_TIERS: [
+    { at: 2, shove: 300, spill: 0.25 },
+    { at: 1.5, shove: 220, spill: 0.12 },
+    { at: 1.25, shove: 160, spill: 0 }, // just a harder shove
+  ],
+  BODY_CHECK_SPEED: 0.5,
+  BODY_CHECK_KO_AT: 2,
+  BODY_CHECK_MAX_SPILL: 20,
   LEADER_BOUNTY_SHARE: 0.1, // shoving the leader knocks this share of their gems loose...
   LEADER_BOUNTY_MIN: 2,
   LEADER_BOUNTY_MAX: 8,
@@ -158,6 +174,8 @@ export const BOTS = {
   MAX_AGGRESSION: 0.35, // how keen the keenest bot is to shove whoever is next to it
   GEM_SIGHT: 700, // bots go for gems within this distance...
   SLING_CHANCE: 0.12, // chance a bot charges a slingshot at whoever it's hunting, when they're 150-400 away
+  FLEE_RATIO: 1.5, // bots run from anyone this many times their size who comes within FLEE_RANGE
+  FLEE_RANGE: 260,
   DASH_REACH: 70, // bots dash into whoever they're hunting once this close (gap between them)
   CONTENT_AT: 30, // ...until they have this many; then they just wander, dodge and shove
   DECAY_START: 20, // bots shed gems above this (people above GEMS.DECAY_START), so people can outgrow them
@@ -175,15 +193,32 @@ export const BOTS = {
  */
 export const TRAFFIC = {
   LANES: 14, // in each direction (across and down), so lanes are 150 units apart
-  MIN_GAP: 150, // between obstacles in the same lane
-  STAGGER: 110, // between an entering obstacle and those in the lanes beside it
+  MIN_GAP: 220, // between obstacles in the same lane
+  STAGGER: 150, // between an entering obstacle and those in the lanes beside it
 } as const;
 
 /** Round hazards that roll diagonally and bounce off the arena's walls, cutting across the lanes */
 export const BALLS = {
-  COUNT: 5,
+  COUNT: 3,
   RADIUS: 24,
   SPEED: 170, // units per second
+} as const;
+
+/**
+ * Comets fly in from the edges at a slant (never along the traffic lanes), so the gaps between
+ * lane traffic keep moving. The first STRAIGHT fly straight; the next CURVED bend gently, a few
+ * degrees over a whole crossing. Readable, never random.
+ */
+export const COMETS = {
+  STRAIGHT: 3,
+  CURVED: 2,
+  RADIUS: 20,
+  SPEED_MIN: 200, // units per second
+  SPEED_MAX: 270,
+  MIN_SLANT: 25, // degrees off straight in from the edge...
+  MAX_SLANT: 65, // ...so always well off the lanes' axes
+  CURVE_MIN: 20, // degrees a curving comet bends over a whole crossing
+  CURVE_MAX: 30,
 } as const;
 
 export const SHIFT = {
@@ -327,6 +362,7 @@ export const GAME_CONSTANTS = {
   BOTS,
   TRAFFIC,
   BALLS,
+  COMETS,
   SHIFT,
   KEYS,
   DEVICE_SETTINGS

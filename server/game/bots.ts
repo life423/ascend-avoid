@@ -33,6 +33,18 @@ function timeToImpact(box: Box, world: GameState): number {
       }
     }
   });
+  world.comets.forEach((comet) => {
+    for (let t = 0; t <= BOTS.LOOK_AHEAD && t < soonest; t += 0.1) {
+      const cx = comet.x + comet.vx * t;
+      const cy = comet.y + comet.vy * t;
+      const dx = Math.max(box.x - cx, 0, cx - (box.x + box.width));
+      const dy = Math.max(box.y - cy, 0, cy - (box.y + box.height));
+      if (Math.hypot(dx, dy) <= comet.radius + margin) {
+        soonest = t;
+        break;
+      }
+    }
+  });
   world.balls.forEach((ball) => {
     for (let t = 0; t <= BOTS.LOOK_AHEAD && t < soonest; t += 0.1) {
       const bx = ball.x + ball.vx * t;
@@ -125,6 +137,18 @@ export class BotBrain {
     const cy = bot.y + bot.height / 2;
     // A new floor is coming: get onto it
     if (world.shiftPhase !== "normal" && !world.isFloorAt(cx, cy)) return world.nearestFloorPoint(cx, cy);
+    // Something much bigger close by: get away from it (unless charging a slingshot to fight back)
+    if (!bot.charging) {
+      const threat = { x: 0, y: 0, distance: BOTS.FLEE_RANGE };
+      world.players.forEach((other) => {
+        if (other === bot || other.state !== PLAYER_STATE.ALIVE || other.width < bot.width * BOTS.FLEE_RATIO) return;
+        const ox = other.x + other.width / 2;
+        const oy = other.y + other.height / 2;
+        const distance = Math.hypot(ox - cx, oy - cy) - other.width / 2;
+        if (distance < threat.distance) Object.assign(threat, { x: ox, y: oy, distance });
+      });
+      if (threat.distance < BOTS.FLEE_RANGE) return { x: cx + (cx - threat.x) * 3, y: cy + (cy - threat.y) * 3 };
+    }
     // Low on gems (or just reckless): go for the jackpot
     if (world.jackpotOn && (bot.gems < 20 || this.reckless)) return { x: world.jackpotX, y: world.jackpotY };
     const victim = this.shoveTarget(bot, world);

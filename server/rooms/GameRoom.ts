@@ -100,6 +100,7 @@ export class GameRoom extends Room<GameState> {
           if (index > 0) obstacle.placeAt(worldWidth - 60, worldHeight - 60, 50, 34, 0);
         });
         this.state.balls.forEach((ball) => ball.placeAt(worldWidth - 60, worldHeight - 60));
+        this.state.comets.forEach((comet) => comet.placeAt(-500, -500));
       });
       this.onMessage("test:placeObstacle", (client, data: any) => {
         // Stands the first obstacle still, relative to the player's center
@@ -116,6 +117,13 @@ export class GameRoom extends Room<GameState> {
       this.onMessage("test:jackpot", (client) => {
         const player = playerOf(client);
         if (player) this.state.dropJackpot(player.x + player.width / 2, player.y + player.height / 2, 0);
+      });
+      this.onMessage("test:placeComet", (client, data: any) => {
+        // Stands the first comet still, centered relative to the player's center
+        const player = playerOf(client);
+        const comet = this.state.comets.at(0);
+        if (!player || !comet) return;
+        comet.placeAt(player.x + player.width / 2 + (Number(data?.dx) || 0), player.y + player.height / 2 + (Number(data?.dy) || 0));
       });
       this.onMessage("test:placeBall", (client, data: any) => {
         // Stands the first ball still, centered relative to the player's center

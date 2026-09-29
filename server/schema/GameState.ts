@@ -4,13 +4,15 @@ import { PlayerSchema } from "./PlayerSchema.js";
 import { ObstacleSchema } from "./ObstacleSchema.js";
 import { GemSchema } from "./GemSchema.js";
 import { BallSchema } from "./BallSchema.js";
+import { CometSchema } from "./CometSchema.js";
 import { BotBrain } from "../game/bots.js";
 import { closestFloorPoint, isFloor, jackpotSpot, layoutToString, pickLayout, randomFloorPoint } from "../game/layouts.js";
 import type { Layout } from "../game/layouts.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
+import { moveSpeed } from "../game/movement.js";
 import type { Direction } from "../game/movement.js";
 
-const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS } = GAME_CONSTANTS;
+const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS, COMETS } = GAME_CONSTANTS;
 /** Which way each of a bot's decisions steers it */
 const STEER: Record<Direction, { x: number; y: number }> = {
   up: { x: 0, y: -1 },
@@ -40,6 +42,7 @@ class GameState extends Schema {
   players: schema.MapSchema<PlayerSchema>;
   obstacles: schema.ArraySchema<ObstacleSchema>;
   balls: schema.ArraySchema<BallSchema>;
+  comets: schema.ArraySchema<CometSchema>;
   gems: schema.MapSchema<GemSchema>;
   worldWidth: number;
   worldHeight: number;
@@ -85,6 +88,7 @@ class GameState extends Schema {
     this.players = new MapSchema<PlayerSchema>();
     this.obstacles = new ArraySchema<ObstacleSchema>();
     this.balls = new ArraySchema<BallSchema>();
+    this.comets = new ArraySchema<CometSchema>();
     this.gems = new MapSchema<GemSchema>();
     this.worldWidth = WORLD.WIDTH;
     this.worldHeight = WORLD.HEIGHT;
@@ -106,6 +110,11 @@ class GameState extends Schema {
       this.obstacles.push(obstacle);
     }
     for (let i = 0; i < BALLS.COUNT; i++) this.balls.push(new BallSchema(this.worldWidth, this.worldHeight));
+    for (let i = 0; i < COMETS.STRAIGHT + COMETS.CURVED; i++) {
+      const comet = new CometSchema();
+      comet.launch(this.worldWidth, this.worldHeight, i >= COMETS.STRAIGHT, true);
+      this.comets.push(comet);
+    }
     this.topUpField();
   }
 
@@ -135,6 +144,9 @@ class GameState extends Schema {
       }
     });
     this.balls.forEach((ball) => ball.update(deltaTime, this.worldWidth, this.worldHeight));
+    this.comets.forEach((comet, index) => {
+      if (!comet.update(deltaTime, this.worldWidth, this.worldHeight)) comet.launch(this.worldWidth, this.worldHeight, index >= COMETS.STRAIGHT);
+    });
 
     const expired: string[] = [];
     const layout = this.shiftPhase === "shift" ? this.layout : null;
@@ -202,7 +214,7 @@ class GameState extends Schema {
       const fromY = player.y;
       player.updateMovement(this.worldWidth, this.worldHeight, now, deltaTime);
       if (player.dashing(now)) this.checkDash(player, fromX, fromY, now);
-      this.nudgeApart(player);
+      this.nudgeApart(player, now);
       this.collectGems(player, now, fromX, fromY);
       player.decay(deltaTime, this.worldWidth, this.worldHeight);
       // A skid after a hit never carries anyone off the edge
@@ -238,6 +250,9 @@ class GameState extends Schema {
           hit.push = { x: player.x + player.width / 2 - ball.x, y: player.y + player.height / 2 - ball.y };
         }
       });
+      this.comets.forEach((comet) => {
+        if (!hit.push && comet.checkCollision(path)) hit.push = { x: comet.vx, y: comet.vy };
+      });
       if (hit.push) {
         this.credit(player, "traffic", now);
         this.hitPlayer(player, now, hit.push);
@@ -252,8 +267,8 @@ class GameState extends Schema {
    * traffic; with none left, they're knocked out.
    */
   hitPlayer(player: PlayerSchema, now: number = Date.now(), push?: { x: number; y: number }): void {
-    if (player.gems <= 0) {
-      player.knockOut(now);
+    if (player.gems < GEMS.SURVIVE_AT) {
+      this.knockOutWithGems(player, now);
       return;
     }
     const lost = Math.max(1, Math.ceil(player.gems * GEMS.SPRAY_SHARE));
@@ -264,6 +279,53 @@ class GameState extends Schema {
     this.sprayGems(centerX, centerY, lost, now, player.sessionId);
     // Knocked into a skid, so whoever caused it has the first go at the spilled gems
     if (push) player.skid(push.x, push.y, Math.max(PUSH.SKID_MIN, player.width * PUSH.SKID_BODY_LENGTHS));
+  }
+
+  /** Knocked out: any last gems burst out where the player was */
+  private knockOutWithGems(player: PlayerSchema, now: number): void {
+    const left = player.gems;
+    const centerX = player.x + player.width / 2;
+    const centerY = player.y + player.height / 2;
+    if (left > 0) player.setGems(0, this.worldWidth, this.worldHeight);
+    player.knockOut(now);
+    if (left > 0) this.sprayGems(centerX, centerY, left, now, player.sessionId);
+  }
+
+  /**
+   * A clearly bigger player moving into a smaller one: a hard shove that spills their gems, by how
+   * much bigger (PUSH.BODY_CHECK_TIERS); at BODY_CHECK_KO_AT and up, a victim under GEMS.SURVIVE_AT
+   * gems is knocked out. A dash has already shoved and is plainly fast, so `dashed` skips both.
+   * Returns whether it happened.
+   */
+  private bodyCheck(attacker: PlayerSchema, victim: PlayerSchema, now: number, dashed = false): boolean {
+    const ratio = attacker.width / victim.width;
+    const tier = PUSH.BODY_CHECK_TIERS.find((t) => ratio >= t.at);
+    if (!tier) return false;
+    const dx = victim.x + victim.width / 2 - (attacker.x + attacker.width / 2);
+    const dy = victim.y + victim.height / 2 - (attacker.y + attacker.height / 2);
+    const distance = Math.hypot(dx, dy) || 1;
+    if (!dashed) {
+      // Only when the big player is really moving into them: never for drifting or standing still
+      const moving = attacker.velocity();
+      if ((moving.x * dx + moving.y * dy) / distance < PUSH.BODY_CHECK_SPEED * moveSpeed(attacker.width)) return false;
+    }
+    // The lowest tier only shoves harder; the bigger tiers strip gems, once per immunity window
+    if (tier.spill > 0 && !victim.takeBounty(now)) return false;
+    this.impact(attacker, victim);
+    if (ratio >= PUSH.BODY_CHECK_KO_AT && victim.gems < GEMS.SURVIVE_AT) {
+      this.knockOutWithGems(victim, now);
+      this.credit(victim, "crush", now, attacker.sessionId);
+      return true;
+    }
+    if (!dashed) victim.shoveAlong(dx, dy, tier.shove, attacker.sessionId, now, "crush");
+    const loose = tier.spill > 0 ? Math.min(victim.gems, PUSH.BODY_CHECK_MAX_SPILL, Math.max(1, Math.ceil(victim.gems * tier.spill))) : 0;
+    if (loose > 0) {
+      const centerX = victim.x + victim.width / 2;
+      const centerY = victim.y + victim.height / 2;
+      victim.setGems(victim.gems - loose, this.worldWidth, this.worldHeight);
+      this.sprayGems(centerX, centerY, loose, now, victim.sessionId);
+    }
+    return true;
   }
 
   /**
@@ -302,8 +364,11 @@ class GameState extends Schema {
         : // A slingshot mostly ignores weight: the small player's equalizer
           (PUSH.SLING_PUSH_MIN + (PUSH.SLING_PUSH_MAX - PUSH.SLING_PUSH_MIN) * power) *
           Math.min(PUSH.SLING_WEIGHT_MAX, Math.max(PUSH.SLING_WEIGHT_MIN, Math.pow(weightRatio, PUSH.SLING_WEIGHT_POWER)));
-    if (!target.shoveAlong(along.x, along.y, distance, dasher.sessionId, now)) return;
+    if (!target.shoveAlong(along.x, along.y, distance, dasher.sessionId, now, power < 0 ? "dash" : "sling")) return;
+    this.impact(dasher, target);
     dasher.dropProtection();
+    // A plain dash from a clearly bigger player spills gems like any body-check
+    if (power < 0) this.bodyCheck(dasher, target, now, true);
     // A dash only shoves. A slingshot hit also knocks gems loose: more for a harder charge, scaled
     // a little by size, and at least a couple from the leader; at most once every
     // PUSH.LEADER_BOUNTY_COOLDOWN_MS per player so nobody can be farmed
@@ -317,17 +382,20 @@ class GameState extends Schema {
       const centerY = target.y + target.height / 2;
       target.setGems(target.gems - loose, this.worldWidth, this.worldHeight);
       this.sprayGems(centerX, centerY, loose, now, target.sessionId);
+      this.credit(target, "sling", now, dasher.sessionId, { gems: loose });
     }
   }
 
   /** Players walking into each other are gently pushed apart, the lighter one more (dashing is what shoves) */
-  private nudgeApart(player: PlayerSchema): void {
+  private nudgeApart(player: PlayerSchema, now: number): void {
     if (player.state !== PLAYER_STATE.ALIVE || player.spawnProtected) return;
     this.players.forEach((other) => {
       if (other === player || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected) return;
       const overlapX = Math.min(player.x + player.width, other.x + other.width) - Math.max(player.x, other.x);
       const overlapY = Math.min(player.y + player.height, other.y + other.height) - Math.max(player.y, other.y);
       if (overlapX <= 0 || overlapY <= 0) return;
+      // A clearly bigger player barging in hits hard instead
+      if (this.bodyCheck(player, other, now)) return;
       const share = other.weight() / (player.weight() + other.weight());
       if (overlapX < overlapY) {
         const sign = player.x + player.width / 2 < other.x + other.width / 2 ? -1 : 1;
@@ -556,11 +624,31 @@ class GameState extends Schema {
   }
 
   /** If someone shoved this player just before they were hit or fell, tell everyone who did it */
-  private credit(target: PlayerSchema, how: string, now: number): void {
-    const byId = target.shovedBy(now, SHIFT.CREDIT_MS);
-    const by = byId ? this.players.get(byId) : undefined;
+  private credit(target: PlayerSchema, how: string, now: number, byId?: string, extra: Record<string, unknown> = {}): void {
+    const who = byId ?? target.shovedBy(now, SHIFT.CREDIT_MS);
+    const by = who ? this.players.get(who) : undefined;
     if (!by || !this.onEvent) return;
-    this.onEvent("credit", { byId, by: by.name, targetId: target.sessionId, target: target.name, how, out: target.gems <= 0 });
+    this.onEvent("credit", {
+      byId: who,
+      by: by.name,
+      targetId: target.sessionId,
+      target: target.name,
+      how,
+      kind: target.lastShoveKind,
+      out: target.gems <= 0,
+      ...extra,
+    });
+  }
+
+  /** A dash or body-check connected: browsers draw a shockwave (and jolt the two players involved) */
+  private impact(attacker: PlayerSchema, victim: PlayerSchema): void {
+    this.onEvent?.("impact", {
+      x: Math.round((attacker.x + attacker.width / 2 + victim.x + victim.width / 2) / 2),
+      y: Math.round((attacker.y + attacker.height / 2 + victim.y + victim.height / 2) / 2),
+      size: attacker.width,
+      byId: attacker.sessionId,
+      targetId: victim.sessionId,
+    });
   }
 
   /** Keep the world lively: bots fill in until `botFill` are playing, and make room as people arrive */
@@ -635,6 +723,8 @@ class GameState extends Schema {
     let collected = 0;
     const taken: string[] = [];
     this.gems.forEach((gem, id) => {
+      // Full size is the cap, like Agar.io: no more pickups (the gems stay for everyone else)
+      if (player.gems + collected >= GEMS.MAX_HELD) return;
       if (!gem.touches(path, now, player.sessionId)) return;
       collected += gem.value;
       taken.push(id);
@@ -647,6 +737,8 @@ class GameState extends Schema {
 
   /** Burst gems outward from a point, spread around the circle; big piles make bigger gems */
   private sprayGems(centerX: number, centerY: number, total: number, now: number, owner = ""): void {
+    // Browsers draw a burst for anything more than a gem or two
+    if (total >= 3) this.onEvent?.("burst", { x: Math.round(centerX), y: Math.round(centerY), count: total });
     const room = Math.max(1, GEMS.MAX_GEMS - this.gems.size);
     const pieces = Math.min(total, GEMS.SPRAY_PIECES, room);
     const turn = Math.random() * Math.PI * 2;
@@ -707,6 +799,11 @@ class GameState extends Schema {
         nearest = Math.min(nearest, distanceToRect(cx, cy, o.x + o.vx * t, o.y + o.vy * t, o.width, o.height));
       }
     });
+    this.comets.forEach((comet) => {
+      for (const t of [0, 0.5, 1]) {
+        nearest = Math.min(nearest, Math.hypot(comet.x + comet.vx * t - cx, comet.y + comet.vy * t - cy) - comet.radius);
+      }
+    });
     this.balls.forEach((ball) => {
       for (const t of [0, 0.5, 1]) {
         nearest = Math.min(nearest, Math.hypot(ball.x + ball.vx * t - cx, ball.y + ball.vy * t - cy) - ball.radius);
@@ -726,6 +823,7 @@ class GameState extends Schema {
 type({ map: PlayerSchema })(GameState.prototype, "players");
 type([ObstacleSchema])(GameState.prototype, "obstacles");
 type([BallSchema])(GameState.prototype, "balls");
+type([CometSchema])(GameState.prototype, "comets");
 type({ map: GemSchema })(GameState.prototype, "gems");
 type("number")(GameState.prototype, "worldWidth");
 type("number")(GameState.prototype, "worldHeight");

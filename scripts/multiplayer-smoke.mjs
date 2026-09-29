@@ -68,7 +68,8 @@ try {
     check(state().worldWidth === 2100 && state().worldHeight === 2100, `the world is several screens across (${state().worldWidth}×${state().worldHeight})`);
     check(me().spawnProtected === true, 'a new arrival starts protected');
     check(me().width === 20, `and starts small (${me().width} units)`);
-    check(state().obstacles.length >= 30, `traffic fills the world (${state().obstacles.length} obstacles)`);
+    const hazards = state().obstacles.length + (state().comets?.length ?? 0) + (state().balls?.length ?? 0);
+    check(hazards >= 12, `traffic fills the world (${state().obstacles.length} in lanes, ${state().comets?.length} comets, ${state().balls?.length} balls)`);
 
     const bob = await join('Bob');
     check(bob.roomId === alice.roomId, 'a second visitor joins the same world');
@@ -118,7 +119,7 @@ try {
         }
     });
     check(moving >= state().obstacles.length * 0.8, `obstacles move (${moving} of ${state().obstacles.length})`);
-    check(directions.size >= 3, `traffic runs in several directions (${[...directions].join(', ')})`);
+    check(directions.size >= 2, `traffic runs in several directions (${[...directions].join(', ')})`);
     const cruising = [];
     state().obstacles.forEach((o) => {
         if (o.vx || o.vy) cruising.push(o);
@@ -136,14 +137,32 @@ try {
         }
     }
     check(tightest >= 140, `obstacles in a lane keep a gap wider than any player (closest ${Math.round(tightest)} units)`);
-    check(state().balls?.length === 5, `balls roll around the arena (${state().balls?.length})`);
+    check(state().balls?.length === 3, `balls roll around the arena (${state().balls?.length})`);
+    const comets = [];
+    state().comets?.forEach((c) => comets.push({ vx: c.vx, vy: c.vy, turn: c.turn }));
+    check(comets.length === 5, `comets fly across the arena (${comets.length})`);
+    const slanted = comets.filter((c) => {
+        const speed = Math.hypot(c.vx, c.vy);
+        return Math.abs(c.vx) > speed * 0.35 && Math.abs(c.vy) > speed * 0.35;
+    }).length;
+    check(slanted === comets.length, `always at a slant, never along the lanes (${slanted} of ${comets.length})`);
+    const cometsBefore = [];
+    state().comets.forEach((c) => cometsBefore.push({ heading: Math.atan2(c.vy, c.vx), turn: c.turn }));
+    await sleep(600);
+    const bends = [];
+    state().comets.forEach((c, i) => {
+        if (!cometsBefore[i].turn || c.turn !== cometsBefore[i].turn) return; // straight, or it came round again meanwhile
+        const change = Math.atan2(c.vy, c.vx) - cometsBefore[i].heading;
+        bends.push(Math.abs(Math.atan2(Math.sin(change), Math.cos(change))));
+    });
+    check(bends.length >= 1 && bends.every((b) => b > 0.004 && b < 0.2), `some bend gently as they fly (${bends.map((b) => (b * 180 / Math.PI).toFixed(1) + '°').join(', ')} in 0.6s)`);
     let diagonal = 0;
     const ballsBefore = [];
     state().balls.forEach((b) => {
         if (Math.abs(b.vx) > 20 && Math.abs(b.vy) > 20) diagonal++;
         ballsBefore.push({ x: b.x, y: b.y });
     });
-    check(diagonal === 5, `diagonally (${diagonal} of 5)`);
+    check(diagonal === 3, `diagonally (${diagonal} of 3)`);
     await sleep(500);
     let rolled = 0;
     let inside = true;
@@ -151,7 +170,7 @@ try {
         if (Math.hypot(b.x - ballsBefore[i].x, b.y - ballsBefore[i].y) > 40) rolled++;
         if (b.x < b.radius - 1 || b.x > 2100 - b.radius + 1 || b.y < b.radius - 1 || b.y > 2100 - b.radius + 1) inside = false;
     });
-    check(rolled === 5 && inside, `they keep rolling, bouncing off the walls (${rolled} of 5 moved)`);
+    check(rolled === 3 && inside, `they keep rolling, bouncing off the walls (${rolled} of 3 moved)`);
 
     // Gems (Alice is kept safe from traffic so the counts stay exact)
     alice.send('test:protect', { ms: 20000 });
@@ -184,6 +203,11 @@ try {
     alice.send('test:setGems', { count: 100 });
     await waitFor(() => me().gems >= 99, 1000, 'Alice now holds 100 gems');
     check(me().width >= 78 && me().width <= 80.5, `gems make you much bigger (${me().width} units wide at 100 gems)`);
+    alice.send('test:setGems', { count: 300 });
+    await sleep(200);
+    check(me().gems <= 178 && me().width === 100, `full size is as big as it gets, like Agar.io (${me().gems} gems, ${me().width} units)`);
+    alice.send('test:setGems', { count: 100 });
+    await sleep(200);
     alice.send('steer', { x: sideways() === 'right' ? 1 : -1, y: 0 });
     await sleep(400);
     const bigFrom = me().x;
@@ -290,7 +314,7 @@ try {
     const even = await shove(alice, bob, 0, 0);
     check(even > 100 && even < 180, `dashing into someone shoves them (${Math.round(even)} units)`);
     check(bobState().sliding === false, 'and they slide to a stop');
-    const heavy = await shove(alice, bob, 100, 0);
+    const heavy = await shove(alice, bob, 100, 5); // 5 gems: a giant dashing into someone under 3 knocks them out instead
     check(heavy > even * 1.6, `heavier players shove harder (${Math.round(heavy)} units)`);
     const light = await shove(bob, alice, 0, 100);
     check(light < even * 0.6, `and are harder to shove (${Math.round(light)} units)`);
@@ -319,6 +343,8 @@ try {
     await sleep(250);
     const bobAfterSling = bobState().gems;
     const aliceDropped = 100 - me().gems;
+    check(bob.messages.some((m) => m.type === 'credit' && m.message.how === 'sling' && m.message.targetId === alice.sessionId), 'a slingshot hit is credited to whoever landed it');
+    check(bob.messages.some((m) => m.type === 'burst' && m.message.count >= 10), 'and the gems burst out for everyone to see');
     await sleep(1150);
     const flung = me().x - heavyStart;
     check(flung > 200 && flung > light * 4, `a slingshot launches even a heavy player (${Math.round(flung)} units, where a dash moved them ${Math.round(light)})`);
@@ -328,6 +354,47 @@ try {
     bob.send('dash', { x: -1, y: 0 });
     await sleep(300);
     check(Math.abs(bobState().x - restX) < 3, 'then needs a few seconds to recharge');
+
+    // Body-checks: a much bigger player moving into you spills your gems, and can knock you out when you're low
+    async function bodyCheck(bigGems, smallGems) {
+        alice.send('test:setGems', { count: bigGems });
+        bob.send('test:setGems', { count: smallGems });
+        await sleep(200);
+        alice.send('test:moveTo', { x: 600, y: 400 });
+        bob.send('test:moveTo', { x: 600 + me().width + 30, y: 400 + (me().height - bobState().height) / 2 });
+        await sleep(250);
+        const fromX = bobState().x;
+        const had = bobState().gems;
+        alice.send('steer', { x: 1, y: 0 });
+        await sleep(700);
+        alice.send('steer', { x: 0, y: 0 });
+        await sleep(300);
+        const result = { lost: had - bobState().gems, moved: Math.round(bobState().x - fromX), state: bobState().state };
+        await sleep(1700);
+        return result;
+    }
+    const sameSize = await bodyCheck(10, 10);
+    check(sameSize.lost === 0 && sameSize.state === 'alive', `walking into someone your size just pushes them (${sameSize.lost} gems lost)`);
+    const bullied = await bodyCheck(100, 10);
+    check(bullied.lost >= 2 && bullied.moved > 150, `a much bigger player barging into you spills your gems (${bullied.lost} lost, knocked ${bullied.moved} units)`);
+    bob.messages.length = 0;
+    const crushed = await bodyCheck(100, 2);
+    check(crushed.state !== 'alive', 'and knocks you out if you have fewer than 3');
+    check(bob.messages.some((m) => m.type === 'credit' && m.message.how === 'crush' && m.message.byId === alice.sessionId), 'and everyone hears who crushed them');
+    await waitFor(() => bobState().state === 'alive' && !bobState().spawnProtected, 6000, 'Bob is back');
+
+    // The 3-gem rule: with fewer than 3 gems, any hit knocks you out
+    alice.send('test:setGems', { count: 2 });
+    await sleep(150);
+    alice.send('test:hit');
+    await waitFor(() => me().state !== 'alive', 1000, 'with fewer than 3 gems, a hit knocks you out');
+    await waitFor(() => me().state === 'alive', 4000, 'Alice is back');
+    alice.send('test:setGems', { count: 3 });
+    await sleep(150);
+    alice.send('test:hit');
+    await sleep(200);
+    check(me().state === 'alive' && me().recovering, 'with 3, you survive the hit');
+    await waitFor(() => !me().recovering, 2000, 'Alice recovers');
     let nearby = bobState().gems;
     state().gems.forEach((gem) => {
         if (Math.hypot(gem.x - me().x, gem.y - me().y) < 350) nearby += gem.value;
@@ -350,7 +417,7 @@ try {
     await waitFor(() => !me().recovering && !me().spawnProtected, 3000, 'traffic is parked and Alice is ready');
     /** Stand the block where `place(half)` says (from Alice's center; half = half her width), maybe hop, and report a hit */
     async function struck(place, hopDirection) {
-        alice.send('test:setGems', { count: hopDirection ? 2 : 1 });
+        alice.send('test:setGems', { count: hopDirection ? 4 : 3 });
         await sleep(120);
         alice.send('test:placeObstacle', place(me().width / 2));
         if (hopDirection) alice.send('dash', { x: hopDirection === 'right' ? 1 : -1, y: 0 });
@@ -370,7 +437,7 @@ try {
     check(await struck((h) => ({ dx: h + 3, dy: -30, width: 11, height: 60, variant: 0 }), 'right'), 'dashing through a thin block is a hit');
     /** Stand a ball where `place(half)` says (from Alice's center), and report whether it hits her */
     async function ballStruck(place) {
-        alice.send('test:setGems', { count: 1 });
+        alice.send('test:setGems', { count: 3 });
         await sleep(120);
         alice.send('test:placeBall', place(me().width / 2));
         await sleep(250);
@@ -384,6 +451,15 @@ try {
     }
     check(await ballStruck((h) => ({ dx: h + 14, dy: 0 })), 'a ball touching your side is a hit');
     check(!(await ballStruck((h) => ({ dx: h + 16, dy: h + 16 }))), "a ball just off your corner is a miss (it's round)");
+    alice.send('test:setGems', { count: 3 });
+    await sleep(120);
+    alice.send('test:placeComet', { dx: me().width / 2 + 12, dy: 0 });
+    await sleep(250);
+    check(me().recovering || me().state !== 'alive', 'a comet hits you too');
+    alice.send('test:placeComet', { dx: 0, dy: -900 });
+    await waitFor(() => me().state === 'alive' && !me().recovering && !me().sliding, 4000, 'Alice is steady');
+    alice.send('test:moveTo', { x: 1000, y: 1000 });
+    await sleep(120);
     // After a hit you skid away from what hit you, and can't hop until you've recovered
     alice.send('test:setGems', { count: 4 });
     alice.send('test:moveTo', { x: 1000, y: 1000 });

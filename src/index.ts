@@ -8,6 +8,7 @@
 // Import core game components
 import Game from './core/Game'
 import { DrawerUI } from './ui/DrawerUI'
+import { DesktopChrome } from './ui/DesktopChrome'
 
 // Helper function for device detection
 function detectDevice() {
@@ -50,6 +51,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize drawer UI (always present)
     const drawerUI = new DrawerUI()
+    // On desktop: a slim bar that can slide away, and How to Play in the drawer
+    new DesktopChrome(() => drawerUI.toggle())
 
     // Initialize the game
     const game = new Game()
