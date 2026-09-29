@@ -3,6 +3,7 @@ const { Schema, MapSchema, ArraySchema, type } = schema;
 import { PlayerSchema } from "./PlayerSchema.js";
 import { ObstacleSchema } from "./ObstacleSchema.js";
 import { GemSchema } from "./GemSchema.js";
+import { BallSchema } from "./BallSchema.js";
 import { BotBrain } from "../game/bots.js";
 import { closestFloorPoint, isFloor, jackpotSpot, layoutToString, pickLayout, randomFloorPoint } from "../game/layouts.js";
 import type { Layout } from "../game/layouts.js";
@@ -10,7 +11,7 @@ import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 import { stopAgainst } from "../game/movement.js";
 import type { Direction } from "../game/movement.js";
 
-const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC } = GAME_CONSTANTS;
+const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS } = GAME_CONSTANTS;
 
 /** How many random spots to try when looking for a safe place to (re)spawn */
 const SPAWN_TRIES = 24;
@@ -32,6 +33,7 @@ function distanceToRect(px: number, py: number, x: number, y: number, width: num
 class GameState extends Schema {
   players: schema.MapSchema<PlayerSchema>;
   obstacles: schema.ArraySchema<ObstacleSchema>;
+  balls: schema.ArraySchema<BallSchema>;
   gems: schema.MapSchema<GemSchema>;
   worldWidth: number;
   worldHeight: number;
@@ -76,6 +78,7 @@ class GameState extends Schema {
     super();
     this.players = new MapSchema<PlayerSchema>();
     this.obstacles = new ArraySchema<ObstacleSchema>();
+    this.balls = new ArraySchema<BallSchema>();
     this.gems = new MapSchema<GemSchema>();
     this.worldWidth = WORLD.WIDTH;
     this.worldHeight = WORLD.HEIGHT;
@@ -96,6 +99,7 @@ class GameState extends Schema {
       if (!this.launchObstacle(obstacle, true)) obstacle.park();
       this.obstacles.push(obstacle);
     }
+    for (let i = 0; i < BALLS.COUNT; i++) this.balls.push(new BallSchema(this.worldWidth, this.worldHeight));
     this.topUpField();
   }
 
@@ -124,10 +128,20 @@ class GameState extends Schema {
         if (!this.launchObstacle(obstacle, false)) obstacle.park();
       }
     });
+    this.balls.forEach((ball) => ball.update(deltaTime, this.worldWidth, this.worldHeight));
 
     const expired: string[] = [];
+    const layout = this.shiftPhase === "shift" ? this.layout : null;
     this.gems.forEach((gem, id) => {
-      if (!gem.update(deltaTime, this.worldWidth, this.worldHeight, now)) expired.push(id);
+      if (!gem.update(deltaTime, this.worldWidth, this.worldHeight, now)) {
+        expired.push(id);
+        return;
+      }
+      // During a shift, gems stop at the floor's edge instead of sliding out over the void
+      if (layout && !isFloor(layout, gem.x, gem.y)) {
+        const spot = closestFloorPoint(layout, gem.x, gem.y, 12);
+        gem.moveTo(spot.x, spot.y);
+      }
     });
     expired.forEach((id) => this.gems.delete(id));
 
@@ -170,6 +184,9 @@ class GameState extends Schema {
       let hit = false;
       this.obstacles.forEach((obstacle) => {
         if (!hit && obstacle.checkCollision(path)) hit = true;
+      });
+      this.balls.forEach((ball) => {
+        if (!hit && ball.checkCollision(path)) hit = true;
       });
       if (hit) {
         this.credit(player, "traffic", now);
@@ -584,6 +601,11 @@ class GameState extends Schema {
         nearest = Math.min(nearest, distanceToRect(cx, cy, o.x + o.vx * t, o.y + o.vy * t, o.width, o.height));
       }
     });
+    this.balls.forEach((ball) => {
+      for (const t of [0, 0.5, 1]) {
+        nearest = Math.min(nearest, Math.hypot(ball.x + ball.vx * t - cx, ball.y + ball.vy * t - cy) - ball.radius);
+      }
+    });
     this.players.forEach((other) => {
       if (other === self || other.state !== PLAYER_STATE.ALIVE) return;
       const distance = Math.hypot(other.x + other.width / 2 - cx, other.y + other.height / 2 - cy);
@@ -597,6 +619,7 @@ class GameState extends Schema {
 // Fields sent to clients
 type({ map: PlayerSchema })(GameState.prototype, "players");
 type([ObstacleSchema])(GameState.prototype, "obstacles");
+type([BallSchema])(GameState.prototype, "balls");
 type({ map: GemSchema })(GameState.prototype, "gems");
 type("number")(GameState.prototype, "worldWidth");
 type("number")(GameState.prototype, "worldHeight");

@@ -33,6 +33,18 @@ function timeToImpact(box: Box, world: GameState): number {
       }
     }
   });
+  world.balls.forEach((ball) => {
+    for (let t = 0; t <= BOTS.LOOK_AHEAD && t < soonest; t += 0.1) {
+      const bx = ball.x + ball.vx * t;
+      const by = ball.y + ball.vy * t;
+      const dx = Math.max(box.x - bx, 0, bx - (box.x + box.width));
+      const dy = Math.max(box.y - by, 0, by - (box.y + box.height));
+      if (Math.hypot(dx, dy) <= ball.radius + margin) {
+        soonest = t;
+        break;
+      }
+    }
+  });
   return soonest;
 }
 

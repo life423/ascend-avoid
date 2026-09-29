@@ -86,6 +86,7 @@ export class GameRoom extends Room<GameState> {
         this.state.obstacles.forEach((obstacle, index) => {
           if (index > 0) obstacle.placeAt(worldWidth - 60, worldHeight - 60, 50, 34, 0);
         });
+        this.state.balls.forEach((ball) => ball.placeAt(worldWidth - 60, worldHeight - 60));
       });
       this.onMessage("test:placeObstacle", (client, data: any) => {
         // Stands the first obstacle still, relative to the player's center
@@ -102,6 +103,13 @@ export class GameRoom extends Room<GameState> {
       this.onMessage("test:jackpot", (client) => {
         const player = playerOf(client);
         if (player) this.state.dropJackpot(player.x + player.width / 2, player.y + player.height / 2, 0);
+      });
+      this.onMessage("test:placeBall", (client, data: any) => {
+        // Stands the first ball still, centered relative to the player's center
+        const player = playerOf(client);
+        const ball = this.state.balls.at(0);
+        if (!player || !ball) return;
+        ball.placeAt(player.x + player.width / 2 + (Number(data?.dx) || 0), player.y + player.height / 2 + (Number(data?.dy) || 0));
       });
       this.onMessage("test:protect", (client, data: any) => {
         playerOf(client)?.protectFor(Number(data?.ms) || 0, Date.now());

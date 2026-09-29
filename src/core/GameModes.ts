@@ -545,6 +545,34 @@ function drawCrystal(ctx: CanvasRenderingContext2D, x: number, y: number, radius
     ctx.fill()
 }
 
+/** A coordinate moved by `distance` between `low` and `high`, bouncing off the ends (how balls move) */
+function bounce(position: number, distance: number, low: number, high: number): number {
+    const span = high - low
+    if (span <= 0) return low
+    let p = (position - low + distance) % (2 * span)
+    if (p < 0) p += 2 * span
+    return low + (p > span ? 2 * span - p : p)
+}
+
+/** A ball: a glowing orb with a highlight */
+function drawBall(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number): void {
+    ctx.fillStyle = 'rgba(255, 92, 138, 0.22)'
+    ctx.beginPath()
+    ctx.arc(x, y, radius * 1.5, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = '#ff5c8a'
+    ctx.beginPath()
+    ctx.arc(x, y, radius, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(255, 210, 225, 0.8)'
+    ctx.lineWidth = 2
+    ctx.stroke()
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.55)'
+    ctx.beginPath()
+    ctx.arc(x - radius * 0.35, y - radius * 0.35, radius * 0.3, 0, Math.PI * 2)
+    ctx.fill()
+}
+
 /** A little robot head, marking bots, centered on (centerX, centerY) */
 function drawRobot(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, size: number): void {
     const width = size
@@ -826,6 +854,12 @@ export class MultiplayerMode extends GameMode {
             const y = obstacle.y + (obstacle.vy ?? 0) * lead
             if (x > right || x + obstacle.width < left || y > bottom || y + obstacle.height < top) return
             this.drawObstacle(ctx, { x, y, width: obstacle.width, height: obstacle.height, variant: obstacle.variant }, timestamp)
+        })
+        state.balls?.forEach((ball: any) => {
+            const x = bounce(ball.x, (ball.vx ?? 0) * lead, ball.radius, state.worldWidth - ball.radius)
+            const y = bounce(ball.y, (ball.vy ?? 0) * lead, ball.radius, state.worldHeight - ball.radius)
+            if (x + ball.radius < left || x - ball.radius > right || y + ball.radius < top || y - ball.radius > bottom) return
+            drawBall(ctx, x, y, ball.radius)
         })
         const present = new Set<string>()
         state.players.forEach((player: any, sessionId: string) => {

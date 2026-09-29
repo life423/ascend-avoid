@@ -164,6 +164,13 @@ export const TRAFFIC = {
   STAGGER: 110, // between an entering obstacle and those in the lanes beside it
 } as const;
 
+/** Round hazards that roll diagonally and bounce off the arena's walls, cutting across the lanes */
+export const BALLS = {
+  COUNT: 5,
+  RADIUS: 24,
+  SPEED: 170, // units per second
+} as const;
+
 export const SHIFT = {
   GRID: 10, // shapes are drawn on a 10x10 grid of tiles (210 units each)
   FIRST_AFTER_MS: 90000, // the first shift comes this long after a world starts...
@@ -288,6 +295,7 @@ export const GAME_CONSTANTS = {
   PUSH,
   BOTS,
   TRAFFIC,
+  BALLS,
   SHIFT,
   KEYS,
   DEVICE_SETTINGS

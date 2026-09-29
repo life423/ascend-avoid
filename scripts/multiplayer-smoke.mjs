@@ -130,6 +130,22 @@ try {
         }
     }
     check(tightest >= 140, `obstacles in a lane keep a gap wider than any player (closest ${Math.round(tightest)} units)`);
+    check(state().balls?.length === 5, `balls roll around the arena (${state().balls?.length})`);
+    let diagonal = 0;
+    const ballsBefore = [];
+    state().balls.forEach((b) => {
+        if (Math.abs(b.vx) > 20 && Math.abs(b.vy) > 20) diagonal++;
+        ballsBefore.push({ x: b.x, y: b.y });
+    });
+    check(diagonal === 5, `diagonally (${diagonal} of 5)`);
+    await sleep(500);
+    let rolled = 0;
+    let inside = true;
+    state().balls.forEach((b, i) => {
+        if (Math.hypot(b.x - ballsBefore[i].x, b.y - ballsBefore[i].y) > 40) rolled++;
+        if (b.x < b.radius - 1 || b.x > 2100 - b.radius + 1 || b.y < b.radius - 1 || b.y > 2100 - b.radius + 1) inside = false;
+    });
+    check(rolled === 5 && inside, `they keep rolling, bouncing off the walls (${rolled} of 5 moved)`);
 
     // Gems (Alice is kept safe from traffic so the counts stay exact)
     alice.send('test:protect', { ms: 20000 });
@@ -255,6 +271,22 @@ try {
     check(await struck((h) => ({ dx: h - 10, dy: -17, width: 60, height: 34, variant: 1 })), "a diamond's point 10 units into you is a hit");
     check(!(await struck((h) => ({ dx: h - 12, dy: h - 12, width: 60, height: 34, variant: 1 }))), "a diamond's empty corner over yours is a miss");
     check(await struck((h) => ({ dx: h + 3, dy: -30, width: 11, height: 60, variant: 0 }), 'right'), 'hopping through a thin block is a hit');
+    /** Stand a ball where `place(half)` says (from Alice's center), and report whether it hits her */
+    async function ballStruck(place) {
+        alice.send('test:setGems', { count: 1 });
+        await sleep(120);
+        alice.send('test:placeBall', place(me().width / 2));
+        await sleep(250);
+        const hit = me().recovering || me().state !== 'alive';
+        alice.send('test:placeBall', { dx: 0, dy: 700 });
+        const until = Date.now() + 2500;
+        while ((me().recovering || me().state !== 'alive') && Date.now() < until) await sleep(50);
+        alice.send('test:moveTo', { x: 1000, y: 1000 });
+        await sleep(120);
+        return hit;
+    }
+    check(await ballStruck((h) => ({ dx: h + 14, dy: 0 })), 'a ball touching your side is a hit');
+    check(!(await ballStruck((h) => ({ dx: h + 16, dy: h + 16 }))), "a ball just off your corner is a miss (it's round)");
     alice.send('test:trafficHits', { on: false });
 
     // The arena shift

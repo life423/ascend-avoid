@@ -32,6 +32,8 @@ lobby, no waiting, and you're back two seconds after a knockout.
   lane keep a gap wider than the biggest player, and neighboring lanes are staggered so traffic
   never lines up into a wall; an obstacle waits out of sight until a lane is safe to enter.
 - The spawner always leaves gaps wide enough for the biggest possible player.
+- Five balls roll diagonally and bounce off the arena's walls, cutting across the lanes; hits
+  use their true circle.
 - Later: bouncing balls, spiky mines you can shove people into, and narrow gaps between posts that
   only small players fit through.
 
