@@ -89,6 +89,45 @@ export const WORLD = {
 } as const;
 
 /**
+ * Gems: score and weight. They lie around the world, burst out of players who get hit, and make
+ * you bigger, with longer hops and a slower rhythm when holding a direction.
+ */
+export const GEMS = {
+  FIELD_COUNT: 60, // loose gems lying around the world
+  RADIUS: 9,
+  GROWTH: 0.05, // size = 1 + GROWTH x the square root of your gems...
+  MAX_SCALE: 1.5, // ...up to this (reached at 100 gems)
+  HITBOX_GROWTH: 0.5, // the box traffic hits grows only this share as much
+  SPRAY_SHARE: 0.5, // a hit sprays out this share of your gems
+  SPRAY_PIECES: 24, // at most this many gems fly out; big piles make bigger gems
+  SPRAY_SPEED_MIN: 260, // units per second...
+  SPRAY_SPEED_MAX: 520,
+  SPRAY_FRICTION: 2.5, // ...slowing by this factor a second, so they travel about 100-200 units
+  SPRAY_PICKUP_DELAY_MS: 350, // they fly out before anyone can grab them
+  SPRAY_LIFETIME_MS: 15000, // uncollected sprayed gems vanish
+  HIT_RECOVERY_MS: 1000, // after a hit, traffic passes through you for this long
+  DECAY_START: 50, // above this many gems you slowly shed them (one a second at twice this)
+  MAX_GEMS: 300, // cap on gems in the world at once
+} as const;
+
+/**
+ * Shoving: hop into someone and they slide away. Weight grows with size (1 to 2.25), so heavier
+ * players shove harder and are harder to shove.
+ */
+export const PUSH = {
+  DISTANCE: 140, // how far a shove sends someone your own weight (about two hops)...
+  MIN_RATIO: 0.4, // ...scaled by your weight over theirs, kept within these limits
+  MAX_RATIO: 2.5,
+  FRICTION: 7, // shoved players slow by this factor a second (about half a second of sliding)
+  STOP_SPEED: 40, // units per second; slower than this and the slide is over
+  SAME_SHOVER_COOLDOWN_MS: 300, // one shove per hop, not one per frame of contact
+  LEADER_BOUNTY_SHARE: 0.1, // shoving the leader knocks this share of their gems loose...
+  LEADER_BOUNTY_MIN: 2,
+  LEADER_BOUNTY_MAX: 8,
+  LEADER_BOUNTY_COOLDOWN_MS: 1500, // ...at most this often
+} as const;
+
+/**
  * Sizes and speeds in world units, matching solo play's feel. Solo measures in screen pixels (a
  * 30px player, ~39px hops, obstacles 22px thick moving 2.5-3.5px a frame); these are those at a
  * typical canvas scale of 0.65.
@@ -183,6 +222,8 @@ export const GAME_CONSTANTS = {
   PLAYER_STATE,
   ARENA_RULES,
   WORLD,
+  GEMS,
+  PUSH,
   KEYS,
   DEVICE_SETTINGS
 } as const;

@@ -6,7 +6,7 @@ import Player from '../entities/Player'
 import { InputState } from '../types'
 import { getSprite } from '../utils/sprites'
 import { GameEvents } from '../constants/client-constants'
-import { PLAYER_COLORS, WORLD } from '../../server/constants/gameConstants'
+import { ARENA_RULES, GEMS, PLAYER_COLORS, WORLD } from '../../server/constants/gameConstants'
 import { hop, hopsThisFrame, newHopTimers, newPresses } from '../../server/game/movement'
 import type { HopTimers } from '../../server/game/movement'
 import type { MultiplayerManager } from '../managers/MultiplayerManager'
@@ -470,6 +470,13 @@ const NO_KEYS: InputState = { up: false, down: false, left: false, right: false 
 const PREDICTION_SNAP = 150
 /** Once you've stopped hopping this long, your drawn position settles onto the server's */
 const SETTLE_AFTER_MS = 300
+/** How long a hit's burst ring lasts */
+const BURST_MS = 500
+/** How long the screen shakes when you're hit */
+const SHAKE_MS = 300
+/** How long "+1" floats above you after grabbing gems */
+const PICKUP_TEXT_MS = 800
+const GOLD = '#ffd166'
 
 type ConnectionStatus = 'connecting' | 'connected' | 'reconnecting'
 
@@ -489,10 +496,53 @@ function roundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, width:
     else ctx.rect(x, y, width, height)
 }
 
+/** A gold gem: a faceted diamond with a soft glow */
+function drawGem(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number): void {
+    ctx.fillStyle = 'rgba(255, 209, 102, 0.18)'
+    ctx.beginPath()
+    ctx.arc(x, y, radius * 1.9, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.beginPath()
+    ctx.moveTo(x, y - radius)
+    ctx.lineTo(x + radius * 0.78, y)
+    ctx.lineTo(x, y + radius)
+    ctx.lineTo(x - radius * 0.78, y)
+    ctx.closePath()
+    ctx.fillStyle = GOLD
+    ctx.fill()
+    ctx.beginPath()
+    ctx.moveTo(x, y - radius)
+    ctx.lineTo(x + radius * 0.78, y)
+    ctx.lineTo(x, y)
+    ctx.closePath()
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.55)'
+    ctx.fill()
+}
+
+/** The leader's crown, standing on (centerX, bottom) */
+function drawCrown(ctx: CanvasRenderingContext2D, centerX: number, bottom: number, width: number): void {
+    const height = width * 0.7
+    ctx.beginPath()
+    ctx.moveTo(centerX - width / 2, bottom)
+    ctx.lineTo(centerX - width / 2, bottom - height * 0.55)
+    ctx.lineTo(centerX - width / 4, bottom - height * 0.25)
+    ctx.lineTo(centerX, bottom - height)
+    ctx.lineTo(centerX + width / 4, bottom - height * 0.25)
+    ctx.lineTo(centerX + width / 2, bottom - height * 0.55)
+    ctx.lineTo(centerX + width / 2, bottom)
+    ctx.closePath()
+    ctx.fillStyle = GOLD
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(120, 80, 0, 0.8)'
+    ctx.lineWidth = Math.max(1, width * 0.06)
+    ctx.stroke()
+}
+
 /**
  * Online: one big open arena shared by everyone on the site. The server runs the world; this
  * mode hops your player the moment you press (telling the server about each hop) and draws the
- * part of the world around you, with a camera that follows you.
+ * part of the world around you, with a camera that follows you: gems, traffic, players, the
+ * bursts when someone is hit or shoved, a leaderboard and a minimap.
  */
 export class MultiplayerMode extends GameMode {
     private multiplayerManager: MultiplayerManager | null = null
@@ -512,6 +562,16 @@ export class MultiplayerMode extends GameMode {
     /** When your player was knocked out, for the "back in" countdown */
     private knockedOutAt: number | null = null
     private lastJoin: { name: string; at: number } | null = null
+    /** Where each gem is drawn, eased toward the server position as sprayed gems slide */
+    private drawnGems = new Map<string, { x: number; y: number }>()
+    /** Each player as of the last frame, to spot hits and pickups */
+    private lastSeen = new Map<string, { alive: boolean; recovering: boolean; sliding: boolean; gems: number; cx: number; cy: number }>()
+    private bursts: { x: number; y: number; size: number; color: string; at: number }[] = []
+    private pickups: { amount: number; at: number }[] = []
+    private shakeUntil = 0
+    /** Gems shown in the header (as Score), and the most you've held this visit (as High Score) */
+    private shownGems = -1
+    private bestGems = 0
 
     async initialize(): Promise<void> {
         await super.initialize()
@@ -519,6 +579,9 @@ export class MultiplayerMode extends GameMode {
         // Coming from solo: put its game-over screen away; the online world never pauses
         this.game.uiManager?.hideGameOver()
         this.game.gameState = this.game.config.STATE.PLAYING
+        // Online, the header shows your gems and the most you've held this visit
+        this.game.uiManager?.updateScore(0)
+        this.game.uiManager?.updateHighScore(0)
 
         const [{ MultiplayerManager }, { EventBus }, { default: AssetManager }] = await Promise.all([
             import('../managers/MultiplayerManager'),
@@ -567,6 +630,19 @@ export class MultiplayerMode extends GameMode {
 
     update(inputState: InputState, deltaTime: number, _timestamp: number): void {
         this.moveLocalPlayer(inputState, deltaTime)
+        this.showGems()
+    }
+
+    /** Keep the header's Score (your gems) and High Score (your most this visit) current */
+    private showGems(): void {
+        const state = this.worldState()
+        const localId = this.multiplayerManager?.localSessionId
+        const me = state && localId ? state.players.get(localId) : undefined
+        if (!me || me.gems === this.shownGems) return
+        this.shownGems = me.gems
+        this.bestGems = Math.max(this.bestGems, me.gems)
+        this.game.uiManager?.updateScore(me.gems)
+        this.game.uiManager?.updateHighScore(this.bestGems)
     }
 
     /**
@@ -591,8 +667,19 @@ export class MultiplayerMode extends GameMode {
             return
         }
         if (!this.predicted) this.predicted = { x: me.x, y: me.y }
+        if (me.sliding) {
+            // Shoved: slide where the server says until you stop (no hopping until then)
+            this.predicted = {
+                x: this.predicted.x + (me.x - this.predicted.x) * 0.5,
+                y: this.predicted.y + (me.y - this.predicted.y) * 0.5,
+            }
+            this.hopTimers = newHopTimers()
+            return
+        }
 
-        const hops = hopsThisFrame(input, presses, this.hopTimers, deltaTime)
+        // Bigger players keep a slower rhythm when holding a direction
+        const repeat = ARENA_RULES.HOP_REPEAT * (me.width / ARENA_RULES.PLAYER_SIZE)
+        const hops = hopsThisFrame(input, presses, this.hopTimers, deltaTime, repeat)
         if (hops.length > 0) {
             const box = { x: this.predicted.x, y: this.predicted.y, width: me.width, height: me.height }
             for (const direction of hops) {
@@ -633,7 +720,14 @@ export class MultiplayerMode extends GameMode {
         const localId = this.multiplayerManager?.localSessionId ?? null
         const me = localId ? state.players.get(localId) : undefined
         this.trackKnockout(me)
+        this.trackEvents(state, localId, timestamp)
         const view = this.updateCamera(canvas, state, me, timestamp)
+        if (timestamp < this.shakeUntil) {
+            const strength = ((this.shakeUntil - timestamp) / SHAKE_MS) * 8
+            view.x += (Math.random() - 0.5) * 2 * strength
+            view.y += (Math.random() - 0.5) * 2 * strength
+        }
+        const leaderId = this.leaderId(state)
 
         ctx.save()
         ctx.setTransform(
@@ -647,6 +741,7 @@ export class MultiplayerMode extends GameMode {
         const right = view.x + view.width / 2 + margin
         const top = view.y - view.height / 2 - margin
         const bottom = view.y + view.height / 2 + margin
+        this.drawGems(ctx, state, left, right, top, bottom, timestamp)
         state.obstacles.forEach((obstacle: any) => {
             if (obstacle.x > right || obstacle.x + obstacle.width < left || obstacle.y > bottom || obstacle.y + obstacle.height < top) return
             this.drawObstacle(ctx, obstacle, timestamp)
@@ -654,15 +749,19 @@ export class MultiplayerMode extends GameMode {
         const present = new Set<string>()
         state.players.forEach((player: any, sessionId: string) => {
             present.add(sessionId)
-            this.drawPlayer(ctx, player, sessionId, sessionId === localId, timestamp)
+            this.drawPlayer(ctx, player, sessionId, sessionId === localId, sessionId === leaderId, timestamp)
         })
         for (const id of this.drawnPositions.keys()) {
             if (!present.has(id)) this.drawnPositions.delete(id)
         }
 
+        this.drawBursts(ctx, timestamp)
+        this.drawPickups(ctx, me, timestamp)
+
         // Screen-space overlays
         ctx.setTransform(1, 0, 0, 1, 0, 0)
-        this.drawMinimap(ctx, canvas, state, view, localId)
+        this.drawMinimap(ctx, canvas, state, view, localId, leaderId)
+        this.drawLeaderboard(ctx, canvas, state, localId, leaderId)
         this.drawJoinNotice(ctx, canvas)
         if (me && me.state !== 'alive') this.drawKnockedOut(ctx, canvas)
         ctx.restore()
@@ -751,6 +850,7 @@ export class MultiplayerMode extends GameMode {
         player: any,
         sessionId: string,
         isLocal: boolean,
+        isLeader: boolean,
         timestamp: number
     ): void {
         if (player.state !== 'alive') return // knocked out: gone until they're back
@@ -779,6 +879,10 @@ export class MultiplayerMode extends GameMode {
             ctx.arc(drawn.x + player.width / 2, drawn.y + player.height / 2, player.width * 0.85, 0, Math.PI * 2)
             ctx.stroke()
         }
+        if (player.recovering) {
+            // Just hit: blink until traffic can touch you again
+            ctx.globalAlpha = Math.floor(timestamp / 90) % 2 ? 0.25 : 0.9
+        }
         if (isLocal) {
             ctx.drawImage(getSprite('player', 0, timestamp), drawn.x, drawn.y, player.width, player.height)
         } else {
@@ -792,6 +896,7 @@ export class MultiplayerMode extends GameMode {
         ctx.textBaseline = 'bottom'
         ctx.fillStyle = isLocal ? '#ffffff' : '#cfd8dc'
         ctx.fillText(isLocal ? 'You' : player.name, drawn.x + player.width / 2, drawn.y - 6)
+        if (isLeader) drawCrown(ctx, drawn.x + player.width / 2, drawn.y - 26, 22)
         ctx.restore()
     }
 
@@ -801,7 +906,8 @@ export class MultiplayerMode extends GameMode {
         canvas: HTMLCanvasElement,
         state: any,
         view: View,
-        localId: string | null
+        localId: string | null,
+        leaderId: string | null
     ): void {
         const size = Math.round(Math.min(150, Math.max(84, Math.min(canvas.width, canvas.height) * 0.24)))
         const scale = size / Math.max(state.worldWidth, state.worldHeight)
@@ -839,6 +945,9 @@ export class MultiplayerMode extends GameMode {
                 Math.PI * 2
             )
             ctx.fill()
+            if (sessionId === leaderId) {
+                drawCrown(ctx, x + (position.x + player.width / 2) * scale, y + (position.y + player.height / 2) * scale - 4, 10)
+            }
         })
         ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
         ctx.font = `600 11px ${FONT}`
@@ -848,7 +957,172 @@ export class MultiplayerMode extends GameMode {
         ctx.restore()
     }
 
-    /** "Name joined", briefly, at the top of the screen */
+    /** Whoever has the most gems (nobody, until someone has one) */
+    private leaderId(state: any): string | null {
+        let leader: string | null = null
+        let most = 0
+        state.players.forEach((player: any, id: string) => {
+            if (player.state === 'alive' && player.gems > most) {
+                most = player.gems
+                leader = id
+            }
+        })
+        return leader
+    }
+
+    /** Spot hits and pickups by comparing each player with the last frame */
+    private trackEvents(state: any, localId: string | null, timestamp: number): void {
+        const seen = new Set<string>()
+        state.players.forEach((player: any, id: string) => {
+            seen.add(id)
+            const before = this.lastSeen.get(id)
+            const alive = player.state === 'alive'
+            if (before) {
+                const hit = (player.recovering && !before.recovering) || (!alive && before.alive)
+                if (hit) {
+                    // Gold when gems burst out, red when it knocked them out
+                    const color = alive ? GOLD : '#ff6b6b'
+                    this.bursts.push({ x: before.cx, y: before.cy, size: player.width, color, at: timestamp })
+                    if (id === localId) this.shakeUntil = timestamp + SHAKE_MS
+                } else if (id === localId && player.gems > before.gems) {
+                    this.pickups.push({ amount: player.gems - before.gems, at: timestamp })
+                }
+                if (player.sliding && !before.sliding) {
+                    // Shoved: a small white ring, and a nudge of your screen if it's you
+                    const cx = player.x + player.width / 2
+                    const cy = player.y + player.height / 2
+                    this.bursts.push({ x: cx, y: cy, size: player.width * 0.6, color: 'rgba(255, 255, 255, 0.9)', at: timestamp })
+                    if (id === localId) this.shakeUntil = Math.max(this.shakeUntil, timestamp + SHAKE_MS / 2)
+                }
+            }
+            this.lastSeen.set(id, {
+                alive,
+                recovering: player.recovering,
+                sliding: player.sliding,
+                gems: player.gems,
+                cx: player.x + player.width / 2,
+                cy: player.y + player.height / 2,
+            })
+        })
+        for (const id of this.lastSeen.keys()) {
+            if (!seen.has(id)) this.lastSeen.delete(id)
+        }
+    }
+
+    /** Gems lying around, and sprayed ones sliding to a stop (eased, like other players) */
+    private drawGems(
+        ctx: CanvasRenderingContext2D,
+        state: any,
+        left: number,
+        right: number,
+        top: number,
+        bottom: number,
+        timestamp: number
+    ): void {
+        const present = new Set<string>()
+        state.gems?.forEach((gem: any, id: string) => {
+            present.add(id)
+            let drawn = this.drawnGems.get(id)
+            if (!drawn || Math.hypot(gem.x - drawn.x, gem.y - drawn.y) > SNAP_DISTANCE) {
+                drawn = { x: gem.x, y: gem.y }
+                this.drawnGems.set(id, drawn)
+            } else {
+                drawn.x += (gem.x - drawn.x) * SMOOTHING
+                drawn.y += (gem.y - drawn.y) * SMOOTHING
+            }
+            if (drawn.x < left || drawn.x > right || drawn.y < top || drawn.y > bottom) return
+            if (gem.expiring && Math.floor(timestamp / 120) % 2) return // blinking before it vanishes
+            const phase = Number(id.slice(1)) || 0
+            const radius = (GEMS.RADIUS + Math.min(6, (gem.value - 1) * 1.2)) * (1 + 0.08 * Math.sin(timestamp / 180 + phase))
+            drawGem(ctx, drawn.x, drawn.y, radius)
+        })
+        for (const id of this.drawnGems.keys()) {
+            if (!present.has(id)) this.drawnGems.delete(id)
+        }
+    }
+
+    /** Rings bursting out where someone was hit (gold) or knocked out (red) */
+    private drawBursts(ctx: CanvasRenderingContext2D, timestamp: number): void {
+        this.bursts = this.bursts.filter((burst) => timestamp - burst.at < BURST_MS)
+        for (const burst of this.bursts) {
+            const t = (timestamp - burst.at) / BURST_MS
+            ctx.save()
+            ctx.globalAlpha = 1 - t
+            ctx.strokeStyle = burst.color
+            ctx.lineWidth = 2 + 6 * (1 - t)
+            ctx.beginPath()
+            ctx.arc(burst.x, burst.y, burst.size * (0.6 + 2.2 * t), 0, Math.PI * 2)
+            ctx.stroke()
+            ctx.restore()
+        }
+    }
+
+    /** "+1" rising above you when you grab gems */
+    private drawPickups(ctx: CanvasRenderingContext2D, me: any, timestamp: number): void {
+        this.pickups = this.pickups.filter((pickup) => timestamp - pickup.at < PICKUP_TEXT_MS)
+        if (!me || this.pickups.length === 0) return
+        const position = this.predicted ?? me
+        ctx.save()
+        ctx.font = `700 18px ${FONT}`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'bottom'
+        ctx.fillStyle = GOLD
+        for (const pickup of this.pickups) {
+            const t = (timestamp - pickup.at) / PICKUP_TEXT_MS
+            ctx.globalAlpha = 1 - t
+            ctx.fillText(`+${pickup.amount}`, position.x + me.width / 2, position.y - 30 - t * 34)
+        }
+        ctx.restore()
+    }
+
+    /** The top five by gems, top left, with you added below if you're further down */
+    private drawLeaderboard(
+        ctx: CanvasRenderingContext2D,
+        canvas: HTMLCanvasElement,
+        state: any,
+        localId: string | null,
+        leaderId: string | null
+    ): void {
+        const ranked: { id: string; name: string; gems: number }[] = []
+        state.players.forEach((player: any, id: string) => {
+            ranked.push({ id, name: id === localId ? 'You' : String(player.name), gems: player.gems })
+        })
+        ranked.sort((a, b) => b.gems - a.gems)
+        const rows = ranked.slice(0, 5).map((entry, index) => ({ ...entry, rank: index + 1 }))
+        const mine = ranked.findIndex((entry) => entry.id === localId)
+        if (mine >= 5) rows.push({ ...ranked[mine], rank: mine + 1 })
+
+        const width = Math.round(Math.min(170, Math.max(120, canvas.width * 0.3)))
+        const rowHeight = 18
+        const x = 12
+        const y = 12
+        ctx.save()
+        ctx.fillStyle = 'rgba(5, 12, 24, 0.72)'
+        roundedRect(ctx, x, y, width, rows.length * rowHeight + 10, 6)
+        ctx.fill()
+        ctx.font = `600 12px ${FONT}`
+        ctx.textBaseline = 'middle'
+        rows.forEach((row, index) => {
+            const rowY = y + 5 + rowHeight * index + rowHeight / 2
+            const isLocal = row.id === localId
+            if (row.id === leaderId) {
+                drawCrown(ctx, x + 14, rowY + 5, 13)
+            } else {
+                ctx.fillStyle = 'rgba(207, 216, 220, 0.7)'
+                ctx.textAlign = 'center'
+                ctx.fillText(String(row.rank), x + 14, rowY)
+            }
+            ctx.fillStyle = isLocal ? '#ffffff' : 'rgba(207, 216, 220, 0.9)'
+            ctx.textAlign = 'left'
+            ctx.fillText(row.name, x + 28, rowY, width - 70)
+            ctx.fillStyle = GOLD
+            ctx.textAlign = 'right'
+            ctx.fillText(String(row.gems), x + width - 10, rowY)
+        })
+        ctx.restore()
+    }
+
+    /** "Name joined", briefly, at the top right of the screen */
     private drawJoinNotice(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement): void {
         if (!this.lastJoin) return
         const age = performance.now() - this.lastJoin.at
@@ -862,12 +1136,12 @@ export class MultiplayerMode extends GameMode {
         ctx.font = `600 13px ${FONT}`
         const width = ctx.measureText(text).width + 28
         ctx.fillStyle = 'rgba(5, 12, 24, 0.75)'
-        roundedRect(ctx, (canvas.width - width) / 2, 10, width, 26, 13)
+        roundedRect(ctx, canvas.width - width - 12, 12, width, 26, 13)
         ctx.fill()
         ctx.fillStyle = '#ffffff'
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
-        ctx.fillText(text, canvas.width / 2, 23)
+        ctx.fillText(text, canvas.width - width / 2 - 12, 25)
         ctx.restore()
     }
 
@@ -921,6 +1195,10 @@ export class MultiplayerMode extends GameMode {
         this.multiplayerManager?.disconnect()
         this.multiplayerManager = null
         this.drawnPositions.clear()
+        this.drawnGems.clear()
+        // Hand the header back to solo's scores
+        this.game.uiManager?.updateScore(this.game.score)
+        this.game.uiManager?.updateHighScore(this.game.highScore)
     }
 }
 
