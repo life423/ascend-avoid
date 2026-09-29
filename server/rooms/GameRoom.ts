@@ -34,6 +34,8 @@ export class GameRoom extends Room<GameState> {
     this.setState(new GameState(fieldGems));
     // ...and a world where traffic can't hit anyone (the test hits players itself)
     if (!IS_PRODUCTION && options.testCalm === true) this.state.trafficHits = false;
+    // ...and one with no bots
+    if (!IS_PRODUCTION && Number.isInteger(options.testBots)) this.state.botFill = options.testBots;
 
     // Runs on the room's clock, so it stops by itself when the room is disposed
     this.setSimulationInterval(

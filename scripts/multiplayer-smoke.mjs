@@ -56,9 +56,9 @@ try {
         await sleep(100);
     }
 
-    // This world starts with no loose gems and traffic that can't hit anyone (the test hits
-    // players itself), so nobody grows or gets knocked out by accident and every count is exact
-    const alice = await join('Alice', { testFieldGems: 0, testCalm: true });
+    // This world starts with no loose gems, no bots, and traffic that can't hit anyone (the test
+    // hits players itself), so nothing happens by accident and every count is exact
+    const alice = await join('Alice', { testFieldGems: 0, testCalm: true, testBots: 0 });
     const state = () => alice.state;
     const me = () => state().players.get(alice.sessionId);
     await waitFor(() => state().players?.size === 1, 2000, 'the first visitor is in the world right away');
@@ -219,6 +219,26 @@ try {
     const dave = await join('Dave');
     check(dave.roomId !== alice.roomId, 'the room closes once everyone has left');
     await waitFor(() => dave.state.gems?.size >= 60, 2000, 'a fresh world has gems lying around');
+
+    // Bots
+    const botsIn = (room) => {
+        const found = [];
+        room.state.players.forEach((player) => {
+            if (player.isBot) found.push(player);
+        });
+        return found;
+    };
+    await waitFor(() => dave.state.players.size === 6 && botsIn(dave).length === 5, 2000, 'bots fill a quiet world up to six players');
+    const names = botsIn(dave).map((bot) => bot.name);
+    check(new Set(names).size === 5, `each with its own name (${names.join(', ')})`);
+    const botStarts = botsIn(dave).map((bot) => ({ bot, x: bot.x, y: bot.y }));
+    await sleep(2500);
+    const wandered = botStarts.filter(({ bot, x, y }) => Math.hypot(bot.x - x, bot.y - y) > 50).length;
+    check(wandered >= 3, `bots move around on their own (${wandered} of 5)`);
+    const erin = await join('Erin');
+    await waitFor(() => dave.state.players.size === 6 && botsIn(dave).length === 4, 2000, 'a bot makes room when a person joins');
+    await erin.leave();
+    await waitFor(() => botsIn(dave).length === 5, 2000, 'and another fills in when they leave');
     await dave.leave();
 } catch (error) {
     check(false, `unexpected error: ${error.message}`);

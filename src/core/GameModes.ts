@@ -519,6 +519,22 @@ function drawGem(ctx: CanvasRenderingContext2D, x: number, y: number, radius: nu
     ctx.fill()
 }
 
+/** A little robot head, marking bots, centered on (centerX, centerY) */
+function drawRobot(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, size: number): void {
+    const width = size
+    const height = size * 0.8
+    ctx.fillStyle = '#9fb3c8'
+    roundedRect(ctx, centerX - width / 2, centerY - height / 2, width, height, size * 0.2)
+    ctx.fill()
+    ctx.fillRect(centerX - size * 0.06, centerY - height / 2 - size * 0.28, size * 0.12, size * 0.28)
+    ctx.beginPath()
+    ctx.arc(centerX, centerY - height / 2 - size * 0.32, size * 0.13, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = 'rgba(5, 12, 24, 0.9)'
+    ctx.fillRect(centerX - width * 0.3, centerY - height * 0.15, width * 0.2, height * 0.25)
+    ctx.fillRect(centerX + width * 0.1, centerY - height * 0.15, width * 0.2, height * 0.25)
+}
+
 /** The leader's crown, standing on (centerX, bottom) */
 function drawCrown(ctx: CanvasRenderingContext2D, centerX: number, bottom: number, width: number): void {
     const height = width * 0.7
@@ -895,7 +911,10 @@ export class MultiplayerMode extends GameMode {
         ctx.textAlign = 'center'
         ctx.textBaseline = 'bottom'
         ctx.fillStyle = isLocal ? '#ffffff' : '#cfd8dc'
-        ctx.fillText(isLocal ? 'You' : player.name, drawn.x + player.width / 2, drawn.y - 6)
+        const label = isLocal ? 'You' : player.name
+        const labelX = drawn.x + player.width / 2
+        ctx.fillText(label, labelX, drawn.y - 6)
+        if (player.isBot) drawRobot(ctx, labelX - ctx.measureText(label).width / 2 - 11, drawn.y - 14, 12)
         if (isLeader) drawCrown(ctx, drawn.x + player.width / 2, drawn.y - 26, 22)
         ctx.restore()
     }
@@ -1083,9 +1102,9 @@ export class MultiplayerMode extends GameMode {
         localId: string | null,
         leaderId: string | null
     ): void {
-        const ranked: { id: string; name: string; gems: number }[] = []
+        const ranked: { id: string; name: string; gems: number; isBot: boolean }[] = []
         state.players.forEach((player: any, id: string) => {
-            ranked.push({ id, name: id === localId ? 'You' : String(player.name), gems: player.gems })
+            ranked.push({ id, name: id === localId ? 'You' : String(player.name), gems: player.gems, isBot: player.isBot === true })
         })
         ranked.sort((a, b) => b.gems - a.gems)
         const rows = ranked.slice(0, 5).map((entry, index) => ({ ...entry, rank: index + 1 }))
@@ -1112,9 +1131,14 @@ export class MultiplayerMode extends GameMode {
                 ctx.textAlign = 'center'
                 ctx.fillText(String(row.rank), x + 14, rowY)
             }
+            let nameX = x + 28
+            if (row.isBot) {
+                drawRobot(ctx, x + 34, rowY, 10)
+                nameX += 14
+            }
             ctx.fillStyle = isLocal ? '#ffffff' : 'rgba(207, 216, 220, 0.9)'
             ctx.textAlign = 'left'
-            ctx.fillText(row.name, x + 28, rowY, width - 70)
+            ctx.fillText(row.name, nameX, rowY, width - 70 - (nameX - x - 28))
             ctx.fillStyle = GOLD
             ctx.textAlign = 'right'
             ctx.fillText(String(row.gems), x + width - 10, rowY)
