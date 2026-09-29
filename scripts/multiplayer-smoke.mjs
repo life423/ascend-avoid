@@ -192,6 +192,27 @@ try {
     check(me().gems === 10, `and don't snap straight back to you (${me().gems} gems)`);
     await waitFor(() => me().recovering === false, 2000, 'the blinking wears off');
 
+    // Your own spilled gems wait for you, but anyone else can grab them right away
+    alice.send('test:moveTo', { x: 1600, y: 600 });
+    alice.send('test:setGems', { count: 12 });
+    await sleep(200);
+    const spillX = me().x + me().width / 2;
+    const spillY = me().y + me().height / 2;
+    alice.send('test:hit');
+    await sleep(700);
+    const spilled = [];
+    state().gems.forEach((g) => {
+        if (Math.hypot(g.x - spillX, g.y - spillY) < 300) spilled.push({ x: g.x, y: g.y });
+    });
+    const aliceHeld = me().gems;
+    alice.send('test:moveTo', { x: spilled[0].x - me().width / 2, y: spilled[0].y - me().height / 2 });
+    await sleep(250);
+    check(me().gems === aliceHeld, `your own spilled gems wait a moment before you can grab them back (${me().gems - aliceHeld} grabbed)`);
+    const bobHeld = bobState().gems;
+    bob.send('test:moveTo', { x: spilled[1].x - bobState().width / 2, y: spilled[1].y - bobState().height / 2 });
+    await waitFor(() => bobState().gems > bobHeld, 1000, 'but anyone else can grab them right away');
+    await waitFor(() => !me().recovering, 2000, 'Alice recovers again');
+
     // Hits with nothing left
     alice.send('test:setGems', { count: 0 });
     await waitFor(() => me().gems === 0, 1000, 'down to no gems');
@@ -287,6 +308,20 @@ try {
     }
     check(await ballStruck((h) => ({ dx: h + 14, dy: 0 })), 'a ball touching your side is a hit');
     check(!(await ballStruck((h) => ({ dx: h + 16, dy: h + 16 }))), "a ball just off your corner is a miss (it's round)");
+    // After a hit you skid away from what hit you, and can't hop until you've recovered
+    alice.send('test:setGems', { count: 4 });
+    alice.send('test:moveTo', { x: 1000, y: 1000 });
+    await sleep(150);
+    const skidFromX = me().x;
+    const skidFromY = me().y;
+    alice.send('test:placeBall', { dx: me().width / 2 + 14, dy: 0 });
+    await sleep(80);
+    alice.send('hop', { direction: 'down' });
+    await sleep(600);
+    check(me().x < skidFromX - 30, `a hit sends you skidding away from what hit you (${Math.round(skidFromX - me().x)} units)`);
+    check(Math.abs(me().y - skidFromY) < 5, "and you can't hop until you've recovered");
+    alice.send('test:placeBall', { dx: 0, dy: 700 });
+    await waitFor(() => !me().recovering && !me().sliding, 2000, 'Alice is steady again');
     alice.send('test:trafficHits', { on: false });
 
     // The arena shift

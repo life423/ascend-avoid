@@ -54,6 +54,10 @@ lobby, no waiting, and you're back two seconds after a knockout.
 
 - A hit sprays out half your gems, which burst physically outward and scatter, so everyone
   nearby abandons what they were doing and dives into the pile. This is a signature moment.
+- A hit that costs gems sends you skidding about two body-lengths (along a car's path, away
+  from a ball, or back onto the floor after a fall) and you can't hop for 0.8 seconds. Your own
+  spilled gems wait 1.5 seconds before you can grab them back, so whoever shoved you (or anyone
+  quick) gets first crack. A skid never carries you off an edge.
 - You're only knocked out when you're hit with no gems left. Knocked out, you're back in about
   two seconds.
 

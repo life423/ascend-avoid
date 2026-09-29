@@ -25,6 +25,9 @@ class GemSchema extends Schema {
 
   /** Server-only */
   sprayed = false;
+  /** Who spilled it: they can't grab it back until ownerPickupAt */
+  private owner = "";
+  private ownerPickupAt = 0;
   private pickupAt = 0;
   private expiresAt = 0;
   private px = 0;
@@ -62,8 +65,10 @@ class GemSchema extends Schema {
   }
 
   /** Burst outward from a hit: it slides out, can't be grabbed for a moment, and vanishes if nobody does */
-  spray(angle: number, speed: number, now: number): void {
+  spray(angle: number, speed: number, now: number, owner = ""): void {
     this.sprayed = true;
+    this.owner = owner;
+    this.ownerPickupAt = now + GEMS.OWNER_PICKUP_DELAY_MS;
     this.vx = Math.cos(angle) * speed;
     this.vy = Math.sin(angle) * speed;
     this.pickupAt = now + GEMS.SPRAY_PICKUP_DELAY_MS;
@@ -111,8 +116,9 @@ class GemSchema extends Schema {
   }
 
   /** Whether a player's box touches this gem, once it can be picked up */
-  touches(box: Box, now: number): boolean {
+  touches(box: Box, now: number, who = ""): boolean {
     if (now < this.pickupAt) return false;
+    if (who && who === this.owner && now < this.ownerPickupAt) return false;
     const r = GEMS.RADIUS;
     return this.x > box.x - r && this.x < box.x + box.width + r && this.y > box.y - r && this.y < box.y + box.height + r;
   }

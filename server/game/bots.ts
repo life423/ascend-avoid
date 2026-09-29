@@ -74,7 +74,7 @@ export class BotBrain {
   think(bot: PlayerSchema, world: GameState, now: number): Direction | null {
     if (now < this.nextThinkAt) return null;
     this.nextThinkAt = now + this.thinkMs * (0.8 + Math.random() * 0.4);
-    if (bot.state !== PLAYER_STATE.ALIVE || bot.sliding) return null;
+    if (bot.state !== PLAYER_STATE.ALIVE || bot.sliding || bot.recovering) return null;
     if (Math.random() < this.mistakeChance) {
       // A careless hop (misjudging traffic), though never straight over the edge
       const careless = MOVES[Math.floor(Math.random() * MOVES.length)];

@@ -762,8 +762,8 @@ export class MultiplayerMode extends GameMode {
             return
         }
         if (!this.predicted) this.predicted = { x: me.x, y: me.y }
-        if (me.sliding) {
-            // Shoved: slide where the server says until you stop (no hopping until then)
+        if (me.sliding || me.recovering) {
+            // Shoved or knocked into a skid: slide where the server says, no hopping until you've recovered
             this.predicted = {
                 x: this.predicted.x + (me.x - this.predicted.x) * 0.5,
                 y: this.predicted.y + (me.y - this.predicted.y) * 0.5,
@@ -1030,6 +1030,15 @@ export class MultiplayerMode extends GameMode {
         const size = Math.max(4, grow.size)
         const left = drawn.x + (player.width - size) / 2
         const top = drawn.y + (player.height - size) / 2
+        if (player.sliding) {
+            // Dust kicked up by a slide or a skid
+            ctx.fillStyle = 'rgba(200, 210, 220, 0.35)'
+            for (let i = 0; i < 3; i++) {
+                ctx.beginPath()
+                ctx.arc(left + size * (0.2 + 0.3 * i), top + size + 3 + Math.sin(timestamp / 60 + i * 2) * 2, size * 0.14, 0, Math.PI * 2)
+                ctx.fill()
+            }
+        }
         if (isLocal) {
             ctx.drawImage(getSprite('player', 0, timestamp), left, top, size, size)
         } else {

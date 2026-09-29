@@ -143,6 +143,22 @@ class PlayerSchema extends Schema {
     return true;
   }
 
+  /** Knocked by a hit: skid `distance` along (dx, dy), in any direction, on top of any slide under way */
+  skid(dx: number, dy: number, distance: number): void {
+    let length = Math.hypot(dx, dy);
+    if (length < 1e-6) {
+      const angle = Math.random() * Math.PI * 2;
+      dx = Math.cos(angle);
+      dy = Math.sin(angle);
+      length = 1;
+    }
+    const speed = distance * PUSH.FRICTION;
+    this.vx += (dx / length) * speed;
+    this.vy += (dy / length) * speed;
+    this.sliding = true;
+    this.queuedHops = [];
+  }
+
   /** Who shoved this player within the last `withinMs` (their session id), if anyone */
   shovedBy(now: number, withinMs: number): string | null {
     return this.lastShoveBy && now - this.lastShoveAt <= withinMs ? this.lastShoveBy : null;
@@ -194,7 +210,7 @@ class PlayerSchema extends Schema {
 
   /** Queue a hop the browser asked for */
   requestHop(direction: Direction): void {
-    if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.queuedHops.length >= MAX_QUEUED_HOPS) return;
+    if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering || this.queuedHops.length >= MAX_QUEUED_HOPS) return;
     this.queuedHops.push(direction);
   }
 

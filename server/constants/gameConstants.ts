@@ -108,7 +108,8 @@ export const GEMS = {
   SPRAY_FRICTION: 2.5, // ...slowing by this factor a second, so they travel about 100-200 units
   SPRAY_PICKUP_DELAY_MS: 350, // they fly out before anyone can grab them
   SPRAY_LIFETIME_MS: 15000, // uncollected sprayed gems vanish
-  HIT_RECOVERY_MS: 1000, // after a hit, traffic passes through you for this long
+  HIT_RECOVERY_MS: 800, // after a hit you skid and blink: traffic passes through you and you can't hop
+  OWNER_PICKUP_DELAY_MS: 1500, // your own spilled gems wait this long for you, so whoever caused it gets first crack
   DECAY_START: 50, // above this many gems you slowly shed them (one a second at twice this)
   MAX_GEMS: 300, // cap on gems in the world at once
 } as const;
@@ -128,6 +129,8 @@ export const PUSH = {
   LEADER_BOUNTY_MIN: 2,
   LEADER_BOUNTY_MAX: 8,
   LEADER_BOUNTY_COOLDOWN_MS: 1500, // ...at most this often
+  SKID_BODY_LENGTHS: 2, // a hit that costs gems sends you skidding this many of your own sizes...
+  SKID_MIN: 60, // ...and at least this far
 } as const;
 
 /**

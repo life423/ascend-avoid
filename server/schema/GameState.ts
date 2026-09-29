@@ -163,6 +163,11 @@ class GameState extends Schema {
       if (hops.length > 0) this.checkShoves(player, hops[hops.length - 1], fromX, fromY, now);
       this.collectGems(player, now);
       player.decay(deltaTime, this.worldWidth, this.worldHeight);
+      // A skid after a hit never carries anyone off the edge
+      if (this.shiftPhase === "shift" && player.recovering && this.layout && !this.isFloorAt(player.x + player.width / 2, player.y + player.height / 2)) {
+        const spot = closestFloorPoint(this.layout, player.x + player.width / 2, player.y + player.height / 2);
+        player.placeAt(spot.x - player.width / 2, spot.y - player.height / 2);
+      }
       // Over the edge during a shift
       if (this.shiftPhase === "shift" && !player.isSafe() && !this.isFloorAt(player.x + player.width / 2, player.y + player.height / 2)) {
         this.fall(player, now);
@@ -181,16 +186,19 @@ class GameState extends Schema {
         width: box.width + Math.abs(dx),
         height: box.height + Math.abs(dy),
       };
-      let hit = false;
+      // What hit them decides the skid: along a car's path, or away from a ball
+      const hit: { push: { x: number; y: number } | null } = { push: null };
       this.obstacles.forEach((obstacle) => {
-        if (!hit && obstacle.checkCollision(path)) hit = true;
+        if (!hit.push && obstacle.checkCollision(path)) hit.push = { x: obstacle.vx, y: obstacle.vy };
       });
       this.balls.forEach((ball) => {
-        if (!hit && ball.checkCollision(path)) hit = true;
+        if (!hit.push && ball.checkCollision(path)) {
+          hit.push = { x: player.x + player.width / 2 - ball.x, y: player.y + player.height / 2 - ball.y };
+        }
       });
-      if (hit) {
+      if (hit.push) {
         this.credit(player, "traffic", now);
-        this.hitPlayer(player, now);
+        this.hitPlayer(player, now, hit.push);
       }
     });
 
@@ -201,7 +209,7 @@ class GameState extends Schema {
    * A hit. With gems, half of them burst out and the player blinks for a moment, safe from
    * traffic; with none left, they're knocked out.
    */
-  hitPlayer(player: PlayerSchema, now: number = Date.now()): void {
+  hitPlayer(player: PlayerSchema, now: number = Date.now(), push?: { x: number; y: number }): void {
     if (player.gems <= 0) {
       player.knockOut(now);
       return;
@@ -211,7 +219,9 @@ class GameState extends Schema {
     const centerY = player.y + player.height / 2;
     player.setGems(player.gems - lost, this.worldWidth, this.worldHeight);
     player.recover(now);
-    this.sprayGems(centerX, centerY, lost, now);
+    this.sprayGems(centerX, centerY, lost, now, player.sessionId);
+    // Knocked into a skid, so whoever caused it has the first go at the spilled gems
+    if (push) player.skid(push.x, push.y, Math.max(PUSH.SKID_MIN, player.width * PUSH.SKID_BODY_LENGTHS));
   }
 
   /**
@@ -245,7 +255,7 @@ class GameState extends Schema {
       const centerX = target.x + target.width / 2;
       const centerY = target.y + target.height / 2;
       target.setGems(target.gems - loose, this.worldWidth, this.worldHeight);
-      this.sprayGems(centerX, centerY, loose, now);
+      this.sprayGems(centerX, centerY, loose, now, target.sessionId);
     }
   }
 
@@ -455,9 +465,12 @@ class GameState extends Schema {
       player.knockOut(now);
       return;
     }
-    const spot = closestFloorPoint(this.layout, player.x + player.width / 2, player.y + player.height / 2);
+    const centerX = player.x + player.width / 2;
+    const centerY = player.y + player.height / 2;
+    const spot = closestFloorPoint(this.layout, centerX, centerY);
     player.placeAt(spot.x - player.width / 2, spot.y - player.height / 2);
-    this.hitPlayer(player, now);
+    // Skidding onward, away from the edge
+    this.hitPlayer(player, now, { x: spot.x - centerX, y: spot.y - centerY });
   }
 
   /** If someone shoved this player just before they were hit or fell, tell everyone who did it */
@@ -529,7 +542,7 @@ class GameState extends Schema {
     let collected = 0;
     const taken: string[] = [];
     this.gems.forEach((gem, id) => {
-      if (!gem.touches(player, now)) return;
+      if (!gem.touches(player, now, player.sessionId)) return;
       collected += gem.value;
       taken.push(id);
       if (!gem.sprayed) this.fieldGems--;
@@ -540,7 +553,7 @@ class GameState extends Schema {
   }
 
   /** Burst gems outward from a point, spread around the circle; big piles make bigger gems */
-  private sprayGems(centerX: number, centerY: number, total: number, now: number): void {
+  private sprayGems(centerX: number, centerY: number, total: number, now: number, owner = ""): void {
     const room = Math.max(1, GEMS.MAX_GEMS - this.gems.size);
     const pieces = Math.min(total, GEMS.SPRAY_PIECES, room);
     const turn = Math.random() * Math.PI * 2;
@@ -549,7 +562,7 @@ class GameState extends Schema {
       const gem = new GemSchema(centerX, centerY, value);
       const angle = turn + (i / pieces) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
       const speed = GEMS.SPRAY_SPEED_MIN + Math.random() * (GEMS.SPRAY_SPEED_MAX - GEMS.SPRAY_SPEED_MIN);
-      gem.spray(angle, speed, now);
+      gem.spray(angle, speed, now, owner);
       this.gems.set(`g${this.nextGemId++}`, gem);
     }
   }
