@@ -49,6 +49,11 @@ export class GameRoom extends Room<GameState> {
       this.state.players.get(client.sessionId)?.requestHop(direction);
     });
 
+    // Browsers time their round trip to the server with this, to draw traffic in step with it
+    this.onMessage("ping", (client, data: any) => {
+      client.send("pong", { t: Number(data?.t) || 0 });
+    });
+
     // Hooks for the automated test; never available in production
     if (!IS_PRODUCTION) {
       const playerOf = (client: Client) => this.state.players.get(client.sessionId);
@@ -69,6 +74,25 @@ export class GameRoom extends Room<GameState> {
       });
       this.onMessage("test:moveTo", (client, data: any) => {
         playerOf(client)?.placeAt(Number(data?.x) || 0, Number(data?.y) || 0);
+      });
+      this.onMessage("test:trafficHits", (_client, data: any) => {
+        this.state.trafficHits = data?.on === true;
+      });
+      this.onMessage("test:parkTraffic", () => {
+        // Every obstacle but the first stands still in the far corner
+        const { worldWidth, worldHeight } = this.state;
+        this.state.obstacles.forEach((obstacle, index) => {
+          if (index > 0) obstacle.placeAt(worldWidth - 60, worldHeight - 60, 50, 34, 0);
+        });
+      });
+      this.onMessage("test:placeObstacle", (client, data: any) => {
+        // Stands the first obstacle still, relative to the player's center
+        const player = playerOf(client);
+        const obstacle = this.state.obstacles.at(0);
+        if (!player || !obstacle) return;
+        const x = player.x + player.width / 2 + (Number(data?.dx) || 0);
+        const y = player.y + player.height / 2 + (Number(data?.dy) || 0);
+        obstacle.placeAt(x, y, Number(data?.width) || 30, Number(data?.height) || 30, Number(data?.variant) || 0);
       });
       this.onMessage("test:protect", (client, data: any) => {
         playerOf(client)?.protectFor(Number(data?.ms) || 0, Date.now());

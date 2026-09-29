@@ -161,6 +161,8 @@ export const ARENA_RULES = {
   OBSTACLE_MAX_LENGTH: 108,
   OBSTACLE_SPEED: 270, // units per second; each obstacle varies by up to 20% either way
   HOP_COOLDOWN_MS: 60, // server-side limit per direction, far faster than anyone taps
+  PLAYER_HIT_INSET: 4, // a hit needs this much overlap with a player's drawn edge...
+  OBSTACLE_HIT_INSET: 2, // ...and this much with an obstacle's drawn shape
 } as const;
 
 // Key mappings

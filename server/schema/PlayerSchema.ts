@@ -165,10 +165,13 @@ class PlayerSchema extends Schema {
     this.y = Math.max(margin, Math.min(centerY - size / 2, worldHeight - size - margin));
   }
 
-  /** The box traffic hits: it grows only part as much as the player, so being big isn't punished twice */
+  /**
+   * The box traffic hits: a little inside the drawing, so grazing an edge doesn't count, and
+   * growing only part as much as the player, so being big isn't punished twice
+   */
   hitBox(): Box {
     const scale = this.width / ARENA_RULES.PLAYER_SIZE;
-    const size = ARENA_RULES.PLAYER_SIZE * (1 + (scale - 1) * GEMS.HITBOX_GROWTH);
+    const size = ARENA_RULES.PLAYER_SIZE * (1 + (scale - 1) * GEMS.HITBOX_GROWTH) - 2 * ARENA_RULES.PLAYER_HIT_INSET;
     return { x: this.x + (this.width - size) / 2, y: this.y + (this.height - size) / 2, width: size, height: size };
   }
 

@@ -12,6 +12,9 @@ export class MultiplayerManager {
     private isConnecting: boolean = false;
     private reconnectAttempts: number = 0;
     private maxReconnectAttempts: number = 0; // MultiplayerMode handles reconnecting
+    /** Round trip to the server in ms, measured every couple of seconds (0 until the first reply) */
+    roundTripMs: number = 0;
+    private pingTimer: ReturnType<typeof setInterval> | null = null;
 
     constructor(eventBus: EventBus, _assetManager: AssetManager) {
         this.eventBus = eventBus;
@@ -170,6 +173,13 @@ export class MultiplayerManager {
             this.eventBus.emit(GameEvents.PLAYER_LEFT, data);
         });
 
+        this.room.onMessage('pong', (data: any) => {
+            const sample = performance.now() - Number(data?.t);
+            if (!(sample >= 0 && sample < 5000)) return;
+            this.roundTripMs = this.roundTripMs === 0 ? sample : this.roundTripMs * 0.7 + sample * 0.3;
+        });
+        this.startPinging();
+
 
         // Handle errors
         this.room.onError((code, message) => {
@@ -183,6 +193,7 @@ export class MultiplayerManager {
 
         // Handle disconnect
         this.room.onLeave((code) => {
+            this.stopPinging();
             console.log('Left room:', code);
             this.eventBus.emit(GameEvents.MULTIPLAYER_DISCONNECTED, { code });
             this.room = null;
@@ -257,7 +268,21 @@ export class MultiplayerManager {
     /**
      * Disconnect from server
      */
+    /** Time the round trip to the server now and every couple of seconds */
+    private startPinging(): void {
+        this.stopPinging();
+        const ping = () => this.room?.send('ping', { t: performance.now() });
+        ping();
+        this.pingTimer = setInterval(ping, 2000);
+    }
+
+    private stopPinging(): void {
+        if (this.pingTimer) clearInterval(this.pingTimer);
+        this.pingTimer = null;
+    }
+
     disconnect(): void {
+        this.stopPinging();
         if (this.room) {
             this.room.leave();
             this.room = null;

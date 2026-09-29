@@ -37,6 +37,8 @@ class GameState extends Schema {
   gems: schema.MapSchema<GemSchema>;
   worldWidth: number;
   worldHeight: number;
+  /** The world's clock: ms since it started, as of the latest tick (browsers time traffic by it) */
+  time: number;
 
   /** Server-only: whether traffic hits players (the automated test turns this off) */
   trafficHits = true;
@@ -44,6 +46,7 @@ class GameState extends Schema {
   botFill: number = BOTS.FILL_TO;
   private brains = new Map<string, BotBrain>();
   private nextBotId = 1;
+  private startedAt = 0;
   private nextPlayerIndex = 0;
   private nextGemId = 0;
   /** Loose gems the field keeps topped up to, and how many are out there now */
@@ -57,6 +60,7 @@ class GameState extends Schema {
     this.gems = new MapSchema<GemSchema>();
     this.worldWidth = WORLD.WIDTH;
     this.worldHeight = WORLD.HEIGHT;
+    this.time = 0;
     this.fieldGemTarget = fieldGemTarget;
     for (let i = 0; i < WORLD.OBSTACLE_COUNT; i++) {
       const obstacle = new ObstacleSchema();
@@ -83,6 +87,8 @@ class GameState extends Schema {
 
   /** One server tick: move traffic, gems and players, collect gems, decide hits, bring players back */
   update(deltaTime: number, now: number = Date.now()): void {
+    if (!this.startedAt) this.startedAt = now;
+    this.time = Math.round(now - this.startedAt);
     this.obstacles.forEach((obstacle) => {
       if (!obstacle.update(deltaTime, this.worldWidth, this.worldHeight)) {
         obstacle.launch(this.worldWidth, this.worldHeight);
@@ -107,15 +113,27 @@ class GameState extends Schema {
         if (now >= player.respawnAt) this.spawn(player, now);
         return;
       }
+      const fromX = player.x;
+      const fromY = player.y;
       const hops = player.updateMovement(this.worldWidth, this.worldHeight, now, deltaTime);
       if (hops.length > 0) this.checkShoves(player, hops[hops.length - 1], now);
       this.collectGems(player, now);
       player.decay(deltaTime, this.worldWidth, this.worldHeight);
       if (!this.trafficHits || player.isSafe()) return;
+      // Everything the player crossed this tick counts, not just where they ended up, so hopping
+      // (or being shoved) through traffic is a hit
       const box = player.hitBox();
+      const dx = fromX - player.x;
+      const dy = fromY - player.y;
+      const path = {
+        x: Math.min(box.x, box.x + dx),
+        y: Math.min(box.y, box.y + dy),
+        width: box.width + Math.abs(dx),
+        height: box.height + Math.abs(dy),
+      };
       let hit = false;
       this.obstacles.forEach((obstacle) => {
-        if (!hit && obstacle.checkCollision(box)) hit = true;
+        if (!hit && obstacle.checkCollision(path)) hit = true;
       });
       if (hit) this.hitPlayer(player, now);
     });
@@ -312,5 +330,6 @@ type([ObstacleSchema])(GameState.prototype, "obstacles");
 type({ map: GemSchema })(GameState.prototype, "gems");
 type("number")(GameState.prototype, "worldWidth");
 type("number")(GameState.prototype, "worldHeight");
+type("number")(GameState.prototype, "time");
 
 export { GameState };

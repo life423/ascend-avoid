@@ -208,6 +208,34 @@ try {
     const freed = await shove(alice, bob, 0, 0);
     check(freed > 100 && me().spawnProtected === false, 'shoving someone ends your own protection');
 
+    // Traffic hits follow the shapes on screen and count along the whole path of a hop. All
+    // traffic but one standing block is parked in a far corner, so only that block can hit Alice.
+    alice.send('test:parkTraffic');
+    alice.send('test:moveTo', { x: 1000, y: 1000 });
+    alice.send('test:trafficHits', { on: true });
+    await waitFor(() => !me().recovering && !me().spawnProtected, 3000, 'traffic is parked and Alice is ready');
+    /** Stand the block where `place(half)` says (from Alice's center; half = half her width), maybe hop, and report a hit */
+    async function struck(place, hopDirection) {
+        alice.send('test:setGems', { count: 1 });
+        await sleep(120);
+        alice.send('test:placeObstacle', place(me().width / 2));
+        if (hopDirection) alice.send('hop', { direction: hopDirection });
+        await sleep(250);
+        const hit = me().recovering || me().state !== 'alive';
+        alice.send('test:placeObstacle', { dx: 0, dy: 700, width: 20, height: 20 });
+        const until = Date.now() + 2500;
+        while ((me().recovering || me().state !== 'alive') && Date.now() < until) await sleep(50);
+        alice.send('test:moveTo', { x: 1000, y: 1000 });
+        await sleep(120);
+        return hit;
+    }
+    check(!(await struck((h) => ({ dx: h + 4, dy: -17, width: 60, height: 34, variant: 0 }))), 'a block just short of you is a miss');
+    check(await struck((h) => ({ dx: h - 10, dy: -17, width: 60, height: 34, variant: 0 })), 'a block 10 units into your edge is a hit');
+    check(await struck((h) => ({ dx: h - 10, dy: -17, width: 60, height: 34, variant: 1 })), "a diamond's point 10 units into you is a hit");
+    check(!(await struck((h) => ({ dx: h - 12, dy: h - 12, width: 60, height: 34, variant: 1 }))), "a diamond's empty corner over yours is a miss");
+    check(await struck((h) => ({ dx: h + 3, dy: -30, width: 11, height: 60, variant: 0 }), 'right'), 'hopping through a thin block is a hit');
+    alice.send('test:trafficHits', { on: false });
+
     // Leaving and joining
     await bob.leave();
     await waitFor(() => state().players.size === 1, 2000, 'a player who leaves disappears for everyone');

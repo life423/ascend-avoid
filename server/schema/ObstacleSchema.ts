@@ -1,11 +1,10 @@
 import * as schema from "@colyseus/schema";
 const { Schema, type } = schema;
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
+import type { Box } from "../game/movement.js";
 
 const { ARENA_RULES } = GAME_CONSTANTS;
 
-/** Hits use slightly smaller boxes than the drawings, so near misses feel fair */
-const HITBOX_SHRINK = 0.2;
 
 /**
  * Traffic crossing the world. Each obstacle drives straight across (right, left, down or up)
@@ -18,7 +17,7 @@ class ObstacleSchema extends Schema {
   height: number;
   variant: number;
 
-  /** Server-only: velocity, in units per second */
+  /** Velocity in units per second (browsers use it to draw traffic in step with the server) */
   vx = 0;
   vy = 0;
 
@@ -66,18 +65,38 @@ class ObstacleSchema extends Schema {
     return this.y + this.height > 0;
   }
 
-  /** Whether this obstacle hits a player */
-  checkCollision(player: { x: number; y: number; width: number; height: number }): boolean {
-    const px = player.width * HITBOX_SHRINK;
-    const py = player.height * HITBOX_SHRINK;
-    const ox = this.width * HITBOX_SHRINK;
-    const oy = this.height * HITBOX_SHRINK;
-    return (
-      player.x + px < this.x + this.width - ox &&
-      player.x + player.width - px > this.x + ox &&
-      player.y + py < this.y + this.height - oy &&
-      player.y + player.height - py > this.y + oy
-    );
+  /**
+   * Whether this obstacle hits a box (a player's hit box, or the ground they covered this tick).
+   * The test follows the obstacle's drawn shape, stretched to its size: a block (variant 0), a
+   * diamond (1) or a capsule (2), so a hit looks like a hit and a miss looks like a miss.
+   */
+  checkCollision(box: Box): boolean {
+    const inset = ARENA_RULES.OBSTACLE_HIT_INSET;
+    const halfWidth = this.width / 2 - inset;
+    const halfHeight = this.height / 2 - inset;
+    const centerX = this.x + this.width / 2;
+    const centerY = this.y + this.height / 2;
+    // How far the box is from the obstacle's center along each axis (0 where it spans it)
+    const dx = Math.max(box.x - centerX, 0, centerX - (box.x + box.width));
+    const dy = Math.max(box.y - centerY, 0, centerY - (box.y + box.height));
+    if (this.variant === 1) return dx / halfWidth + dy / halfHeight <= 1;
+    if (this.variant === 2) {
+      // A capsule: a straight core along its length, with round ends
+      const radius = Math.min(halfWidth, halfHeight);
+      return Math.hypot(Math.max(0, dx - (halfWidth - radius)), Math.max(0, dy - (halfHeight - radius))) <= radius;
+    }
+    return dx <= halfWidth && dy <= halfHeight;
+  }
+
+  /** Stand the obstacle still at a spot (used by the automated test) */
+  placeAt(x: number, y: number, width: number, height: number, variant: number): void {
+    this.x = x;
+    this.y = y;
+    this.width = width;
+    this.height = height;
+    this.variant = variant;
+    this.vx = 0;
+    this.vy = 0;
   }
 }
 
@@ -87,5 +106,7 @@ type("number")(ObstacleSchema.prototype, "y");
 type("number")(ObstacleSchema.prototype, "width");
 type("number")(ObstacleSchema.prototype, "height");
 type("number")(ObstacleSchema.prototype, "variant");
+type("number")(ObstacleSchema.prototype, "vx");
+type("number")(ObstacleSchema.prototype, "vy");
 
 export { ObstacleSchema };
