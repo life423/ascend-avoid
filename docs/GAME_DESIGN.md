@@ -93,7 +93,7 @@ lobby, no waiting, and you're back two seconds after a knockout.
 ## Build order
 
 1. Big arena, following camera, canvas filling the page, instant respawn with protection. **Done.**
-2. Gems: size, weight, pushing, hits that spray gems, leaderboard, minimap crown.
+2. Gems: size, weight, pushing, hits that spray gems, leaderboard, minimap crown. **Gems done; pushing next.**
 3. Bots.
 4. The shrinking event and its warnings.
 5. Dash, slingshot, Bubble Shield, new hazards.

@@ -34,11 +34,17 @@ export function newPresses(before: Keys, after: Keys): Keys {
 
 /**
  * Which hops happen this frame: pressing a direction hops right away, and holding it keeps
- * hopping, the first repeat after HOP_REPEAT_DELAY seconds and then every HOP_REPEAT.
- * The browser runs this and tells the server about each hop.
+ * hopping, the first repeat after HOP_REPEAT_DELAY seconds and then every `repeat` seconds
+ * (bigger players keep a slower rhythm). The browser runs this and tells the server about each hop.
  */
-export function hopsThisFrame(held: Keys, presses: Keys, timers: HopTimers, deltaTime: number): Direction[] {
-  const { HOP_REPEAT_DELAY, HOP_REPEAT } = ARENA_RULES;
+export function hopsThisFrame(
+  held: Keys,
+  presses: Keys,
+  timers: HopTimers,
+  deltaTime: number,
+  repeat: number = ARENA_RULES.HOP_REPEAT
+): Direction[] {
+  const { HOP_REPEAT_DELAY } = ARENA_RULES;
   const hops: Direction[] = [];
   for (const direction of DIRECTIONS) {
     if (presses[direction]) {
@@ -49,7 +55,7 @@ export function hopsThisFrame(held: Keys, presses: Keys, timers: HopTimers, delt
       if (timers[direction] <= 0) {
         hops.push(direction);
         // After a long frame, carry on at the normal rhythm rather than catching up
-        timers[direction] = Math.max(timers[direction] + HOP_REPEAT, HOP_REPEAT / 2);
+        timers[direction] = Math.max(timers[direction] + repeat, repeat / 2);
       }
     } else {
       timers[direction] = 0;
@@ -58,13 +64,17 @@ export function hopsThisFrame(held: Keys, presses: Keys, timers: HopTimers, delt
   return hops;
 }
 
-/** Move one hop in a direction, staying inside the world. The server and the browser both use this. */
+/**
+ * Move one hop in a direction, staying inside the world. Hops grow with the player, so one hop
+ * always clears your own body. The server and the browser both use this.
+ */
 export function hop(player: Box, direction: Direction, worldWidth: number, worldHeight: number): void {
-  const { HOP, EDGE_MARGIN } = ARENA_RULES;
-  if (direction === "up") player.y -= HOP;
-  else if (direction === "down") player.y += HOP;
-  else if (direction === "left") player.x -= HOP;
-  else player.x += HOP;
+  const { HOP, EDGE_MARGIN, PLAYER_SIZE } = ARENA_RULES;
+  const length = HOP * (player.width / PLAYER_SIZE);
+  if (direction === "up") player.y -= length;
+  else if (direction === "down") player.y += length;
+  else if (direction === "left") player.x -= length;
+  else player.x += length;
   player.x = Math.max(EDGE_MARGIN, Math.min(player.x, worldWidth - player.width - EDGE_MARGIN));
   player.y = Math.max(EDGE_MARGIN, Math.min(player.y, worldHeight - player.height - EDGE_MARGIN));
 }

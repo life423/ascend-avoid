@@ -22,8 +22,8 @@ async function waitFor(condition, timeoutMs, label) {
     check(false, `${label} (still not true after ${timeoutMs / 1000}s)`);
 }
 
-async function join(name) {
-    const room = await new Client(URL).joinOrCreate('game_room', { name });
+async function join(name, options = {}) {
+    const room = await new Client(URL).joinOrCreate('game_room', { name, ...options });
     room.onMessage('*', () => {}); // playerJoined / playerLeft notices aren't needed here
     return room;
 }
@@ -56,7 +56,8 @@ try {
         await sleep(100);
     }
 
-    const alice = await join('Alice');
+    // This world starts with no loose gems, so nobody grows by accident and every count is exact
+    const alice = await join('Alice', { testFieldGems: 0 });
     const state = () => alice.state;
     const me = () => state().players.get(alice.sessionId);
     await waitFor(() => state().players?.size === 1, 2000, 'the first visitor is in the world right away');
@@ -109,9 +110,55 @@ try {
     check(moving >= state().obstacles.length * 0.8, `obstacles move (${moving} of ${state().obstacles.length})`);
     check(directions.size >= 3, `traffic runs in several directions (${[...directions].join(', ')})`);
 
-    // Hits
-    alice.send('test:knockout');
-    await waitFor(() => me().state === 'dead', 1000, 'a hit knocks you out');
+    // Gems (Alice is kept safe from traffic so the counts stay exact)
+    alice.send('test:protect', { ms: 20000 });
+    const sideways = () => (me().x < state().worldWidth / 2 ? 'right' : 'left');
+    const way = sideways();
+    alice.send('test:placeGem', { dx: way === 'right' ? 60 : -60, dy: 0 });
+    await waitFor(() => state().gems.size === 1, 1000, 'a gem appears one hop away');
+    alice.send('hop', { direction: way });
+    await waitFor(() => me().gems === 1, 1000, 'hopping onto a gem picks it up');
+    check(state().gems.size === 0, 'and it leaves the world');
+
+    alice.send('test:setGems', { count: 100 });
+    await waitFor(() => me().gems >= 99, 1000, 'Alice now holds 100 gems');
+    check(Math.abs(me().width - 67.5) < 0.6, `gems make you bigger, up to 1.5x (${me().width} units wide)`);
+    const bigX = me().x;
+    alice.send('hop', { direction: sideways() });
+    await sleep(250);
+    const bigHop = Math.abs(me().x - bigX);
+    check(Math.abs(bigHop - 90) < 1.5, `and hops grow with you (${Math.round(bigHop)} units)`);
+    const shedFrom = me().gems;
+    await sleep(2500);
+    check(me().gems < shedFrom, `very big players slowly shed gems (${shedFrom} to ${me().gems} in 2.5s)`);
+
+    alice.send('test:setGems', { count: 20 });
+    await waitFor(() => me().gems === 20, 1000, 'down to 20 gems');
+    const hitX = me().x + me().width / 2;
+    const hitY = me().y + me().height / 2;
+    alice.send('test:hit');
+    await waitFor(() => me().gems === 10, 1000, 'a hit sprays out half your gems');
+    check(me().state === 'alive' && me().recovering === true, 'and you blink for a moment instead of being knocked out');
+    let sprayed = 0;
+    state().gems.forEach((gem) => {
+        sprayed += gem.value;
+    });
+    check(sprayed === 10, `the lost gems burst into the world (${sprayed} in ${state().gems.size} pieces)`);
+    await sleep(700);
+    let spread = 0;
+    state().gems.forEach((gem) => {
+        spread += Math.hypot(gem.x - hitX, gem.y - hitY);
+    });
+    spread /= Math.max(1, state().gems.size);
+    check(spread > 80, `they fly outward (${Math.round(spread)} units on average)`);
+    check(me().gems === 10, `and don't snap straight back to you (${me().gems} gems)`);
+    await waitFor(() => me().recovering === false, 2000, 'the blinking wears off');
+
+    // Hits with nothing left
+    alice.send('test:setGems', { count: 0 });
+    await waitFor(() => me().gems === 0, 1000, 'down to no gems');
+    alice.send('test:hit');
+    await waitFor(() => me().state === 'dead', 1000, 'a hit with no gems knocks you out');
     const outAt = Date.now();
     await waitFor(() => me().state === 'alive', 3500, 'and you come back');
     const outFor = (Date.now() - outAt) / 1000;
@@ -130,6 +177,7 @@ try {
     await sleep(400);
     const dave = await join('Dave');
     check(dave.roomId !== alice.roomId, 'the room closes once everyone has left');
+    await waitFor(() => dave.state.gems?.size >= 60, 2000, 'a fresh world has gems lying around');
     await dave.leave();
 } catch (error) {
     check(false, `unexpected error: ${error.message}`);

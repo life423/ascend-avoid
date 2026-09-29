@@ -4,6 +4,8 @@ import logger from "../utils/logger";
 import { GameState } from "../schema/GameState";
 import { DIRECTIONS } from "../game/movement";
 
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
+
 /** What a client may send when joining; anything else is ignored */
 interface JoinOptions {
   name?: unknown;
@@ -26,8 +28,10 @@ export function sanitizeName(raw: unknown): string | null {
 export class GameRoom extends Room<GameState> {
   maxClients = GAME_CONSTANTS.GAME.MAX_PLAYERS;
 
-  onCreate(): void {
-    this.setState(new GameState());
+  onCreate(options: any = {}): void {
+    // The automated test can start a world with no loose gems, so its gem counts stay exact
+    const fieldGems = !IS_PRODUCTION && Number.isInteger(options.testFieldGems) ? options.testFieldGems : undefined;
+    this.setState(new GameState(fieldGems));
 
     // Runs on the room's clock, so it stops by itself when the room is disposed
     this.setSimulationInterval(
@@ -41,10 +45,26 @@ export class GameRoom extends Room<GameState> {
       this.state.players.get(client.sessionId)?.requestHop(direction);
     });
 
-    // Lets the automated test knock a player out on demand; never available in production
-    if (process.env.NODE_ENV !== "production") {
-      this.onMessage("test:knockout", (client) => {
-        this.state.players.get(client.sessionId)?.knockOut(Date.now());
+    // Hooks for the automated test; never available in production
+    if (!IS_PRODUCTION) {
+      const playerOf = (client: Client) => this.state.players.get(client.sessionId);
+      const { worldWidth, worldHeight } = this.state;
+      this.onMessage("test:hit", (client) => {
+        const player = playerOf(client);
+        if (player) this.state.hitPlayer(player);
+      });
+      this.onMessage("test:setGems", (client, data: any) => {
+        playerOf(client)?.setGems(Number(data?.count) || 0, worldWidth, worldHeight);
+      });
+      this.onMessage("test:placeGem", (client, data: any) => {
+        const player = playerOf(client);
+        if (!player) return;
+        const x = player.x + player.width / 2 + (Number(data?.dx) || 0);
+        const y = player.y + player.height / 2 + (Number(data?.dy) || 0);
+        this.state.addGem(x, y);
+      });
+      this.onMessage("test:protect", (client, data: any) => {
+        playerOf(client)?.protectFor(Number(data?.ms) || 0, Date.now());
       });
     }
 

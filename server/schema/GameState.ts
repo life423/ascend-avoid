@@ -2,9 +2,10 @@ import * as schema from "@colyseus/schema";
 const { Schema, MapSchema, ArraySchema, type } = schema;
 import { PlayerSchema } from "./PlayerSchema.js";
 import { ObstacleSchema } from "./ObstacleSchema.js";
+import { GemSchema } from "./GemSchema.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 
-const { WORLD, ARENA_RULES, PLAYER_STATE } = GAME_CONSTANTS;
+const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE } = GAME_CONSTANTS;
 
 /** How many random spots to try when looking for a safe place to (re)spawn */
 const SPAWN_TRIES = 24;
@@ -17,30 +18,39 @@ function distanceToRect(px: number, py: number, x: number, y: number, width: num
 }
 
 /**
- * The online world: one big open arena that never stops. Players drop in the moment they
- * join, dodge traffic crossing the map in every direction, and come back two seconds after a
- * hit, somewhere safe and protected for a moment. There are no rounds and nobody waits.
+ * The online world: one big open arena that never stops. Players drop in the moment they join,
+ * grab gems and dodge traffic crossing the map in every direction. A hit sprays out half your
+ * gems; with none left you're knocked out, back two seconds later somewhere safe and protected
+ * for a moment. There are no rounds and nobody waits.
  */
 class GameState extends Schema {
   players: schema.MapSchema<PlayerSchema>;
   obstacles: schema.ArraySchema<ObstacleSchema>;
+  gems: schema.MapSchema<GemSchema>;
   worldWidth: number;
   worldHeight: number;
 
-  /** Server-only: gives each new player the next color */
+  /** Server-only */
   private nextPlayerIndex = 0;
+  private nextGemId = 0;
+  /** Loose gems the field keeps topped up to, and how many are out there now */
+  private fieldGemTarget: number;
+  private fieldGems = 0;
 
-  constructor() {
+  constructor(fieldGemTarget: number = GEMS.FIELD_COUNT) {
     super();
     this.players = new MapSchema<PlayerSchema>();
     this.obstacles = new ArraySchema<ObstacleSchema>();
+    this.gems = new MapSchema<GemSchema>();
     this.worldWidth = WORLD.WIDTH;
     this.worldHeight = WORLD.HEIGHT;
+    this.fieldGemTarget = fieldGemTarget;
     for (let i = 0; i < WORLD.OBSTACLE_COUNT; i++) {
       const obstacle = new ObstacleSchema();
       obstacle.launch(this.worldWidth, this.worldHeight, true);
       this.obstacles.push(obstacle);
     }
+    this.topUpField();
   }
 
   /** A new visitor: straight into the world, somewhere safe */
@@ -56,7 +66,7 @@ class GameState extends Schema {
     this.players.delete(sessionId);
   }
 
-  /** One server tick: move traffic and players, check hits, bring knocked-out players back */
+  /** One server tick: move traffic, gems and players, collect gems, decide hits, bring players back */
   update(deltaTime: number, now: number = Date.now()): void {
     this.obstacles.forEach((obstacle) => {
       if (!obstacle.update(deltaTime, this.worldWidth, this.worldHeight)) {
@@ -64,35 +74,123 @@ class GameState extends Schema {
       }
     });
 
+    const expired: string[] = [];
+    this.gems.forEach((gem, id) => {
+      if (!gem.update(deltaTime, this.worldWidth, this.worldHeight, now)) expired.push(id);
+    });
+    expired.forEach((id) => this.gems.delete(id));
+
     this.players.forEach((player) => {
       if (player.state !== PLAYER_STATE.ALIVE) {
         if (now >= player.respawnAt) this.spawn(player, now);
         return;
       }
       player.updateMovement(this.worldWidth, this.worldHeight, now);
-      if (player.spawnProtected) return;
+      this.collectGems(player, now);
+      player.decay(deltaTime, this.worldWidth, this.worldHeight);
+      if (player.isSafe()) return;
+      const box = player.hitBox();
       let hit = false;
       this.obstacles.forEach((obstacle) => {
-        if (!hit && obstacle.checkCollision(player)) hit = true;
+        if (!hit && obstacle.checkCollision(box)) hit = true;
       });
-      if (hit) player.knockOut(now);
+      if (hit) this.hitPlayer(player, now);
     });
+
+    this.topUpField();
+  }
+
+  /**
+   * A hit. With gems, half of them burst out and the player blinks for a moment, safe from
+   * traffic; with none left, they're knocked out.
+   */
+  hitPlayer(player: PlayerSchema, now: number = Date.now()): void {
+    if (player.gems <= 0) {
+      player.knockOut(now);
+      return;
+    }
+    const lost = Math.max(1, Math.ceil(player.gems * GEMS.SPRAY_SHARE));
+    const centerX = player.x + player.width / 2;
+    const centerY = player.y + player.height / 2;
+    player.setGems(player.gems - lost, this.worldWidth, this.worldHeight);
+    player.recover(now);
+    this.sprayGems(centerX, centerY, lost, now);
+  }
+
+  /** A loose gem somewhere in the world, or at a given spot */
+  addGem(x?: number, y?: number): void {
+    const margin = 40;
+    const gem = new GemSchema(
+      x ?? margin + Math.random() * (this.worldWidth - 2 * margin),
+      y ?? margin + Math.random() * (this.worldHeight - 2 * margin)
+    );
+    this.gems.set(`g${this.nextGemId++}`, gem);
+    this.fieldGems++;
+  }
+
+  /** Keep the field stocked: every gem picked up reappears somewhere else */
+  private topUpField(): void {
+    while (this.fieldGems < this.fieldGemTarget && this.gems.size < GEMS.MAX_GEMS) this.addGem();
+  }
+
+  /** Pick up every gem the player is touching */
+  private collectGems(player: PlayerSchema, now: number): void {
+    let collected = 0;
+    const taken: string[] = [];
+    this.gems.forEach((gem, id) => {
+      if (!gem.touches(player, now)) return;
+      collected += gem.value;
+      taken.push(id);
+      if (!gem.sprayed) this.fieldGems--;
+    });
+    if (collected === 0) return;
+    taken.forEach((id) => this.gems.delete(id));
+    player.setGems(player.gems + collected, this.worldWidth, this.worldHeight);
+  }
+
+  /** Burst gems outward from a point, spread around the circle; big piles make bigger gems */
+  private sprayGems(centerX: number, centerY: number, total: number, now: number): void {
+    const room = Math.max(1, GEMS.MAX_GEMS - this.gems.size);
+    const pieces = Math.min(total, GEMS.SPRAY_PIECES, room);
+    const turn = Math.random() * Math.PI * 2;
+    for (let i = 0; i < pieces; i++) {
+      const value = Math.floor(total / pieces) + (i < total % pieces ? 1 : 0);
+      const gem = new GemSchema(centerX, centerY, value);
+      const angle = turn + (i / pieces) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
+      const speed = GEMS.SPRAY_SPEED_MIN + Math.random() * (GEMS.SPRAY_SPEED_MAX - GEMS.SPRAY_SPEED_MIN);
+      gem.spray(angle, speed, now);
+      this.gems.set(`g${this.nextGemId++}`, gem);
+    }
+  }
+
+  /** The player with the most gems, once anyone has one */
+  private leader(): PlayerSchema | null {
+    let leader: PlayerSchema | null = null;
+    let most = 0;
+    this.players.forEach((player) => {
+      if (player.state === PLAYER_STATE.ALIVE && player.gems > most) {
+        most = player.gems;
+        leader = player;
+      }
+    });
+    return leader;
   }
 
   /**
    * Put a player somewhere safe: the best of several random spots, judged by distance from
-   * traffic (where it is and where it's headed) and from other players. Once gems exist, the
-   * leader counts as a danger too.
+   * traffic (where it is and where it's headed), from other players and, most of all, from
+   * the leader.
    */
   private spawn(player: PlayerSchema, now: number): void {
     const margin = ARENA_RULES.EDGE_MARGIN + 40;
     const size = player.width;
+    const leader = this.leader();
     let best = { x: (this.worldWidth - size) / 2, y: (this.worldHeight - size) / 2 };
     let bestClearance = -Infinity;
     for (let attempt = 0; attempt < SPAWN_TRIES; attempt++) {
       const x = margin + Math.random() * (this.worldWidth - size - 2 * margin);
       const y = margin + Math.random() * (this.worldHeight - size - 2 * margin);
-      const clearance = this.clearanceAt(x + size / 2, y + size / 2, player);
+      const clearance = this.clearanceAt(x + size / 2, y + size / 2, player, leader);
       if (clearance > bestClearance) {
         best = { x, y };
         bestClearance = clearance;
@@ -102,8 +200,8 @@ class GameState extends Schema {
     player.spawnAt(Math.round(best.x), Math.round(best.y), now);
   }
 
-  /** How far a point is from the nearest danger: traffic over the next second, or another player */
-  private clearanceAt(cx: number, cy: number, self: PlayerSchema): number {
+  /** How far a point is from the nearest danger: traffic over the next second, other players, the leader */
+  private clearanceAt(cx: number, cy: number, self: PlayerSchema, leader: PlayerSchema | null): number {
     let nearest = Infinity;
     this.obstacles.forEach((o) => {
       for (const t of [0, 0.5, 1]) {
@@ -112,8 +210,9 @@ class GameState extends Schema {
     });
     this.players.forEach((other) => {
       if (other === self || other.state !== PLAYER_STATE.ALIVE) return;
-      // Other players matter less than traffic: spawning 300 units away counts as 150
-      nearest = Math.min(nearest, Math.hypot(other.x + other.width / 2 - cx, other.y + other.height / 2 - cy) / 2);
+      const distance = Math.hypot(other.x + other.width / 2 - cx, other.y + other.height / 2 - cy);
+      // Another player 300 units away counts like traffic 150 away; the leader, like traffic 75 away
+      nearest = Math.min(nearest, other === leader ? distance / 4 : distance / 2);
     });
     return nearest;
   }
@@ -122,6 +221,7 @@ class GameState extends Schema {
 // Fields sent to clients
 type({ map: PlayerSchema })(GameState.prototype, "players");
 type([ObstacleSchema])(GameState.prototype, "obstacles");
+type({ map: GemSchema })(GameState.prototype, "gems");
 type("number")(GameState.prototype, "worldWidth");
 type("number")(GameState.prototype, "worldHeight");
 
