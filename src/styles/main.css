@@ -642,3 +642,106 @@ body.online-mode .touch-controls-area {
         padding: 0;
     }
 }
+
+/* ============================================
+   DESKTOP: THE ARENA GETS THE SPACE
+   The header is one slim bar that can slide up out of sight (F, or its button; a tab in the
+   top-right corner brings it back), and How to Play lives in the slide-in drawer (? or H)
+   instead of a column beside the game. See DesktopChrome.ts.
+   ============================================ */
+.bar-actions,
+.bar-tab {
+    display: none;
+}
+
+@media (min-width: 1200px) {
+    .app-root {
+        max-width: none;
+    }
+
+    .app-header {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+        height: 52px;
+        padding: 0 20px;
+        text-align: left;
+        transition: margin-top 0.25s ease;
+    }
+
+    .app-header h1 {
+        font-size: 1.4rem;
+        white-space: nowrap;
+    }
+
+    .app-header .score-panel {
+        flex: 1 1 auto;
+        justify-content: center;
+        margin: 0;
+        padding: 0;
+        background: none;
+        border: 0;
+        box-shadow: none;
+    }
+
+    body.bar-hidden .app-header {
+        margin-top: -54px;
+    }
+
+    .game-canvas-container {
+        padding: 8px;
+    }
+
+    .info-panel {
+        display: none !important;
+    }
+
+    .bar-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .bar-button {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(79, 209, 197, 0.5);
+        border-radius: 8px;
+        background: rgba(79, 209, 197, 0.1);
+        color: var(--text-light);
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .bar-button:hover {
+        background: rgba(79, 209, 197, 0.25);
+    }
+
+    .bar-button:focus-visible {
+        outline: 2px solid var(--accent-secondary);
+        outline-offset: 2px;
+    }
+
+    /* Shown once the bar is hidden: help and a way back, tucked into the top-right corner */
+    .bar-tab {
+        display: flex;
+        gap: 6px;
+        position: fixed;
+        top: 6px;
+        right: 16px;
+        z-index: 1000;
+        padding: 4px;
+        border-radius: 10px;
+        background: rgba(5, 12, 24, 0.7);
+        transform: translateY(-150%);
+        transition: transform 0.25s ease;
+    }
+
+    body.bar-hidden .bar-tab {
+        transform: translateY(0);
+    }
+}
+
