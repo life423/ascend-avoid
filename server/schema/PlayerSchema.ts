@@ -51,6 +51,8 @@ class PlayerSchema extends Schema {
   private lastShoveAt = 0;
   private bountyAt = 0;
   private queuedHops: Direction[] = [];
+  private queuedDash: Direction | null = null;
+  private dashReadyAt = 0;
   private lastHopAt: Record<Direction, number> = { up: 0, down: 0, left: 0, right: 0 };
 
   constructor(sessionId: string, playerIndex: number) {
@@ -79,6 +81,7 @@ class PlayerSchema extends Schema {
     this.stopSliding();
     this.protectFor(WORLD.SPAWN_PROTECTION_MS, now);
     this.queuedHops = [];
+    this.queuedDash = null;
   }
 
   /** Traffic passes through for `ms` (drawn in a bubble) */
@@ -105,6 +108,7 @@ class PlayerSchema extends Schema {
     this.recovering = false;
     this.respawnAt = now + WORLD.RESPAWN_DELAY_MS;
     this.queuedHops = [];
+    this.queuedDash = null;
     this.stopSliding();
   }
 
@@ -140,6 +144,7 @@ class PlayerSchema extends Schema {
     else this.vx += speed;
     this.sliding = true;
     this.queuedHops = [];
+    this.queuedDash = null;
     return true;
   }
 
@@ -157,6 +162,7 @@ class PlayerSchema extends Schema {
     this.vy += (dy / length) * speed;
     this.sliding = true;
     this.queuedHops = [];
+    this.queuedDash = null;
   }
 
   /** Who shoved this player within the last `withinMs` (their session id), if anyone */
@@ -208,6 +214,12 @@ class PlayerSchema extends Schema {
     this.setGems(this.gems - lost, worldWidth, worldHeight);
   }
 
+  /** Queue a dash the browser asked for: several hops' worth at once (see ARENA_RULES.DASH_*) */
+  requestDash(direction: Direction): void {
+    if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering) return;
+    this.queuedDash = direction;
+  }
+
   /** Queue a hop the browser asked for */
   requestHop(direction: Direction): void {
     if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering || this.queuedHops.length >= MAX_QUEUED_HOPS) return;
@@ -227,7 +239,7 @@ class PlayerSchema extends Schema {
       this.slide(deltaTime, worldWidth, worldHeight);
       return [];
     }
-    if (this.queuedHops.length === 0) return [];
+    if (this.queuedHops.length === 0 && !this.queuedDash) return [];
     const applied: Direction[] = [];
     const box = { x: this.x, y: this.y, width: this.width, height: this.height };
     while (this.queuedHops.length > 0) {
@@ -238,8 +250,17 @@ class PlayerSchema extends Schema {
       hop(box, direction, worldWidth, worldHeight);
       applied.push(direction);
     }
+    let dashed = false;
+    if (this.queuedDash && now >= this.dashReadyAt) {
+      hop(box, this.queuedDash, worldWidth, worldHeight, ARENA_RULES.DASH_LENGTH);
+      applied.push(this.queuedDash);
+      this.dashReadyAt = now + ARENA_RULES.DASH_COOLDOWN_MS;
+      dashed = true;
+    }
+    this.queuedDash = null;
     if (box.x !== this.x) this.x = box.x;
     if (box.y !== this.y) this.y = box.y;
+    if (dashed && this.gems > 0) this.setGems(this.gems - ARENA_RULES.DASH_COST, worldWidth, worldHeight);
     return applied;
   }
 

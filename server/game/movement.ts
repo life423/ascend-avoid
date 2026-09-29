@@ -112,9 +112,10 @@ export function holdRepeat(width: number): number {
  * Move one hop in a direction, staying inside the world. Hops grow with the player, so one hop
  * always clears your own body. The server and the browser both use this.
  */
-export function hop(player: Box, direction: Direction, worldWidth: number, worldHeight: number): void {
+export function hop(player: Box, direction: Direction, worldWidth: number, worldHeight: number, scale = 1): void {
   const { EDGE_MARGIN } = ARENA_RULES;
-  const length = hopLength(player.width);
+  // A dash is several hops' worth at once (scale)
+  const length = hopLength(player.width) * scale;
   if (direction === "up") player.y -= length;
   else if (direction === "down") player.y += length;
   else if (direction === "left") player.x -= length;

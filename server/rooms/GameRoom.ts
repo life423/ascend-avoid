@@ -51,6 +51,12 @@ export class GameRoom extends Room<GameState> {
       this.state.players.get(client.sessionId)?.requestHop(direction);
     });
 
+    this.onMessage("dash", (client, data: any) => {
+      const direction = data?.direction;
+      if (!DIRECTIONS.includes(direction)) return;
+      this.state.players.get(client.sessionId)?.requestDash(direction);
+    });
+
     // Browsers time their round trip to the server with this, to draw traffic in step with it
     this.onMessage("ping", (client, data: any) => {
       client.send("pong", { t: Number(data?.t) || 0 });

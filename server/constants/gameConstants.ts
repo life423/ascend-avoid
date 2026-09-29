@@ -205,6 +205,9 @@ export const ARENA_RULES = {
   PLAYER_SIZE: 20, // a new player's size; gems make you bigger (GEMS.SIZE_PER_ROOT)
   HOP: 60, // one tap = one hop, while you're small...
   HOP_BEYOND_SIZE: 12, // ...and once you're big, your size plus this, so a hop always clears you
+  DASH_LENGTH: 3, // a dash covers this many hops at once...
+  DASH_COOLDOWN_MS: 1000, // ...then needs this long to recharge...
+  DASH_COST: 1, // ...and costs this many gems (if you have any)
   HOP_REPEAT_DELAY: 0.2, // holding a direction: the first repeat hop comes after this many seconds,
   HOP_REPEAT: 1 / 6, // then one every this many seconds (six a second)
   EDGE_MARGIN: 8, // closest you can get to the edge of the world

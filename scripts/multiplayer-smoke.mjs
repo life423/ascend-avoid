@@ -156,6 +156,16 @@ try {
     alice.send('hop', { direction: way });
     await waitFor(() => me().gems === 1, 1000, 'hopping onto a gem picks it up');
     check(state().gems.size === 0, 'and it leaves the world');
+    const dashX = me().x;
+    alice.send('dash', { direction: way });
+    await sleep(200);
+    const dashed = Math.abs(me().x - dashX);
+    check(Math.abs(dashed - 180) < 4, `a dash covers three hops at once (${Math.round(dashed)} units)`);
+    check(me().gems === 0, 'and costs a gem');
+    const afterDash = me().x;
+    alice.send('dash', { direction: way });
+    await sleep(200);
+    check(Math.abs(me().x - afterDash) < 1, 'and needs a moment to recharge');
 
     alice.send('test:setGems', { count: 100 });
     await waitFor(() => me().gems >= 99, 1000, 'Alice now holds 100 gems');

@@ -28,6 +28,8 @@ export default class InputManager {
     private keyMappings: KeyMappings
     private keys: InputState & { restart: boolean; shoot: boolean } // Added shoot
     private touchStart: Point
+    /** Swipes on the canvas move you in solo; the online mode turns this off for its joystick */
+    swipesEnabled = true
     // private _isTouchDevice: boolean = false // Removed unused property
 
     /**
@@ -188,6 +190,7 @@ export default class InputManager {
      * @param e - The touch event
      */
     private handleTouchStart(e: TouchEvent): void {
+        if (!this.swipesEnabled) return
         e.preventDefault()
         const touch = e.touches[0]
         this.touchStart.x = touch.clientX
@@ -199,6 +202,7 @@ export default class InputManager {
      * @param e - The touch event
      */
     private handleTouchEnd(e: TouchEvent): void {
+        if (!this.swipesEnabled) return
         e.preventDefault()
         const touch = e.changedTouches[0]
         const touchEndX = touch.clientX
