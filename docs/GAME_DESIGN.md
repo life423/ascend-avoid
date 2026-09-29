@@ -91,13 +91,15 @@ lobby, no waiting, and you're back two seconds after a knockout.
 
 ## Always playable
 
-- No rounds and no lobbies. Bots, marked with a robot icon, fill in up to 6–8 players.
+- No rounds and no lobbies. Bots, marked with a robot, fill in until six are playing and make
+  room as people arrive. They hop by the same rules as people, dodge the traffic they see
+  coming, chase gems and shove now and then (always the leader).
 - Solo becomes the same world offline with bots; until then it's the classic solo game.
 
 ## Build order
 
 1. Big arena, following camera, canvas filling the page, instant respawn with protection. **Done.**
 2. Gems: size, weight, pushing, hits that spray gems, leaderboard, minimap crown. **Done.**
-3. Bots.
+3. Bots. **Done.**
 4. The shrinking event and its warnings.
 5. Dash, slingshot, Bubble Shield, new hazards.

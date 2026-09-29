@@ -4,7 +4,7 @@ import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 import { hop } from "../game/movement.js";
 import type { Box, Direction } from "../game/movement.js";
 
-const { ARENA_RULES, GEMS, PLAYER_STATE, PUSH, WORLD } = GAME_CONSTANTS;
+const { ARENA_RULES, BOTS, GEMS, PLAYER_STATE, PUSH, WORLD } = GAME_CONSTANTS;
 
 /** At most this many hops wait to be applied; more are dropped, so flooding can't speed anyone up */
 const MAX_QUEUED_HOPS = 4;
@@ -37,6 +37,8 @@ class PlayerSchema extends Schema {
   recovering: boolean;
   /** Shoved: sliding to a stop, and can't hop until then */
   sliding: boolean;
+  /** A bot, not a person (drawn with a robot by its name) */
+  isBot: boolean;
 
   /** Server-only: when a knocked-out player comes back */
   respawnAt = 0;
@@ -65,6 +67,7 @@ class PlayerSchema extends Schema {
     this.spawnProtected = false;
     this.recovering = false;
     this.sliding = false;
+    this.isBot = false;
   }
 
   /** Put the player at a spot, in play and protected for a moment */
@@ -162,20 +165,27 @@ class PlayerSchema extends Schema {
     this.y = Math.max(margin, Math.min(centerY - size / 2, worldHeight - size - margin));
   }
 
-  /** The box traffic hits: it grows only part as much as the player, so being big isn't punished twice */
+  /**
+   * The box traffic hits: a little inside the drawing, so grazing an edge doesn't count, and
+   * growing only part as much as the player, so being big isn't punished twice
+   */
   hitBox(): Box {
     const scale = this.width / ARENA_RULES.PLAYER_SIZE;
-    const size = ARENA_RULES.PLAYER_SIZE * (1 + (scale - 1) * GEMS.HITBOX_GROWTH);
+    const size = ARENA_RULES.PLAYER_SIZE * (1 + (scale - 1) * GEMS.HITBOX_GROWTH) - 2 * ARENA_RULES.PLAYER_HIT_INSET;
     return { x: this.x + (this.width - size) / 2, y: this.y + (this.height - size) / 2, width: size, height: size };
   }
 
-  /** Very big players slowly shed gems: none at DECAY_START, one a second at twice that */
+  /**
+   * Very big players slowly shed gems: none at the decay start, one a second at twice that. Bots
+   * start shedding sooner, so people can outgrow them.
+   */
   decay(deltaTime: number, worldWidth: number, worldHeight: number): void {
-    if (this.gems <= GEMS.DECAY_START) {
+    const start = this.isBot ? BOTS.DECAY_START : GEMS.DECAY_START;
+    if (this.gems <= start) {
       this.decayProgress = 0;
       return;
     }
-    this.decayProgress += (deltaTime * (this.gems - GEMS.DECAY_START)) / GEMS.DECAY_START;
+    this.decayProgress += (deltaTime * (this.gems - start)) / start;
     if (this.decayProgress < 1) return;
     const lost = Math.floor(this.decayProgress);
     this.decayProgress -= lost;
@@ -260,5 +270,6 @@ type("number")(PlayerSchema.prototype, "gems");
 type("boolean")(PlayerSchema.prototype, "spawnProtected");
 type("boolean")(PlayerSchema.prototype, "recovering");
 type("boolean")(PlayerSchema.prototype, "sliding");
+type("boolean")(PlayerSchema.prototype, "isBot");
 
 export { PlayerSchema };

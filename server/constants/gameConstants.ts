@@ -128,6 +128,24 @@ export const PUSH = {
 } as const;
 
 /**
+ * Bots keep a quiet world lively. They hop by the same rules as people (so they're never
+ * faster), dodge the traffic they see coming, chase gems and shove now and then.
+ */
+export const BOTS = {
+  FILL_TO: 6, // bots fill in until this many are playing, and leave as people arrive
+  NAMES: ["Bolt", "Pixel", "Zippy", "Nova", "Sprocket", "Blip", "Widget", "Gizmo", "Rivet", "Chip"],
+  THINK_MS_MIN: 200, // each bot decides on a hop every 200-320 ms (it varies by bot)...
+  THINK_MS_MAX: 320,
+  LOOK_AHEAD: 0.7, // ...watching the next 0.7 seconds of traffic...
+  SAFETY_MARGIN: 10, // ...and keeping this far clear of it
+  MISTAKE_CHANCE: 0.07, // how often a bot hops at random instead (varies by bot, up to 1.5x this)
+  MAX_AGGRESSION: 0.35, // how keen the keenest bot is to shove whoever is next to it
+  GEM_SIGHT: 700, // bots go for gems within this distance...
+  CONTENT_AT: 30, // ...until they have this many; then they just wander, dodge and shove
+  DECAY_START: 20, // bots shed gems above this (people above GEMS.DECAY_START), so people can outgrow them
+} as const;
+
+/**
  * Sizes and speeds in world units, matching solo play's feel. Solo measures in screen pixels (a
  * 30px player, ~39px hops, obstacles 22px thick moving 2.5-3.5px a frame); these are those at a
  * typical canvas scale of 0.65.
@@ -143,6 +161,8 @@ export const ARENA_RULES = {
   OBSTACLE_MAX_LENGTH: 108,
   OBSTACLE_SPEED: 270, // units per second; each obstacle varies by up to 20% either way
   HOP_COOLDOWN_MS: 60, // server-side limit per direction, far faster than anyone taps
+  PLAYER_HIT_INSET: 4, // a hit needs this much overlap with a player's drawn edge...
+  OBSTACLE_HIT_INSET: 2, // ...and this much with an obstacle's drawn shape
 } as const;
 
 // Key mappings
@@ -224,6 +244,7 @@ export const GAME_CONSTANTS = {
   WORLD,
   GEMS,
   PUSH,
+  BOTS,
   KEYS,
   DEVICE_SETTINGS
 } as const;

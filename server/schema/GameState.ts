@@ -3,10 +3,11 @@ const { Schema, MapSchema, ArraySchema, type } = schema;
 import { PlayerSchema } from "./PlayerSchema.js";
 import { ObstacleSchema } from "./ObstacleSchema.js";
 import { GemSchema } from "./GemSchema.js";
+import { BotBrain } from "../game/bots.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 import type { Box, Direction } from "../game/movement.js";
 
-const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH } = GAME_CONSTANTS;
+const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS } = GAME_CONSTANTS;
 
 /** How many random spots to try when looking for a safe place to (re)spawn */
 const SPAWN_TRIES = 24;
@@ -27,7 +28,8 @@ function overlaps(a: Box, b: Box): boolean {
  * The online world: one big open arena that never stops. Players drop in the moment they join,
  * grab gems, shove each other and dodge traffic crossing the map in every direction. A hit
  * sprays out half your gems; with none left you're knocked out, back two seconds later somewhere
- * safe and protected for a moment. There are no rounds and nobody waits.
+ * safe and protected for a moment. There are no rounds, nobody waits, and
+ * bots fill in when it's quiet.
  */
 class GameState extends Schema {
   players: schema.MapSchema<PlayerSchema>;
@@ -35,9 +37,16 @@ class GameState extends Schema {
   gems: schema.MapSchema<GemSchema>;
   worldWidth: number;
   worldHeight: number;
+  /** The world's clock: ms since it started, as of the latest tick (browsers time traffic by it) */
+  time: number;
 
   /** Server-only: whether traffic hits players (the automated test turns this off) */
   trafficHits = true;
+  /** Server-only: bots fill in until this many are playing (the automated test sets 0) */
+  botFill: number = BOTS.FILL_TO;
+  private brains = new Map<string, BotBrain>();
+  private nextBotId = 1;
+  private startedAt = 0;
   private nextPlayerIndex = 0;
   private nextGemId = 0;
   /** Loose gems the field keeps topped up to, and how many are out there now */
@@ -51,6 +60,7 @@ class GameState extends Schema {
     this.gems = new MapSchema<GemSchema>();
     this.worldWidth = WORLD.WIDTH;
     this.worldHeight = WORLD.HEIGHT;
+    this.time = 0;
     this.fieldGemTarget = fieldGemTarget;
     for (let i = 0; i < WORLD.OBSTACLE_COUNT; i++) {
       const obstacle = new ObstacleSchema();
@@ -66,15 +76,19 @@ class GameState extends Schema {
     if (name) player.name = name;
     this.players.set(sessionId, player);
     this.spawn(player, now);
+    this.balanceBots(now);
     return player;
   }
 
   removePlayer(sessionId: string): void {
     this.players.delete(sessionId);
+    this.balanceBots(Date.now());
   }
 
   /** One server tick: move traffic, gems and players, collect gems, decide hits, bring players back */
   update(deltaTime: number, now: number = Date.now()): void {
+    if (!this.startedAt) this.startedAt = now;
+    this.time = Math.round(now - this.startedAt);
     this.obstacles.forEach((obstacle) => {
       if (!obstacle.update(deltaTime, this.worldWidth, this.worldHeight)) {
         obstacle.launch(this.worldWidth, this.worldHeight);
@@ -87,20 +101,39 @@ class GameState extends Schema {
     });
     expired.forEach((id) => this.gems.delete(id));
 
+    // Bots decide on their hops, which then go through the same rules as everyone's
+    this.brains.forEach((brain, id) => {
+      const bot = this.players.get(id);
+      const move = bot ? brain.think(bot, this, now) : null;
+      if (bot && move) bot.requestHop(move);
+    });
+
     this.players.forEach((player) => {
       if (player.state !== PLAYER_STATE.ALIVE) {
         if (now >= player.respawnAt) this.spawn(player, now);
         return;
       }
+      const fromX = player.x;
+      const fromY = player.y;
       const hops = player.updateMovement(this.worldWidth, this.worldHeight, now, deltaTime);
       if (hops.length > 0) this.checkShoves(player, hops[hops.length - 1], now);
       this.collectGems(player, now);
       player.decay(deltaTime, this.worldWidth, this.worldHeight);
       if (!this.trafficHits || player.isSafe()) return;
+      // Everything the player crossed this tick counts, not just where they ended up, so hopping
+      // (or being shoved) through traffic is a hit
       const box = player.hitBox();
+      const dx = fromX - player.x;
+      const dy = fromY - player.y;
+      const path = {
+        x: Math.min(box.x, box.x + dx),
+        y: Math.min(box.y, box.y + dy),
+        width: box.width + Math.abs(dx),
+        height: box.height + Math.abs(dy),
+      };
       let hit = false;
       this.obstacles.forEach((obstacle) => {
-        if (!hit && obstacle.checkCollision(box)) hit = true;
+        if (!hit && obstacle.checkCollision(path)) hit = true;
       });
       if (hit) this.hitPlayer(player, now);
     });
@@ -152,6 +185,44 @@ class GameState extends Schema {
     });
   }
 
+  /** Keep the world lively: bots fill in until `botFill` are playing, and make room as people arrive */
+  private balanceBots(now: number): void {
+    let people = 0;
+    this.players.forEach((player) => {
+      if (!player.isBot) people++;
+    });
+    const wanted = people === 0 ? 0 : Math.max(0, this.botFill - people);
+    while (this.brains.size < wanted) this.addBot(now);
+    while (this.brains.size > wanted) this.removeBot();
+  }
+
+  private addBot(now: number): void {
+    const id = `bot-${this.nextBotId++}`;
+    const taken = new Set<string>();
+    this.players.forEach((player) => taken.add(player.name));
+    const free = BOTS.NAMES.filter((name) => !taken.has(name));
+    const bot = new PlayerSchema(id, this.nextPlayerIndex++);
+    bot.name = free.length > 0 ? free[Math.floor(Math.random() * free.length)] : `Bot ${this.nextBotId}`;
+    bot.isBot = true;
+    this.players.set(id, bot);
+    this.brains.set(id, new BotBrain());
+    this.spawn(bot, now);
+  }
+
+  /** The bot with the fewest gems leaves */
+  private removeBot(): void {
+    const pick = { id: "", gems: Infinity };
+    this.brains.forEach((_, id) => {
+      const gems = this.players.get(id)?.gems ?? 0;
+      if (gems < pick.gems) {
+        pick.id = id;
+        pick.gems = gems;
+      }
+    });
+    this.brains.delete(pick.id);
+    this.players.delete(pick.id);
+  }
+
   /** A loose gem somewhere in the world, or at a given spot */
   addGem(x?: number, y?: number): void {
     const margin = 40;
@@ -199,7 +270,7 @@ class GameState extends Schema {
   }
 
   /** The player with the most gems, once anyone has one */
-  private leader(): PlayerSchema | null {
+  leader(): PlayerSchema | null {
     let leader: PlayerSchema | null = null;
     let most = 0;
     this.players.forEach((player) => {
@@ -259,5 +330,6 @@ type([ObstacleSchema])(GameState.prototype, "obstacles");
 type({ map: GemSchema })(GameState.prototype, "gems");
 type("number")(GameState.prototype, "worldWidth");
 type("number")(GameState.prototype, "worldHeight");
+type("number")(GameState.prototype, "time");
 
 export { GameState };

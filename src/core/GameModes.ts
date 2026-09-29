@@ -476,6 +476,8 @@ const BURST_MS = 500
 const SHAKE_MS = 300
 /** How long "+1" floats above you after grabbing gems */
 const PICKUP_TEXT_MS = 800
+/** Traffic is drawn at most this far ahead (seconds), in case updates stall */
+const MAX_TRAFFIC_LEAD = 0.4
 const GOLD = '#ffd166'
 
 type ConnectionStatus = 'connecting' | 'connected' | 'reconnecting'
@@ -517,6 +519,22 @@ function drawGem(ctx: CanvasRenderingContext2D, x: number, y: number, radius: nu
     ctx.closePath()
     ctx.fillStyle = 'rgba(255, 255, 255, 0.55)'
     ctx.fill()
+}
+
+/** A little robot head, marking bots, centered on (centerX, centerY) */
+function drawRobot(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, size: number): void {
+    const width = size
+    const height = size * 0.8
+    ctx.fillStyle = '#9fb3c8'
+    roundedRect(ctx, centerX - width / 2, centerY - height / 2, width, height, size * 0.2)
+    ctx.fill()
+    ctx.fillRect(centerX - size * 0.06, centerY - height / 2 - size * 0.28, size * 0.12, size * 0.28)
+    ctx.beginPath()
+    ctx.arc(centerX, centerY - height / 2 - size * 0.32, size * 0.13, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = 'rgba(5, 12, 24, 0.9)'
+    ctx.fillRect(centerX - width * 0.3, centerY - height * 0.15, width * 0.2, height * 0.25)
+    ctx.fillRect(centerX + width * 0.1, centerY - height * 0.15, width * 0.2, height * 0.25)
 }
 
 /** The leader's crown, standing on (centerX, bottom) */
@@ -562,6 +580,11 @@ export class MultiplayerMode extends GameMode {
     /** When your player was knocked out, for the "back in" countdown */
     private knockedOutAt: number | null = null
     private lastJoin: { name: string; at: number } | null = null
+    /**
+     * Our clock minus the world's clock for the quickest update seen: lining the two up this way
+     * places traffic by the server's own timing rather than by when updates happen to land
+     */
+    private clockGap = Infinity
     /** Where each gem is drawn, eased toward the server position as sprayed gems slide */
     private drawnGems = new Map<string, { x: number; y: number }>()
     /** Each player as of the last frame, to spot hits and pickups */
@@ -596,6 +619,12 @@ export class MultiplayerMode extends GameMode {
             }
         })
         eventBus.on(GameEvents.MULTIPLAYER_DISCONNECTED, () => this.reconnectSoon())
+        eventBus.on(GameEvents.MULTIPLAYER_STATE_UPDATE, (state: any) => {
+            if (typeof state?.time !== 'number') return
+            const gap = performance.now() - state.time
+            // Keep the quickest arrival, drifting up slowly in case the clocks wander
+            this.clockGap = gap < this.clockGap ? gap : this.clockGap + (gap - this.clockGap) * 0.005
+        })
 
         // Connect in the background; the canvas says so meanwhile
         this.connect()
@@ -607,6 +636,7 @@ export class MultiplayerMode extends GameMode {
         if (this.disposed) return
         if (connected) {
             this.status = 'connected'
+            this.clockGap = Infinity // a new world has its own clock
             this.predicted = null
             this.camera = null
         } else if (!this.multiplayerManager.isConnected()) {
@@ -742,9 +772,12 @@ export class MultiplayerMode extends GameMode {
         const top = view.y - view.height / 2 - margin
         const bottom = view.y + view.height / 2 + margin
         this.drawGems(ctx, state, left, right, top, bottom, timestamp)
+        const lead = this.trafficLead(timestamp)
         state.obstacles.forEach((obstacle: any) => {
-            if (obstacle.x > right || obstacle.x + obstacle.width < left || obstacle.y > bottom || obstacle.y + obstacle.height < top) return
-            this.drawObstacle(ctx, obstacle, timestamp)
+            const x = obstacle.x + (obstacle.vx ?? 0) * lead
+            const y = obstacle.y + (obstacle.vy ?? 0) * lead
+            if (x > right || x + obstacle.width < left || y > bottom || y + obstacle.height < top) return
+            this.drawObstacle(ctx, { x, y, width: obstacle.width, height: obstacle.height, variant: obstacle.variant }, timestamp)
         })
         const present = new Set<string>()
         state.players.forEach((player: any, sessionId: string) => {
@@ -804,6 +837,19 @@ export class MultiplayerMode extends GameMode {
             ? state.worldHeight / 2
             : Math.min(Math.max(this.camera.y, height / 2), state.worldHeight - height / 2)
         return { x, y, width, height, scale }
+    }
+
+    /**
+     * How far ahead (seconds) to draw traffic: to where it will be when a hop you make now
+     * reaches the server, which is where the server judges hits. Traffic moves in straight
+     * lines, so this is exact, and it also keeps it moving smoothly between updates.
+     */
+    private trafficLead(timestamp: number): number {
+        const state = this.worldState()
+        if (!state || typeof state.time !== 'number' || !Number.isFinite(this.clockGap)) return 0
+        const sinceTick = timestamp - (state.time + this.clockGap)
+        const roundTrip = this.multiplayerManager?.roundTripMs ?? 0
+        return Math.max(0, Math.min(MAX_TRAFFIC_LEAD, (sinceTick + roundTrip) / 1000))
     }
 
     /** The arena floor: a faint grid, and the wall around the world */
@@ -895,7 +941,10 @@ export class MultiplayerMode extends GameMode {
         ctx.textAlign = 'center'
         ctx.textBaseline = 'bottom'
         ctx.fillStyle = isLocal ? '#ffffff' : '#cfd8dc'
-        ctx.fillText(isLocal ? 'You' : player.name, drawn.x + player.width / 2, drawn.y - 6)
+        const label = isLocal ? 'You' : player.name
+        const labelX = drawn.x + player.width / 2
+        ctx.fillText(label, labelX, drawn.y - 6)
+        if (player.isBot) drawRobot(ctx, labelX - ctx.measureText(label).width / 2 - 11, drawn.y - 14, 12)
         if (isLeader) drawCrown(ctx, drawn.x + player.width / 2, drawn.y - 26, 22)
         ctx.restore()
     }
@@ -1083,9 +1132,9 @@ export class MultiplayerMode extends GameMode {
         localId: string | null,
         leaderId: string | null
     ): void {
-        const ranked: { id: string; name: string; gems: number }[] = []
+        const ranked: { id: string; name: string; gems: number; isBot: boolean }[] = []
         state.players.forEach((player: any, id: string) => {
-            ranked.push({ id, name: id === localId ? 'You' : String(player.name), gems: player.gems })
+            ranked.push({ id, name: id === localId ? 'You' : String(player.name), gems: player.gems, isBot: player.isBot === true })
         })
         ranked.sort((a, b) => b.gems - a.gems)
         const rows = ranked.slice(0, 5).map((entry, index) => ({ ...entry, rank: index + 1 }))
@@ -1112,9 +1161,14 @@ export class MultiplayerMode extends GameMode {
                 ctx.textAlign = 'center'
                 ctx.fillText(String(row.rank), x + 14, rowY)
             }
+            let nameX = x + 28
+            if (row.isBot) {
+                drawRobot(ctx, x + 34, rowY, 10)
+                nameX += 14
+            }
             ctx.fillStyle = isLocal ? '#ffffff' : 'rgba(207, 216, 220, 0.9)'
             ctx.textAlign = 'left'
-            ctx.fillText(row.name, x + 28, rowY, width - 70)
+            ctx.fillText(row.name, nameX, rowY, width - 70 - (nameX - x - 28))
             ctx.fillStyle = GOLD
             ctx.textAlign = 'right'
             ctx.fillText(String(row.gems), x + width - 10, rowY)
