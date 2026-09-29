@@ -60,6 +60,8 @@ export class BotBrain {
   nextThinkAt = 0;
   /** Who the bot is hunting, if anyone (it dashes into them once close) */
   victim: PlayerSchema | null = null;
+  /** When a bot that's charging a slingshot lets go (0 when it isn't) */
+  slingAt = 0;
   private goal: Goal | null = null;
   private readonly thinkMs: number;
   private readonly mistakeChance: number;

@@ -49,6 +49,17 @@ export class GameRoom extends Room<GameState> {
       this.state.players.get(client.sessionId)?.steer(Number(data?.x) || 0, Number(data?.y) || 0);
     });
 
+    // Holding DASH past a tap charges a slingshot; letting go launches it (or sliding off cancels)
+    this.onMessage("charge", (client) => {
+      this.state.players.get(client.sessionId)?.startCharge(Date.now());
+    });
+    this.onMessage("sling", (client, data: any) => {
+      this.state.players.get(client.sessionId)?.requestSling(Number(data?.x) || 0, Number(data?.y) || 0);
+    });
+    this.onMessage("cancel", (client) => {
+      this.state.players.get(client.sessionId)?.cancelCharge();
+    });
+
     this.onMessage("dash", (client, data: any) => {
       this.state.players.get(client.sessionId)?.requestDash(Number(data?.x) || 0, Number(data?.y) || 0);
     });

@@ -294,8 +294,40 @@ try {
     check(heavy > even * 1.6, `heavier players shove harder (${Math.round(heavy)} units)`);
     const light = await shove(bob, alice, 0, 100);
     check(light < even * 0.6, `and are harder to shove (${Math.round(light)} units)`);
+
     const knockedLoose = 100 - me().gems;
     check(knockedLoose >= 2 && knockedLoose <= 12, `shoving the leader knocks some of their gems loose (${knockedLoose})`);
+
+    // Hold DASH to charge a slingshot: you stand still, everyone sees it, and it launches even a heavy player
+    bob.send('test:setGems', { count: 4 });
+    alice.send('test:setGems', { count: 100 });
+    await sleep(150);
+    bob.send('test:moveTo', { x: 700, y: 1600 });
+    alice.send('test:moveTo', { x: 700 + bobState().width + 60, y: 1600 });
+    await sleep(250);
+    const heavyStart = me().x;
+    const bobStillY = bobState().y;
+    bob.send('charge');
+    await sleep(150);
+    check(bobState().charging === true, 'holding DASH charges a slingshot, and everyone can see it');
+    bob.send('steer', { x: 0, y: 1 });
+    await sleep(500);
+    check(Math.abs(bobState().y - bobStillY) < 2, 'charging holds you still');
+    bob.send('steer', { x: 0, y: 0 });
+    await sleep(250);
+    bob.send('sling', { x: 1, y: 0 });
+    await sleep(250);
+    const bobAfterSling = bobState().gems;
+    const aliceDropped = 100 - me().gems;
+    await sleep(1150);
+    const flung = me().x - heavyStart;
+    check(flung > 200 && flung > light * 4, `a slingshot launches even a heavy player (${Math.round(flung)} units, where a dash moved them ${Math.round(light)})`);
+    check(aliceDropped >= 15, `and a hit that hard knocks lots of gems loose (${aliceDropped} of 100)`);
+    check(bobAfterSling === 2, `the slingshot costs 2 gems (${bobAfterSling} left of 4)`);
+    const restX = bobState().x;
+    bob.send('dash', { x: -1, y: 0 });
+    await sleep(300);
+    check(Math.abs(bobState().x - restX) < 3, 'then needs a few seconds to recharge');
     let nearby = bobState().gems;
     state().gems.forEach((gem) => {
         if (Math.hypot(gem.x - me().x, gem.y - me().y) < 350) nearby += gem.value;
@@ -446,6 +478,42 @@ try {
     check(credit?.by === 'Bob' && credit?.target === 'Alice', `everyone sees who did it (${credit?.by} shoved ${credit?.target})`);
 
     await waitFor(() => !me().recovering && !me().sliding, 2000, 'Alice is steady');
+
+    // A slingshot flies over the void: jump a one-tile jumpGap between floor tiles
+    const jumpTile = state().worldWidth / 10;
+    const floorCell = (col, row) => col >= 0 && col < 10 && row >= 0 && row < 10 && state().floor[row * 10 + col] === '1';
+    let jumpGap = null;
+    for (let row = 0; row < 10 && !jumpGap; row++) {
+        for (let col = 0; col < 8 && !jumpGap; col++) {
+            if (floorCell(col, row) && !floorCell(col + 1, row) && floorCell(col + 2, row)) jumpGap = { col, row, dx: 1, dy: 0 };
+        }
+    }
+    for (let col = 0; col < 10 && !jumpGap; col++) {
+        for (let row = 0; row < 8 && !jumpGap; row++) {
+            if (floorCell(col, row) && !floorCell(col, row + 1) && floorCell(col, row + 2)) jumpGap = { col, row, dx: 0, dy: 1 };
+        }
+    }
+    if (!jumpGap) {
+        check(true, 'a slingshot flies over the void (this layout has no one-tile jumpGap to jump; skipped)');
+    } else {
+        const gemsBeforeJump = me().gems;
+        alice.send('test:protect', { ms: 0 });
+        alice.send('test:setGems', { count: 6 });
+        await sleep(150);
+        alice.send('test:moveTo', { x: (jumpGap.col + 0.5) * jumpTile - me().width / 2, y: (jumpGap.row + 0.5) * jumpTile - me().height / 2 });
+        await sleep(250);
+        alice.send('charge');
+        await sleep(680);
+        alice.send('sling', { x: jumpGap.dx, y: jumpGap.dy });
+        await sleep(180);
+        check(me().airborne === true, 'a slingshot lifts you into the air');
+        await sleep(900);
+        const far = { x: (jumpGap.col + 0.5 + 2 * jumpGap.dx) * jumpTile, y: (jumpGap.row + 0.5 + 2 * jumpGap.dy) * jumpTile };
+        const missBy = Math.hypot(me().x + me().width / 2 - far.x, me().y + me().height / 2 - far.y);
+        check(me().state === 'alive' && !me().recovering && missBy < jumpTile * 0.6, `and flies over the void to the floor beyond (landed ${Math.round(missBy)} units from that tile's center)`);
+        alice.send('test:setGems', { count: gemsBeforeJump });
+        await sleep(150);
+    }
     const spot = tileCenter(floorTiles[Math.floor(floorTiles.length / 2)]);
     placeCenter(alice, me(), spot);
     placeCenter(bob, bobState(), { x: spot.x + 10, y: spot.y });

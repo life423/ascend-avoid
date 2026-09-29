@@ -168,6 +168,23 @@ class GameState extends Schema {
           if (Math.hypot(dx, dy) < (bot.width + victim.width) / 2 + BOTS.DASH_REACH) bot.requestDash(dx, dy);
         }
       }
+      // Now and then a bot charges a slingshot at whoever it's hunting (everyone can see it coming)
+      if (bot && brain.slingAt && now >= brain.slingAt) {
+        const target = brain.victim;
+        if (target && bot.charging) {
+          bot.requestSling(target.x + target.width / 2 - (bot.x + bot.width / 2), target.y + target.height / 2 - (bot.y + bot.height / 2));
+        } else {
+          bot.cancelCharge();
+        }
+        brain.slingAt = 0;
+      } else if (bot && deciding && !bot.charging && brain.victim && Math.random() < BOTS.SLING_CHANCE) {
+        const target = brain.victim;
+        const gap = Math.hypot(target.x - bot.x, target.y - bot.y);
+        if (gap > 150 && gap < 400) {
+          bot.startCharge(now);
+          if (bot.charging) brain.slingAt = now + 500 + Math.random() * 700;
+        }
+      }
       // Between decisions, a bot stops rather than walk off the edge
       if (bot && this.shiftPhase === "shift") {
         const way = bot.steering();
@@ -194,7 +211,7 @@ class GameState extends Schema {
         player.placeAt(spot.x - player.width / 2, spot.y - player.height / 2);
       }
       // Over the edge during a shift
-      if (this.shiftPhase === "shift" && !player.isSafe() && !this.isFloorAt(player.x + player.width / 2, player.y + player.height / 2)) {
+      if (this.shiftPhase === "shift" && !player.isSafe() && !player.inAir(now) && !this.isFloorAt(player.x + player.width / 2, player.y + player.height / 2)) {
         this.fall(player, now);
         return;
       }
@@ -277,15 +294,25 @@ class GameState extends Schema {
     if (!target) return;
     dasher.endDash();
     const leader = this.leader();
-    const ratio = Math.min(PUSH.MAX_RATIO, Math.max(PUSH.MIN_RATIO, dasher.weight() / target.weight()));
-    if (!target.shoveAlong(along.x, along.y, PUSH.DISTANCE * ratio, dasher.sessionId, now)) return;
+    const power = dasher.hitPower();
+    const weightRatio = dasher.weight() / target.weight();
+    const distance =
+      power < 0
+        ? PUSH.DISTANCE * Math.min(PUSH.MAX_RATIO, Math.max(PUSH.MIN_RATIO, weightRatio))
+        : // A slingshot mostly ignores weight: the small player's equalizer
+          (PUSH.SLING_PUSH_MIN + (PUSH.SLING_PUSH_MAX - PUSH.SLING_PUSH_MIN) * power) *
+          Math.min(PUSH.SLING_WEIGHT_MAX, Math.max(PUSH.SLING_WEIGHT_MIN, Math.pow(weightRatio, PUSH.SLING_WEIGHT_POWER)));
+    if (!target.shoveAlong(along.x, along.y, distance, dasher.sessionId, now)) return;
     dasher.dropProtection();
-    if (target === leader && target.gems > 0 && target.takeBounty(now)) {
-      const loose = Math.min(
-        target.gems,
-        PUSH.LEADER_BOUNTY_MAX,
-        Math.max(PUSH.LEADER_BOUNTY_MIN, Math.ceil(target.gems * PUSH.LEADER_BOUNTY_SHARE))
-      );
+    // The hit knocks gems loose, more the harder it was (the leader always drops a few), at most
+    // once every PUSH.LEADER_BOUNTY_COOLDOWN_MS per player so nobody can be farmed
+    if (target.gems > 0 && target.takeBounty(now)) {
+      const share = power < 0 ? PUSH.KNOCK_SHARE_DASH : PUSH.KNOCK_SHARE_SLING_MIN + (PUSH.KNOCK_SHARE_SLING_MAX - PUSH.KNOCK_SHARE_SLING_MIN) * power;
+      let loose = Math.min(Math.max(1, Math.ceil(target.gems * share)), power < 0 ? PUSH.KNOCK_MAX_DASH : PUSH.KNOCK_MAX_SLING);
+      if (target === leader) {
+        loose = Math.max(loose, Math.min(PUSH.LEADER_BOUNTY_MAX, Math.max(PUSH.LEADER_BOUNTY_MIN, Math.ceil(target.gems * PUSH.LEADER_BOUNTY_SHARE))));
+      }
+      loose = Math.min(loose, target.gems);
       const centerX = target.x + target.width / 2;
       const centerY = target.y + target.height / 2;
       target.setGems(target.gems - loose, this.worldWidth, this.worldHeight);

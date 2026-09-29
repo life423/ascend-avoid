@@ -642,6 +642,18 @@ export class MultiplayerMode extends GameMode {
     private velocity = { x: 0, y: 0 }
     private dashUntil = 0
     private dashDir = { x: 0, y: -1 }
+    private dashSpeed: number = ARENA_RULES.DASH_SPEED
+    /** How long the recharge under way takes (a slingshot's is longer than a dash's) */
+    private cooldownMs: number = ARENA_RULES.DASH_COOLDOWN_MS
+    /** Charging a slingshot: since when, and where the stick is aiming it */
+    private charging = false
+    private chargeStartedAt = 0
+    private aim = { x: 0, y: -1 }
+    /** Your own flight after a slingshot (for the arc), and everyone's landings (for the impact ring) */
+    private launchedAt = 0
+    private airborneUntil = 0
+    private inFlight = new Set<string>()
+    private landings = new Map<string, number>()
     private facing = { x: 0, y: -1 }
     /** The steering last sent to the server */
     private sentSteer = { x: 0, y: 0 }
@@ -774,6 +786,7 @@ export class MultiplayerMode extends GameMode {
     private resetMotion(): void {
         this.velocity = { x: 0, y: 0 }
         this.dashUntil = 0
+        this.charging = false
         this.history = []
     }
 
@@ -795,9 +808,10 @@ export class MultiplayerMode extends GameMode {
      * settles onto the server's position, and a big difference (a respawn) snaps to it.
      */
     private moveLocalPlayer(input: InputState): void {
-        // Taken every frame, so a dash asked for while you can't dash isn't saved for later
-        const wantsDash = this.controls?.takeDash() ?? false
         const now = performance.now()
+        // DASH: tap to dash, hold to charge a slingshot (taken every frame, so nothing waits for later)
+        this.controls?.setReady(now >= this.dashReadyAt)
+        const events = this.controls?.takeEvents(now) ?? []
         const deltaTime = this.lastMoveAt ? Math.min(0.1, (now - this.lastMoveAt) / 1000) : 0
         this.lastMoveAt = now
 
@@ -809,7 +823,8 @@ export class MultiplayerMode extends GameMode {
             return
         }
         const steer = this.steerVector(input, me)
-        this.sendSteer(steer)
+        // While charging, the stick aims instead of moving you
+        this.sendSteer(this.charging ? { x: 0, y: 0 } : steer)
         if (me.state !== 'alive') {
             this.predicted = { x: me.x, y: me.y }
             this.resetMotion()
@@ -828,17 +843,42 @@ export class MultiplayerMode extends GameMode {
 
         const steering = Math.hypot(steer.x, steer.y)
         if (steering > 0.2) this.facing = { x: steer.x / steering, y: steer.y / steering }
-        if (wantsDash && now >= this.dashReadyAt) {
-            // A burst the way you're steering (or last went)
-            this.dashDir = steering > 0.05 ? { x: steer.x / steering, y: steer.y / steering } : { ...this.facing }
-            this.dashUntil = now + ARENA_RULES.DASH_MS
-            this.dashReadyAt = now + ARENA_RULES.DASH_COOLDOWN_MS
-            this.multiplayerManager?.sendMessage('dash', { x: this.dashDir.x, y: this.dashDir.y })
+        this.aim = steering > 0.2 ? { x: steer.x / steering, y: steer.y / steering } : { ...this.facing }
+        for (const event of events) {
+            if (event === 'dash' && now >= this.dashReadyAt && !this.charging) {
+                // A burst the way you're steering (or last went)
+                this.dashDir = steering > 0.05 ? { x: steer.x / steering, y: steer.y / steering } : { ...this.facing }
+                this.dashSpeed = ARENA_RULES.DASH_SPEED
+                this.dashUntil = now + ARENA_RULES.DASH_MS
+                this.cooldownMs = ARENA_RULES.DASH_COOLDOWN_MS
+                this.dashReadyAt = now + this.cooldownMs
+                this.multiplayerManager?.sendMessage('dash', { x: this.dashDir.x, y: this.dashDir.y })
+            } else if (event === 'charge' && now >= this.dashReadyAt) {
+                this.charging = true
+                this.chargeStartedAt = now
+                this.multiplayerManager?.sendMessage('charge', {})
+            } else if (event === 'sling' && this.charging) {
+                // Launch where you're aiming: farther the longer you held, flying over the void
+                const distance = ARENA_RULES.SLING_MIN + (ARENA_RULES.SLING_MAX - ARENA_RULES.SLING_MIN) * this.chargePower()
+                this.dashDir = { ...this.aim }
+                this.dashSpeed = ARENA_RULES.SLING_SPEED
+                this.dashUntil = now + (distance / ARENA_RULES.SLING_SPEED) * 1000
+                this.launchedAt = now
+                this.airborneUntil = this.dashUntil
+                this.cooldownMs = ARENA_RULES.SLING_COOLDOWN_MS
+                this.dashReadyAt = now + this.cooldownMs
+                this.charging = false
+                this.multiplayerManager?.sendMessage('sling', { x: this.aim.x, y: this.aim.y })
+            } else if (event === 'cancel' && this.charging) {
+                this.charging = false
+                this.multiplayerManager?.sendMessage('cancel', {})
+            }
         }
 
         // Move exactly the way the server does
         const box = { x: this.predicted.x, y: this.predicted.y, width: me.width, height: me.height }
-        walk(box, this.velocity, steer, deltaTime, state.worldWidth, state.worldHeight, now < this.dashUntil ? this.dashDir : null)
+        const dashing = now < this.dashUntil ? { x: this.dashDir.x * this.dashSpeed, y: this.dashDir.y * this.dashSpeed } : null
+        walk(box, this.velocity, this.charging ? { x: 0, y: 0 } : steer, deltaTime, state.worldWidth, state.worldHeight, dashing)
 
         // The server shows where you were about a round trip ago: quietly correct any drift from that
         this.history.push({ at: now, x: box.x, y: box.y })
@@ -863,6 +903,69 @@ export class MultiplayerMode extends GameMode {
             }
         }
         this.predicted = { x: box.x, y: box.y }
+    }
+
+    /** How charged your slingshot is, 0 to 1 */
+    private chargePower(): number {
+        return Math.max(0, Math.min(1, (performance.now() - this.chargeStartedAt) / ARENA_RULES.CHARGE_FULL_MS))
+    }
+
+    /**
+     * A slingshot charging: everyone sees a pulsing glow. For your own, also the power ring, and an
+     * arrow to where you'll land (it pulses red at full power, so there's no reason to keep holding)
+     */
+    private drawCharge(ctx: CanvasRenderingContext2D, isLocal: boolean, x: number, y: number, size: number, timestamp: number): void {
+        const pulse = 0.5 + 0.5 * Math.sin(timestamp / 90)
+        ctx.strokeStyle = `rgba(255, 196, 64, ${0.35 + 0.35 * pulse})`
+        ctx.lineWidth = 3
+        ctx.beginPath()
+        ctx.arc(x, y, size * 0.85 + 4, 0, Math.PI * 2)
+        ctx.stroke()
+        if (!isLocal) return
+        const power = this.chargePower()
+        ctx.strokeStyle = power >= 1 ? `rgba(255, 107, 107, ${0.7 + 0.3 * pulse})` : 'rgba(255, 255, 255, 0.9)'
+        ctx.lineWidth = power >= 1 ? 4 + 2 * pulse : 4
+        ctx.beginPath()
+        ctx.arc(x, y, size * 0.85 + 10, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0.02, power))
+        ctx.stroke()
+        const reach = ARENA_RULES.SLING_MIN + (ARENA_RULES.SLING_MAX - ARENA_RULES.SLING_MIN) * power
+        const endX = x + this.aim.x * reach
+        const endY = y + this.aim.y * reach
+        const from = size * 0.85 + 16
+        ctx.setLineDash([10, 8])
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)'
+        ctx.lineWidth = 3
+        ctx.beginPath()
+        ctx.moveTo(x + this.aim.x * from, y + this.aim.y * from)
+        ctx.lineTo(endX, endY)
+        ctx.stroke()
+        ctx.setLineDash([])
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)'
+        ctx.lineWidth = 2
+        ctx.beginPath()
+        ctx.arc(endX, endY, size / 2 + 4, 0, Math.PI * 2)
+        ctx.stroke()
+    }
+
+    /** A small impact ring where a flying player touches down */
+    private drawLanding(ctx: CanvasRenderingContext2D, id: string, flying: boolean, x: number, y: number, size: number, timestamp: number): void {
+        if (flying) {
+            this.inFlight.add(id)
+            return
+        }
+        if (this.inFlight.delete(id)) this.landings.set(id, timestamp)
+        const at = this.landings.get(id)
+        if (at === undefined) return
+        const t = (timestamp - at) / 300
+        if (t >= 1) {
+            this.landings.delete(id)
+            return
+        }
+        ctx.strokeStyle = `rgba(255, 255, 255, ${0.6 * (1 - t)})`
+        ctx.lineWidth = 3
+        ctx.beginPath()
+        ctx.ellipse(x, y, size * (0.5 + t), size * (0.2 + 0.35 * t), 0, 0, Math.PI * 2)
+        ctx.stroke()
     }
 
     /** The online mode always draws the whole scene itself */
@@ -946,7 +1049,7 @@ export class MultiplayerMode extends GameMode {
         this.drawLeaderboard(ctx, canvas, state, localId, leaderId)
         this.drawNotices(ctx, canvas)
         this.drawShiftChip(ctx, canvas, state, timestamp)
-        this.controls?.draw(ctx, timestamp, Math.max(0, Math.min(1, 1 - (this.dashReadyAt - performance.now()) / ARENA_RULES.DASH_COOLDOWN_MS)))
+        this.controls?.draw(ctx, timestamp, Math.max(0, Math.min(1, 1 - (this.dashReadyAt - performance.now()) / this.cooldownMs)), this.charging ? this.aim : null)
         if (me && me.state !== 'alive') this.drawKnockedOut(ctx, canvas)
         ctx.restore()
     }
@@ -1093,8 +1196,24 @@ export class MultiplayerMode extends GameMode {
         grow.speed = (grow.speed + (player.width - grow.size) * 0.3) * 0.6
         grow.size += grow.speed
         const size = Math.max(4, grow.size)
-        const left = drawn.x + (player.width - size) / 2
-        const top = drawn.y + (player.height - size) / 2
+        // In the air after a slingshot: lifted over a shadow. Charging: pulled back against the aim
+        const clock = performance.now()
+        const flying = isLocal ? clock < this.airborneUntil : Boolean(player.airborne)
+        const flight = Math.min(1, (clock - this.launchedAt) / Math.max(1, this.airborneUntil - this.launchedAt))
+        const lift = !flying ? 0 : isLocal ? Math.sin(flight * Math.PI) * 18 : 12
+        const pull = isLocal && this.charging ? this.chargePower() * 5 : 0
+        const left = drawn.x + (player.width - size) / 2 - this.aim.x * pull
+        const top = drawn.y + (player.height - size) / 2 - lift - this.aim.y * pull
+        const centerX = drawn.x + player.width / 2
+        const centerY = drawn.y + player.height / 2
+        if (flying) {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.35)'
+            ctx.beginPath()
+            ctx.ellipse(centerX, drawn.y + player.height, size * 0.45, size * 0.18, 0, 0, Math.PI * 2)
+            ctx.fill()
+        }
+        this.drawLanding(ctx, sessionId, flying, centerX, drawn.y + player.height, size, timestamp)
+        if (player.charging || (isLocal && this.charging)) this.drawCharge(ctx, isLocal, centerX, centerY, size, timestamp)
         if (player.sliding) {
             // Dust kicked up by a slide or a skid
             ctx.fillStyle = 'rgba(200, 210, 220, 0.35)'
