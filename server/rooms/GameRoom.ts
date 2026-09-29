@@ -32,6 +32,8 @@ export class GameRoom extends Room<GameState> {
     // The automated test can start a world with no loose gems, so its gem counts stay exact
     const fieldGems = !IS_PRODUCTION && Number.isInteger(options.testFieldGems) ? options.testFieldGems : undefined;
     this.setState(new GameState(fieldGems));
+    // ...and a world where traffic can't hit anyone (the test hits players itself)
+    if (!IS_PRODUCTION && options.testCalm === true) this.state.trafficHits = false;
 
     // Runs on the room's clock, so it stops by itself when the room is disposed
     this.setSimulationInterval(
@@ -62,6 +64,9 @@ export class GameRoom extends Room<GameState> {
         const x = player.x + player.width / 2 + (Number(data?.dx) || 0);
         const y = player.y + player.height / 2 + (Number(data?.dy) || 0);
         this.state.addGem(x, y);
+      });
+      this.onMessage("test:moveTo", (client, data: any) => {
+        playerOf(client)?.placeAt(Number(data?.x) || 0, Number(data?.y) || 0);
       });
       this.onMessage("test:protect", (client, data: any) => {
         playerOf(client)?.protectFor(Number(data?.ms) || 0, Date.now());

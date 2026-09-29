@@ -50,7 +50,7 @@ export class DrawerUI {
                             Game speed increases as you score more points!
                         </div>
                         
-                        <p>Try to beat your high score. Online, everyone on the site shares one big arena: grab gems to grow, dodge the traffic, and a hit sprays out half your gems.</p>
+                        <p>Try to beat your high score. Online, everyone on the site shares one big arena: grab gems to grow, shove each other around, and dodge the traffic; a hit sprays out half your gems.</p>
                     </div>
                 </div>
             </div>

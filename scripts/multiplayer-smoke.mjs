@@ -56,8 +56,9 @@ try {
         await sleep(100);
     }
 
-    // This world starts with no loose gems, so nobody grows by accident and every count is exact
-    const alice = await join('Alice', { testFieldGems: 0 });
+    // This world starts with no loose gems and traffic that can't hit anyone (the test hits
+    // players itself), so nobody grows or gets knocked out by accident and every count is exact
+    const alice = await join('Alice', { testFieldGems: 0, testCalm: true });
     const state = () => alice.state;
     const me = () => state().players.get(alice.sessionId);
     await waitFor(() => state().players?.size === 1, 2000, 'the first visitor is in the world right away');
@@ -166,6 +167,46 @@ try {
     check(me().spawnProtected === true, 'protected when you come back');
     const room = clearance(state(), me());
     check(room >= 100, `somewhere clear of traffic (${Math.round(room)} units from the nearest obstacle)`);
+
+    // Shoving
+    await waitFor(() => !me().spawnProtected && !bobState().spawnProtected, 3000, 'neither player is protected');
+    /** Line `left` up just left of `right`, have `left` hop into `right`, and return how far `right` slides */
+    async function shove(left, right, leftGems, rightGems) {
+        const leftState = () => state().players.get(left.sessionId);
+        const rightState = () => state().players.get(right.sessionId);
+        left.send('test:setGems', { count: leftGems });
+        right.send('test:setGems', { count: rightGems });
+        await sleep(150);
+        left.send('test:moveTo', { x: 700, y: 1000 });
+        right.send('test:moveTo', { x: 700 + leftState().width + 20, y: 1000 });
+        await sleep(250);
+        const startX = rightState().x;
+        left.send('hop', { direction: 'right' });
+        await sleep(900);
+        return rightState().x - startX;
+    }
+    const even = await shove(alice, bob, 0, 0);
+    check(even > 100 && even < 180, `hopping into someone shoves them (${Math.round(even)} units)`);
+    check(bobState().sliding === false, 'and they slide to a stop');
+    const heavy = await shove(alice, bob, 100, 0);
+    check(heavy > even * 1.6, `heavier players shove harder (${Math.round(heavy)} units)`);
+    const light = await shove(bob, alice, 0, 100);
+    check(light < even * 0.6, `and are harder to shove (${Math.round(light)} units)`);
+    const knockedLoose = 100 - me().gems;
+    check(knockedLoose >= 2 && knockedLoose <= 12, `shoving the leader knocks some of their gems loose (${knockedLoose})`);
+    let nearby = bobState().gems;
+    state().gems.forEach((gem) => {
+        if (Math.hypot(gem.x - me().x, gem.y - me().y) < 350) nearby += gem.value;
+    });
+    check(nearby >= 2, `and they burst out for the taking (${nearby} nearby)`);
+    bob.send('test:protect', { ms: 3000 });
+    const shielded = await shove(alice, bob, 0, 0);
+    check(Math.abs(shielded) < 5, `players who just arrived can't be shoved (${Math.round(shielded)} units)`);
+    bob.send('test:protect', { ms: 0 });
+    alice.send('test:protect', { ms: 3000 });
+    await sleep(100);
+    const freed = await shove(alice, bob, 0, 0);
+    check(freed > 100 && me().spawnProtected === false, 'shoving someone ends your own protection');
 
     // Leaving and joining
     await bob.leave();

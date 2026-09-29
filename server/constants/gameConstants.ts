@@ -111,6 +111,23 @@ export const GEMS = {
 } as const;
 
 /**
+ * Shoving: hop into someone and they slide away. Weight grows with size (1 to 2.25), so heavier
+ * players shove harder and are harder to shove.
+ */
+export const PUSH = {
+  DISTANCE: 140, // how far a shove sends someone your own weight (about two hops)...
+  MIN_RATIO: 0.4, // ...scaled by your weight over theirs, kept within these limits
+  MAX_RATIO: 2.5,
+  FRICTION: 7, // shoved players slow by this factor a second (about half a second of sliding)
+  STOP_SPEED: 40, // units per second; slower than this and the slide is over
+  SAME_SHOVER_COOLDOWN_MS: 300, // one shove per hop, not one per frame of contact
+  LEADER_BOUNTY_SHARE: 0.1, // shoving the leader knocks this share of their gems loose...
+  LEADER_BOUNTY_MIN: 2,
+  LEADER_BOUNTY_MAX: 8,
+  LEADER_BOUNTY_COOLDOWN_MS: 1500, // ...at most this often
+} as const;
+
+/**
  * Sizes and speeds in world units, matching solo play's feel. Solo measures in screen pixels (a
  * 30px player, ~39px hops, obstacles 22px thick moving 2.5-3.5px a frame); these are those at a
  * typical canvas scale of 0.65.
@@ -206,6 +223,7 @@ export const GAME_CONSTANTS = {
   ARENA_RULES,
   WORLD,
   GEMS,
+  PUSH,
   KEYS,
   DEVICE_SETTINGS
 } as const;

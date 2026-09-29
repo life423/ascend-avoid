@@ -542,7 +542,7 @@ function drawCrown(ctx: CanvasRenderingContext2D, centerX: number, bottom: numbe
  * Online: one big open arena shared by everyone on the site. The server runs the world; this
  * mode hops your player the moment you press (telling the server about each hop) and draws the
  * part of the world around you, with a camera that follows you: gems, traffic, players, the
- * bursts when someone is hit, a leaderboard and a minimap.
+ * bursts when someone is hit or shoved, a leaderboard and a minimap.
  */
 export class MultiplayerMode extends GameMode {
     private multiplayerManager: MultiplayerManager | null = null
@@ -565,7 +565,7 @@ export class MultiplayerMode extends GameMode {
     /** Where each gem is drawn, eased toward the server position as sprayed gems slide */
     private drawnGems = new Map<string, { x: number; y: number }>()
     /** Each player as of the last frame, to spot hits and pickups */
-    private lastSeen = new Map<string, { alive: boolean; recovering: boolean; gems: number; cx: number; cy: number }>()
+    private lastSeen = new Map<string, { alive: boolean; recovering: boolean; sliding: boolean; gems: number; cx: number; cy: number }>()
     private bursts: { x: number; y: number; size: number; color: string; at: number }[] = []
     private pickups: { amount: number; at: number }[] = []
     private shakeUntil = 0
@@ -667,6 +667,15 @@ export class MultiplayerMode extends GameMode {
             return
         }
         if (!this.predicted) this.predicted = { x: me.x, y: me.y }
+        if (me.sliding) {
+            // Shoved: slide where the server says until you stop (no hopping until then)
+            this.predicted = {
+                x: this.predicted.x + (me.x - this.predicted.x) * 0.5,
+                y: this.predicted.y + (me.y - this.predicted.y) * 0.5,
+            }
+            this.hopTimers = newHopTimers()
+            return
+        }
 
         // Bigger players keep a slower rhythm when holding a direction
         const repeat = ARENA_RULES.HOP_REPEAT * (me.width / ARENA_RULES.PLAYER_SIZE)
@@ -978,10 +987,18 @@ export class MultiplayerMode extends GameMode {
                 } else if (id === localId && player.gems > before.gems) {
                     this.pickups.push({ amount: player.gems - before.gems, at: timestamp })
                 }
+                if (player.sliding && !before.sliding) {
+                    // Shoved: a small white ring, and a nudge of your screen if it's you
+                    const cx = player.x + player.width / 2
+                    const cy = player.y + player.height / 2
+                    this.bursts.push({ x: cx, y: cy, size: player.width * 0.6, color: 'rgba(255, 255, 255, 0.9)', at: timestamp })
+                    if (id === localId) this.shakeUntil = Math.max(this.shakeUntil, timestamp + SHAKE_MS / 2)
+                }
             }
             this.lastSeen.set(id, {
                 alive,
                 recovering: player.recovering,
+                sliding: player.sliding,
                 gems: player.gems,
                 cx: player.x + player.width / 2,
                 cy: player.y + player.height / 2,

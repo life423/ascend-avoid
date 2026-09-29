@@ -50,8 +50,12 @@ lobby, no waiting, and you're back two seconds after a knockout.
 
 ## Pushing
 
-- Hop into someone to shove them; how far depends on your weight against theirs.
-- Two players shoving the same target add their pushes. Hitting the leader pays a bonus.
+- Hop into someone to shove them. They slide about two hops: farther if you're heavier, less if
+  they are (weight grows with size, from 1 to 2.25), and they can't hop until they stop.
+- Two players shoving the same target add their pushes.
+- Shoving the leader knocks a tenth of their gems loose (2 to 8, at most every 1.5 seconds), so
+  small players can chip away at them.
+- Players who just arrived can't be shoved, and shoving someone ends your own protection.
 
 ## The B button: dash and slingshot
 
@@ -93,7 +97,7 @@ lobby, no waiting, and you're back two seconds after a knockout.
 ## Build order
 
 1. Big arena, following camera, canvas filling the page, instant respawn with protection. **Done.**
-2. Gems: size, weight, pushing, hits that spray gems, leaderboard, minimap crown. **Gems done; pushing next.**
+2. Gems: size, weight, pushing, hits that spray gems, leaderboard, minimap crown. **Done.**
 3. Bots.
 4. The shrinking event and its warnings.
 5. Dash, slingshot, Bubble Shield, new hazards.

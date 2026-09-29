@@ -4,8 +4,9 @@ import { PlayerSchema } from "./PlayerSchema.js";
 import { ObstacleSchema } from "./ObstacleSchema.js";
 import { GemSchema } from "./GemSchema.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
+import type { Box, Direction } from "../game/movement.js";
 
-const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE } = GAME_CONSTANTS;
+const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH } = GAME_CONSTANTS;
 
 /** How many random spots to try when looking for a safe place to (re)spawn */
 const SPAWN_TRIES = 24;
@@ -17,11 +18,16 @@ function distanceToRect(px: number, py: number, x: number, y: number, width: num
   return Math.hypot(dx, dy);
 }
 
+/** Whether two boxes overlap */
+function overlaps(a: Box, b: Box): boolean {
+  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+}
+
 /**
  * The online world: one big open arena that never stops. Players drop in the moment they join,
- * grab gems and dodge traffic crossing the map in every direction. A hit sprays out half your
- * gems; with none left you're knocked out, back two seconds later somewhere safe and protected
- * for a moment. There are no rounds and nobody waits.
+ * grab gems, shove each other and dodge traffic crossing the map in every direction. A hit
+ * sprays out half your gems; with none left you're knocked out, back two seconds later somewhere
+ * safe and protected for a moment. There are no rounds and nobody waits.
  */
 class GameState extends Schema {
   players: schema.MapSchema<PlayerSchema>;
@@ -30,7 +36,8 @@ class GameState extends Schema {
   worldWidth: number;
   worldHeight: number;
 
-  /** Server-only */
+  /** Server-only: whether traffic hits players (the automated test turns this off) */
+  trafficHits = true;
   private nextPlayerIndex = 0;
   private nextGemId = 0;
   /** Loose gems the field keeps topped up to, and how many are out there now */
@@ -85,10 +92,11 @@ class GameState extends Schema {
         if (now >= player.respawnAt) this.spawn(player, now);
         return;
       }
-      player.updateMovement(this.worldWidth, this.worldHeight, now);
+      const hops = player.updateMovement(this.worldWidth, this.worldHeight, now, deltaTime);
+      if (hops.length > 0) this.checkShoves(player, hops[hops.length - 1], now);
       this.collectGems(player, now);
       player.decay(deltaTime, this.worldWidth, this.worldHeight);
-      if (player.isSafe()) return;
+      if (!this.trafficHits || player.isSafe()) return;
       const box = player.hitBox();
       let hit = false;
       this.obstacles.forEach((obstacle) => {
@@ -115,6 +123,33 @@ class GameState extends Schema {
     player.setGems(player.gems - lost, this.worldWidth, this.worldHeight);
     player.recover(now);
     this.sprayGems(centerX, centerY, lost, now);
+  }
+
+  /**
+   * A hop that lands on another player shoves them that way, farther the heavier the shover is
+   * compared with them. Shoving the leader knocks a few of their gems loose. Players who just
+   * arrived can't be shoved, and shoving someone ends your own protection.
+   */
+  private checkShoves(shover: PlayerSchema, direction: Direction, now: number): void {
+    const leader = this.leader();
+    this.players.forEach((target) => {
+      if (target === shover || target.state !== PLAYER_STATE.ALIVE || target.spawnProtected) return;
+      if (!overlaps(shover, target)) return;
+      const ratio = Math.min(PUSH.MAX_RATIO, Math.max(PUSH.MIN_RATIO, shover.weight() / target.weight()));
+      if (!target.shove(direction, PUSH.DISTANCE * ratio, shover.sessionId, now)) return;
+      shover.dropProtection();
+      if (target === leader && target.gems > 0 && target.takeBounty(now)) {
+        const loose = Math.min(
+          target.gems,
+          PUSH.LEADER_BOUNTY_MAX,
+          Math.max(PUSH.LEADER_BOUNTY_MIN, Math.ceil(target.gems * PUSH.LEADER_BOUNTY_SHARE))
+        );
+        const centerX = target.x + target.width / 2;
+        const centerY = target.y + target.height / 2;
+        target.setGems(target.gems - loose, this.worldWidth, this.worldHeight);
+        this.sprayGems(centerX, centerY, loose, now);
+      }
+    });
   }
 
   /** A loose gem somewhere in the world, or at a given spot */
