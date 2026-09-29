@@ -8,6 +8,7 @@ import { BotBrain } from "../game/bots.js";
 import { closestFloorPoint, isFloor, jackpotSpot, layoutToString, pickLayout, randomFloorPoint } from "../game/layouts.js";
 import type { Layout } from "../game/layouts.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
+import { moveSpeed } from "../game/movement.js";
 import type { Direction } from "../game/movement.js";
 
 const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS } = GAME_CONSTANTS;
@@ -202,7 +203,7 @@ class GameState extends Schema {
       const fromY = player.y;
       player.updateMovement(this.worldWidth, this.worldHeight, now, deltaTime);
       if (player.dashing(now)) this.checkDash(player, fromX, fromY, now);
-      this.nudgeApart(player);
+      this.nudgeApart(player, now);
       this.collectGems(player, now, fromX, fromY);
       player.decay(deltaTime, this.worldWidth, this.worldHeight);
       // A skid after a hit never carries anyone off the edge
@@ -252,8 +253,8 @@ class GameState extends Schema {
    * traffic; with none left, they're knocked out.
    */
   hitPlayer(player: PlayerSchema, now: number = Date.now(), push?: { x: number; y: number }): void {
-    if (player.gems <= 0) {
-      player.knockOut(now);
+    if (player.gems < GEMS.SURVIVE_AT) {
+      this.knockOutWithGems(player, now);
       return;
     }
     const lost = Math.max(1, Math.ceil(player.gems * GEMS.SPRAY_SHARE));
@@ -264,6 +265,50 @@ class GameState extends Schema {
     this.sprayGems(centerX, centerY, lost, now, player.sessionId);
     // Knocked into a skid, so whoever caused it has the first go at the spilled gems
     if (push) player.skid(push.x, push.y, Math.max(PUSH.SKID_MIN, player.width * PUSH.SKID_BODY_LENGTHS));
+  }
+
+  /** Knocked out: any last gems burst out where the player was */
+  private knockOutWithGems(player: PlayerSchema, now: number): void {
+    const left = player.gems;
+    const centerX = player.x + player.width / 2;
+    const centerY = player.y + player.height / 2;
+    if (left > 0) player.setGems(0, this.worldWidth, this.worldHeight);
+    player.knockOut(now);
+    if (left > 0) this.sprayGems(centerX, centerY, left, now, player.sessionId);
+  }
+
+  /**
+   * A clearly bigger player moving into a smaller one: a hard shove that spills their gems, by how
+   * much bigger (PUSH.BODY_CHECK_TIERS); at BODY_CHECK_KO_AT and up, a victim under GEMS.SURVIVE_AT
+   * gems is knocked out. A dash has already shoved and is plainly fast, so `dashed` skips both.
+   * Returns whether it happened.
+   */
+  private bodyCheck(attacker: PlayerSchema, victim: PlayerSchema, now: number, dashed = false): boolean {
+    const ratio = attacker.width / victim.width;
+    const tier = PUSH.BODY_CHECK_TIERS.find((t) => ratio >= t.at);
+    if (!tier) return false;
+    const dx = victim.x + victim.width / 2 - (attacker.x + attacker.width / 2);
+    const dy = victim.y + victim.height / 2 - (attacker.y + attacker.height / 2);
+    const distance = Math.hypot(dx, dy) || 1;
+    if (!dashed) {
+      // Only when the big player is really moving into them: never for drifting or standing still
+      const moving = attacker.velocity();
+      if ((moving.x * dx + moving.y * dy) / distance < PUSH.BODY_CHECK_SPEED * moveSpeed(attacker.width)) return false;
+    }
+    if (!victim.takeBounty(now)) return false;
+    if (ratio >= PUSH.BODY_CHECK_KO_AT && victim.gems < GEMS.SURVIVE_AT) {
+      this.knockOutWithGems(victim, now);
+      return true;
+    }
+    if (!dashed) victim.shoveAlong(dx, dy, tier.shove, attacker.sessionId, now);
+    const loose = Math.min(victim.gems, PUSH.BODY_CHECK_MAX_SPILL, Math.max(1, Math.ceil(victim.gems * tier.spill)));
+    if (loose > 0) {
+      const centerX = victim.x + victim.width / 2;
+      const centerY = victim.y + victim.height / 2;
+      victim.setGems(victim.gems - loose, this.worldWidth, this.worldHeight);
+      this.sprayGems(centerX, centerY, loose, now, victim.sessionId);
+    }
+    return true;
   }
 
   /**
@@ -304,6 +349,8 @@ class GameState extends Schema {
           Math.min(PUSH.SLING_WEIGHT_MAX, Math.max(PUSH.SLING_WEIGHT_MIN, Math.pow(weightRatio, PUSH.SLING_WEIGHT_POWER)));
     if (!target.shoveAlong(along.x, along.y, distance, dasher.sessionId, now)) return;
     dasher.dropProtection();
+    // A plain dash from a clearly bigger player spills gems like any body-check
+    if (power < 0) this.bodyCheck(dasher, target, now, true);
     // A dash only shoves. A slingshot hit also knocks gems loose: more for a harder charge, scaled
     // a little by size, and at least a couple from the leader; at most once every
     // PUSH.LEADER_BOUNTY_COOLDOWN_MS per player so nobody can be farmed
@@ -321,13 +368,15 @@ class GameState extends Schema {
   }
 
   /** Players walking into each other are gently pushed apart, the lighter one more (dashing is what shoves) */
-  private nudgeApart(player: PlayerSchema): void {
+  private nudgeApart(player: PlayerSchema, now: number): void {
     if (player.state !== PLAYER_STATE.ALIVE || player.spawnProtected) return;
     this.players.forEach((other) => {
       if (other === player || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected) return;
       const overlapX = Math.min(player.x + player.width, other.x + other.width) - Math.max(player.x, other.x);
       const overlapY = Math.min(player.y + player.height, other.y + other.height) - Math.max(player.y, other.y);
       if (overlapX <= 0 || overlapY <= 0) return;
+      // A clearly bigger player barging in hits hard instead
+      if (this.bodyCheck(player, other, now)) return;
       const share = other.weight() / (player.weight() + other.weight());
       if (overlapX < overlapY) {
         const sign = player.x + player.width / 2 < other.x + other.width / 2 ? -1 : 1;

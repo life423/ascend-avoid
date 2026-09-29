@@ -1214,6 +1214,16 @@ export class MultiplayerMode extends GameMode {
         }
         this.drawLanding(ctx, sessionId, flying, centerX, drawn.y + player.height, size, timestamp)
         if (player.charging || (isLocal && this.charging)) this.drawCharge(ctx, isLocal, centerX, centerY, size, timestamp)
+        if (isLocal && player.gems < GEMS.SURVIVE_AT) {
+            // One hit from being knocked out: a cracked red outline
+            ctx.save()
+            ctx.setLineDash([5, 4])
+            ctx.strokeStyle = `rgba(255, 90, 90, ${0.45 + 0.25 * Math.sin(timestamp / 250)})`
+            ctx.lineWidth = 2
+            roundedRect(ctx, left - 3, top - 3, size + 6, size + 6, size * 0.22)
+            ctx.stroke()
+            ctx.restore()
+        }
         if (player.sliding) {
             // Dust kicked up by a slide or a skid
             ctx.fillStyle = 'rgba(200, 210, 220, 0.35)'

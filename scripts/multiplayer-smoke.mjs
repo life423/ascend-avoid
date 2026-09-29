@@ -290,7 +290,7 @@ try {
     const even = await shove(alice, bob, 0, 0);
     check(even > 100 && even < 180, `dashing into someone shoves them (${Math.round(even)} units)`);
     check(bobState().sliding === false, 'and they slide to a stop');
-    const heavy = await shove(alice, bob, 100, 0);
+    const heavy = await shove(alice, bob, 100, 5); // 5 gems: a giant dashing into someone under 3 knocks them out instead
     check(heavy > even * 1.6, `heavier players shove harder (${Math.round(heavy)} units)`);
     const light = await shove(bob, alice, 0, 100);
     check(light < even * 0.6, `and are harder to shove (${Math.round(light)} units)`);
@@ -328,6 +328,45 @@ try {
     bob.send('dash', { x: -1, y: 0 });
     await sleep(300);
     check(Math.abs(bobState().x - restX) < 3, 'then needs a few seconds to recharge');
+
+    // Body-checks: a much bigger player moving into you spills your gems, and can knock you out when you're low
+    async function bodyCheck(bigGems, smallGems) {
+        alice.send('test:setGems', { count: bigGems });
+        bob.send('test:setGems', { count: smallGems });
+        await sleep(200);
+        alice.send('test:moveTo', { x: 600, y: 400 });
+        bob.send('test:moveTo', { x: 600 + me().width + 30, y: 400 + (me().height - bobState().height) / 2 });
+        await sleep(250);
+        const fromX = bobState().x;
+        const had = bobState().gems;
+        alice.send('steer', { x: 1, y: 0 });
+        await sleep(700);
+        alice.send('steer', { x: 0, y: 0 });
+        await sleep(300);
+        const result = { lost: had - bobState().gems, moved: Math.round(bobState().x - fromX), state: bobState().state };
+        await sleep(1700);
+        return result;
+    }
+    const sameSize = await bodyCheck(10, 10);
+    check(sameSize.lost === 0 && sameSize.state === 'alive', `walking into someone your size just pushes them (${sameSize.lost} gems lost)`);
+    const bullied = await bodyCheck(100, 10);
+    check(bullied.lost >= 2 && bullied.moved > 150, `a much bigger player barging into you spills your gems (${bullied.lost} lost, knocked ${bullied.moved} units)`);
+    const crushed = await bodyCheck(100, 2);
+    check(crushed.state !== 'alive', 'and knocks you out if you have fewer than 3');
+    await waitFor(() => bobState().state === 'alive' && !bobState().spawnProtected, 6000, 'Bob is back');
+
+    // The 3-gem rule: with fewer than 3 gems, any hit knocks you out
+    alice.send('test:setGems', { count: 2 });
+    await sleep(150);
+    alice.send('test:hit');
+    await waitFor(() => me().state !== 'alive', 1000, 'with fewer than 3 gems, a hit knocks you out');
+    await waitFor(() => me().state === 'alive', 4000, 'Alice is back');
+    alice.send('test:setGems', { count: 3 });
+    await sleep(150);
+    alice.send('test:hit');
+    await sleep(200);
+    check(me().state === 'alive' && me().recovering, 'with 3, you survive the hit');
+    await waitFor(() => !me().recovering, 2000, 'Alice recovers');
     let nearby = bobState().gems;
     state().gems.forEach((gem) => {
         if (Math.hypot(gem.x - me().x, gem.y - me().y) < 350) nearby += gem.value;
@@ -350,7 +389,7 @@ try {
     await waitFor(() => !me().recovering && !me().spawnProtected, 3000, 'traffic is parked and Alice is ready');
     /** Stand the block where `place(half)` says (from Alice's center; half = half her width), maybe hop, and report a hit */
     async function struck(place, hopDirection) {
-        alice.send('test:setGems', { count: hopDirection ? 2 : 1 });
+        alice.send('test:setGems', { count: hopDirection ? 4 : 3 });
         await sleep(120);
         alice.send('test:placeObstacle', place(me().width / 2));
         if (hopDirection) alice.send('dash', { x: hopDirection === 'right' ? 1 : -1, y: 0 });
@@ -370,7 +409,7 @@ try {
     check(await struck((h) => ({ dx: h + 3, dy: -30, width: 11, height: 60, variant: 0 }), 'right'), 'dashing through a thin block is a hit');
     /** Stand a ball where `place(half)` says (from Alice's center), and report whether it hits her */
     async function ballStruck(place) {
-        alice.send('test:setGems', { count: 1 });
+        alice.send('test:setGems', { count: 3 });
         await sleep(120);
         alice.send('test:placeBall', place(me().width / 2));
         await sleep(250);

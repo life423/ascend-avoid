@@ -101,7 +101,8 @@ export const GEMS = {
   RADIUS: 9,
   SIZE_PER_ROOT: 6, // size = PLAYER_SIZE + this x the square root of your gems (26 at 1 gem, 80 at 100)...
   MAX_SIZE: 100, // ...up to this
-  SPRAY_SHARE: 0.5, // a hit sprays out this share of your gems
+  SPRAY_SHARE: 0.5, // a hit sprays out this share of your gems...
+  SURVIVE_AT: 3, // ...but with fewer than this, a hit knocks you out (your last gems burst out)
   SPRAY_PIECES: 24, // at most this many gems fly out; big piles make bigger gems
   SPRAY_SPEED_MIN: 260, // units per second...
   SPRAY_SPEED_MAX: 520,
@@ -125,6 +126,20 @@ export const PUSH = {
   FRICTION: 7, // shoved players slow by this factor a second (about half a second of sliding)
   STOP_SPEED: 40, // units per second; slower than this and the slide is over
   SAME_SHOVER_COOLDOWN_MS: 300, // one shove per hop, not one per frame of contact
+  /**
+   * Body-checks: a clearly bigger player moving into a smaller one (toward them at BODY_CHECK_SPEED
+   * of their top speed or more, or dashing) shoves them hard and spills their gems, by how much
+   * bigger they are (width over width, biggest tier first). At BODY_CHECK_KO_AT and up, a victim
+   * under GEMS.SURVIVE_AT gems is knocked out. Same immunity as a slingshot hit.
+   */
+  BODY_CHECK_TIERS: [
+    { at: 2, shove: 300, spill: 0.2 },
+    { at: 1.5, shove: 220, spill: 0.12 },
+    { at: 1.2, shove: 140, spill: 0.06 },
+  ],
+  BODY_CHECK_SPEED: 0.5,
+  BODY_CHECK_KO_AT: 2,
+  BODY_CHECK_MAX_SPILL: 20,
   LEADER_BOUNTY_SHARE: 0.1, // shoving the leader knocks this share of their gems loose...
   LEADER_BOUNTY_MIN: 2,
   LEADER_BOUNTY_MAX: 8,
@@ -158,6 +173,8 @@ export const BOTS = {
   MAX_AGGRESSION: 0.35, // how keen the keenest bot is to shove whoever is next to it
   GEM_SIGHT: 700, // bots go for gems within this distance...
   SLING_CHANCE: 0.12, // chance a bot charges a slingshot at whoever it's hunting, when they're 150-400 away
+  FLEE_RATIO: 1.5, // bots run from anyone this many times their size who comes within FLEE_RANGE
+  FLEE_RANGE: 260,
   DASH_REACH: 70, // bots dash into whoever they're hunting once this close (gap between them)
   CONTENT_AT: 30, // ...until they have this many; then they just wander, dodge and shove
   DECAY_START: 20, // bots shed gems above this (people above GEMS.DECAY_START), so people can outgrow them

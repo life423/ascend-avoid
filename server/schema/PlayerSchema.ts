@@ -303,6 +303,11 @@ class PlayerSchema extends Schema {
     this.steerY = y * scale;
   }
 
+  /** How fast the player is moving right now: walking, dashing and sliding together */
+  velocity(): { x: number; y: number } {
+    return { x: this.walkX + this.vx, y: this.walkY + this.vy };
+  }
+
   /** Where the player is steering */
   steering(): { x: number; y: number } {
     return { x: this.steerX, y: this.steerY };

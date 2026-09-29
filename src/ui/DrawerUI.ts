@@ -45,7 +45,7 @@ export class DrawerUI {
                         <p>On a computer, use the <span class="highlight">arrow keys</span> or <span class="highlight">WASD</span>, or hold the mouse button and your player heads for the cursor.</p>
 
                         <h4>Gems</h4>
-                        <p>Gems are your score. Every one you grab makes you a little bigger and heavier. Big players shove harder and see more of the arena, but they're also bigger targets, so growth is power and risk at once.</p>
+                        <p>Gems are your score. Every one you grab makes you a little bigger and heavier. Big players shove harder and see more of the arena, but they're also bigger targets, so growth is power and risk at once. A much bigger player barging into you knocks your gems loose, and can knock you out if you're low, so keep your distance.</p>
 
                         <h4>Dash, slingshot and shove</h4>
                         <p>Tap the <span class="highlight">right side</span> of the screen (<span class="highlight">space</span> on a computer) to dash: a quick burst that costs a gem. Dash into another player to shove them. The heavier you are, the farther they go.</p>
@@ -54,7 +54,7 @@ export class DrawerUI {
 
                         <h4>Getting hit</h4>
                         <p>Traffic, bouncing balls and the edge of the floor all knock you around. Take a hit and you skid, drop half your gems, and blink for a moment while nothing can touch you.</p>
-                        <p>Your dropped gems take a second before you can grab them back, but anyone else can grab them right away. With no gems left, a hit knocks you out, and you're back in two seconds.</p>
+                        <p>Your dropped gems take a second before you can grab them back, but anyone else can grab them right away. With fewer than 3 gems, a hit knocks you out (a dashed red outline warns you), and you're back in two seconds.</p>
 
                         <h4>Arena shifts</h4>
                         <p>Every few minutes the floor changes shape. You'll see the new floor first, and nobody can be hurt while everyone gets onto it. Then the rest falls away into the void.</p>
