@@ -7,8 +7,8 @@ import { InputState } from '../types'
 import { getSprite } from '../utils/sprites'
 import { GameEvents } from '../constants/client-constants'
 import { ARENA_RULES, GEMS, PLAYER_COLORS, SHIFT, WORLD } from '../../server/constants/gameConstants'
-import { holdRepeat, hop, hopsThisFrame, newHopTimers, newPresses, stopAgainst } from '../../server/game/movement'
-import type { HopTimers } from '../../server/game/movement'
+import { walk } from '../../server/game/movement'
+import { OnlineControls } from './OnlineControls'
 import type { MultiplayerManager } from '../managers/MultiplayerManager'
 
 // Forward reference for the Game type to avoid circular dependencies
@@ -465,11 +465,8 @@ const CAMERA_EASE = 0.2
 /** Grid spacing on the arena floor (world units) */
 const GRID = 100
 const FONT = 'Montserrat, system-ui, sans-serif'
-const NO_KEYS: InputState = { up: false, down: false, left: false, right: false }
 /** Your drawn position jumps to the server's when they're this far apart (a respawn) */
 const PREDICTION_SNAP = 150
-/** Once you've stopped hopping this long, your drawn position settles onto the server's */
-const SETTLE_AFTER_MS = 300
 /** How long a hit's burst ring lasts */
 const BURST_MS = 500
 /** How long the screen shakes when you're hit */
@@ -623,9 +620,6 @@ export class MultiplayerMode extends GameMode {
     private drawnPositions = new Map<string, { x: number; y: number }>()
     /** Your own position, hopped on your screen right away */
     private predicted: { x: number; y: number } | null = null
-    private previousKeys: InputState = { ...NO_KEYS }
-    private hopTimers: HopTimers = newHopTimers()
-    private lastHopAt = 0
     /** The world point at the center of the screen */
     private camera: { x: number; y: number } | null = null
     private lastRenderAt = 0
@@ -641,6 +635,22 @@ export class MultiplayerMode extends GameMode {
     private fallingSince = new Map<string, number>()
     /** Whether everyone is protected right now (a shift's grace period) */
     private inGrace = false
+    /** The joystick, DASH button and mouse steering (drawn on the canvas) */
+    private controls: OnlineControls | null = null
+    private dashReadyAt = 0
+    /** Your walking velocity, the dash under way, and the way you last steered */
+    private velocity = { x: 0, y: 0 }
+    private dashUntil = 0
+    private dashDir = { x: 0, y: -1 }
+    private facing = { x: 0, y: -1 }
+    /** The steering last sent to the server */
+    private sentSteer = { x: 0, y: 0 }
+    /** Where you were drawn over the last second, to compare with the server (which runs a round trip behind) */
+    private history: { at: number; x: number; y: number }[] = []
+    private lastMoveAt = 0
+    /** The view as last drawn, to find your player on screen for mouse steering */
+    private lastView: View | null = null
+    private minimapBottom = 0
     /**
      * Our clock minus the world's clock for the quickest update seen: lining the two up this way
      * places traffic by the server's own timing rather than by when updates happen to land
@@ -663,6 +673,11 @@ export class MultiplayerMode extends GameMode {
         // Coming from solo: put its game-over screen away; the online world never pauses
         this.game.uiManager?.hideGameOver()
         this.game.gameState = this.game.config.STATE.PLAYING
+        // Touch and mouse controls drawn on the canvas; the D-pad and swipes are for solo
+        if (this.game.canvas) this.controls = new OnlineControls(this.game.canvas)
+        document.body.classList.add('online-mode')
+        const inputManager = (this.game as any).inputManager
+        if (inputManager) inputManager.swipesEnabled = false
         // Online, the header shows your gems and the most you've held this visit
         this.game.uiManager?.updateScore(0)
         this.game.uiManager?.updateHighScore(0)
@@ -723,9 +738,43 @@ export class MultiplayerMode extends GameMode {
         return this.status === 'connected' ? this.multiplayerManager?.getState() : null
     }
 
-    update(inputState: InputState, deltaTime: number, _timestamp: number): void {
-        this.moveLocalPlayer(inputState, deltaTime)
+    update(inputState: InputState, _deltaTime: number, _timestamp: number): void {
+        this.moveLocalPlayer(inputState)
         this.showGems()
+    }
+
+    /** Where you're steering: the joystick or mouse if in use (analog), otherwise the keys (eight ways) */
+    private steerVector(input: InputState, me: any): { x: number; y: number } {
+        const view = this.lastView
+        const canvas = this.game.canvas
+        if (this.controls && view && canvas) {
+            const position = this.predicted ?? me
+            const x = (position.x + me.width / 2 - view.x) * view.scale + canvas.width / 2
+            const y = (position.y + me.height / 2 - view.y) * view.scale + canvas.height / 2
+            const pointer = this.controls.vector(x, y, me.width * view.scale)
+            if (pointer) return pointer
+        }
+        const x = (input.right ? 1 : 0) - (input.left ? 1 : 0)
+        const y = (input.down ? 1 : 0) - (input.up ? 1 : 0)
+        const length = Math.hypot(x, y)
+        return length > 0 ? { x: x / length, y: y / length } : { x: 0, y: 0 }
+    }
+
+    /** Tell the server where you're steering, whenever it changes */
+    private sendSteer(steer: { x: number; y: number }): void {
+        const x = Math.round(steer.x * 100) / 100
+        const y = Math.round(steer.y * 100) / 100
+        const wasStill = this.sentSteer.x === 0 && this.sentSteer.y === 0
+        const still = x === 0 && y === 0
+        if (still === wasStill && Math.abs(x - this.sentSteer.x) < 0.04 && Math.abs(y - this.sentSteer.y) < 0.04) return
+        this.sentSteer = { x, y }
+        this.multiplayerManager?.sendMessage('steer', { x, y })
+    }
+
+    private resetMotion(): void {
+        this.velocity = { x: 0, y: 0 }
+        this.dashUntil = 0
+        this.history = []
     }
 
     /** Keep the header's Score (your gems) and High Score (your most this visit) current */
@@ -745,9 +794,12 @@ export class MultiplayerMode extends GameMode {
      * each hop. The server applies the same hops and decides hits; once you stop, your player
      * settles onto the server's position, and a big difference (a respawn) snaps to it.
      */
-    private moveLocalPlayer(input: InputState, deltaTime: number): void {
-        const presses = newPresses(this.previousKeys, input)
-        this.previousKeys = { up: input.up, down: input.down, left: input.left, right: input.right }
+    private moveLocalPlayer(input: InputState): void {
+        // Taken every frame, so a dash asked for while you can't dash isn't saved for later
+        const wantsDash = this.controls?.takeDash() ?? false
+        const now = performance.now()
+        const deltaTime = this.lastMoveAt ? Math.min(0.1, (now - this.lastMoveAt) / 1000) : 0
+        this.lastMoveAt = now
 
         const state = this.worldState()
         const localId = this.multiplayerManager?.localSessionId
@@ -756,50 +808,61 @@ export class MultiplayerMode extends GameMode {
             this.predicted = null
             return
         }
+        const steer = this.steerVector(input, me)
+        this.sendSteer(steer)
         if (me.state !== 'alive') {
             this.predicted = { x: me.x, y: me.y }
-            this.hopTimers = newHopTimers()
+            this.resetMotion()
             return
         }
         if (!this.predicted) this.predicted = { x: me.x, y: me.y }
         if (me.sliding || me.recovering) {
-            // Shoved or knocked into a skid: slide where the server says, no hopping until you've recovered
+            // Shoved or knocked into a skid: go where the server says, no steering until you've recovered
             this.predicted = {
                 x: this.predicted.x + (me.x - this.predicted.x) * 0.5,
                 y: this.predicted.y + (me.y - this.predicted.y) * 0.5,
             }
-            this.hopTimers = newHopTimers()
+            this.resetMotion()
             return
         }
 
-        // Bigger players keep a slower rhythm when holding a direction
-        const repeat = holdRepeat(me.width)
-        const hops = hopsThisFrame(input, presses, this.hopTimers, deltaTime, repeat)
-        if (hops.length > 0) {
-            const box = { x: this.predicted.x, y: this.predicted.y, width: me.width, height: me.height }
-            // Anyone in the way stops your hop, as they do on the server
-            const others: { x: number; y: number; width: number; height: number }[] = []
-            state.players.forEach((player: any, id: string) => {
-                if (id !== localId && player.state === 'alive') others.push({ x: player.x, y: player.y, width: player.width, height: player.height })
-            })
-            for (const direction of hops) {
-                const fromX = box.x
-                const fromY = box.y
-                hop(box, direction, state.worldWidth, state.worldHeight)
-                stopAgainst(box, direction, fromX, fromY, others)
-                this.multiplayerManager?.sendMessage('hop', { direction })
-            }
-            this.predicted = { x: box.x, y: box.y }
-            this.lastHopAt = performance.now()
+        const steering = Math.hypot(steer.x, steer.y)
+        if (steering > 0.2) this.facing = { x: steer.x / steering, y: steer.y / steering }
+        if (wantsDash && now >= this.dashReadyAt) {
+            // A burst the way you're steering (or last went)
+            this.dashDir = steering > 0.05 ? { x: steer.x / steering, y: steer.y / steering } : { ...this.facing }
+            this.dashUntil = now + ARENA_RULES.DASH_MS
+            this.dashReadyAt = now + ARENA_RULES.DASH_COOLDOWN_MS
+            this.multiplayerManager?.sendMessage('dash', { x: this.dashDir.x, y: this.dashDir.y })
         }
 
-        const dx = me.x - this.predicted.x
-        const dy = me.y - this.predicted.y
-        if (Math.hypot(dx, dy) > PREDICTION_SNAP) {
-            this.predicted = { x: me.x, y: me.y }
-        } else if (performance.now() - this.lastHopAt > SETTLE_AFTER_MS) {
-            this.predicted = { x: this.predicted.x + dx * 0.25, y: this.predicted.y + dy * 0.25 }
+        // Move exactly the way the server does
+        const box = { x: this.predicted.x, y: this.predicted.y, width: me.width, height: me.height }
+        walk(box, this.velocity, steer, deltaTime, state.worldWidth, state.worldHeight, now < this.dashUntil ? this.dashDir : null)
+
+        // The server shows where you were about a round trip ago: quietly correct any drift from that
+        this.history.push({ at: now, x: box.x, y: box.y })
+        while (this.history.length > 1 && now - this.history[0].at > 1000) this.history.shift()
+        const lag = (this.multiplayerManager?.roundTripMs ?? 0) + 50
+        const then = this.history.find((entry) => entry.at >= now - lag) ?? this.history[0]
+        const driftX = me.x - then.x
+        const driftY = me.y - then.y
+        const drift = Math.hypot(driftX, driftY)
+        if (drift > PREDICTION_SNAP) {
+            box.x = me.x
+            box.y = me.y
+            this.history = []
+        } else if (drift > 1) {
+            const fixX = driftX * 0.1
+            const fixY = driftY * 0.1
+            box.x += fixX
+            box.y += fixY
+            for (const entry of this.history) {
+                entry.x += fixX
+                entry.y += fixY
+            }
         }
+        this.predicted = { x: box.x, y: box.y }
     }
 
     /** The online mode always draws the whole scene itself */
@@ -830,6 +893,7 @@ export class MultiplayerMode extends GameMode {
             view.x += (Math.random() - 0.5) * 2 * strength
             view.y += (Math.random() - 0.5) * 2 * strength
         }
+        this.lastView = view
         const leaderId = this.leaderId(state)
         this.inGrace = state.shiftPhase === 'grace'
 
@@ -882,6 +946,7 @@ export class MultiplayerMode extends GameMode {
         this.drawLeaderboard(ctx, canvas, state, localId, leaderId)
         this.drawNotices(ctx, canvas)
         this.drawShiftChip(ctx, canvas, state, timestamp)
+        this.controls?.draw(ctx, timestamp, Math.max(0, Math.min(1, 1 - (this.dashReadyAt - performance.now()) / ARENA_RULES.DASH_COOLDOWN_MS)))
         if (me && me.state !== 'alive') this.drawKnockedOut(ctx, canvas)
         ctx.restore()
     }
@@ -1073,7 +1138,9 @@ export class MultiplayerMode extends GameMode {
         const width = state.worldWidth * scale
         const height = state.worldHeight * scale
         const x = canvas.width - width - 12
-        const y = canvas.height - height - 12
+        // On a touchscreen the DASH button has the bottom right, so the minimap moves to the top
+        const y = this.controls?.touchDevice ? 34 : canvas.height - height - 12
+        this.minimapBottom = y + height
         ctx.save()
         ctx.fillStyle = 'rgba(5, 12, 24, 0.72)'
         roundedRect(ctx, x - 4, y - 4, width + 8, height + 8, 6)
@@ -1318,6 +1385,7 @@ export class MultiplayerMode extends GameMode {
         timestamp: number
     ): void {
         const present = new Set<string>()
+        const localId = this.multiplayerManager?.localSessionId
         state.gems?.forEach((gem: any, id: string) => {
             present.add(id)
             let drawn = this.drawnGems.get(id)
@@ -1345,6 +1413,13 @@ export class MultiplayerMode extends GameMode {
                 return
             }
             this.fallingSince.delete(id)
+            if (gem.locked && gem.owner === localId) {
+                // Your own spilled gem: faded until you can grab it back
+                ctx.globalAlpha = 0.35
+                drawGem(ctx, drawn.x, drawn.y, radius)
+                ctx.globalAlpha = 1
+                return
+            }
             drawGem(ctx, drawn.x, drawn.y, radius)
         })
         for (const id of this.drawnGems.keys()) {
@@ -1442,7 +1517,7 @@ export class MultiplayerMode extends GameMode {
     private drawNotices(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement): void {
         const now = performance.now()
         this.notices = this.notices.filter((notice) => now - notice.at < JOIN_NOTICE_MS)
-        let y = 12
+        let y = this.controls?.touchDevice ? this.minimapBottom + 12 : 12
         ctx.save()
         for (const notice of [...this.notices].reverse()) {
             ctx.globalAlpha = Math.min(1, (JOIN_NOTICE_MS - (now - notice.at)) / 500)
@@ -1512,6 +1587,11 @@ export class MultiplayerMode extends GameMode {
         this.multiplayerManager = null
         this.drawnPositions.clear()
         this.drawnGems.clear()
+        this.controls?.dispose()
+        this.controls = null
+        document.body.classList.remove('online-mode')
+        const inputManager = (this.game as any).inputManager
+        if (inputManager) inputManager.swipesEnabled = true
         // Hand the header back to solo's scores
         this.game.uiManager?.updateScore(this.game.score)
         this.game.uiManager?.updateHighScore(this.game.highScore)

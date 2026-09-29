@@ -630,3 +630,15 @@
         padding: 0 calc(clamp(36px, 11vh, 56px) * 3.6 + var(--space-md));
     }
 }
+
+/* Online, the joystick and DASH button are drawn on the canvas, so the game takes the whole
+   space (the D-pad is for solo) */
+body.online-mode .touch-controls-area {
+    display: none !important;
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+    body.online-mode .canvas-frame {
+        padding: 0;
+    }
+}

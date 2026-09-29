@@ -8,10 +8,16 @@ import { BotBrain } from "../game/bots.js";
 import { closestFloorPoint, isFloor, jackpotSpot, layoutToString, pickLayout, randomFloorPoint } from "../game/layouts.js";
 import type { Layout } from "../game/layouts.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
-import { stopAgainst } from "../game/movement.js";
 import type { Direction } from "../game/movement.js";
 
 const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS } = GAME_CONSTANTS;
+/** Which way each of a bot's decisions steers it */
+const STEER: Record<Direction, { x: number; y: number }> = {
+  up: { x: 0, y: -1 },
+  down: { x: 0, y: 1 },
+  left: { x: -1, y: 0 },
+  right: { x: 1, y: 0 },
+};
 
 /** How many random spots to try when looking for a safe place to (re)spawn */
 const SPAWN_TRIES = 24;
@@ -137,6 +143,7 @@ class GameState extends Schema {
         expired.push(id);
         return;
       }
+      gem.unlock(now);
       // During a shift, gems stop at the floor's edge instead of sliding out over the void
       if (layout && !isFloor(layout, gem.x, gem.y)) {
         const spot = closestFloorPoint(layout, gem.x, gem.y, 12);
@@ -148,8 +155,25 @@ class GameState extends Schema {
     // Bots decide on their hops, which then go through the same rules as everyone's
     this.brains.forEach((brain, id) => {
       const bot = this.players.get(id);
+      const deciding = bot ? now >= brain.nextThinkAt : false;
       const move = bot ? brain.think(bot, this, now) : null;
-      if (bot && move) bot.requestHop(move);
+      if (bot && deciding) {
+        // Bots steer the way they decided (or stop), and dash into whoever they're hunting once close
+        const way = move ? STEER[move] : { x: 0, y: 0 };
+        bot.steer(way.x, way.y);
+        const victim = brain.victim;
+        if (move && victim && victim.state === PLAYER_STATE.ALIVE && !victim.spawnProtected) {
+          const dx = victim.x + victim.width / 2 - (bot.x + bot.width / 2);
+          const dy = victim.y + victim.height / 2 - (bot.y + bot.height / 2);
+          if (Math.hypot(dx, dy) < (bot.width + victim.width) / 2 + BOTS.DASH_REACH) bot.requestDash(dx, dy);
+        }
+      }
+      // Between decisions, a bot stops rather than walk off the edge
+      if (bot && this.shiftPhase === "shift") {
+        const way = bot.steering();
+        const reach = bot.width / 2 + 24;
+        if ((way.x || way.y) && !this.isFloorAt(bot.x + bot.width / 2 + way.x * reach, bot.y + bot.height / 2 + way.y * reach)) bot.steer(0, 0);
+      }
     });
 
     this.players.forEach((player) => {
@@ -159,9 +183,10 @@ class GameState extends Schema {
       }
       const fromX = player.x;
       const fromY = player.y;
-      const hops = player.updateMovement(this.worldWidth, this.worldHeight, now, deltaTime);
-      if (hops.length > 0) this.checkShoves(player, hops[hops.length - 1], fromX, fromY, now);
-      this.collectGems(player, now);
+      player.updateMovement(this.worldWidth, this.worldHeight, now, deltaTime);
+      if (player.dashing(now)) this.checkDash(player, fromX, fromY, now);
+      this.nudgeApart(player);
+      this.collectGems(player, now, fromX, fromY);
       player.decay(deltaTime, this.worldWidth, this.worldHeight);
       // A skid after a hit never carries anyone off the edge
       if (this.shiftPhase === "shift" && player.recovering && this.layout && !this.isFloorAt(player.x + player.width / 2, player.y + player.height / 2)) {
@@ -225,27 +250,36 @@ class GameState extends Schema {
   }
 
   /**
-   * A hop that runs into another player stops against them and shoves them that way, farther the heavier the shover is
-   * compared with them. Shoving the leader knocks a few of their gems loose. Players who just
-   * arrived can't be shoved, and shoving someone ends your own protection.
+   * A dash that runs into another player stops there and shoves them along it, farther if the
+   * dasher is heavier; shoving the leader knocks some of their gems loose. Players who just
+   * arrived are passed straight through.
    */
-  private checkShoves(shover: PlayerSchema, direction: Direction, fromX: number, fromY: number, now: number): void {
-    const others: PlayerSchema[] = [];
+  private checkDash(dasher: PlayerSchema, fromX: number, fromY: number, now: number): void {
+    // Everything the dash passed over this tick counts, so it can't skip over a small player
+    const path = {
+      x: Math.min(fromX, dasher.x),
+      y: Math.min(fromY, dasher.y),
+      width: dasher.width + Math.abs(dasher.x - fromX),
+      height: dasher.height + Math.abs(dasher.y - fromY),
+    };
+    const along = dasher.dashDirection();
+    const hit: { target: PlayerSchema | null; distance: number } = { target: null, distance: Infinity };
     this.players.forEach((other) => {
-      if (other !== shover && other.state === PLAYER_STATE.ALIVE) others.push(other);
+      if (other === dasher || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected) return;
+      if (!(path.x < other.x + other.width && path.x + path.width > other.x && path.y < other.y + other.height && path.y + path.height > other.y)) return;
+      const distance = (other.x - fromX) * along.x + (other.y - fromY) * along.y;
+      if (distance < hit.distance) {
+        hit.target = other;
+        hit.distance = distance;
+      }
     });
-    // The hop stops against the first player in its way
-    const box = { x: shover.x, y: shover.y, width: shover.width, height: shover.height };
-    const hit = stopAgainst(box, direction, fromX, fromY, others);
-    if (hit < 0) return;
-    if (box.x !== shover.x) shover.x = box.x;
-    if (box.y !== shover.y) shover.y = box.y;
-    const target = others[hit];
-    if (target.spawnProtected) return;
+    const target = hit.target;
+    if (!target) return;
+    dasher.endDash();
     const leader = this.leader();
-    const ratio = Math.min(PUSH.MAX_RATIO, Math.max(PUSH.MIN_RATIO, shover.weight() / target.weight()));
-    if (!target.shove(direction, PUSH.DISTANCE * ratio, shover.sessionId, now)) return;
-    shover.dropProtection();
+    const ratio = Math.min(PUSH.MAX_RATIO, Math.max(PUSH.MIN_RATIO, dasher.weight() / target.weight()));
+    if (!target.shoveAlong(along.x, along.y, PUSH.DISTANCE * ratio, dasher.sessionId, now)) return;
+    dasher.dropProtection();
     if (target === leader && target.gems > 0 && target.takeBounty(now)) {
       const loose = Math.min(
         target.gems,
@@ -257,6 +291,27 @@ class GameState extends Schema {
       target.setGems(target.gems - loose, this.worldWidth, this.worldHeight);
       this.sprayGems(centerX, centerY, loose, now, target.sessionId);
     }
+  }
+
+  /** Players walking into each other are gently pushed apart, the lighter one more (dashing is what shoves) */
+  private nudgeApart(player: PlayerSchema): void {
+    if (player.state !== PLAYER_STATE.ALIVE || player.spawnProtected) return;
+    this.players.forEach((other) => {
+      if (other === player || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected) return;
+      const overlapX = Math.min(player.x + player.width, other.x + other.width) - Math.max(player.x, other.x);
+      const overlapY = Math.min(player.y + player.height, other.y + other.height) - Math.max(player.y, other.y);
+      if (overlapX <= 0 || overlapY <= 0) return;
+      const share = other.weight() / (player.weight() + other.weight());
+      if (overlapX < overlapY) {
+        const sign = player.x + player.width / 2 < other.x + other.width / 2 ? -1 : 1;
+        player.nudge(sign * overlapX * share, 0, this.worldWidth, this.worldHeight);
+        other.nudge(-sign * overlapX * (1 - share), 0, this.worldWidth, this.worldHeight);
+      } else {
+        const sign = player.y + player.height / 2 < other.y + other.height / 2 ? -1 : 1;
+        player.nudge(0, sign * overlapY * share, this.worldWidth, this.worldHeight);
+        other.nudge(0, -sign * overlapY * (1 - share), this.worldWidth, this.worldHeight);
+      }
+    });
   }
 
   /** Give every traffic lane a new direction and speed */
@@ -538,11 +593,22 @@ class GameState extends Schema {
   }
 
   /** Pick up every gem the player is touching */
-  private collectGems(player: PlayerSchema, now: number): void {
+  private collectGems(player: PlayerSchema, now: number, fromX = player.x, fromY = player.y): void {
+    // Everything the player passed over this tick counts, so a dash or a skid can't skip a gem
+    // (unless they were moved somewhere else entirely, like a respawn)
+    const moved = Math.hypot(player.x - fromX, player.y - fromY);
+    const path = moved > 300
+      ? player
+      : {
+          x: Math.min(fromX, player.x),
+          y: Math.min(fromY, player.y),
+          width: player.width + Math.abs(player.x - fromX),
+          height: player.height + Math.abs(player.y - fromY),
+        };
     let collected = 0;
     const taken: string[] = [];
     this.gems.forEach((gem, id) => {
-      if (!gem.touches(player, now, player.sessionId)) return;
+      if (!gem.touches(path, now, player.sessionId)) return;
       collected += gem.value;
       taken.push(id);
       if (!gem.sprayed) this.fieldGems--;

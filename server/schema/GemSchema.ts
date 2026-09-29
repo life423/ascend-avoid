@@ -25,8 +25,9 @@ class GemSchema extends Schema {
 
   /** Server-only */
   sprayed = false;
-  /** Who spilled it: they can't grab it back until ownerPickupAt */
-  private owner = "";
+  /** Who spilled it, and whether they still can't grab it back (their browser shows it faded until then) */
+  owner: string;
+  locked: boolean;
   private ownerPickupAt = 0;
   private pickupAt = 0;
   private expiresAt = 0;
@@ -37,6 +38,8 @@ class GemSchema extends Schema {
 
   constructor(x: number, y: number, value = 1) {
     super();
+    this.owner = "";
+    this.locked = false;
     this.px = x;
     this.py = y;
     this.x = Math.round(x);
@@ -69,6 +72,7 @@ class GemSchema extends Schema {
     this.sprayed = true;
     this.owner = owner;
     this.ownerPickupAt = now + GEMS.OWNER_PICKUP_DELAY_MS;
+    this.locked = owner !== "";
     this.vx = Math.cos(angle) * speed;
     this.vy = Math.sin(angle) * speed;
     this.pickupAt = now + GEMS.SPRAY_PICKUP_DELAY_MS;
@@ -116,6 +120,11 @@ class GemSchema extends Schema {
   }
 
   /** Whether a player's box touches this gem, once it can be picked up */
+  /** The spiller's wait is over: they can grab it too now */
+  unlock(now: number): void {
+    if (this.locked && now >= this.ownerPickupAt) this.locked = false;
+  }
+
   touches(box: Box, now: number, who = ""): boolean {
     if (now < this.pickupAt) return false;
     if (who && who === this.owner && now < this.ownerPickupAt) return false;
@@ -129,6 +138,8 @@ type("number")(GemSchema.prototype, "x");
 type("number")(GemSchema.prototype, "y");
 type("number")(GemSchema.prototype, "value");
 type("boolean")(GemSchema.prototype, "expiring");
+type("string")(GemSchema.prototype, "owner");
+type("boolean")(GemSchema.prototype, "locked");
 type("boolean")(GemSchema.prototype, "falling");
 
 export { GemSchema };

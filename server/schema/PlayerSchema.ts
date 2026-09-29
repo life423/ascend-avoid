@@ -1,13 +1,11 @@
 import * as schema from "@colyseus/schema";
 const { Schema, type } = schema;
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
-import { hop } from "../game/movement.js";
+import { walk } from "../game/movement.js";
 import type { Box, Direction } from "../game/movement.js";
 
 const { ARENA_RULES, BOTS, GEMS, PLAYER_STATE, PUSH, WORLD } = GAME_CONSTANTS;
 
-/** At most this many hops wait to be applied; more are dropped, so flooding can't speed anyone up */
-const MAX_QUEUED_HOPS = 4;
 
 /** A player's size: small to start, growing with the square root of their gems, up to GEMS.MAX_SIZE */
 function sizeFor(gems: number): number {
@@ -50,8 +48,19 @@ class PlayerSchema extends Schema {
   private lastShoveBy = "";
   private lastShoveAt = 0;
   private bountyAt = 0;
-  private queuedHops: Direction[] = [];
-  private lastHopAt: Record<Direction, number> = { up: 0, down: 0, left: 0, right: 0 };
+  /** Where the browser is steering (no longer than 1), and the walking velocity it produces */
+  private steerX = 0;
+  private steerY = 0;
+  private walkX = 0;
+  private walkY = 0;
+  /** The way the player last steered (a dash goes this way if they aren't steering) */
+  private facingX = 0;
+  private facingY = -1;
+  private queuedDash: { x: number; y: number } | null = null;
+  private dashX = 0;
+  private dashY = 0;
+  private dashUntil = 0;
+  private dashReadyAt = 0;
 
   constructor(sessionId: string, playerIndex: number) {
     super();
@@ -78,7 +87,8 @@ class PlayerSchema extends Schema {
     this.recovering = false;
     this.stopSliding();
     this.protectFor(WORLD.SPAWN_PROTECTION_MS, now);
-    this.queuedHops = [];
+    this.queuedDash = null;
+    this.dashUntil = 0;
   }
 
   /** Traffic passes through for `ms` (drawn in a bubble) */
@@ -104,7 +114,8 @@ class PlayerSchema extends Schema {
     this.spawnProtected = false;
     this.recovering = false;
     this.respawnAt = now + WORLD.RESPAWN_DELAY_MS;
-    this.queuedHops = [];
+    this.queuedDash = null;
+    this.dashUntil = 0;
     this.stopSliding();
   }
 
@@ -130,16 +141,22 @@ class PlayerSchema extends Schema {
    * so shoves from two players add up. Returns false if the same player shoved a moment ago.
    */
   shove(direction: Direction, distance: number, by: string, now: number): boolean {
+    const along = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[direction];
+    return this.shoveAlong(along[0], along[1], distance, by, now);
+  }
+
+  /** Shoved along (dx, dy), in any direction: see shove() */
+  shoveAlong(dx: number, dy: number, distance: number, by: string, now: number): boolean {
     if (by === this.lastShoveBy && now - this.lastShoveAt < PUSH.SAME_SHOVER_COOLDOWN_MS) return false;
     this.lastShoveBy = by;
     this.lastShoveAt = now;
+    const length = Math.hypot(dx, dy) || 1;
     const speed = distance * PUSH.FRICTION;
-    if (direction === "up") this.vy -= speed;
-    else if (direction === "down") this.vy += speed;
-    else if (direction === "left") this.vx -= speed;
-    else this.vx += speed;
+    this.vx += (dx / length) * speed;
+    this.vy += (dy / length) * speed;
     this.sliding = true;
-    this.queuedHops = [];
+    this.queuedDash = null;
+    this.dashUntil = 0;
     return true;
   }
 
@@ -156,7 +173,8 @@ class PlayerSchema extends Schema {
     this.vx += (dx / length) * speed;
     this.vy += (dy / length) * speed;
     this.sliding = true;
-    this.queuedHops = [];
+    this.queuedDash = null;
+    this.dashUntil = 0;
   }
 
   /** Who shoved this player within the last `withinMs` (their session id), if anyone */
@@ -208,39 +226,92 @@ class PlayerSchema extends Schema {
     this.setGems(this.gems - lost, worldWidth, worldHeight);
   }
 
-  /** Queue a hop the browser asked for */
-  requestHop(direction: Direction): void {
-    if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering || this.queuedHops.length >= MAX_QUEUED_HOPS) return;
-    this.queuedHops.push(direction);
+  /** Queue a dash the browser asked for: several hops' worth at once (see ARENA_RULES.DASH_*) */
+  requestDash(x: number, y: number): void {
+    if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering) return;
+    const length = Math.hypot(x, y);
+    this.queuedDash = Number.isFinite(length) && length > 1e-6 ? { x: x / length, y: y / length } : { x: this.facingX, y: this.facingY };
+  }
+
+  /** Where the browser is steering: a direction no longer than 1 (a light push walks slower) */
+  steer(x: number, y: number): void {
+    const length = Math.hypot(x, y);
+    if (!Number.isFinite(length)) {
+      this.steerX = 0;
+      this.steerY = 0;
+      return;
+    }
+    const scale = length > 1 ? 1 / length : 1;
+    this.steerX = x * scale;
+    this.steerY = y * scale;
+  }
+
+  /** Where the player is steering */
+  steering(): { x: number; y: number } {
+    return { x: this.steerX, y: this.steerY };
+  }
+
+  /** Whether a dash is under way (it shoves whoever it runs into) */
+  dashing(now: number): boolean {
+    return now < this.dashUntil;
+  }
+
+  /** The way the dash under way is going */
+  dashDirection(): { x: number; y: number } {
+    return { x: this.dashX, y: this.dashY };
+  }
+
+  /** The dash ran into someone: it stops there */
+  endDash(): void {
+    this.dashUntil = 0;
+    this.walkX = 0;
+    this.walkY = 0;
+  }
+
+  /** Moved aside by someone walking into you, staying inside the world */
+  nudge(dx: number, dy: number, worldWidth: number, worldHeight: number): void {
+    const margin = ARENA_RULES.EDGE_MARGIN;
+    this.x = Math.max(margin, Math.min(this.x + dx, worldWidth - this.width - margin));
+    this.y = Math.max(margin, Math.min(this.y + dy, worldHeight - this.height - margin));
   }
 
   /**
-   * Slide if shoved; otherwise apply queued hops in order, at most one per direction every
-   * HOP_COOLDOWN_MS (far faster than anyone taps). Protection and recovery wear off here too.
-   * Returns the hops applied, so the world can check whether they landed on anyone.
+   * Move for this tick: slide if shoved or skidding; otherwise walk where the player is steering
+   * (eased, so starts and stops are smooth), or burst along a dash. No steering while recovering.
+   * Protection and recovery wear off here too.
    */
-  updateMovement(worldWidth: number, worldHeight: number, now: number, deltaTime: number): Direction[] {
-    if (this.state !== PLAYER_STATE.ALIVE) return [];
+  updateMovement(worldWidth: number, worldHeight: number, now: number, deltaTime: number): void {
+    if (this.state !== PLAYER_STATE.ALIVE) return;
     if (this.spawnProtected && now >= this.protectedUntil) this.spawnProtected = false;
     if (this.recovering && now >= this.recoverUntil) this.recovering = false;
     if (this.sliding) {
+      this.walkX = 0;
+      this.walkY = 0;
+      this.queuedDash = null;
       this.slide(deltaTime, worldWidth, worldHeight);
-      return [];
+      return;
     }
-    if (this.queuedHops.length === 0) return [];
-    const applied: Direction[] = [];
+    if (this.queuedDash && now >= this.dashReadyAt && !this.recovering) {
+      this.dashX = this.queuedDash.x;
+      this.dashY = this.queuedDash.y;
+      this.dashUntil = now + ARENA_RULES.DASH_MS;
+      this.dashReadyAt = now + ARENA_RULES.DASH_COOLDOWN_MS;
+      if (this.gems > 0) this.setGems(this.gems - ARENA_RULES.DASH_COST, worldWidth, worldHeight);
+    }
+    this.queuedDash = null;
+    const steer = this.recovering ? { x: 0, y: 0 } : { x: this.steerX, y: this.steerY };
     const box = { x: this.x, y: this.y, width: this.width, height: this.height };
-    while (this.queuedHops.length > 0) {
-      const direction = this.queuedHops[0];
-      if (now - this.lastHopAt[direction] < ARENA_RULES.HOP_COOLDOWN_MS) break;
-      this.queuedHops.shift();
-      this.lastHopAt[direction] = now;
-      hop(box, direction, worldWidth, worldHeight);
-      applied.push(direction);
-    }
+    const velocity = { x: this.walkX, y: this.walkY };
+    walk(box, velocity, steer, deltaTime, worldWidth, worldHeight, now < this.dashUntil ? { x: this.dashX, y: this.dashY } : null);
+    this.walkX = velocity.x;
+    this.walkY = velocity.y;
     if (box.x !== this.x) this.x = box.x;
     if (box.y !== this.y) this.y = box.y;
-    return applied;
+    const steering = Math.hypot(steer.x, steer.y);
+    if (steering > 0.2) {
+      this.facingX = steer.x / steering;
+      this.facingY = steer.y / steering;
+    }
   }
 
   /** Slide after a shove, slowing to a stop; the world's walls stop you dead */

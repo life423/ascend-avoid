@@ -78,22 +78,28 @@ try {
     check(apart > 150, `players spawn apart (${Math.round(apart)} units)`);
 
     // Movement, while Bob is still protected from traffic
+    const toward = bobState().x > state().worldWidth / 2 ? -1 : 1;
+    const upward = bobState().y > state().worldHeight / 2 ? -1 : 1;
     const bobX = bobState().x;
-    bob.send('hop', { direction: bobX > state().worldWidth / 2 ? 'left' : 'right' });
-    await sleep(250);
-    const hopped = Math.abs(bobState().x - bobX);
-    check(Math.abs(hopped - 60) < 1, `a hop is 60 units, like solo play (${Math.round(hopped)})`);
-    const bobY = bobState().y;
-    const vertical = bobY > state().worldHeight / 2 ? 'up' : 'down';
-    for (let i = 0; i < 3; i++) bob.send('hop', { direction: vertical }); // a burst, like a laggy network
-    await sleep(350);
-    const burst = Math.abs(bobState().y - bobY);
-    check(Math.abs(burst - 180) < 1, `hops that arrive together all count (${Math.round(burst)} units for 3)`);
-    const floodY = bobState().y;
-    for (let i = 0; i < 20; i++) bob.send('hop', { direction: vertical === 'up' ? 'down' : 'up' });
-    await sleep(600);
-    const flooded = Math.round(Math.abs(bobState().y - floodY) / 60);
-    check(flooded <= 5, `flooding hops can't speed anyone up (${flooded} of 20 applied)`);
+    bob.send('steer', { x: toward, y: 0 });
+    await sleep(400);
+    const midX = bobState().x;
+    await sleep(500);
+    const bobSpeed = Math.abs(bobState().x - midX) / 0.5;
+    bob.send('steer', { x: 0, y: 0 });
+    check(Math.abs(midX - bobX) > 20 && bobSpeed > 270 && bobSpeed < 370, `steering moves you smoothly (${Math.round(bobSpeed)} units a second)`);
+    await sleep(400);
+    const stoppedX = bobState().x;
+    await sleep(300);
+    check(Math.abs(bobState().x - stoppedX) < 1, 'and letting go glides you to a stop');
+    const cheatX = bobState().x;
+    const cheatY = bobState().y;
+    bob.send('steer', { x: toward * 40, y: upward * 40 });
+    await sleep(500);
+    bob.send('steer', { x: 0, y: 0 });
+    const cheated = Math.hypot(bobState().x - cheatX, bobState().y - cheatY);
+    check(cheated < 220, `steering harder can't speed anyone up (${Math.round(cheated)} units in half a second)`);
+    await sleep(400);
     await waitFor(() => bobState().spawnProtected === false, 2500, 'protection wears off after a moment');
 
     // Traffic
@@ -152,20 +158,40 @@ try {
     const sideways = () => (me().x < state().worldWidth / 2 ? 'right' : 'left');
     const way = sideways();
     alice.send('test:placeGem', { dx: way === 'right' ? 60 : -60, dy: 0 });
-    await waitFor(() => state().gems.size === 1, 1000, 'a gem appears one hop away');
-    alice.send('hop', { direction: way });
-    await waitFor(() => me().gems === 1, 1000, 'hopping onto a gem picks it up');
+    await waitFor(() => state().gems.size === 1, 1000, 'a gem appears nearby');
+    alice.send('steer', { x: way === 'right' ? 1 : -1, y: 0 });
+    await waitFor(() => me().gems === 1, 1500, 'walking onto a gem picks it up');
+    alice.send('steer', { x: 0, y: 0 });
+    await sleep(400);
     check(state().gems.size === 0, 'and it leaves the world');
+    const dashX = me().x;
+    alice.send('dash', { x: way === 'right' ? 1 : -1, y: 0 });
+    await sleep(450);
+    const dashed = Math.abs(me().x - dashX);
+    check(dashed > 150 && dashed < 240, `a dash is a quick burst (${Math.round(dashed)} units)`);
+    check(me().gems === 0, 'and costs a gem');
+    const afterDash = me().x;
+    alice.send('dash', { x: way === 'right' ? 1 : -1, y: 0 });
+    await sleep(200);
+    check(Math.abs(me().x - afterDash) < 3, 'and needs a moment to recharge');
+    await sleep(900);
+    alice.send('test:placeGem', { dx: way === 'right' ? 70 : -70, dy: 0 });
+    await waitFor(() => state().gems.size === 1, 1000, 'another gem appears ahead');
+    const beforeSweep = me().gems;
+    alice.send('dash', { x: way === 'right' ? 1 : -1, y: 0 });
+    await waitFor(() => me().gems > beforeSweep, 1000, 'a dash picks up gems it passes over');
 
     alice.send('test:setGems', { count: 100 });
     await waitFor(() => me().gems >= 99, 1000, 'Alice now holds 100 gems');
     check(me().width >= 78 && me().width <= 80.5, `gems make you much bigger (${me().width} units wide at 100 gems)`);
-    const bigX = me().x;
-    const bigWidth = me().width;
-    alice.send('hop', { direction: sideways() });
-    await sleep(250);
-    const bigHop = Math.abs(me().x - bigX);
-    check(Math.abs(bigHop - (bigWidth + 12)) < 2, `and hops grow with you (${Math.round(bigHop)} units)`);
+    alice.send('steer', { x: sideways() === 'right' ? 1 : -1, y: 0 });
+    await sleep(400);
+    const bigFrom = me().x;
+    await sleep(500);
+    const bigSpeed = Math.abs(me().x - bigFrom) / 0.5;
+    alice.send('steer', { x: 0, y: 0 });
+    check(bigSpeed > 200 && bigSpeed < bobSpeed, `and a little slower (${Math.round(bigSpeed)} vs ${Math.round(bobSpeed)} units a second)`);
+    await sleep(400);
     const shedFrom = me().gems;
     await sleep(2500);
     check(me().gems < shedFrom, `very big players slowly shed gems (${shedFrom} to ${me().gems} in 2.5s)`);
@@ -204,13 +230,31 @@ try {
     state().gems.forEach((g) => {
         if (Math.hypot(g.x - spillX, g.y - spillY) < 300) spilled.push({ x: g.x, y: g.y });
     });
+    let markedMine = 0;
+    state().gems.forEach((g) => {
+        if (g.locked && g.owner === alice.sessionId) markedMine++;
+    });
+    check(markedMine >= 3, `your spilled gems are marked as yours (${markedMine})`);
     const aliceHeld = me().gems;
     alice.send('test:moveTo', { x: spilled[0].x - me().width / 2, y: spilled[0].y - me().height / 2 });
     await sleep(250);
     check(me().gems === aliceHeld, `your own spilled gems wait a moment before you can grab them back (${me().gems - aliceHeld} grabbed)`);
     const bobHeld = bobState().gems;
-    bob.send('test:moveTo', { x: spilled[1].x - bobState().width / 2, y: spilled[1].y - bobState().height / 2 });
+    // Where that gem is now (sprayed gems may still be sliding)
+    const aim = { x: spilled[1].x, y: spilled[1].y, distance: Infinity };
+    state().gems.forEach((g) => {
+        const distance = Math.hypot(g.x - spilled[1].x, g.y - spilled[1].y);
+        if (distance < aim.distance) Object.assign(aim, { x: g.x, y: g.y, distance });
+    });
+    bob.send('test:moveTo', { x: aim.x - bobState().width / 2, y: aim.y - bobState().height / 2 });
     await waitFor(() => bobState().gems > bobHeld, 1000, 'but anyone else can grab them right away');
+    await waitFor(() => {
+        let stillLocked = 0;
+        state().gems.forEach((g) => {
+            if (g.locked) stillLocked++;
+        });
+        return stillLocked === 0;
+    }, 2000, 'then the wait ends and you can grab them too');
     await waitFor(() => !me().recovering, 2000, 'Alice recovers again');
 
     // Hits with nothing left
@@ -239,12 +283,12 @@ try {
         right.send('test:moveTo', { x: 700 + leftState().width + 20, y: 1000 });
         await sleep(250);
         const startX = rightState().x;
-        left.send('hop', { direction: 'right' });
+        left.send('dash', { x: 1, y: 0 });
         await sleep(900);
         return rightState().x - startX;
     }
     const even = await shove(alice, bob, 0, 0);
-    check(even > 100 && even < 180, `hopping into someone shoves them (${Math.round(even)} units)`);
+    check(even > 100 && even < 180, `dashing into someone shoves them (${Math.round(even)} units)`);
     check(bobState().sliding === false, 'and they slide to a stop');
     const heavy = await shove(alice, bob, 100, 0);
     check(heavy > even * 1.6, `heavier players shove harder (${Math.round(heavy)} units)`);
@@ -274,10 +318,10 @@ try {
     await waitFor(() => !me().recovering && !me().spawnProtected, 3000, 'traffic is parked and Alice is ready');
     /** Stand the block where `place(half)` says (from Alice's center; half = half her width), maybe hop, and report a hit */
     async function struck(place, hopDirection) {
-        alice.send('test:setGems', { count: 1 });
+        alice.send('test:setGems', { count: hopDirection ? 2 : 1 });
         await sleep(120);
         alice.send('test:placeObstacle', place(me().width / 2));
-        if (hopDirection) alice.send('hop', { direction: hopDirection });
+        if (hopDirection) alice.send('dash', { x: hopDirection === 'right' ? 1 : -1, y: 0 });
         await sleep(250);
         const hit = me().recovering || me().state !== 'alive';
         alice.send('test:placeObstacle', { dx: 0, dy: 700, width: 20, height: 20 });
@@ -291,7 +335,7 @@ try {
     check(await struck((h) => ({ dx: h - 10, dy: -17, width: 60, height: 34, variant: 0 })), 'a block 10 units into your edge is a hit');
     check(await struck((h) => ({ dx: h - 10, dy: -17, width: 60, height: 34, variant: 1 })), "a diamond's point 10 units into you is a hit");
     check(!(await struck((h) => ({ dx: h - 12, dy: h - 12, width: 60, height: 34, variant: 1 }))), "a diamond's empty corner over yours is a miss");
-    check(await struck((h) => ({ dx: h + 3, dy: -30, width: 11, height: 60, variant: 0 }), 'right'), 'hopping through a thin block is a hit');
+    check(await struck((h) => ({ dx: h + 3, dy: -30, width: 11, height: 60, variant: 0 }), 'right'), 'dashing through a thin block is a hit');
     /** Stand a ball where `place(half)` says (from Alice's center), and report whether it hits her */
     async function ballStruck(place) {
         alice.send('test:setGems', { count: 1 });
@@ -316,10 +360,11 @@ try {
     const skidFromY = me().y;
     alice.send('test:placeBall', { dx: me().width / 2 + 14, dy: 0 });
     await sleep(80);
-    alice.send('hop', { direction: 'down' });
+    alice.send('steer', { x: 0, y: 1 });
     await sleep(600);
     check(me().x < skidFromX - 30, `a hit sends you skidding away from what hit you (${Math.round(skidFromX - me().x)} units)`);
-    check(Math.abs(me().y - skidFromY) < 5, "and you can't hop until you've recovered");
+    check(Math.abs(me().y - skidFromY) < 5, "and you can't steer until you've recovered");
+    alice.send('steer', { x: 0, y: 0 });
     alice.send('test:placeBall', { dx: 0, dy: 700 });
     await waitFor(() => !me().recovering && !me().sliding, 2000, 'Alice is steady again');
     alice.send('test:trafficHits', { on: false });
@@ -395,7 +440,7 @@ try {
     bob.send('test:moveTo', { x: tileRight - me().width - 4 - bobState().width - 20, y: rowMiddle - bobState().height / 2 });
     await sleep(250);
     bob.messages.length = 0;
-    bob.send('hop', { direction: 'right' });
+    bob.send('dash', { x: 1, y: 0 });
     await waitFor(() => bob.messages.some((m) => m.type === 'credit' && m.message.how === 'edge'), 2000, 'shoving someone off the edge is credited');
     const credit = bob.messages.find((m) => m.type === 'credit')?.message;
     check(credit?.by === 'Bob' && credit?.target === 'Alice', `everyone sees who did it (${credit?.by} shoved ${credit?.target})`);

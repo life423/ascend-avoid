@@ -38,19 +38,39 @@ export class DrawerUI {
                 <div class="menu-section">
                     <h3>How to Play</h3>
                     <div class="instructions">
-                        <p>Move the <span class="highlight">white block</span> to the top without hitting the <span class="highlight">blue blocks</span>.</p>
-                        
-                        <h4>Controls</h4>
+                        <p>Everyone on the site shares one big arena. Grab <span class="highlight">gems</span> to grow, shove other players around, and stay out of the way of everything that moves.</p>
+
+                        <h4>Moving</h4>
+                        <p>Use the <span class="highlight">joystick</span> on the left side of the screen. Put your thumb down anywhere on the left and the joystick appears right under it. Push it the way you want to go, and let go to stop. The faint joystick in the bottom-left corner shows you where to start.</p>
+                        <p>On a computer, use the <span class="highlight">arrow keys</span> or <span class="highlight">WASD</span>, or hold the mouse button and your player heads for the cursor.</p>
+
+                        <h4>Gems</h4>
+                        <p>Gems are your score. Every one you grab makes you a little bigger and heavier. Big players shove harder and see more of the arena, but they're also bigger targets, so growth is power and risk at once.</p>
+
+                        <h4>Dash and shove</h4>
+                        <p>Tap the <span class="highlight">right side</span> of the screen (<span class="highlight">space</span> on a computer) to dash: a quick burst that costs a gem. Dash into another player to shove them. The heavier you are, the farther they go.</p>
+                        <p>The leader wears a crown. Shove them and some of their gems break loose.</p>
+
+                        <h4>Getting hit</h4>
+                        <p>Traffic, bouncing balls and the edge of the floor all knock you around. Take a hit and you skid, drop half your gems, and blink for a moment while nothing can touch you.</p>
+                        <p>Your dropped gems take a second before you can grab them back, but anyone else can grab them right away. With no gems left, a hit knocks you out, and you're back in two seconds.</p>
+
+                        <h4>Arena shifts</h4>
+                        <p>Every few minutes the floor changes shape. You'll see the new floor first, and nobody can be hurt while everyone gets onto it. Then the rest falls away into the void.</p>
+                        <p>While the arena is small, gems rain down. Near the end a jackpot crystal drops: stand on it alone to claim 20 gems. If anyone else is touching it, nobody's claim moves.</p>
+
+                        <h4>Bots</h4>
+                        <p>Players with a robot next to their name are bots. They fill in when the arena is quiet and leave as people arrive.</p>
+
+                        <h4>Tips</h4>
                         <ul>
-                            <li>Use <span class="highlight">arrow keys</span> or <span class="highlight">WASD</span> to move</li>
-                            <li>Press <span class="highlight">'R'</span> to restart the game</li>
+                            <li>Waiting in a gap for traffic to pass is often smarter than running.</li>
+                            <li>When someone drops their gems, move fast, because they can't grab them back right away.</li>
+                            <li>Shoving someone off the edge during a shift is the biggest swing in the game.</li>
                         </ul>
-                        
-                        <div class="emphasis">
-                            Game speed increases as you score more points!
-                        </div>
-                        
-                        <p>Try to beat your high score. Online, everyone on the site shares one big arena: grab gems to grow, shove each other around, and dodge the traffic; a hit sprays out half your gems.</p>
+
+                        <h4>Solo</h4>
+                        <p>Solo is the classic game: reach the top without getting hit, and press <span class="highlight">R</span> to restart.</p>
                     </div>
                 </div>
             </div>

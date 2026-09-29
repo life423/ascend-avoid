@@ -147,6 +147,7 @@ export const BOTS = {
   MISTAKE_CHANCE: 0.07, // how often a bot hops at random instead (varies by bot, up to 1.5x this)
   MAX_AGGRESSION: 0.35, // how keen the keenest bot is to shove whoever is next to it
   GEM_SIGHT: 700, // bots go for gems within this distance...
+  DASH_REACH: 70, // bots dash into whoever they're hunting once this close (gap between them)
   CONTENT_AT: 30, // ...until they have this many; then they just wander, dodge and shove
   DECAY_START: 20, // bots shed gems above this (people above GEMS.DECAY_START), so people can outgrow them
 } as const;
@@ -205,6 +206,13 @@ export const ARENA_RULES = {
   PLAYER_SIZE: 20, // a new player's size; gems make you bigger (GEMS.SIZE_PER_ROOT)
   HOP: 60, // one tap = one hop, while you're small...
   HOP_BEYOND_SIZE: 12, // ...and once you're big, your size plus this, so a hop always clears you
+  MOVE_SPEED: 320, // top speed (units a second) for the smallest player...
+  MOVE_SPEED_BIG: 250, // ...and for the biggest
+  MOVE_RESPONSE: 14, // how quickly you reach the speed you're steering (and glide to a stop)
+  DASH_SPEED: 900, // a dash is a burst at this speed...
+  DASH_MS: 200, // ...for this long (about 180 units)...
+  DASH_COOLDOWN_MS: 1000, // ...then needs this long to recharge...
+  DASH_COST: 1, // ...and costs this many gems (if you have any)
   HOP_REPEAT_DELAY: 0.2, // holding a direction: the first repeat hop comes after this many seconds,
   HOP_REPEAT: 1 / 6, // then one every this many seconds (six a second)
   EDGE_MARGIN: 8, // closest you can get to the edge of the world

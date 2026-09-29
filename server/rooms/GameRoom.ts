@@ -2,7 +2,6 @@ import { Room, Client } from "colyseus";
 import { GAME_CONSTANTS } from "../constants/serverConstants";
 import logger from "../utils/logger";
 import { GameState } from "../schema/GameState";
-import { DIRECTIONS } from "../game/movement";
 
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
@@ -45,10 +44,13 @@ export class GameRoom extends Room<GameState> {
       GAME_CONSTANTS.GAME.STATE_UPDATE_RATE
     );
 
-    this.onMessage("hop", (client, data: any) => {
-      const direction = data?.direction;
-      if (!DIRECTIONS.includes(direction)) return;
-      this.state.players.get(client.sessionId)?.requestHop(direction);
+    // Where the browser is steering (a direction no longer than 1), whenever it changes
+    this.onMessage("steer", (client, data: any) => {
+      this.state.players.get(client.sessionId)?.steer(Number(data?.x) || 0, Number(data?.y) || 0);
+    });
+
+    this.onMessage("dash", (client, data: any) => {
+      this.state.players.get(client.sessionId)?.requestDash(Number(data?.x) || 0, Number(data?.y) || 0);
     });
 
     // Browsers time their round trip to the server with this, to draw traffic in step with it
