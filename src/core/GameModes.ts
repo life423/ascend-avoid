@@ -6,8 +6,8 @@ import Player from '../entities/Player'
 import { InputState } from '../types'
 import { getSprite } from '../utils/sprites'
 import { GameEvents } from '../constants/client-constants'
-import { ARENA_RULES, GEMS, PLAYER_COLORS, SHIFT, WORLD } from '../../server/constants/gameConstants'
-import { walk } from '../../server/game/movement'
+import { ARENA_RULES, BOMBS, GEMS, INHALE, PLAYER_COLORS, SHIFT, WORLD } from '../../server/constants/gameConstants'
+import { turnRate, turnToward, walk } from '../../server/game/movement'
 import { OnlineControls } from './OnlineControls'
 import type { MultiplayerManager } from '../managers/MultiplayerManager'
 
@@ -551,6 +551,147 @@ function bounce(position: number, distance: number, low: number, high: number): 
     return low + (p > span ? 2 * span - p : p)
 }
 
+/** A round creature with eyes toward where it faces, so everyone can see which side is its back */
+function drawCreature(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string, facing: number, timestamp = 0, mouth = '', inhaling = false): void {
+    const r = size / 2
+    ctx.fillStyle = color
+    ctx.beginPath()
+    ctx.arc(x, y, r, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)'
+    ctx.lineWidth = Math.max(1.5, size * 0.06)
+    ctx.stroke()
+    const fx = Math.cos(facing)
+    const fy = Math.sin(facing)
+    for (const side of [-1, 1]) {
+        const ex = x + fx * r * 0.42 - fy * r * 0.36 * side
+        const ey = y + fy * r * 0.42 + fx * r * 0.36 * side
+        ctx.fillStyle = '#ffffff'
+        ctx.beginPath()
+        ctx.arc(ex, ey, r * 0.26, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.strokeStyle = 'rgba(16, 21, 31, 0.55)'
+        ctx.lineWidth = Math.max(1, size * 0.025)
+        ctx.stroke()
+        ctx.fillStyle = '#10151f'
+        ctx.beginPath()
+        ctx.arc(ex + fx * r * 0.1, ey + fy * r * 0.1, r * 0.13, 0, Math.PI * 2)
+        ctx.fill()
+    }
+    // The mouth: wide open while inhaling, bulging with a rock when full
+    const mx = x + fx * r * 0.74
+    const my = y + fy * r * 0.74
+    if (inhaling) {
+        ctx.fillStyle = '#10151f'
+        ctx.beginPath()
+        ctx.arc(mx, my, r * (0.24 + 0.03 * Math.sin(timestamp / 60)), 0, Math.PI * 2)
+        ctx.fill()
+    } else if (mouth) {
+        // A bomb held in the mouth (sparking if its fuse is running)
+        const bx = x + fx * r * 0.82
+        const by = y + fy * r * 0.82
+        ctx.fillStyle = '#23262f'
+        ctx.beginPath()
+        ctx.arc(bx, by, r * 0.32, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'
+        ctx.lineWidth = Math.max(1, size * 0.03)
+        ctx.stroke()
+        if (mouth === 'lit' && Math.sin(timestamp / 60) > 0) {
+            ctx.fillStyle = '#ffb347'
+            ctx.beginPath()
+            ctx.arc(bx + fx * r * 0.3, by + fy * r * 0.3, Math.max(2.5, r * 0.12), 0, Math.PI * 2)
+            ctx.fill()
+        }
+    }
+}
+
+/** Air rushing into an inhaling creature's mouth: a fading cone with streaks flowing in */
+function drawInhaleCone(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, facing: number, timestamp: number): void {
+    const r = size / 2
+    const reach = INHALE.REACH + size * INHALE.REACH_PER_SIZE
+    const spread = (INHALE.ARC * Math.PI) / 180
+    ctx.save()
+    const glow = ctx.createRadialGradient(x, y, r, x, y, r + reach)
+    glow.addColorStop(0, 'rgba(180, 230, 255, 0.3)')
+    glow.addColorStop(1, 'rgba(180, 230, 255, 0)')
+    ctx.fillStyle = glow
+    ctx.beginPath()
+    ctx.arc(x, y, r + reach, facing - spread, facing + spread)
+    ctx.arc(x, y, r, facing + spread, facing - spread, true)
+    ctx.closePath()
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(220, 245, 255, 0.6)'
+    ctx.lineWidth = 2
+    ctx.lineCap = 'round'
+    for (let i = 0; i < 7; i++) {
+        const t = (timestamp / 450 + i / 7) % 1
+        const along = r + reach * (1 - t)
+        const angle = facing + spread * 0.85 * Math.sin(i * 2.3)
+        ctx.beginPath()
+        ctx.moveTo(x + Math.cos(angle) * along, y + Math.sin(angle) * along)
+        ctx.lineTo(x + Math.cos(angle) * Math.max(r, along - 20), y + Math.sin(angle) * Math.max(r, along - 20))
+        ctx.stroke()
+    }
+    ctx.restore()
+}
+
+/**
+ * A bomb: round, black, with a fuse. Lit, its spark and a red glow blink faster as the fuse runs
+ * down, and its blast circle shows on the ground so everyone can see where not to be.
+ */
+function drawBomb(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, fuseLeft: number | null, timestamp: number): void {
+    const lit = fuseLeft !== null
+    const urgency = lit ? 1 - Math.max(0, Math.min(1, fuseLeft / BOMBS.FUSE_MS)) : 0
+    const blink = lit && Math.sin(timestamp / Math.max(35, (fuseLeft ?? 0) / 10)) > 0
+    if (lit) {
+        ctx.save()
+        ctx.fillStyle = `rgba(255, 80, 60, ${0.05 + 0.12 * urgency})`
+        ctx.strokeStyle = `rgba(255, 110, 90, ${0.35 + 0.45 * urgency})`
+        ctx.lineWidth = 2
+        ctx.setLineDash([10, 8])
+        ctx.beginPath()
+        ctx.arc(x, y, BOMBS.BLAST_RADIUS, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.stroke()
+        ctx.restore()
+    }
+    if (blink) {
+        ctx.fillStyle = 'rgba(255, 70, 50, 0.45)'
+        ctx.beginPath()
+        ctx.arc(x, y, radius * 1.7, 0, Math.PI * 2)
+        ctx.fill()
+    }
+    ctx.fillStyle = '#23262f'
+    ctx.beginPath()
+    ctx.arc(x, y, radius, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.22)'
+    ctx.beginPath()
+    ctx.arc(x - radius * 0.35, y - radius * 0.35, radius * 0.32, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)'
+    ctx.lineWidth = 1.5
+    ctx.beginPath()
+    ctx.arc(x, y, radius, 0, Math.PI * 2)
+    ctx.stroke()
+    // The fuse
+    const tipX = x + radius * 0.95
+    const tipY = y - radius * 1.2
+    ctx.strokeStyle = '#c9a36b'
+    ctx.lineWidth = 3
+    ctx.beginPath()
+    ctx.moveTo(x + radius * 0.5, y - radius * 0.75)
+    ctx.quadraticCurveTo(x + radius * 1.1, y - radius * 0.9, tipX, tipY)
+    ctx.stroke()
+    if (lit) {
+        ctx.fillStyle = blink ? '#fff2b0' : '#ff8c3a'
+        ctx.beginPath()
+        ctx.arc(tipX, tipY, blink ? 5 : 3.5, 0, Math.PI * 2)
+        ctx.fill()
+    }
+}
+
 /** A comet: a glowing violet head with a tail trailing back along its path */
 function drawComet(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, vx: number, vy: number): void {
     const speed = Math.hypot(vx, vy) || 1
@@ -674,6 +815,9 @@ export class MultiplayerMode extends GameMode {
     private charging = false
     private chargeStartedAt = 0
     private aim = { x: 0, y: -1 }
+    /** The aim last sent (your eyes turn toward it for everyone), and which way you face */
+    private sentAim = { x: 0, y: 0 }
+    private localFacing = -Math.PI / 2
     /** Whether this frame's steering came from the keys (then, while charging, they turn the aim) */
     private steerFromKeys = false
     /** Your own flight after a slingshot (for the arc), and everyone's landings (for the impact ring) */
@@ -707,6 +851,8 @@ export class MultiplayerMode extends GameMode {
     /** Each player as of the last frame, to spot hits and pickups */
     private lastSeen = new Map<string, { alive: boolean; recovering: boolean; sliding: boolean; gems: number; cx: number; cy: number }>()
     private bursts: { x: number; y: number; size: number; color: string; at: number }[] = []
+    /** Bomb blasts going off: a flash and a ring racing out to the blast's edge */
+    private blasts: { x: number; y: number; radius: number; at: number }[] = []
     private pickups: { amount: number; at: number }[] = []
     private shakeUntil = 0
     /** Gems shown in the header (as Score), and the most you've held this visit (as High Score) */
@@ -750,6 +896,7 @@ export class MultiplayerMode extends GameMode {
         eventBus.on('multiplayer:credit', (data: any) => this.noteCredit(data))
         eventBus.on('multiplayer:burst', (data: any) => this.noteBurst(data))
         eventBus.on('multiplayer:impact', (data: any) => this.noteImpact(data))
+        eventBus.on('multiplayer:blast', (data: any) => this.blasts.push({ x: Number(data?.x) || 0, y: Number(data?.y) || 0, radius: Number(data?.radius) || BOMBS.BLAST_RADIUS, at: performance.now() }))
         eventBus.on('multiplayer:jackpot', (data: any) => {
             this.addNotice(`${this.nameOf(data?.byId, data?.by)} took the jackpot! +${data?.value ?? ''}`, true)
         })
@@ -896,6 +1043,11 @@ export class MultiplayerMode extends GameMode {
             const angle = current + Math.max(-step, Math.min(step, turn))
             this.aim = { x: Math.cos(angle), y: Math.sin(angle) }
         }
+        if (this.charging && Math.hypot(this.aim.x - this.sentAim.x, this.aim.y - this.sentAim.y) > 0.1) {
+            // You turn to face your aim, for everyone to see
+            this.sentAim = { ...this.aim }
+            this.multiplayerManager?.sendMessage('aim', { x: this.aim.x, y: this.aim.y })
+        }
         for (const event of events) {
             if (event === 'dash' && now >= this.dashReadyAt && !this.charging) {
                 // A burst the way you're steering (or last went)
@@ -908,29 +1060,27 @@ export class MultiplayerMode extends GameMode {
             } else if (event === 'charge' && now >= this.dashReadyAt) {
                 this.charging = true
                 this.chargeStartedAt = now
-                this.multiplayerManager?.sendMessage('charge', {})
+                this.sentAim = { x: 0, y: 0 }
+                this.multiplayerManager?.sendMessage('inhale', {})
             } else if (event === 'sling' && this.charging) {
-                // Launch where you're aiming: farther the longer you held, flying over the void
-                const distance = ARENA_RULES.SLING_MIN + (ARENA_RULES.SLING_MAX - ARENA_RULES.SLING_MIN) * this.chargePower()
-                this.dashDir = { ...this.aim }
-                this.dashSpeed = ARENA_RULES.SLING_SPEED
-                this.dashUntil = now + (distance / ARENA_RULES.SLING_SPEED) * 1000
-                this.launchedAt = now
-                this.airborneUntil = this.dashUntil
-                this.cooldownMs = ARENA_RULES.SLING_COOLDOWN_MS
-                this.dashReadyAt = now + this.cooldownMs
+                // Let go: stop inhaling
                 this.charging = false
-                this.multiplayerManager?.sendMessage('sling', { x: this.aim.x, y: this.aim.y })
+                this.multiplayerManager?.sendMessage('exhale', {})
             } else if (event === 'cancel' && this.charging) {
                 this.charging = false
-                this.multiplayerManager?.sendMessage('cancel', {})
+                this.multiplayerManager?.sendMessage('exhale', {})
             }
         }
 
         // Move exactly the way the server does
         const box = { x: this.predicted.x, y: this.predicted.y, width: me.width, height: me.height }
         const dashing = now < this.dashUntil ? { x: this.dashDir.x * this.dashSpeed, y: this.dashDir.y * this.dashSpeed } : null
-        walk(box, this.velocity, this.charging ? { x: 0, y: 0 } : steer, deltaTime, state.worldWidth, state.worldHeight, dashing)
+        // Facing, worked out like the server does: the aim while charging, along a dash, else where you steer
+        const intent = this.charging ? this.aim : dashing ?? steer
+        if (Math.hypot(intent.x, intent.y) > 0.25) {
+            this.localFacing = turnToward(this.localFacing, Math.atan2(intent.y, intent.x), turnRate(me.width) * deltaTime)
+        }
+        walk(box, this.velocity, steer, deltaTime, state.worldWidth, state.worldHeight, dashing)
 
         // The server shows where you were about a round trip ago: quietly correct any drift from that
         this.history.push({ at: now, x: box.x, y: box.y })
@@ -966,39 +1116,6 @@ export class MultiplayerMode extends GameMode {
      * A slingshot charging: everyone sees a pulsing glow. For your own, also the power ring, and an
      * arrow to where you'll land (it pulses red at full power, so there's no reason to keep holding)
      */
-    private drawCharge(ctx: CanvasRenderingContext2D, isLocal: boolean, x: number, y: number, size: number, timestamp: number): void {
-        const pulse = 0.5 + 0.5 * Math.sin(timestamp / 90)
-        ctx.strokeStyle = `rgba(255, 196, 64, ${0.35 + 0.35 * pulse})`
-        ctx.lineWidth = 3
-        ctx.beginPath()
-        ctx.arc(x, y, size * 0.85 + 4, 0, Math.PI * 2)
-        ctx.stroke()
-        if (!isLocal) return
-        const power = this.chargePower()
-        ctx.strokeStyle = power >= 1 ? `rgba(255, 107, 107, ${0.7 + 0.3 * pulse})` : 'rgba(255, 255, 255, 0.9)'
-        ctx.lineWidth = power >= 1 ? 4 + 2 * pulse : 4
-        ctx.beginPath()
-        ctx.arc(x, y, size * 0.85 + 10, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0.02, power))
-        ctx.stroke()
-        const reach = ARENA_RULES.SLING_MIN + (ARENA_RULES.SLING_MAX - ARENA_RULES.SLING_MIN) * power
-        const endX = x + this.aim.x * reach
-        const endY = y + this.aim.y * reach
-        const from = size * 0.85 + 16
-        ctx.setLineDash([10, 8])
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)'
-        ctx.lineWidth = 3
-        ctx.beginPath()
-        ctx.moveTo(x + this.aim.x * from, y + this.aim.y * from)
-        ctx.lineTo(endX, endY)
-        ctx.stroke()
-        ctx.setLineDash([])
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)'
-        ctx.lineWidth = 2
-        ctx.beginPath()
-        ctx.arc(endX, endY, size / 2 + 4, 0, Math.PI * 2)
-        ctx.stroke()
-    }
-
     /** A small impact ring where a flying player touches down */
     private drawLanding(ctx: CanvasRenderingContext2D, id: string, flying: boolean, x: number, y: number, size: number, timestamp: number): void {
         if (flying) {
@@ -1078,11 +1195,24 @@ export class MultiplayerMode extends GameMode {
             if (x > right || x + obstacle.width < left || y > bottom || y + obstacle.height < top) return
             this.drawObstacle(ctx, { x, y, width: obstacle.width, height: obstacle.height, variant: obstacle.variant }, timestamp)
         })
+        const rolling = state.trafficWave === 'wave'
         state.balls?.forEach((ball: any) => {
-            const x = bounce(ball.x, (ball.vx ?? 0) * lead, ball.radius, state.worldWidth - ball.radius)
-            const y = bounce(ball.y, (ball.vy ?? 0) * lead, ball.radius, state.worldHeight - ball.radius)
+            // Out of the world between traffic waves (and rolling straight out as one ends)
+            const r = ball.radius
+            if (ball.x < -r || ball.y < -r || ball.x > state.worldWidth + r || ball.y > state.worldHeight + r) return
+            const x = rolling ? bounce(ball.x, (ball.vx ?? 0) * lead, r, state.worldWidth - r) : ball.x + (ball.vx ?? 0) * lead
+            const y = rolling ? bounce(ball.y, (ball.vy ?? 0) * lead, r, state.worldHeight - r) : ball.y + (ball.vy ?? 0) * lead
             if (x + ball.radius < left || x - ball.radius > right || y + ball.radius < top || y - ball.radius > bottom) return
             drawBall(ctx, x, y, ball.radius)
+        })
+        state.bombs?.forEach((bomb: any) => {
+            if (bomb.x < -100) return // in someone's mouth, or about to turn up again
+            const x = bomb.x + (bomb.vx ?? 0) * lead
+            const y = bomb.y + (bomb.vy ?? 0) * lead
+            const reach = BOMBS.BLAST_RADIUS + 20
+            if (x + reach < left || x - reach > right || y + reach < top || y - reach > bottom) return
+            const fuseLeft = bomb.explodesAt > 0 ? bomb.explodesAt - this.worldNow(state, timestamp) : null
+            drawBomb(ctx, x, y, bomb.radius, fuseLeft, timestamp)
         })
         state.comets?.forEach((comet: any) => {
             const x = comet.x + (comet.vx ?? 0) * lead
@@ -1106,6 +1236,8 @@ export class MultiplayerMode extends GameMode {
             if (!present.has(id)) this.lastCenters.delete(id)
         }
 
+        this.drawTheft(ctx, state, timestamp)
+        this.drawBlasts(ctx, timestamp)
         this.drawBursts(ctx, timestamp)
         this.drawPickups(ctx, me, timestamp)
 
@@ -1115,6 +1247,7 @@ export class MultiplayerMode extends GameMode {
         this.drawLeaderboard(ctx, canvas, state, localId, leaderId)
         this.drawNotices(ctx, canvas)
         this.drawShiftChip(ctx, canvas, state, timestamp)
+        this.drawTrafficChip(ctx, canvas, state, timestamp)
         this.drawBanner(ctx, canvas)
         this.controls?.draw(ctx, timestamp, Math.max(0, Math.min(1, 1 - (this.dashReadyAt - performance.now()) / this.cooldownMs)), this.charging ? this.aim : null)
         if (me && me.state !== 'alive') this.drawKnockedOut(ctx, canvas)
@@ -1297,14 +1430,15 @@ export class MultiplayerMode extends GameMode {
             ctx.fill()
         }
         this.drawLanding(ctx, sessionId, flying, centerX, drawn.y + player.height, size, timestamp)
-        if (player.charging || (isLocal && this.charging)) this.drawCharge(ctx, isLocal, centerX, centerY, size, timestamp)
+        if (player.inhaling) drawInhaleCone(ctx, centerX, centerY, size, isLocal ? this.localFacing : (player.facing ?? -Math.PI / 2), timestamp)
         if (isLocal && player.gems < GEMS.SURVIVE_AT) {
-            // One hit from being knocked out: a cracked red outline
+            // One hit from behind from being knocked out: a cracked red ring
             ctx.save()
             ctx.setLineDash([5, 4])
             ctx.strokeStyle = `rgba(255, 90, 90, ${0.45 + 0.25 * Math.sin(timestamp / 250)})`
             ctx.lineWidth = 2
-            roundedRect(ctx, left - 3, top - 3, size + 6, size + 6, size * 0.22)
+            ctx.beginPath()
+            ctx.arc(left + size / 2, top + size / 2, size / 2 + 4, 0, Math.PI * 2)
             ctx.stroke()
             ctx.restore()
         }
@@ -1317,13 +1451,9 @@ export class MultiplayerMode extends GameMode {
                 ctx.fill()
             }
         }
-        if (isLocal) {
-            ctx.drawImage(getSprite('player', 0, timestamp), left, top, size, size)
-        } else {
-            ctx.fillStyle = PLAYER_COLORS[player.playerIndex % PLAYER_COLORS.length]
-            roundedRect(ctx, left, top, size, size, size * 0.18)
-            ctx.fill()
-        }
+        // A round creature whose eyes show which way it faces (its back is where it's vulnerable)
+        const facing = isLocal ? this.localFacing : (player.facing ?? -Math.PI / 2)
+        drawCreature(ctx, left + size / 2, top + size / 2, size, isLocal ? '#ffffff' : PLAYER_COLORS[player.playerIndex % PLAYER_COLORS.length], facing, timestamp, player.mouth ?? '', Boolean(player.inhaling))
         ctx.globalAlpha = 1
         ctx.font = `600 16px ${FONT}`
         ctx.textAlign = 'center'
@@ -1444,16 +1574,22 @@ export class MultiplayerMode extends GameMode {
         const targetIsYou = data?.targetId === localId
         const target = targetIsYou ? 'you' : String(data?.target ?? 'someone')
         const how = String(data?.how ?? '')
-        const verb = how === 'crush' ? 'crushed' : how === 'sling' || data?.kind === 'sling' ? 'slingshotted' : 'shoved'
-        const where = how === 'edge' ? 'off the edge' : how === 'traffic' ? 'into traffic' : ''
+        const eaten = how === 'sling' && data?.eaten === true
+        const verb = how === 'stole' ? 'robbed' : how === 'ate' ? 'swallowed' : how === 'bomb' ? 'blew up' : how === 'crush' ? 'crushed' : eaten ? 'ate' : how === 'sling' || data?.kind === 'sling' ? 'slingshotted' : 'shoved'
+        const where = how === 'stole' ? `of ${Number(data?.gems) || 0} gems` : how === 'edge' ? 'off the edge' : how === 'traffic' ? 'into traffic' : ''
         if (data?.byId === localId) {
             const name = String(data?.target ?? 'someone')
-            const title = how === 'crush' ? `You crushed ${name}!` : how === 'sling' ? `Direct hit on ${name}!` : `You wrecked ${name}!`
-            const parts = how === 'sling' ? [`${Number(data?.gems) || 0} gems knocked loose`] : [where, data?.out ? 'knocked out' : '']
+            const title = how === 'stole' ? `You stole ${Number(data?.gems) || 0} gems from ${name}!` : how === 'ate' ? `You swallowed ${name}!` : how === 'bomb' ? `You blew up ${name}!` : how === 'crush' ? `You crushed ${name}!` : eaten ? `You ate ${name}!` : how === 'sling' ? `Direct hit on ${name}!` : `You wrecked ${name}!`
+            const parts =
+                how === 'stole' ? []
+                : how === 'ate' ? [`+${Number(data?.gems) || 0} gems`]
+                : how === 'bomb' ? [data?.out ? 'knocked out' : `${Number(data?.gems) || 0} gems knocked loose`]
+                : how === 'sling' ? [`+${Number(data?.gems) || 0} gems`]
+                : [where, data?.out ? 'knocked out' : '']
             this.banner = { title, sub: parts.filter(Boolean).join(' · ').toUpperCase(), at: performance.now() }
             return
         }
-        const out = how !== 'crush' && data?.out ? (targetIsYou ? ' and knocked you out' : ' and knocked them out') : ''
+        const out = how !== 'crush' && !eaten && data?.out ? (targetIsYou ? ' and knocked you out' : ' and knocked them out') : ''
         this.addNotice(`${this.nameOf(data?.byId, data?.by)} ${verb} ${target}${where ? ' ' + where : ''}${out}!`, data?.out === true)
     }
 
@@ -1675,6 +1811,89 @@ export class MultiplayerMode extends GameMode {
         ctx.textBaseline = 'middle'
         ctx.fillText(text, canvas.width / 2, y + 15)
         ctx.restore()
+    }
+
+    /** "Traffic incoming 3" just before a traffic wave */
+    private drawTrafficChip(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, state: any, timestamp: number): void {
+        if (state.trafficWave !== 'warning') return
+        const left = Math.max(1, Math.ceil((state.waveAt - this.worldNow(state, timestamp)) / 1000))
+        const text = `Traffic incoming ${left}`
+        const y = canvas.width < 560 ? 30 + Math.min(6, state.players.size) * 18 : 12
+        ctx.save()
+        ctx.font = `700 14px ${FONT}`
+        const width = ctx.measureText(text).width + 32
+        ctx.fillStyle = 'rgba(60, 38, 5, 0.85)'
+        roundedRect(ctx, (canvas.width - width) / 2, y, width, 30, 15)
+        ctx.fill()
+        ctx.strokeStyle = 'rgba(255, 196, 64, 0.9)'
+        ctx.lineWidth = 1.5
+        ctx.stroke()
+        ctx.fillStyle = '#ffffff'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(text, canvas.width / 2, y + 15)
+        ctx.restore()
+    }
+
+    /** Gravity theft: gems streaming out of whoever is being stolen from, into the thief's mouth */
+    private drawTheft(ctx: CanvasRenderingContext2D, state: any, timestamp: number): void {
+        state.players.forEach((thief: any, id: string) => {
+            if (!thief.stealingFrom) return
+            const victim = state.players.get(thief.stealingFrom)
+            if (!victim) return
+            const from = this.drawnPositions.get(thief.stealingFrom) ?? victim
+            const to = this.drawnPositions.get(id) ?? thief
+            const fromX = from.x + victim.width / 2
+            const fromY = from.y + victim.height / 2
+            const toX = to.x + thief.width / 2
+            const toY = to.y + thief.height / 2
+            ctx.save()
+            ctx.strokeStyle = 'rgba(255, 209, 102, 0.35)'
+            ctx.lineWidth = 3
+            ctx.setLineDash([6, 8])
+            ctx.lineDashOffset = -timestamp / 20
+            ctx.beginPath()
+            ctx.moveTo(fromX, fromY)
+            ctx.lineTo(toX, toY)
+            ctx.stroke()
+            ctx.setLineDash([])
+            ctx.fillStyle = '#ffd166'
+            for (let i = 0; i < 4; i++) {
+                const t = (timestamp / 380 + i / 4) % 1
+                const gx = fromX + (toX - fromX) * t
+                const gy = fromY + (toY - fromY) * t
+                const g = 4.5 * (1 - t * 0.4)
+                ctx.beginPath()
+                ctx.moveTo(gx, gy - g)
+                ctx.lineTo(gx + g * 0.7, gy)
+                ctx.lineTo(gx, gy + g)
+                ctx.lineTo(gx - g * 0.7, gy)
+                ctx.closePath()
+                ctx.fill()
+            }
+            ctx.restore()
+        })
+    }
+
+    /** Bomb blasts: a bright flash, then a ring racing out to the edge of the blast */
+    private drawBlasts(ctx: CanvasRenderingContext2D, timestamp: number): void {
+        this.blasts = this.blasts.filter((blast) => timestamp - blast.at < 500)
+        for (const blast of this.blasts) {
+            const t = Math.max(0, (timestamp - blast.at) / 500)
+            ctx.save()
+            if (t < 0.3) {
+                ctx.fillStyle = `rgba(255, 220, 150, ${0.55 * (1 - t / 0.3)})`
+                ctx.beginPath()
+                ctx.arc(blast.x, blast.y, blast.radius * (0.4 + t), 0, Math.PI * 2)
+                ctx.fill()
+            }
+            ctx.strokeStyle = `rgba(255, 140, 80, ${0.9 * (1 - t)})`
+            ctx.lineWidth = 6 * (1 - t) + 1
+            ctx.beginPath()
+            ctx.arc(blast.x, blast.y, blast.radius * Math.min(1, 0.3 + t * 1.2), 0, Math.PI * 2)
+            ctx.stroke()
+            ctx.restore()
+        }
     }
 
     /** Whoever has the most gems (nobody, until someone has one) */

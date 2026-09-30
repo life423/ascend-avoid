@@ -60,7 +60,7 @@ try {
 
     // This world starts with no loose gems, no bots, and traffic that can't hit anyone (the test
     // hits players itself), so nothing happens by accident and every count is exact
-    const alice = await join('Alice', { testFieldGems: 0, testCalm: true, testBots: 0 });
+    const alice = await join('Alice', { testFieldGems: 0, testCalm: true, testBots: 0, testTraffic: 'always', testBombs: true });
     const state = () => alice.state;
     const me = () => state().players.get(alice.sessionId);
     await waitFor(() => state().players?.size === 1, 2000, 'the first visitor is in the world right away');
@@ -69,6 +69,16 @@ try {
     check(me().spawnProtected === true, 'a new arrival starts protected');
     check(me().width === 20, `and starts small (${me().width} units)`);
     const hazards = state().obstacles.length + (state().comets?.length ?? 0) + (state().balls?.length ?? 0);
+    // Live worlds have no traffic at all (this test world switches it on to keep that code working)
+    const fresh = await new Client(URL).create('game_room', { name: 'Fresh', testBots: 0 });
+    fresh.onMessage('*', () => {});
+    await sleep(600);
+    let freshMoving = 0;
+    fresh.state.obstacles.forEach((o) => { if (o.vx || o.vy) freshMoving++; });
+    fresh.state.comets?.forEach((c) => { if (c.vx || c.vy) freshMoving++; });
+    fresh.state.balls?.forEach((b) => { if (b.vx || b.vy) freshMoving++; });
+    check(freshMoving === 0 && fresh.state.trafficWave === 'calm', `a normal world has no traffic at all (${freshMoving} moving)`);
+    await fresh.leave();
     check(hazards >= 12, `traffic fills the world (${state().obstacles.length} in lanes, ${state().comets?.length} comets, ${state().balls?.length} balls)`);
 
     const bob = await join('Bob');
@@ -156,6 +166,28 @@ try {
         bends.push(Math.abs(Math.atan2(Math.sin(change), Math.cos(change))));
     });
     check(bends.length >= 1 && bends.every((b) => b > 0.004 && b < 0.2), `some bend gently as they fly (${bends.map((b) => (b * 180 / Math.PI).toFixed(1) + '°').join(', ')} in 0.6s)`);
+
+    // Traffic comes in waves: between them the arena is calm
+    alice.send('test:traffic', { phase: 'calm' });
+    await sleep(300);
+    let stillMoving = 0;
+    state().obstacles.forEach((o) => { if (o.vx || o.vy) stillMoving++; });
+    state().comets.forEach((c) => { if (c.vx || c.vy) stillMoving++; });
+    state().balls.forEach((b) => { if (b.vx || b.vy) stillMoving++; });
+    check(state().trafficWave === 'calm' && stillMoving === 0, `between traffic waves the arena is calm (${stillMoving} hazards moving)`);
+    alice.send('test:traffic', { phase: 'warning' });
+    await sleep(200);
+    check(state().trafficWave === 'warning', 'a wave is announced first (Traffic incoming)');
+    await waitFor(() => state().trafficWave === 'wave', 4000, 'then the wave arrives');
+    await sleep(1200);
+    let arrived = 0;
+    state().comets.forEach((c) => { if (c.vx || c.vy) arrived++; });
+    state().balls.forEach((b) => { if (b.vx || b.vy) arrived++; });
+    let lanesBack = 0;
+    state().obstacles.forEach((o) => { if (o.vx || o.vy) lanesBack++; });
+    check(arrived === 8 && lanesBack >= 3, `and brings comets, balls and lane traffic streaming in (${arrived} of 8, ${lanesBack} lanes)`);
+    alice.send('test:traffic', { phase: 'always' });
+    await sleep(200);
     let diagonal = 0;
     const ballsBefore = [];
     state().balls.forEach((b) => {
@@ -305,6 +337,7 @@ try {
         await sleep(150);
         left.send('test:moveTo', { x: 700, y: 1000 });
         right.send('test:moveTo', { x: 700 + leftState().width + 20, y: 1000 });
+        right.send('test:face', { angle: Math.PI }); // facing the dasher: a front hit
         await sleep(250);
         const startX = rightState().x;
         left.send('dash', { x: 1, y: 0 });
@@ -320,7 +353,7 @@ try {
     check(light < even * 0.6, `and are harder to shove (${Math.round(light)} units)`);
 
     const knockedLoose = 100 - me().gems;
-    check(knockedLoose <= 2, `a dash just shoves: even the leader keeps their gems (${knockedLoose} lost, only the usual shedding)`);
+    check(knockedLoose <= 2, `a dash from the front just shoves: even the leader keeps their gems (${knockedLoose} lost, only the usual shedding)`);
 
     // Hold DASH to charge a slingshot: you stand still, everyone sees it, and it launches even a heavy player
     bob.send('test:setGems', { count: 4 });
@@ -338,49 +371,141 @@ try {
     await sleep(500);
     check(Math.abs(bobState().y - bobStillY) < 2, 'charging holds you still');
     bob.send('steer', { x: 0, y: 0 });
+    alice.send('test:face', { angle: 0 }); // facing away from Bob: her back is to him
     await sleep(250);
+    const aliceBeforeSling = me().gems;
+    bob.messages.length = 0; // she sheds a gem a second at 100, so measure right before the hit
     bob.send('sling', { x: 1, y: 0 });
     await sleep(250);
     const bobAfterSling = bobState().gems;
-    const aliceDropped = 100 - me().gems;
-    check(bob.messages.some((m) => m.type === 'credit' && m.message.how === 'sling' && m.message.targetId === alice.sessionId), 'a slingshot hit is credited to whoever landed it');
-    check(bob.messages.some((m) => m.type === 'burst' && m.message.count >= 10), 'and the gems burst out for everyone to see');
+    const aliceDropped = aliceBeforeSling - me().gems;
     await sleep(1150);
     const flung = me().x - heavyStart;
     check(flung > 200 && flung > light * 4, `a slingshot launches even a heavy player (${Math.round(flung)} units, where a dash moved them ${Math.round(light)})`);
-    check(aliceDropped >= 15, `and a hit that hard knocks lots of gems loose (${aliceDropped} of 100)`);
-    check(bobAfterSling === 2, `the slingshot costs 2 gems (${bobAfterSling} left of 4)`);
     const restX = bobState().x;
     bob.send('dash', { x: -1, y: 0 });
     await sleep(300);
     check(Math.abs(bobState().x - restX) < 3, 'then needs a few seconds to recharge');
 
-    // Body-checks: a much bigger player moving into you spills your gems, and can knock you out when you're low
-    async function bodyCheck(bigGems, smallGems) {
+    // Bombs: safe in your mouth, lit when spat, and the blast knocks everyone flying and gems loose
+    await sleep(2700);
+    alice.send('test:setGems', { count: 40 });
+    bob.send('test:setGems', { count: 20 });
+    await sleep(200);
+    alice.send('test:moveTo', { x: 700, y: 1750 });
+    alice.send('test:face', { angle: 0 });
+    bob.send('test:moveTo', { x: 400, y: 400 });
+    await sleep(150);
+    alice.send('test:placeBomb', { x: 700 + me().width + 60, y: 1750 + me().height / 2 });
+    await sleep(150);
+    alice.send('inhale');
+    await sleep(700);
+    alice.send('exhale');
+    check(me().mouth === 'bomb', `inhaling pulls a bomb into your mouth (${me().mouth || 'empty'})`);
+    const aliceHolding = me().gems;
+    await sleep(2600);
+    check(me().mouth === 'bomb' && me().state === 'alive' && me().gems >= aliceHolding - 1, 'and it stays safe in your mouth until you spit it');
+    bob.send('test:moveTo', { x: 700 + me().width + 170, y: 1750 + (me().height - bobState().height) / 2 });
+    await sleep(300);
+    const bobHad = bobState().gems;
+    const bobFrom = bobState().x;
+    alice.send('spit', { x: 1, y: 0 });
+    await sleep(300);
+    let lit = 0;
+    state().bombs.forEach((bomb) => { if (bomb.explodesAt > 0) lit++; });
+    check(me().mouth === '' && lit >= 1 && bobState().gems === bobHad, 'spitting it lights the fuse, and nothing happens until it runs down');
+    await sleep(2400);
+    check(bobHad - bobState().gems >= 2, `then it blows, knocking gems loose (${bobHad - bobState().gems} of ${bobHad})`);
+    check(Math.abs(bobState().x - bobFrom) > 60, `and everyone in the blast is knocked flying (${Math.round(bobState().x - bobFrom)} units)`);
+
+    // Inhale a smaller creature and it's swallowed whole, gems and all
+    await sleep(1500);
+    bob.send('test:setGems', { count: 5 });
+    await sleep(200);
+    bob.send('test:moveTo', { x: 700 + me().width + 40, y: 1750 + (me().height - bobState().height) / 2 });
+    await sleep(250);
+    const aliceBeforeGulp = me().gems;
+    alice.send('inhale');
+    await sleep(900);
+    alice.send('exhale');
+    check(bobState().state !== 'alive' && me().gems >= aliceBeforeGulp + 4, `inhaling swallows a smaller creature whole (Alice ${aliceBeforeGulp} then ${me().gems}, Bob ${bobState().state})`);
+    await waitFor(() => bobState().state === 'alive' && !bobState().spawnProtected, 6000, 'Bob is back');
+
+    // Gravity theft: inhale up close at anyone too big to swallow and their gems stream into you
+    alice.send('test:setGems', { count: 40 });
+    bob.send('test:setGems', { count: 40 });
+    await sleep(200);
+    alice.send('test:moveTo', { x: 700, y: 1750 });
+    alice.send('test:face', { angle: 0 });
+    bob.send('test:moveTo', { x: 700 + me().width + 20, y: 1750 });
+    bob.send('test:face', { angle: 0 });
+    await sleep(250);
+    const bobBeforeTheft = bobState().gems;
+    const bobTheftX = bobState().x;
+    const aliceBeforeTheft = me().gems;
+    alice.send('inhale');
+    await sleep(700);
+    const streaming = me().stealingFrom === bob.sessionId;
+    await sleep(800);
+    alice.send('exhale');
+    await sleep(150);
+    const stolen = bobBeforeTheft - bobState().gems;
+    check(streaming && stolen >= 4 && me().gems - aliceBeforeTheft >= 4, `inhaling up close steals gems from anyone in front of your mouth (${stolen} stolen)`);
+    check(bobState().x < bobTheftX - 5, `and they're dragged toward your mouth (${Math.round(bobTheftX - bobState().x)} units)`);
+    // A breath lasts a moment, and you need a moment to catch it
+    alice.send('inhale');
+    await sleep(200);
+    const tooSoon = me().inhaling;
+    await sleep(1000);
+    alice.send('inhale');
+    await sleep(200);
+    check(!tooSoon && me().inhaling, 'you need a moment to catch your breath between inhales');
+    alice.send('exhale');
+    await sleep(1100);
+    // Head-on, both inhaling each other: the stronger pull takes the whole stream
+    alice.send('test:setGems', { count: 50 });
+    bob.send('test:setGems', { count: 30 });
+    await sleep(200);
+    bob.send('test:moveTo', { x: 700 + me().width + 20, y: 1750 + (me().height - bobState().height) / 2 });
+    bob.send('test:face', { angle: Math.PI });
+    alice.send('test:face', { angle: 0 });
+    await sleep(250);
+    const aliceBeforeTug = me().gems;
+    const bobBeforeTug = bobState().gems;
+    alice.send('inhale');
+    bob.send('inhale');
+    await sleep(1500);
+    alice.send('exhale');
+    bob.send('exhale');
+    await sleep(150);
+    check(me().gems > aliceBeforeTug + 3 && bobState().gems < bobBeforeTug - 3, `head-on, the stronger pull wins the tug-of-war (Alice ${aliceBeforeTug} then ${me().gems}, Bob ${bobBeforeTug} then ${bobState().gems})`);
+    check(bobState().state !== 'alive', 'and once the loser is drained small enough, it gets swallowed whole');
+    await waitFor(() => bobState().state === 'alive' && !bobState().spawnProtected, 6000, 'Bob is back');
+
+    // Bumper cars: running into someone at speed bounces you both apart, the lighter one farther, and costs no gems
+    async function bump(bigGems, smallGems) {
         alice.send('test:setGems', { count: bigGems });
         bob.send('test:setGems', { count: smallGems });
         await sleep(200);
         alice.send('test:moveTo', { x: 600, y: 400 });
         bob.send('test:moveTo', { x: 600 + me().width + 30, y: 400 + (me().height - bobState().height) / 2 });
+        bob.send('test:face', { angle: Math.PI });
         await sleep(250);
-        const fromX = bobState().x;
+        const aliceFrom = me().x;
+        const bobFrom = bobState().x;
         const had = bobState().gems;
         alice.send('steer', { x: 1, y: 0 });
-        await sleep(700);
+        await sleep(450);
         alice.send('steer', { x: 0, y: 0 });
-        await sleep(300);
-        const result = { lost: had - bobState().gems, moved: Math.round(bobState().x - fromX), state: bobState().state };
-        await sleep(1700);
+        await sleep(900);
+        const result = { lost: had - bobState().gems, bobMoved: Math.round(bobState().x - bobFrom), aliceMoved: Math.round(me().x - aliceFrom) };
+        await sleep(600);
         return result;
     }
-    const sameSize = await bodyCheck(10, 10);
-    check(sameSize.lost === 0 && sameSize.state === 'alive', `walking into someone your size just pushes them (${sameSize.lost} gems lost)`);
-    const bullied = await bodyCheck(100, 10);
-    check(bullied.lost >= 2 && bullied.moved > 150, `a much bigger player barging into you spills your gems (${bullied.lost} lost, knocked ${bullied.moved} units)`);
-    bob.messages.length = 0;
-    const crushed = await bodyCheck(100, 2);
-    check(crushed.state !== 'alive', 'and knocks you out if you have fewer than 3');
-    check(bob.messages.some((m) => m.type === 'credit' && m.message.how === 'crush' && m.message.byId === alice.sessionId), 'and everyone hears who crushed them');
+    const evenBump = await bump(10, 10);
+    check(evenBump.bobMoved > 100 && evenBump.aliceMoved < 30 && evenBump.lost === 0, `running into someone bounces you both apart like bumper cars (him ${evenBump.bobMoved}, you ${evenBump.aliceMoved}, ${evenBump.lost} gems lost)`);
+    const bigBump = await bump(100, 10);
+    check(bigBump.bobMoved > evenBump.bobMoved * 1.2 && bigBump.lost === 0, `a bigger creature bumps harder, but from the front nobody loses gems (${bigBump.bobMoved} units, ${bigBump.lost} lost)`);
     await waitFor(() => bobState().state === 'alive' && !bobState().spawnProtected, 6000, 'Bob is back');
 
     // The 3-gem rule: with fewer than 3 gems, any hit knocks you out

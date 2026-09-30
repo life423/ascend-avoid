@@ -1,10 +1,10 @@
 import * as schema from "@colyseus/schema";
 const { Schema, type } = schema;
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
-import { walk } from "../game/movement.js";
+import { turnRate, turnToward, walk } from "../game/movement.js";
 import type { Box, Direction } from "../game/movement.js";
 
-const { ARENA_RULES, BOTS, GEMS, PLAYER_STATE, PUSH, WORLD } = GAME_CONSTANTS;
+const { ARENA_RULES, BOTS, GEMS, INHALE, PLAYER_STATE, PUSH, WORLD } = GAME_CONSTANTS;
 
 
 /** A player's size: small to start, growing with the square root of their gems, up to GEMS.MAX_SIZE */
@@ -64,6 +64,25 @@ class PlayerSchema extends Schema {
   bursting: boolean;
   /** How the last shove came: "shove", "dash", "sling" or "crush" (for credits) */
   lastShoveKind = "";
+  /** Which way the creature faces (radians): its back is where it's vulnerable */
+  facing: number;
+  /** Inhaling (holding the button): rooted, pulling in what's in front. See GameState.updateInhales */
+  inhaling: boolean;
+  /** What's in your mouth to spit: "bomb" (or "lit" once its fuse is running), or "" */
+  mouth: string;
+  /** Whose gems are streaming into your mouth right now ("" when nobody's) */
+  stealingFrom: string;
+  /** Server-only: gems part-stolen, and how many this run of stealing has taken */
+  stealProgress = 0;
+  stolenRun = 0;
+  /** Server-only: when this breath runs out, and when you can spit again */
+  inhaleStopAt = 0;
+  /** Server-only: when you've caught your breath for the next inhale */
+  inhaleReadyAt = 0;
+  spitReadyAt = 0;
+  /** Server-only: where a charge or an inhale is aimed (the creature turns to face it) */
+  aimX = 0;
+  aimY = 0;
   private dashSpeed: number = ARENA_RULES.DASH_SPEED;
   /** How hard the dash under way hits: -1 for a plain dash, 0 to 1 for a slingshot's charge */
   private launchPower = -1;
@@ -80,6 +99,10 @@ class PlayerSchema extends Schema {
     this.charging = false;
     this.airborne = false;
     this.bursting = false;
+    this.facing = -Math.PI / 2;
+    this.inhaling = false;
+    this.mouth = "";
+    this.stealingFrom = "";
     this.sessionId = sessionId;
     this.playerIndex = playerIndex;
     this.name = `Player ${playerIndex + 1}`;
@@ -106,6 +129,7 @@ class PlayerSchema extends Schema {
     this.queuedDash = null;
     this.dashUntil = 0;
     this.charging = false;
+    this.inhaling = false;
     this.queuedSling = null;
     this.airborneUntil = 0;
     this.airborne = false;
@@ -137,6 +161,7 @@ class PlayerSchema extends Schema {
     this.queuedDash = null;
     this.dashUntil = 0;
     this.charging = false;
+    this.inhaling = false;
     this.queuedSling = null;
     this.airborneUntil = 0;
     this.airborne = false;
@@ -183,6 +208,7 @@ class PlayerSchema extends Schema {
     this.queuedDash = null;
     this.dashUntil = 0;
     this.charging = false;
+    this.inhaling = false;
     this.queuedSling = null;
     this.airborneUntil = 0;
     this.airborne = false;
@@ -205,6 +231,7 @@ class PlayerSchema extends Schema {
     this.queuedDash = null;
     this.dashUntil = 0;
     this.charging = false;
+    this.inhaling = false;
     this.queuedSling = null;
     this.airborneUntil = 0;
     this.airborne = false;
@@ -261,7 +288,7 @@ class PlayerSchema extends Schema {
 
   /** Queue a dash the browser asked for: several hops' worth at once (see ARENA_RULES.DASH_*) */
   requestDash(x: number, y: number): void {
-    if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering) return;
+    if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering || this.inhaling) return;
     const length = Math.hypot(x, y);
     this.queuedDash = Number.isFinite(length) && length > 1e-6 ? { x: x / length, y: y / length } : { x: this.facingX, y: this.facingY };
   }
@@ -271,6 +298,8 @@ class PlayerSchema extends Schema {
     if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering || now < this.dashReadyAt) return;
     this.charging = true;
     this.chargeStartedAt = now;
+    this.aimX = 0;
+    this.aimY = 0;
   }
 
   /** Let go of a charge: launch along (x, y), or the way the player last moved */
@@ -314,6 +343,30 @@ class PlayerSchema extends Schema {
     return { x: this.walkX + this.vx, y: this.walkY + this.vy };
   }
 
+  /** Where a charge is aimed (only while charging): the creature turns to face it */
+  aimAt(x: number, y: number): void {
+    const length = Math.hypot(x, y);
+    if (!(this.charging || this.inhaling) || !Number.isFinite(length) || length < 1e-6) return;
+    this.aimX = x / length;
+    this.aimY = y / length;
+  }
+
+  /** Start inhaling (for up to `forMs`, INHALE.MAX_MS for players): you stand still and turn to aim */
+  startInhale(now: number, forMs = 3000): void {
+    if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering || now < this.inhaleReadyAt) return;
+    this.inhaling = true;
+    this.inhaleStopAt = now + forMs;
+    this.aimX = 0;
+    this.aimY = 0;
+  }
+
+  /** Stop inhaling: you need a moment (INHALE.RECOVER_MS) to catch your breath before the next one */
+  stopInhale(now = Date.now()): void {
+    if (!this.inhaling) return;
+    this.inhaling = false;
+    this.inhaleReadyAt = now + INHALE.RECOVER_MS;
+  }
+
   /** Where the player is steering */
   steering(): { x: number; y: number } {
     return { x: this.steerX, y: this.steerY };
@@ -353,6 +406,7 @@ class PlayerSchema extends Schema {
     if (this.spawnProtected && now >= this.protectedUntil) this.spawnProtected = false;
     if (this.recovering && now >= this.recoverUntil) this.recovering = false;
     if (this.airborne && now >= this.airborneUntil) this.airborne = false;
+    if (this.inhaling && now >= this.inhaleStopAt) this.stopInhale(now);
     if (this.sliding) {
       this.walkX = 0;
       this.walkY = 0;
@@ -395,6 +449,12 @@ class PlayerSchema extends Schema {
     walk(box, velocity, steer, deltaTime, worldWidth, worldHeight, now < this.dashUntil ? { x: this.dashX * this.dashSpeed, y: this.dashY * this.dashSpeed } : null);
     this.walkX = velocity.x;
     this.walkY = velocity.y;
+    // Facing: toward the aim while charging, along a dash or flight, otherwise where you steer
+    const intent = this.charging || this.inhaling ? { x: this.aimX, y: this.aimY } : now < this.dashUntil ? { x: this.dashX, y: this.dashY } : { x: this.steerX, y: this.steerY };
+    if (Math.hypot(intent.x, intent.y) > 0.25) {
+      const facing = turnToward(this.facing, Math.atan2(intent.y, intent.x), turnRate(this.width) * deltaTime);
+      if (facing !== this.facing) this.facing = facing;
+    }
     const bursting = now < this.dashUntil;
     if (this.bursting !== bursting) this.bursting = bursting;
     if (box.x !== this.x) this.x = box.x;
@@ -452,6 +512,10 @@ type("boolean")(PlayerSchema.prototype, "sliding");
 type("boolean")(PlayerSchema.prototype, "charging");
 type("boolean")(PlayerSchema.prototype, "airborne");
 type("boolean")(PlayerSchema.prototype, "bursting");
+type("number")(PlayerSchema.prototype, "facing");
+type("boolean")(PlayerSchema.prototype, "inhaling");
+type("string")(PlayerSchema.prototype, "mouth");
+type("string")(PlayerSchema.prototype, "stealingFrom");
 type("boolean")(PlayerSchema.prototype, "isBot");
 
 export { PlayerSchema };

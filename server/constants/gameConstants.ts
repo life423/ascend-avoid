@@ -121,6 +121,9 @@ export const GEMS = {
  * players shove harder and are harder to shove.
  */
 export const PUSH = {
+  BOUNCE: 110, // a plain dash bounces back off whoever it hits (lighter bounces farther)
+  BUMP: 150, // running into someone at speed: each bounces about this far (split by weight)
+  BUMP_SPEED: 0.5, // ...moving toward them at this share of top speed or more
   DISTANCE: 140, // how far a shove sends someone your own weight (about two hops)...
   MIN_RATIO: 0.3, // ...scaled by your weight over theirs, kept within these limits
   MAX_RATIO: 3,
@@ -192,9 +195,25 @@ export const BOTS = {
  * player, and lanes side by side are staggered, so traffic never lines up into a wall.
  */
 export const TRAFFIC = {
+  /**
+   * Traffic is switched off: live worlds have no lane traffic, comets or balls, so the danger comes
+   * from other players and the void during arena shifts. The code stays, dormant, so this one line
+   * brings it back (the automated test still switches it on in its own world to keep it working).
+   */
+  ENABLED: false,
   LANES: 14, // in each direction (across and down), so lanes are 150 units apart
   MIN_GAP: 220, // between obstacles in the same lane
   STAGGER: 150, // between an entering obstacle and those in the lanes beside it
+  /**
+   * Traffic comes in waves: between them the arena is calm (no lane traffic, comets or balls).
+   * Every WAVE_GAP_MIN_MS to WAVE_GAP_MAX_MS a chip warns "Traffic incoming" for WAVE_WARNING_MS,
+   * then everything streams in for WAVE_MS and leaves on its own. Never alongside an arena shift.
+   */
+  WAVE_GAP_MIN_MS: 60000,
+  WAVE_GAP_MAX_MS: 180000,
+  WAVE_WARNING_MS: 3000,
+  WAVE_MS: 25000,
+  WAVE_SHIFT_MARGIN_MS: 5000, // a wave waits if it would end within this long of a shift starting
 } as const;
 
 /** Round hazards that roll diagonally and bounce off the arena's walls, cutting across the lanes */
@@ -219,6 +238,70 @@ export const COMETS = {
   MAX_SLANT: 65, // ...so always well off the lanes' axes
   CURVE_MIN: 20, // degrees a curving comet bends over a whole crossing
   CURVE_MAX: 30,
+} as const;
+
+/** Which way creatures face: small ones turn fast, big ones slower but still fast enough to defend */
+export const FACING = {
+  TURN_SMALL: 14, // radians a second at newcomer size...
+  TURN_BIG: 7, // ...down to this at full size
+} as const;
+
+/**
+ * Inhale (hold the button): you keep moving at full speed, aiming your mouth, and pull in everything in a
+ * cone in front of you. Gems are swallowed; creatures EAT_RATIO times smaller are swallowed whole
+ * (all their gems become yours; they can escape if they run early); a bomb stays in your mouth,
+ * safe until you spit it. Bigger creatures reach farther.
+ */
+export const INHALE = {
+  REACH: 110, // plus REACH_PER_SIZE times your size
+  REACH_PER_SIZE: 1.2,
+  ARC: 35, // degrees either side of where you face
+  PULL_GEMS: 520, // units a second
+  PULL_BOMBS: 420,
+  PULL_PREY: 150, // at the edge of your reach, rising by PULL_PREY_CLOSE right at your mouth
+  PULL_PREY_CLOSE: 250,
+  EAT_RATIO: 1.25,
+  MAX_MS: 3000, // how long one breath lasts...
+  RECOVER_MS: 1000, // ...and how long you need to catch it before the next
+  DRAG: 140, // units a second someone you're stealing from is dragged toward your mouth (more if you're bigger)
+  /**
+   * Gravity theft: up close, inhaling steals gems from the nearest creature in front of your mouth
+   * that's too big to swallow, STEAL_RATE a second times the square root of your weight (bigger
+   * pulls harder, but not in proportion). Head-on, both inhaling each other, the stronger pull takes
+   * the whole stream; within TUG_EDGE of each other, neither gains.
+   */
+  STEAL_REACH: 60, // the gap between you and them
+  STEAL_ARC: 50, // degrees either side of where you face
+  STEAL_RATE: 4,
+  TUG_EDGE: 1.08,
+  STOLE_NOTICE: 5, // a theft this big gets a banner and a line in the feed
+} as const;
+
+/**
+ * Bombs lie around the arena. Inhale one and it's safe in your mouth for as long as you like. Tap to
+ * spit it: it slides, slows to a stop and bounces off walls, and its fuse starts. When it goes off,
+ * everyone within BLAST_RADIUS is knocked outward (lighter creatures farther) and has gems knocked
+ * loose (more near the middle); under GEMS.SURVIVE_AT gems it knocks you out. Other bombs in the
+ * blast go off too. Anyone can nudge a bomb by walking into it, or kick it with a dash. A lit bomb
+ * can still be inhaled, but its fuse keeps ticking. A bomb that has gone off turns up somewhere else.
+ */
+export const BOMBS = {
+  ENABLED: false, // switched off while inhale-only combat is tested (the smoke test switches them on in its world)
+  COUNT: 6,
+  RADIUS: 15,
+  SPIT_SPEED: 620,
+  FRICTION: 2.3, // how fast a sliding bomb slows (it slides about SPIT_SPEED / FRICTION units)
+  KICK_SPEED: 700,
+  FUSE_MS: 2200,
+  CHAIN_MS: 150, // a bomb caught in a blast goes off this soon after
+  BLAST_RADIUS: 150,
+  PUSH_MIN: 160, // knockback at the blast's edge...
+  PUSH_MAX: 380, // ...and at its middle (lighter creatures fly farther)
+  SHARE_MIN: 0.08, // share of gems knocked loose at the edge...
+  SHARE_MAX: 0.25, // ...and at the middle
+  LOOSE_MAX: 30,
+  RESPAWN_MS: 6000,
+  SPIT_COOLDOWN_MS: 400,
 } as const;
 
 export const SHIFT = {
@@ -257,7 +340,7 @@ export const ARENA_RULES = {
   MOVE_RESPONSE: 14, // how quickly you reach the speed you're steering (and glide to a stop)
   DASH_SPEED: 900, // a dash is a burst at this speed...
   DASH_MS: 200, // ...for this long (about 180 units)...
-  CHARGE_AFTER_MS: 400, // holding DASH this long turns it into a slingshot charge (you stand still)...
+  CHARGE_AFTER_MS: 220, // holding DASH this long turns it into a slingshot charge (you stand still)...
   CHARGE_FULL_MS: 1000, // ...full power this much later...
   SLING_MIN: 250, // ...launching you this far at the least charge...
   SLING_MAX: 500, // ...and this far at full, flying over the void as you go
@@ -363,6 +446,9 @@ export const GAME_CONSTANTS = {
   TRAFFIC,
   BALLS,
   COMETS,
+  FACING,
+  INHALE,
+  BOMBS,
   SHIFT,
   KEYS,
   DEVICE_SETTINGS

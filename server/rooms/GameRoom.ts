@@ -33,6 +33,10 @@ export class GameRoom extends Room<GameState> {
     this.setState(new GameState(fieldGems));
     // ...and a world where traffic can't hit anyone (the test hits players itself)
     if (!IS_PRODUCTION && options.testCalm === true) this.state.trafficHits = false;
+    // ...and one where traffic never goes calm
+    if (!IS_PRODUCTION && options.testTraffic === "always") this.state.forceTraffic("always");
+    // ...and one with bombs (switched off in live worlds)
+    if (!IS_PRODUCTION && options.testBombs === true) this.state.enableBombs();
     // ...and one with no bots
     if (!IS_PRODUCTION && Number.isInteger(options.testBots)) this.state.botFill = options.testBots;
     // Moments worth telling everyone about (who shoved whom off the edge, who took the jackpot)
@@ -50,6 +54,21 @@ export class GameRoom extends Room<GameState> {
     });
 
     // Holding DASH past a tap charges a slingshot; letting go launches it (or sliding off cancels)
+    // Where a charge is aimed: the creature turns to face it (no arrow; its eyes give it away)
+    this.onMessage("aim", (client, data: any) => {
+      this.state.players.get(client.sessionId)?.aimAt(Number(data?.x) || 0, Number(data?.y) || 0);
+    });
+    // Hold the button to inhale, release to stop; tap with something in your mouth to spit it
+    this.onMessage("inhale", (client) => {
+      this.state.players.get(client.sessionId)?.startInhale(Date.now());
+    });
+    this.onMessage("exhale", (client) => {
+      this.state.players.get(client.sessionId)?.stopInhale();
+    });
+    this.onMessage("spit", (client, data: any) => {
+      const player = this.state.players.get(client.sessionId);
+      if (player) this.state.spit(player, Number(data?.x) || 0, Number(data?.y) || 0, Date.now());
+    });
     this.onMessage("charge", (client) => {
       this.state.players.get(client.sessionId)?.startCharge(Date.now());
     });
@@ -117,6 +136,24 @@ export class GameRoom extends Room<GameState> {
       this.onMessage("test:jackpot", (client) => {
         const player = playerOf(client);
         if (player) this.state.dropJackpot(player.x + player.width / 2, player.y + player.height / 2, 0);
+      });
+      this.onMessage("test:traffic", (_client, data: any) => {
+        // Forces the traffic cycle: "calm", "warning", "wave" or "always"
+        this.state.forceTraffic(String(data?.phase ?? ""));
+      });
+      this.onMessage("test:face", (client, data: any) => {
+        const player = playerOf(client);
+        if (player) player.facing = Number(data?.angle) || 0;
+      });
+      this.onMessage("test:placeBomb", (_client, data: any) => {
+        // The first bomb, at (x, y), lit with fuseMs left if given
+        this.state.bombs.forEach((bomb, index) => {
+          if (index !== 0) return;
+          bomb.heldBy = "";
+          bomb.respawnAt = 0;
+          bomb.placeAt(Number(data?.x) || 0, Number(data?.y) || 0);
+          bomb.explodesAt = Number(data?.fuseMs) > 0 ? this.state.time + Number(data.fuseMs) : 0;
+        });
       });
       this.onMessage("test:placeComet", (client, data: any) => {
         // Stands the first comet still, centered relative to the player's center

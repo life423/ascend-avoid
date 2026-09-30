@@ -29,27 +29,53 @@ class BallSchema extends Schema {
     this.vy = Math.sin(angle) * BALLS.SPEED;
   }
 
-  /** Roll on, bouncing off the world's walls */
-  update(deltaTime: number, worldWidth: number, worldHeight: number): void {
+  /**
+   * Roll on, bouncing off the world's walls while a traffic wave is on (`bounce`); between waves it
+   * rolls out of the world instead. False once it has left (a ball standing still stays put).
+   */
+  update(deltaTime: number, worldWidth: number, worldHeight: number, bounce = true): boolean {
+    if (this.vx === 0 && this.vy === 0) return true;
     const r = this.radius;
     let x = this.x + this.vx * deltaTime;
     let y = this.y + this.vy * deltaTime;
-    if (x < r) {
-      x = 2 * r - x;
-      this.vx = Math.abs(this.vx);
-    } else if (x > worldWidth - r) {
-      x = 2 * (worldWidth - r) - x;
-      this.vx = -Math.abs(this.vx);
-    }
-    if (y < r) {
-      y = 2 * r - y;
-      this.vy = Math.abs(this.vy);
-    } else if (y > worldHeight - r) {
-      y = 2 * (worldHeight - r) - y;
-      this.vy = -Math.abs(this.vy);
+    if (bounce) {
+      if (x < r) {
+        x = 2 * r - x;
+        this.vx = Math.abs(this.vx);
+      } else if (x > worldWidth - r) {
+        x = 2 * (worldWidth - r) - x;
+        this.vx = -Math.abs(this.vx);
+      }
+      if (y < r) {
+        y = 2 * r - y;
+        this.vy = Math.abs(this.vy);
+      } else if (y > worldHeight - r) {
+        y = 2 * (worldHeight - r) - y;
+        this.vy = -Math.abs(this.vy);
+      }
     }
     this.x = x;
     this.y = y;
+    const margin = r + 40;
+    return x > -margin && x < worldWidth + margin && y > -margin && y < worldHeight + margin;
+  }
+
+  /** Out of the world, waiting for the next traffic wave */
+  park(): void {
+    this.placeAt(-500, -500);
+  }
+
+  /** Roll in from a random edge on a diagonal (a traffic wave starting) */
+  enter(worldWidth: number, worldHeight: number): void {
+    const r = this.radius;
+    const side = Math.floor(Math.random() * 4);
+    const along = 0.15 + Math.random() * 0.7;
+    this.x = side === 1 ? worldWidth - r - 1 : side === 3 ? r + 1 : along * worldWidth;
+    this.y = side === 0 ? r + 1 : side === 2 ? worldHeight - r - 1 : along * worldHeight;
+    const inward = side === 0 ? Math.PI / 2 : side === 1 ? Math.PI : side === 2 ? -Math.PI / 2 : 0;
+    const angle = inward + (((25 + Math.random() * 40) * Math.PI) / 180) * (Math.random() < 0.5 ? -1 : 1);
+    this.vx = Math.cos(angle) * BALLS.SPEED;
+    this.vy = Math.sin(angle) * BALLS.SPEED;
   }
 
   /** Whether the ball hits a box: its true circle, a few units inside the drawing like traffic */
