@@ -130,34 +130,7 @@ export const PUSH = {
   FRICTION: 7, // shoved players slow by this factor a second (about half a second of sliding)
   STOP_SPEED: 40, // units per second; slower than this and the slide is over
   SAME_SHOVER_COOLDOWN_MS: 300, // one shove per hop, not one per frame of contact
-  /**
-   * Body-checks: a clearly bigger player moving into a smaller one (toward them at BODY_CHECK_SPEED
-   * of their top speed or more, or dashing) shoves them hard and spills their gems, by how much
-   * bigger they are (width over width, biggest tier first). At BODY_CHECK_KO_AT and up, a victim
-   * under GEMS.SURVIVE_AT gems is knocked out. Same immunity as a slingshot hit.
-   */
-  BODY_CHECK_TIERS: [
-    { at: 2, shove: 300, spill: 0.25 },
-    { at: 1.5, shove: 220, spill: 0.12 },
-    { at: 1.25, shove: 160, spill: 0 }, // just a harder shove
-  ],
-  BODY_CHECK_SPEED: 0.5,
-  BODY_CHECK_KO_AT: 2,
-  BODY_CHECK_MAX_SPILL: 20,
-  LEADER_BOUNTY_SHARE: 0.1, // shoving the leader knocks this share of their gems loose...
-  LEADER_BOUNTY_MIN: 2,
-  LEADER_BOUNTY_MAX: 8,
-  LEADER_BOUNTY_COOLDOWN_MS: 1500, // ...at most this often
-  SLING_PUSH_MIN: 280, // a slingshot hit shoves this far at the least charge...
-  SLING_PUSH_MAX: 520, // ...and this far at full...
-  SLING_WEIGHT_POWER: 0.2, // ...with weight counting only a little (the small player's equalizer)...
-  SLING_WEIGHT_MIN: 0.6, // ...within these limits
-  SLING_WEIGHT_MAX: 1.25,
-  KNOCK_SHARE_SLING_MIN: 0.12, // a slingshot hit knocks this share loose at the least charge...
-  KNOCK_SHARE_SLING_MAX: 0.25, // ...and this share at full...
-  KNOCK_MAX_SLING: 20, // ...up to this many (a dash hit knocks none: it only shoves)...
-  KNOCK_SIZE_MIN: 0.75, // ...scaled a little by size: the square root of attacker over target weight, within these limits
-  KNOCK_SIZE_MAX: 1.3,
+  HIT_IMMUNITY_MS: 1500, // after losing gems to a hit, nothing can knock more loose for this long
   SKID_BODY_LENGTHS: 2, // a hit that costs gems sends you skidding this many of your own sizes...
   SKID_MIN: 60, // ...and at least this far
 } as const;
@@ -176,7 +149,6 @@ export const BOTS = {
   MISTAKE_CHANCE: 0.07, // how often a bot hops at random instead (varies by bot, up to 1.5x this)
   MAX_AGGRESSION: 0.35, // how keen the keenest bot is to shove whoever is next to it
   GEM_SIGHT: 700, // bots go for gems within this distance...
-  SLING_CHANCE: 0.12, // chance a bot charges a slingshot at whoever it's hunting, when they're 150-400 away
   FLEE_RATIO: 1.5, // bots run from anyone this many times their size who comes within FLEE_RANGE
   FLEE_RANGE: 260,
   DASH_REACH: 70, // bots dash into whoever they're hunting once this close (gap between them)
@@ -340,15 +312,7 @@ export const ARENA_RULES = {
   MOVE_RESPONSE: 14, // how quickly you reach the speed you're steering (and glide to a stop)
   DASH_SPEED: 900, // a dash is a burst at this speed...
   DASH_MS: 200, // ...for this long (about 180 units)...
-  CHARGE_AFTER_MS: 220, // holding DASH this long turns it into a slingshot charge (you stand still)...
-  CHARGE_FULL_MS: 1000, // ...full power this much later...
-  SLING_MIN: 250, // ...launching you this far at the least charge...
-  SLING_MAX: 500, // ...and this far at full, flying over the void as you go
-  SLING_SPEED: 1100, // units a second in flight
-  SLING_COOLDOWN_MS: 4000,
-  SLING_COST: 2, // gems a slingshot costs...
-  SLING_COST_BIG: 3, // ...or this many once you hold SLING_COST_BIG_AT
-  SLING_COST_BIG_AT: 50,
+  HOLD_MS: 220, // holding the button this long makes it an inhale; a shorter press is a tap (a dash)
   DASH_COOLDOWN_MS: 1000, // ...then needs this long to recharge...
   DASH_COST: 1, // ...and costs this many gems (if you have any)
   HOP_REPEAT_DELAY: 0.2, // holding a direction: the first repeat hop comes after this many seconds,

@@ -245,7 +245,7 @@ class GameState extends Schema {
         player.placeAt(spot.x - player.width / 2, spot.y - player.height / 2);
       }
       // Over the edge during a shift
-      if (this.shiftPhase === "shift" && !player.isSafe() && !player.inAir(now) && !this.isFloorAt(player.x + player.width / 2, player.y + player.height / 2)) {
+      if (this.shiftPhase === "shift" && !player.isSafe() && !this.isFloorAt(player.x + player.width / 2, player.y + player.height / 2)) {
         this.fall(player, now);
         return;
       }
@@ -694,10 +694,9 @@ class GameState extends Schema {
   }
 
   /**
-   * A dash (or a slingshot's flight) that runs into another creature stops at the moment of contact
-   * and shoves them along it, farther if the dasher is heavier (a slingshot mostly ignores weight).
-   * A plain dash also bounces back, bumper-car style. Into their back, it knocks gems out of them,
-   * whatever their size. Players who just arrived are passed straight through.
+   * A dash that runs into another creature stops at the moment of contact and shoves them along it,
+   * farther if the dasher is heavier, and bounces back off them, bumper-car style (the lighter one
+   * farther). No gems change hands. Players who just arrived are passed straight through.
    */
   private checkDash(dasher: PlayerSchema, fromX: number, fromY: number, now: number): void {
     // Swept along everything the dash crossed this tick (as circles), so it can't skip past anyone
@@ -733,27 +732,19 @@ class GameState extends Schema {
     dasher.x = fromX + moveX * hit.t;
     dasher.y = fromY + moveY * hit.t;
     dasher.endDash();
-    const power = dasher.hitPower();
     const weightRatio = dasher.weight() / target.weight();
-    const distance =
-      power < 0
-        ? PUSH.DISTANCE * Math.min(PUSH.MAX_RATIO, Math.max(PUSH.MIN_RATIO, weightRatio))
-        : // A slingshot mostly ignores weight: the small player's equalizer
-          (PUSH.SLING_PUSH_MIN + (PUSH.SLING_PUSH_MAX - PUSH.SLING_PUSH_MIN) * power) *
-          Math.min(PUSH.SLING_WEIGHT_MAX, Math.max(PUSH.SLING_WEIGHT_MIN, Math.pow(weightRatio, PUSH.SLING_WEIGHT_POWER)));
-    if (!target.shoveAlong(along.x, along.y, distance, dasher.sessionId, now, power < 0 ? "dash" : "sling")) return;
+    const distance = PUSH.DISTANCE * Math.min(PUSH.MAX_RATIO, Math.max(PUSH.MIN_RATIO, weightRatio));
+    if (!target.shoveAlong(along.x, along.y, distance, dasher.sessionId, now, "dash")) return;
     this.impact(dasher, target);
     dasher.dropProtection();
-    // Bumper cars: a plain dash bounces back off whoever it hits, the lighter one farther
-    if (power < 0) {
-      dasher.shoveAlong(-along.x, -along.y, PUSH.BOUNCE * Math.min(PUSH.MAX_RATIO, Math.max(PUSH.MIN_RATIO, 1 / weightRatio)), target.sessionId, now, "bump");
-    }
+    // Bumper cars: the dash bounces back off whoever it hits, the lighter one farther
+    dasher.shoveAlong(-along.x, -along.y, PUSH.BOUNCE * Math.min(PUSH.MAX_RATIO, Math.max(PUSH.MIN_RATIO, 1 / weightRatio)), target.sessionId, now, "bump");
   }
 
   /**
    * Creatures that touch are pushed apart (as circles), the lighter one more. Running into someone
-   * at speed is a bumper-car bump: both bounce apart, the lighter one farther. No gems: only a dash
-   * or slingshot into someone's back knocks those out.
+   * at speed is a bumper-car bump: both bounce apart, the lighter one farther. No gems change hands,
+   * and an inhaling creature presses up against whoever it runs into instead of bouncing off.
    */
   private nudgeApart(player: PlayerSchema, now: number): void {
     if (player.state !== PLAYER_STATE.ALIVE || player.spawnProtected) return;

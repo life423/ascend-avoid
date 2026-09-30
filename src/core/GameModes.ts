@@ -849,8 +849,7 @@ export class MultiplayerMode extends GameMode {
     private velocity = { x: 0, y: 0 }
     private dashUntil = 0
     private dashDir = { x: 0, y: -1 }
-    private dashSpeed: number = ARENA_RULES.DASH_SPEED
-    /** How long the recharge under way takes (a slingshot's is longer than a dash's) */
+    /** How long the dash's recharge takes */
     private cooldownMs: number = ARENA_RULES.DASH_COOLDOWN_MS
     /** Holding the button: inhaling (it never changes how you move) */
     private inhaleHeld = false
@@ -863,11 +862,6 @@ export class MultiplayerMode extends GameMode {
     private breathEndedAt = -Infinity
     private wasInhaling = false
     private breath: Breath = { phase: 'ready' }
-    /** Your own flight after a slingshot (for the arc), and everyone's landings (for the impact ring) */
-    private launchedAt = 0
-    private airborneUntil = 0
-    private inFlight = new Set<string>()
-    private landings = new Map<string, number>()
     /** Gem bursts and hard hits to draw, the banner for hits you cause, and the shake they bring */
     private gemBursts: { x: number; y: number; count: number; at: number }[] = []
     private impacts: { x: number; y: number; size: number; at: number }[] = []
@@ -1038,7 +1032,7 @@ export class MultiplayerMode extends GameMode {
      */
     private moveLocalPlayer(input: InputState): void {
         const now = performance.now()
-        // DASH: tap to dash, hold to charge a slingshot (taken every frame, so nothing waits for later)
+        // The button: tap to dash, hold to inhale (taken every frame, so nothing waits for later)
         this.controls?.setReady(now >= this.dashReadyAt)
         const events = this.controls?.takeEvents(now) ?? []
         const deltaTime = this.lastMoveAt ? Math.min(0.1, (now - this.lastMoveAt) / 1000) : 0
@@ -1083,7 +1077,6 @@ export class MultiplayerMode extends GameMode {
             if (event === 'dash' && now >= this.dashReadyAt && !this.inhaleHeld) {
                 // A burst the way you're steering (or last went)
                 this.dashDir = steering > 0.05 ? { x: steer.x / steering, y: steer.y / steering } : { ...this.facing }
-                this.dashSpeed = ARENA_RULES.DASH_SPEED
                 this.dashUntil = now + ARENA_RULES.DASH_MS
                 this.cooldownMs = ARENA_RULES.DASH_COOLDOWN_MS
                 this.dashReadyAt = now + this.cooldownMs
@@ -1101,8 +1094,8 @@ export class MultiplayerMode extends GameMode {
 
         // Move exactly the way the server does
         const box = { x: this.predicted.x, y: this.predicted.y, width: me.width, height: me.height }
-        const dashing = now < this.dashUntil ? { x: this.dashDir.x * this.dashSpeed, y: this.dashDir.y * this.dashSpeed } : null
-        // Facing, worked out like the server does: the aim while charging, along a dash, else where you steer
+        const dashing = now < this.dashUntil ? { x: this.dashDir.x * ARENA_RULES.DASH_SPEED, y: this.dashDir.y * ARENA_RULES.DASH_SPEED } : null
+        // Facing, worked out like the server does: the aim while inhaling, along a dash, else where you steer
         const intent = this.inhaleHeld ? this.aim : dashing ?? steer
         if (Math.hypot(intent.x, intent.y) > 0.25) {
             this.localFacing = turnToward(this.localFacing, Math.atan2(intent.y, intent.x), turnRate(me.width) * deltaTime)
@@ -1142,27 +1135,6 @@ export class MultiplayerMode extends GameMode {
         if (inhaling) return { phase: 'inhaling', left: Math.max(0, 1 - (now - this.breathStartedAt) / INHALE.MAX_MS) }
         if (now - this.breathEndedAt < INHALE.RECOVER_MS) return { phase: 'recovering', back: (now - this.breathEndedAt) / INHALE.RECOVER_MS }
         return { phase: 'ready' }
-    }
-
-    /** A small impact ring where a flying player touches down */
-    private drawLanding(ctx: CanvasRenderingContext2D, id: string, flying: boolean, x: number, y: number, size: number, timestamp: number): void {
-        if (flying) {
-            this.inFlight.add(id)
-            return
-        }
-        if (this.inFlight.delete(id)) this.landings.set(id, timestamp)
-        const at = this.landings.get(id)
-        if (at === undefined) return
-        const t = (timestamp - at) / 300
-        if (t >= 1) {
-            this.landings.delete(id)
-            return
-        }
-        ctx.strokeStyle = `rgba(255, 255, 255, ${0.6 * (1 - t)})`
-        ctx.lineWidth = 3
-        ctx.beginPath()
-        ctx.ellipse(x, y, size * (0.5 + t), size * (0.2 + 0.35 * t), 0, 0, Math.PI * 2)
-        ctx.stroke()
     }
 
     /** The online mode always draws the whole scene itself */
@@ -1424,13 +1396,9 @@ export class MultiplayerMode extends GameMode {
         grow.speed = (grow.speed + (player.width - grow.size) * 0.3) * 0.6
         grow.size += grow.speed
         const size = Math.max(4, grow.size)
-        // In the air after a slingshot: lifted over a shadow
         const clock = performance.now()
-        const flying = isLocal ? clock < this.airborneUntil : Boolean(player.airborne)
-        const flight = Math.min(1, (clock - this.launchedAt) / Math.max(1, this.airborneUntil - this.launchedAt))
-        const lift = !flying ? 0 : isLocal ? Math.sin(flight * Math.PI) * 18 : 12
         const left = drawn.x + (player.width - size) / 2
-        const top = drawn.y + (player.height - size) / 2 - lift
+        const top = drawn.y + (player.height - size) / 2
         const centerX = drawn.x + player.width / 2
         const centerY = drawn.y + player.height / 2
         // A dash leaves a streak behind it, bigger for bigger players
@@ -1450,13 +1418,6 @@ export class MultiplayerMode extends GameMode {
                 }
             }
         }
-        if (flying) {
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.35)'
-            ctx.beginPath()
-            ctx.ellipse(centerX, drawn.y + player.height, size * 0.45, size * 0.18, 0, 0, Math.PI * 2)
-            ctx.fill()
-        }
-        this.drawLanding(ctx, sessionId, flying, centerX, drawn.y + player.height, size, timestamp)
         if (player.inhaling) drawInhaleCone(ctx, centerX, centerY, size, isLocal ? this.localFacing : (player.facing ?? -Math.PI / 2), timestamp)
         if (isLocal) {
             // Your breath: draining around you while you inhale, refilling while you catch it
@@ -1606,22 +1567,20 @@ export class MultiplayerMode extends GameMode {
         const targetIsYou = data?.targetId === localId
         const target = targetIsYou ? 'you' : String(data?.target ?? 'someone')
         const how = String(data?.how ?? '')
-        const eaten = how === 'sling' && data?.eaten === true
-        const verb = how === 'stole' ? 'robbed' : how === 'ate' ? 'swallowed' : how === 'bomb' ? 'blew up' : how === 'crush' ? 'crushed' : eaten ? 'ate' : how === 'sling' || data?.kind === 'sling' ? 'slingshotted' : 'shoved'
+        const verb = how === 'stole' ? 'robbed' : how === 'ate' ? 'swallowed' : how === 'bomb' ? 'blew up' : 'shoved'
         const where = how === 'stole' ? `of ${Number(data?.gems) || 0} gems` : how === 'edge' ? 'off the edge' : how === 'traffic' ? 'into traffic' : ''
         if (data?.byId === localId) {
             const name = String(data?.target ?? 'someone')
-            const title = how === 'stole' ? `You stole ${Number(data?.gems) || 0} gems from ${name}!` : how === 'ate' ? `You swallowed ${name}!` : how === 'bomb' ? `You blew up ${name}!` : how === 'crush' ? `You crushed ${name}!` : eaten ? `You ate ${name}!` : how === 'sling' ? `Direct hit on ${name}!` : `You wrecked ${name}!`
+            const title = how === 'stole' ? `You stole ${Number(data?.gems) || 0} gems from ${name}!` : how === 'ate' ? `You swallowed ${name}!` : how === 'bomb' ? `You blew up ${name}!` : `You wrecked ${name}!`
             const parts =
                 how === 'stole' ? []
                 : how === 'ate' ? [`+${Number(data?.gems) || 0} gems`]
                 : how === 'bomb' ? [data?.out ? 'knocked out' : `${Number(data?.gems) || 0} gems knocked loose`]
-                : how === 'sling' ? [`+${Number(data?.gems) || 0} gems`]
                 : [where, data?.out ? 'knocked out' : '']
             this.banner = { title, sub: parts.filter(Boolean).join(' · ').toUpperCase(), at: performance.now() }
             return
         }
-        const out = how !== 'crush' && !eaten && data?.out ? (targetIsYou ? ' and knocked you out' : ' and knocked them out') : ''
+        const out = how !== 'ate' && data?.out ? (targetIsYou ? ' and knocked you out' : ' and knocked them out') : ''
         this.addNotice(`${this.nameOf(data?.byId, data?.by)} ${verb} ${target}${where ? ' ' + where : ''}${out}!`, data?.out === true)
     }
 

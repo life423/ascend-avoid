@@ -64,7 +64,7 @@ export class OnlineControls {
 
     /** What the button asked for since the last call; also notices when a hold becomes an inhale */
     takeEvents(now: number): ControlEvent[] {
-        if (this.press && !this.press.inhaling && now - this.press.at >= ARENA_RULES.CHARGE_AFTER_MS) {
+        if (this.press && !this.press.inhaling && now - this.press.at >= ARENA_RULES.HOLD_MS) {
             this.press.inhaling = true
             this.events.push('inhale')
         }
@@ -174,7 +174,7 @@ export class OnlineControls {
         // running round as a hold becomes an inhale
         if (inhaling || recovering) arc(share, breathColor, inhaling ? 5 : 3)
         else if (readyShare < 1) arc(readyShare, 'rgba(255, 255, 255, 0.6)', 3)
-        else if (this.press) arc((now - this.press.at) / ARENA_RULES.CHARGE_AFTER_MS, 'rgba(79, 209, 197, 0.9)', 3)
+        else if (this.press) arc((now - this.press.at) / ARENA_RULES.HOLD_MS, 'rgba(79, 209, 197, 0.9)', 3)
 
         // Just the word, centered on its letters (the rim shows your breath; it flashes red when low)
         ctx.fillStyle = dim ? 'rgba(255, 255, 255, 0.4)' : low ? breathColor : '#ffffff'
