@@ -9,6 +9,7 @@ import { GameEvents } from '../constants/client-constants'
 import { ARENA_RULES, BOMBS, GEMS, INHALE, PLAYER_COLORS, SHIFT, WORLD } from '../../server/constants/gameConstants'
 import { turnRate, turnToward, walk } from '../../server/game/movement'
 import { OnlineControls } from './OnlineControls'
+import type { Breath } from './OnlineControls'
 import type { MultiplayerManager } from '../managers/MultiplayerManager'
 
 // Forward reference for the Game type to avoid circular dependencies
@@ -606,6 +607,46 @@ function drawCreature(ctx: CanvasRenderingContext2D, x: number, y: number, size:
     }
 }
 
+/**
+ * Your breath around your creature: draining while you inhale (blue, then amber, then flashing red
+ * when it's nearly gone), and refilling while you catch it, with little puffs rising
+ */
+function drawBreath(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, breath: Breath, timestamp: number): void {
+    if (breath.phase === 'ready') return
+    const r = size / 2 + 8
+    const start = -Math.PI / 2
+    ctx.save()
+    ctx.lineCap = 'round'
+    ctx.lineWidth = 4
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)'
+    ctx.beginPath()
+    ctx.arc(x, y, r, 0, Math.PI * 2)
+    ctx.stroke()
+    if (breath.phase === 'inhaling') {
+        const left = breath.left
+        ctx.strokeStyle =
+            left > 0.5 ? 'rgba(160, 230, 255, 0.95)' : left > 0.25 ? 'rgba(255, 209, 102, 0.95)' : `rgba(255, 107, 107, ${0.7 + 0.3 * Math.sin(timestamp / 60)})`
+        ctx.beginPath()
+        ctx.arc(x, y, r, start, start + Math.PI * 2 * Math.max(0.01, left))
+        ctx.stroke()
+    } else {
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'
+        ctx.lineWidth = 3
+        ctx.beginPath()
+        ctx.arc(x, y, r, start, start + Math.PI * 2 * Math.max(0.01, breath.back))
+        ctx.stroke()
+        // Catching your breath: little puffs rising
+        for (let i = 0; i < 3; i++) {
+            const t = (timestamp / 700 + i / 3) % 1
+            ctx.fillStyle = `rgba(220, 235, 255, ${0.5 * (1 - t)})`
+            ctx.beginPath()
+            ctx.arc(x + (i - 1) * size * 0.18, y - size / 2 - 10 - t * 16, 2.5 + t * 2.5, 0, Math.PI * 2)
+            ctx.fill()
+        }
+    }
+    ctx.restore()
+}
+
 /** Air rushing into an inhaling creature's mouth: a fading cone with streaks flowing in */
 function drawInhaleCone(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, facing: number, timestamp: number): void {
     const r = size / 2
@@ -817,6 +858,11 @@ export class MultiplayerMode extends GameMode {
     /** The aim last sent (your eyes turn toward it for everyone), and which way you face */
     private sentAim = { x: 0, y: 0 }
     private localFacing = -Math.PI / 2
+    /** Your breath, tracked from when the server starts and stops your inhale (see breathOf) */
+    private breathStartedAt = 0
+    private breathEndedAt = -Infinity
+    private wasInhaling = false
+    private breath: Breath = { phase: 'ready' }
     /** Your own flight after a slingshot (for the arc), and everyone's landings (for the impact ring) */
     private launchedAt = 0
     private airborneUntil = 0
@@ -1039,15 +1085,12 @@ export class MultiplayerMode extends GameMode {
                 this.cooldownMs = ARENA_RULES.DASH_COOLDOWN_MS
                 this.dashReadyAt = now + this.cooldownMs
                 this.multiplayerManager?.sendMessage('dash', { x: this.dashDir.x, y: this.dashDir.y })
-            } else if (event === 'charge' && now >= this.dashReadyAt) {
+            } else if (event === 'inhale') {
                 this.inhaleHeld = true
                 this.sentAim = { x: 0, y: 0 }
                 this.multiplayerManager?.sendMessage('inhale', {})
-            } else if (event === 'sling' && this.inhaleHeld) {
+            } else if (event === 'exhale' && this.inhaleHeld) {
                 // Let go: stop inhaling
-                this.inhaleHeld = false
-                this.multiplayerManager?.sendMessage('exhale', {})
-            } else if (event === 'cancel' && this.inhaleHeld) {
                 this.inhaleHeld = false
                 this.multiplayerManager?.sendMessage('exhale', {})
             }
@@ -1086,6 +1129,16 @@ export class MultiplayerMode extends GameMode {
             }
         }
         this.predicted = { x: box.x, y: box.y }
+    }
+
+    /** Where your breath is: draining for INHALE.MAX_MS while you inhale, then refilling for INHALE.RECOVER_MS */
+    private breathOf(inhaling: boolean, now: number): Breath {
+        if (inhaling && !this.wasInhaling) this.breathStartedAt = now
+        if (!inhaling && this.wasInhaling) this.breathEndedAt = now
+        this.wasInhaling = inhaling
+        if (inhaling) return { phase: 'inhaling', left: Math.max(0, 1 - (now - this.breathStartedAt) / INHALE.MAX_MS) }
+        if (now - this.breathEndedAt < INHALE.RECOVER_MS) return { phase: 'recovering', back: (now - this.breathEndedAt) / INHALE.RECOVER_MS }
+        return { phase: 'ready' }
     }
 
     /** A small impact ring where a flying player touches down */
@@ -1221,7 +1274,7 @@ export class MultiplayerMode extends GameMode {
         this.drawShiftChip(ctx, canvas, state, timestamp)
         this.drawTrafficChip(ctx, canvas, state, timestamp)
         this.drawBanner(ctx, canvas)
-        this.controls?.draw(ctx, timestamp, Math.max(0, Math.min(1, 1 - (this.dashReadyAt - performance.now()) / this.cooldownMs)), this.inhaleHeld ? this.aim : null)
+        this.controls?.draw(ctx, timestamp, Math.max(0, Math.min(1, 1 - (this.dashReadyAt - performance.now()) / this.cooldownMs)), this.breath)
         if (me && me.state !== 'alive') this.drawKnockedOut(ctx, canvas)
         ctx.restore()
     }
@@ -1402,6 +1455,11 @@ export class MultiplayerMode extends GameMode {
         }
         this.drawLanding(ctx, sessionId, flying, centerX, drawn.y + player.height, size, timestamp)
         if (player.inhaling) drawInhaleCone(ctx, centerX, centerY, size, isLocal ? this.localFacing : (player.facing ?? -Math.PI / 2), timestamp)
+        if (isLocal) {
+            // Your breath: draining around you while you inhale, refilling while you catch it
+            this.breath = this.breathOf(Boolean(player.inhaling), performance.now())
+            drawBreath(ctx, centerX, centerY, size, this.breath, timestamp)
+        }
         if (isLocal && player.gems < GEMS.SURVIVE_AT) {
             // One hit from behind from being knocked out: a cracked red ring
             ctx.save()

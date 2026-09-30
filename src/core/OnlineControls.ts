@@ -1,30 +1,33 @@
 import { ARENA_RULES } from '../../server/constants/gameConstants'
 
-/** What the DASH button (or space) asks for: a dash, a charge starting, a slingshot, or a cancel */
-export type ControlEvent = 'dash' | 'charge' | 'sling' | 'cancel'
+/** What the button (or space) asks for: a dash (a tap), or an inhale starting and stopping (a hold) */
+export type ControlEvent = 'dash' | 'inhale' | 'exhale'
+
+/** Your breath, for the button and the ring around your creature: draining while you inhale, refilling while you catch it */
+export type Breath = { phase: 'ready' } | { phase: 'inhaling'; left: number } | { phase: 'recovering'; back: number }
 
 /** How far (px) the joystick's knob travels from its center */
 const STICK_RADIUS = 46
 /** Pushed less than this share of the way, the joystick doesn't steer */
 const DEAD_ZONE = 0.25
-/** The DASH button's radius (px) */
+/** The button's radius (px) */
 const BUTTON_RADIUS = 38
 const FONT = 'Montserrat, system-ui, sans-serif'
 
 /**
  * Touch and mouse controls for the online game, drawn on the canvas. On a touchscreen, a joystick
- * appears wherever your thumb lands on the left half, and the right half is the DASH button: tap
- * to dash, hold to charge a slingshot (slide off to cancel). With a mouse, hold the button and your
- * player heads for the cursor; space works like the DASH button (Esc cancels a charge). The arrow
- * keys and WASD stay with the InputManager.
+ * appears wherever your thumb lands on the left half, and the right half is the button: hold to
+ * inhale, tap to dash (slide off to stop inhaling). With a mouse, hold the mouse button and your
+ * player heads for the cursor; space works like the on-screen button (Esc stops an inhale). The
+ * arrow keys and WASD stay with the InputManager.
  */
 export class OnlineControls {
     /** Whether this device has a touchscreen (the joystick and DASH button are drawn only then) */
     readonly touchDevice: boolean
     private stick: { id: number; originX: number; originY: number; x: number; y: number } | null = null
     private mouse: { id: number; x: number; y: number } | null = null
-    /** DASH held down: by which pointer (or the space bar), since when, and whether it became a charge */
-    private press: { id: number | 'key'; at: number; charging: boolean; maxed: boolean } | null = null
+    /** The button held down: by which pointer (or the space bar), since when, and whether it became an inhale */
+    private press: { id: number | 'key'; at: number; inhaling: boolean } | null = null
     private events: ControlEvent[] = []
     private ready = true
     private flashUntil = 0
@@ -54,30 +57,20 @@ export class OnlineControls {
         document.removeEventListener('keyup', this.onKeyUp)
     }
 
-    /** Whether DASH is ready (not recharging); presses while it isn't just shake the button */
+    /** Whether the dash is ready (not recharging); a tap while it isn't just shakes the button */
     setReady(ready: boolean): void {
         this.ready = ready
     }
 
-    /** What DASH asked for since the last call; also notices when a hold becomes a charge */
+    /** What the button asked for since the last call; also notices when a hold becomes an inhale */
     takeEvents(now: number): ControlEvent[] {
-        if (this.press && !this.press.charging && now - this.press.at >= ARENA_RULES.CHARGE_AFTER_MS) {
-            this.press.charging = true
-            this.events.push('charge')
-        }
-        if (this.press?.charging && !this.press.maxed && (this.power(now) ?? 0) >= 1) {
-            this.press.maxed = true
-            navigator.vibrate?.(20)
+        if (this.press && !this.press.inhaling && now - this.press.at >= ARENA_RULES.CHARGE_AFTER_MS) {
+            this.press.inhaling = true
+            this.events.push('inhale')
         }
         const events = this.events
         this.events = []
         return events
-    }
-
-    /** How charged the slingshot is (0 to 1), or null when not charging */
-    power(now: number): number | null {
-        if (!this.press?.charging) return null
-        return Math.max(0, Math.min(1, (now - this.press.at - ARENA_RULES.CHARGE_AFTER_MS) / ARENA_RULES.CHARGE_FULL_MS))
     }
 
     /**
@@ -110,84 +103,85 @@ export class OnlineControls {
 
     /**
      * Draw the controls. On a touchscreen: the joystick (or, until you touch it, a faint pulsing one
-     * where thumbs usually land) and the DASH button, which shows its state rather than instructions:
-     * DASH (tap • hold), a ring running round as you hold, CHARGE with an aim arrow, MAX!, a flash on
-     * release, and a darkened clock while it recharges. With a keyboard: a small label for space.
+     * where thumbs usually land) and the button, which shows its state: INHALE, a
+     * ring running round as a hold becomes an inhale, your breath draining while you inhale and
+     * refilling while you catch it, a flash on a dash, and a darkened clock while the dash recharges.
+     * With a keyboard: a small label for space that also shows your breath.
      */
-    draw(ctx: CanvasRenderingContext2D, timestamp: number, readyShare: number, aim: { x: number; y: number } | null): void {
+    draw(ctx: CanvasRenderingContext2D, timestamp: number, readyShare: number, breath: Breath): void {
         const { width, height } = this.canvas
         const now = performance.now()
-        const power = this.power(now)
-        const label = power === null ? 'DASH' : power >= 1 ? 'MAX!' : 'CHARGE'
-        const pulse = 0.5 + 0.5 * Math.sin(timestamp / 90)
+        const inhaling = breath.phase === 'inhaling'
+        const recovering = breath.phase === 'recovering'
+        const share = breath.phase === 'inhaling' ? breath.left : breath.phase === 'recovering' ? breath.back : 1
+        const low = inhaling && share < 0.25
+        const breathColor = !inhaling
+            ? 'rgba(255, 255, 255, 0.45)'
+            : share > 0.5
+              ? '#a0e6ff'
+              : share > 0.25
+                ? '#ffd166'
+                : `rgba(255, 107, 107, ${0.75 + 0.25 * Math.sin(timestamp / 60)})`
         ctx.save()
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
         if (!this.touchDevice) {
+            // The keyboard: a small label for space, which also shows your breath
             ctx.textAlign = 'left'
             ctx.font = `700 12px ${FONT}`
-            ctx.fillStyle = power !== null ? (power >= 1 ? '#ff6b6b' : '#ffd166') : `rgba(255, 255, 255, ${readyShare < 1 ? 0.35 : 0.65})`
-            ctx.fillText(power === null ? 'SPACE  tap • hold' : `SPACE  ${label}`, 14, height - 16)
+            ctx.fillStyle = inhaling ? breathColor : `rgba(255, 255, 255, ${recovering || readyShare < 1 ? 0.35 : 0.65})`
+            ctx.fillText(inhaling ? 'SPACE  inhaling' : recovering ? 'catching your breath…' : 'SPACE  hold: inhale · tap: dash', 14, height - 16)
+            if (inhaling || recovering) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.12)'
+                ctx.fillRect(14, height - 34, 140, 5)
+                ctx.fillStyle = breathColor
+                ctx.fillRect(14, height - 34, 140 * Math.max(0, Math.min(1, share)), 5)
+            }
             ctx.restore()
             return
         }
         this.drawStick(ctx, height, timestamp)
 
-        // The DASH button, squashing briefly on release and shaking when pressed too early
+        // The button, squashing briefly on a dash and shaking on a tap while the dash recharges
         const shake = now - this.deniedAt < 250 ? Math.sin((now - this.deniedAt) / 25) * 4 : 0
         const x = width - 70 + shake
         const y = height - 78
         const squash = now < this.flashUntil ? 0.9 : 1
         const r = BUTTON_RADIUS * squash
-        const recharging = readyShare < 1
-        ctx.fillStyle = recharging
-            ? 'rgba(20, 30, 40, 0.55)'
-            : now < this.flashUntil
-              ? 'rgba(255, 255, 255, 0.45)'
-              : power !== null
-                ? `rgba(255, 196, 64, ${0.18 + 0.12 * pulse})`
-                : 'rgba(79, 209, 197, 0.16)'
+        const dim = recovering || (readyShare < 1 && !inhaling)
+        ctx.fillStyle =
+            now < this.flashUntil
+                ? 'rgba(255, 255, 255, 0.45)'
+                : inhaling
+                  ? `rgba(160, 230, 255, ${0.16 + 0.1 * Math.sin(timestamp / 90)})`
+                  : dim
+                    ? 'rgba(20, 30, 40, 0.55)'
+                    : 'rgba(79, 209, 197, 0.16)'
         ctx.beginPath()
         ctx.arc(x, y, r, 0, Math.PI * 2)
         ctx.fill()
-        // Its rim: subtle when idle, a clock while recharging, running round while held, power while charging
         ctx.lineWidth = 2
-        ctx.strokeStyle = recharging ? 'rgba(255, 255, 255, 0.15)' : 'rgba(79, 209, 197, 0.55)'
+        ctx.strokeStyle = dim ? 'rgba(255, 255, 255, 0.15)' : 'rgba(79, 209, 197, 0.55)'
         ctx.stroke()
-        const arc = (share: number, color: string, thickness: number) => {
+        const arc = (portion: number, color: string, thickness: number) => {
             ctx.strokeStyle = color
             ctx.lineWidth = thickness
             ctx.beginPath()
-            ctx.arc(x, y, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0.01, share))
+            ctx.arc(x, y, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0.01, portion))
             ctx.stroke()
         }
-        if (recharging) arc(readyShare, 'rgba(255, 255, 255, 0.6)', 3)
-        else if (power !== null) arc(power, power >= 1 ? `rgba(255, 107, 107, ${0.75 + 0.25 * pulse})` : '#ffd166', power >= 1 ? 5 + 2 * pulse : 5)
+        // Its rim: your breath while you inhale or catch it, a clock while the dash recharges, and
+        // running round as a hold becomes an inhale
+        if (inhaling || recovering) arc(share, breathColor, inhaling ? 5 : 3)
+        else if (readyShare < 1) arc(readyShare, 'rgba(255, 255, 255, 0.6)', 3)
         else if (this.press) arc((now - this.press.at) / ARENA_RULES.CHARGE_AFTER_MS, 'rgba(79, 209, 197, 0.9)', 3)
 
-        ctx.fillStyle = recharging ? 'rgba(255, 255, 255, 0.4)' : '#ffffff'
-        ctx.font = `800 ${label === 'DASH' ? 15 : 12}px ${FONT}`
-        ctx.fillText(label, x, power === null ? y - 5 : y - 8)
-        if (power === null) {
-            ctx.font = `600 8px ${FONT}`
-            ctx.fillStyle = `rgba(255, 255, 255, ${recharging ? 0.3 : 0.6})`
-            ctx.fillText('TAP • HOLD', x, y + 11)
-        } else if (aim) {
-            // An arrow that turns with the joystick: it's aiming now
-            const angle = Math.atan2(aim.y, aim.x)
-            ctx.save()
-            ctx.translate(x, y + 11)
-            ctx.rotate(angle)
-            ctx.fillStyle = '#ffffff'
-            ctx.beginPath()
-            ctx.moveTo(9, 0)
-            ctx.lineTo(-5, -6)
-            ctx.lineTo(-2, 0)
-            ctx.lineTo(-5, 6)
-            ctx.closePath()
-            ctx.fill()
-            ctx.restore()
-        }
+        // Just the word, centered on its letters (the rim shows your breath; it flashes red when low)
+        ctx.fillStyle = dim ? 'rgba(255, 255, 255, 0.4)' : low ? breathColor : '#ffffff'
+        ctx.font = `800 14px ${FONT}`
+        ctx.textBaseline = 'alphabetic'
+        const word = ctx.measureText('INHALE')
+        ctx.fillText('INHALE', x, y + (word.actualBoundingBoxAscent - word.actualBoundingBoxDescent) / 2)
         ctx.restore()
     }
 
@@ -230,28 +224,30 @@ export class OnlineControls {
         }
     }
 
-    /** DASH pressed (by a pointer on the right half, or the space bar) */
+    /** The button pressed (by a pointer on the right half, or the space bar). A hold always inhales, even while the dash recharges */
     private pressDown(id: number | 'key'): void {
         if (this.press) return
-        if (!this.ready) {
-            this.deniedAt = performance.now()
-            return
-        }
-        this.press = { id, at: performance.now(), charging: false, maxed: false }
+        this.press = { id, at: performance.now(), inhaling: false }
     }
 
-    /** DASH let go: a tap dashes, a charge launches */
+    /** The button let go: a hold stops inhaling; a tap dashes, or shakes the button while the dash recharges */
     private pressUp(id: number | 'key'): void {
         if (this.press?.id !== id) return
-        this.events.push(this.press.charging ? 'sling' : 'dash')
+        if (this.press.inhaling) {
+            this.events.push('exhale')
+        } else if (this.ready) {
+            this.events.push('dash')
+            this.flashUntil = performance.now() + 150
+        } else {
+            this.deniedAt = performance.now()
+        }
         this.press = null
-        this.flashUntil = performance.now() + 150
     }
 
-    /** Slid off the button (or pressed Esc): nothing happens, and nothing is spent */
+    /** Slid off the button (or pressed Esc): a tap never happens, and an inhale stops */
     private cancelPress(): void {
         if (!this.press) return
-        if (this.press.charging) this.events.push('cancel')
+        if (this.press.inhaling) this.events.push('exhale')
         this.press = null
     }
 
