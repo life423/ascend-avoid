@@ -1,4 +1,4 @@
-import { ARENA_RULES, GEMS } from "../constants/gameConstants.js";
+import { ARENA_RULES, GEMS, FACING } from "../constants/gameConstants.js";
 
 export type Direction = "up" | "down" | "left" | "right";
 export const DIRECTIONS: readonly Direction[] = ["up", "down", "left", "right"];
@@ -164,4 +164,17 @@ export function hop(player: Box, direction: Direction, worldWidth: number, world
   else player.x += length;
   player.x = Math.max(EDGE_MARGIN, Math.min(player.x, worldWidth - player.width - EDGE_MARGIN));
   player.y = Math.max(EDGE_MARGIN, Math.min(player.y, worldHeight - player.height - EDGE_MARGIN));
+}
+
+/** How fast a creature turns (radians a second): small ones whip around, big ones still quickly enough to defend */
+export function turnRate(width: number): number {
+  const grown = Math.max(0, Math.min(1, (width - 20) / 80));
+  return FACING.TURN_SMALL + (FACING.TURN_BIG - FACING.TURN_SMALL) * grown;
+}
+
+/** Turn from one heading toward another (radians), by at most `step` the short way round */
+export function turnToward(current: number, target: number, step: number): number {
+  const diff = Math.atan2(Math.sin(target - current), Math.cos(target - current));
+  if (Math.abs(diff) <= step) return target;
+  return current + Math.sign(diff) * step;
 }

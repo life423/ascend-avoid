@@ -337,6 +337,7 @@ try {
         await sleep(150);
         left.send('test:moveTo', { x: 700, y: 1000 });
         right.send('test:moveTo', { x: 700 + leftState().width + 20, y: 1000 });
+        right.send('test:face', { angle: Math.PI }); // facing the dasher: a front hit
         await sleep(250);
         const startX = rightState().x;
         left.send('dash', { x: 1, y: 0 });
@@ -352,7 +353,7 @@ try {
     check(light < even * 0.6, `and are harder to shove (${Math.round(light)} units)`);
 
     const knockedLoose = 100 - me().gems;
-    check(knockedLoose <= 2, `a dash just shoves: even the leader keeps their gems (${knockedLoose} lost, only the usual shedding)`);
+    check(knockedLoose <= 2, `a dash from the front just shoves: even the leader keeps their gems (${knockedLoose} lost, only the usual shedding)`);
 
     // Hold DASH to charge a slingshot: you stand still, everyone sees it, and it launches even a heavy player
     bob.send('test:setGems', { count: 4 });
@@ -370,65 +371,65 @@ try {
     await sleep(500);
     check(Math.abs(bobState().y - bobStillY) < 2, 'charging holds you still');
     bob.send('steer', { x: 0, y: 0 });
+    alice.send('test:face', { angle: 0 }); // facing away from Bob: her back is to him
     await sleep(250);
-    const aliceBeforeSling = me().gems; // she sheds a gem a second at 100, so measure right before the hit
+    const aliceBeforeSling = me().gems;
+    bob.messages.length = 0; // she sheds a gem a second at 100, so measure right before the hit
     bob.send('sling', { x: 1, y: 0 });
     await sleep(250);
     const bobAfterSling = bobState().gems;
     const aliceDropped = aliceBeforeSling - me().gems;
-    check(bob.messages.some((m) => m.type === 'credit' && m.message.how === 'sling' && m.message.targetId === alice.sessionId), 'a slingshot hit is credited to whoever landed it');
+    check(bob.messages.some((m) => m.type === 'credit' && m.message.how === 'back' && m.message.targetId === alice.sessionId), 'a slingshot into her back is credited to whoever landed it');
     await sleep(1150);
     const flung = me().x - heavyStart;
     check(flung > 200 && flung > light * 4, `a slingshot launches even a heavy player (${Math.round(flung)} units, where a dash moved them ${Math.round(light)})`);
-    check(aliceDropped >= 15, `and a hit that hard takes lots of their gems (${aliceDropped} of 100)`);
-    check(Math.abs(bobAfterSling - (2 + aliceDropped)) <= 1, `straight into the attacker, after the slingshot's 2-gem cost (Bob has ${bobAfterSling})`);
+    check(aliceDropped >= 15, `and a hit that hard from behind knocks lots of gems out (${aliceDropped} of 100)`);
+    check(bob.messages.some((m) => m.type === 'burst' && m.message.count >= 15) && bobAfterSling <= 4, `they burst out for anyone to grab, not into the attacker (Bob has ${bobAfterSling})`);
     const restX = bobState().x;
     bob.send('dash', { x: -1, y: 0 });
     await sleep(300);
     check(Math.abs(bobState().x - restX) < 3, 'then needs a few seconds to recharge');
 
-    // A slingshot that leaves them under 3 gems (or lands at full power) eats them whole
+    // A hit from behind when you have under 3 gems knocks you out
     await sleep(2700);
-    alice.send('test:setGems', { count: 3 });
+    alice.send('test:setGems', { count: 2 });
     bob.send('test:setGems', { count: 10 });
     await sleep(150);
     bob.send('test:moveTo', { x: 700, y: 1750 });
     alice.send('test:moveTo', { x: 700 + bobState().width + 60, y: 1750 });
+    alice.send('test:face', { angle: 0 });
     await sleep(250);
-    const bobBeforeEat = bobState().gems;
     bob.send('charge');
     await sleep(600);
     bob.send('sling', { x: 1, y: 0 });
     await sleep(400);
-    check(me().state !== 'alive' && bobState().gems === bobBeforeEat - 2 + 3, `a slingshot that leaves them under 3 eats them whole (Bob ${bobBeforeEat} -> ${bobState().gems}, Alice ${me().state})`);
+    check(me().state !== 'alive', `a hit from behind with under 3 gems knocks you out (Alice ${me().state})`);
     await waitFor(() => me().state === 'alive' && !me().spawnProtected, 6000, 'Alice is back');
 
-    // Body-checks: a much bigger player moving into you spills your gems, and can knock you out when you're low
-    async function bodyCheck(bigGems, smallGems) {
+    // Bumper cars: running into someone at speed bounces you both apart, the lighter one farther, and costs no gems
+    async function bump(bigGems, smallGems) {
         alice.send('test:setGems', { count: bigGems });
         bob.send('test:setGems', { count: smallGems });
         await sleep(200);
         alice.send('test:moveTo', { x: 600, y: 400 });
         bob.send('test:moveTo', { x: 600 + me().width + 30, y: 400 + (me().height - bobState().height) / 2 });
+        bob.send('test:face', { angle: Math.PI });
         await sleep(250);
-        const fromX = bobState().x;
+        const aliceFrom = me().x;
+        const bobFrom = bobState().x;
         const had = bobState().gems;
         alice.send('steer', { x: 1, y: 0 });
-        await sleep(700);
+        await sleep(450);
         alice.send('steer', { x: 0, y: 0 });
-        await sleep(300);
-        const result = { lost: had - bobState().gems, moved: Math.round(bobState().x - fromX), state: bobState().state };
-        await sleep(1700);
+        await sleep(900);
+        const result = { lost: had - bobState().gems, bobMoved: Math.round(bobState().x - bobFrom), aliceMoved: Math.round(me().x - aliceFrom) };
+        await sleep(600);
         return result;
     }
-    const sameSize = await bodyCheck(10, 10);
-    check(sameSize.lost === 0 && sameSize.state === 'alive', `walking into someone your size just pushes them (${sameSize.lost} gems lost)`);
-    const bullied = await bodyCheck(100, 10);
-    check(bullied.lost >= 2 && bullied.moved > 150, `a much bigger player barging into you spills your gems (${bullied.lost} lost, knocked ${bullied.moved} units)`);
-    bob.messages.length = 0;
-    const crushed = await bodyCheck(100, 2);
-    check(crushed.state !== 'alive', 'and knocks you out if you have fewer than 3');
-    check(bob.messages.some((m) => m.type === 'credit' && m.message.how === 'crush' && m.message.byId === alice.sessionId), 'and everyone hears who crushed them');
+    const evenBump = await bump(10, 10);
+    check(evenBump.bobMoved > 100 && evenBump.aliceMoved < 30 && evenBump.lost === 0, `running into someone bounces you both apart like bumper cars (him ${evenBump.bobMoved}, you ${evenBump.aliceMoved}, ${evenBump.lost} gems lost)`);
+    const bigBump = await bump(100, 10);
+    check(bigBump.bobMoved > evenBump.bobMoved * 1.2 && bigBump.lost === 0, `a bigger creature bumps harder, but from the front nobody loses gems (${bigBump.bobMoved} units, ${bigBump.lost} lost)`);
     await waitFor(() => bobState().state === 'alive' && !bobState().spawnProtected, 6000, 'Bob is back');
 
     // The 3-gem rule: with fewer than 3 gems, any hit knocks you out

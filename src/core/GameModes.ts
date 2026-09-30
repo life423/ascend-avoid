@@ -7,7 +7,7 @@ import { InputState } from '../types'
 import { getSprite } from '../utils/sprites'
 import { GameEvents } from '../constants/client-constants'
 import { ARENA_RULES, GEMS, PLAYER_COLORS, SHIFT, WORLD } from '../../server/constants/gameConstants'
-import { walk } from '../../server/game/movement'
+import { turnRate, turnToward, walk } from '../../server/game/movement'
 import { OnlineControls } from './OnlineControls'
 import type { MultiplayerManager } from '../managers/MultiplayerManager'
 
@@ -551,24 +551,33 @@ function bounce(position: number, distance: number, low: number, high: number): 
     return low + (p > span ? 2 * span - p : p)
 }
 
-/** Eyes and a smile, so a player never looks like traffic */
-function drawFace(ctx: CanvasRenderingContext2D, left: number, top: number, size: number): void {
-    const eyeY = top + size * 0.42
-    for (const eyeX of [left + size * 0.32, left + size * 0.68]) {
+/** A round creature with eyes toward where it faces, so everyone can see which side is its back */
+function drawCreature(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string, facing: number): void {
+    const r = size / 2
+    ctx.fillStyle = color
+    ctx.beginPath()
+    ctx.arc(x, y, r, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)'
+    ctx.lineWidth = Math.max(1.5, size * 0.06)
+    ctx.stroke()
+    const fx = Math.cos(facing)
+    const fy = Math.sin(facing)
+    for (const side of [-1, 1]) {
+        const ex = x + fx * r * 0.42 - fy * r * 0.36 * side
+        const ey = y + fy * r * 0.42 + fx * r * 0.36 * side
         ctx.fillStyle = '#ffffff'
         ctx.beginPath()
-        ctx.arc(eyeX, eyeY, size * 0.13, 0, Math.PI * 2)
+        ctx.arc(ex, ey, r * 0.26, 0, Math.PI * 2)
         ctx.fill()
+        ctx.strokeStyle = 'rgba(16, 21, 31, 0.55)'
+        ctx.lineWidth = Math.max(1, size * 0.025)
+        ctx.stroke()
         ctx.fillStyle = '#10151f'
         ctx.beginPath()
-        ctx.arc(eyeX, eyeY + size * 0.03, size * 0.065, 0, Math.PI * 2)
+        ctx.arc(ex + fx * r * 0.1, ey + fy * r * 0.1, r * 0.13, 0, Math.PI * 2)
         ctx.fill()
     }
-    ctx.strokeStyle = 'rgba(16, 21, 31, 0.85)'
-    ctx.lineWidth = Math.max(1, size * 0.05)
-    ctx.beginPath()
-    ctx.arc(left + size / 2, top + size * 0.6, size * 0.16, 0.2 * Math.PI, 0.8 * Math.PI)
-    ctx.stroke()
 }
 
 /** A comet: a glowing violet head with a tail trailing back along its path */
@@ -694,6 +703,9 @@ export class MultiplayerMode extends GameMode {
     private charging = false
     private chargeStartedAt = 0
     private aim = { x: 0, y: -1 }
+    /** The aim last sent (your eyes turn toward it for everyone), and which way you face */
+    private sentAim = { x: 0, y: 0 }
+    private localFacing = -Math.PI / 2
     /** Whether this frame's steering came from the keys (then, while charging, they turn the aim) */
     private steerFromKeys = false
     /** Your own flight after a slingshot (for the arc), and everyone's landings (for the impact ring) */
@@ -916,6 +928,11 @@ export class MultiplayerMode extends GameMode {
             const angle = current + Math.max(-step, Math.min(step, turn))
             this.aim = { x: Math.cos(angle), y: Math.sin(angle) }
         }
+        if (this.charging && Math.hypot(this.aim.x - this.sentAim.x, this.aim.y - this.sentAim.y) > 0.1) {
+            // You turn to face your aim, for everyone to see
+            this.sentAim = { ...this.aim }
+            this.multiplayerManager?.sendMessage('aim', { x: this.aim.x, y: this.aim.y })
+        }
         for (const event of events) {
             if (event === 'dash' && now >= this.dashReadyAt && !this.charging) {
                 // A burst the way you're steering (or last went)
@@ -928,6 +945,7 @@ export class MultiplayerMode extends GameMode {
             } else if (event === 'charge' && now >= this.dashReadyAt) {
                 this.charging = true
                 this.chargeStartedAt = now
+                this.sentAim = { x: 0, y: 0 }
                 this.multiplayerManager?.sendMessage('charge', {})
             } else if (event === 'sling' && this.charging) {
                 // Launch where you're aiming: farther the longer you held, flying over the void
@@ -950,6 +968,11 @@ export class MultiplayerMode extends GameMode {
         // Move exactly the way the server does
         const box = { x: this.predicted.x, y: this.predicted.y, width: me.width, height: me.height }
         const dashing = now < this.dashUntil ? { x: this.dashDir.x * this.dashSpeed, y: this.dashDir.y * this.dashSpeed } : null
+        // Facing, worked out like the server does: the aim while charging, along a dash, else where you steer
+        const intent = this.charging ? this.aim : dashing ?? steer
+        if (Math.hypot(intent.x, intent.y) > 0.25) {
+            this.localFacing = turnToward(this.localFacing, Math.atan2(intent.y, intent.x), turnRate(me.width) * deltaTime)
+        }
         walk(box, this.velocity, this.charging ? { x: 0, y: 0 } : steer, deltaTime, state.worldWidth, state.worldHeight, dashing)
 
         // The server shows where you were about a round trip ago: quietly correct any drift from that
@@ -1324,12 +1347,13 @@ export class MultiplayerMode extends GameMode {
         this.drawLanding(ctx, sessionId, flying, centerX, drawn.y + player.height, size, timestamp)
         if (player.charging || (isLocal && this.charging)) this.drawCharge(ctx, isLocal, centerX, centerY, size, timestamp)
         if (isLocal && player.gems < GEMS.SURVIVE_AT) {
-            // One hit from being knocked out: a cracked red outline
+            // One hit from behind from being knocked out: a cracked red ring
             ctx.save()
             ctx.setLineDash([5, 4])
             ctx.strokeStyle = `rgba(255, 90, 90, ${0.45 + 0.25 * Math.sin(timestamp / 250)})`
             ctx.lineWidth = 2
-            roundedRect(ctx, left - 3, top - 3, size + 6, size + 6, size * 0.22)
+            ctx.beginPath()
+            ctx.arc(left + size / 2, top + size / 2, size / 2 + 4, 0, Math.PI * 2)
             ctx.stroke()
             ctx.restore()
         }
@@ -1342,18 +1366,9 @@ export class MultiplayerMode extends GameMode {
                 ctx.fill()
             }
         }
-        if (isLocal) {
-            ctx.drawImage(getSprite('player', 0, timestamp), left, top, size, size)
-        } else {
-            // Players have faces and a white outline, so they never look like traffic
-            ctx.fillStyle = PLAYER_COLORS[player.playerIndex % PLAYER_COLORS.length]
-            roundedRect(ctx, left, top, size, size, size * 0.28)
-            ctx.fill()
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)'
-            ctx.lineWidth = Math.max(1.5, size * 0.07)
-            ctx.stroke()
-            drawFace(ctx, left, top, size)
-        }
+        // A round creature whose eyes show which way it faces (its back is where it's vulnerable)
+        const facing = isLocal ? this.localFacing : (player.facing ?? -Math.PI / 2)
+        drawCreature(ctx, left + size / 2, top + size / 2, size, isLocal ? '#ffffff' : PLAYER_COLORS[player.playerIndex % PLAYER_COLORS.length], facing)
         ctx.globalAlpha = 1
         ctx.font = `600 16px ${FONT}`
         ctx.textAlign = 'center'
@@ -1475,12 +1490,15 @@ export class MultiplayerMode extends GameMode {
         const target = targetIsYou ? 'you' : String(data?.target ?? 'someone')
         const how = String(data?.how ?? '')
         const eaten = how === 'sling' && data?.eaten === true
-        const verb = how === 'crush' ? 'crushed' : eaten ? 'ate' : how === 'sling' || data?.kind === 'sling' ? 'slingshotted' : 'shoved'
-        const where = how === 'edge' ? 'off the edge' : how === 'traffic' ? 'into traffic' : ''
+        const verb = how === 'back' ? 'hit' : how === 'crush' ? 'crushed' : eaten ? 'ate' : how === 'sling' || data?.kind === 'sling' ? 'slingshotted' : 'shoved'
+        const where = how === 'back' ? 'from behind' : how === 'edge' ? 'off the edge' : how === 'traffic' ? 'into traffic' : ''
         if (data?.byId === localId) {
             const name = String(data?.target ?? 'someone')
-            const title = how === 'crush' ? `You crushed ${name}!` : eaten ? `You ate ${name}!` : how === 'sling' ? `Direct hit on ${name}!` : `You wrecked ${name}!`
-            const parts = how === 'sling' ? [`+${Number(data?.gems) || 0} gems`] : [where, data?.out ? 'knocked out' : '']
+            const title = how === 'back' ? `You hit ${name} from behind!` : how === 'crush' ? `You crushed ${name}!` : eaten ? `You ate ${name}!` : how === 'sling' ? `Direct hit on ${name}!` : `You wrecked ${name}!`
+            const parts =
+                how === 'back' ? [data?.out ? 'knocked out' : `${Number(data?.gems) || 0} gems knocked loose`]
+                : how === 'sling' ? [`+${Number(data?.gems) || 0} gems`]
+                : [where, data?.out ? 'knocked out' : '']
             this.banner = { title, sub: parts.filter(Boolean).join(' · ').toUpperCase(), at: performance.now() }
             return
         }

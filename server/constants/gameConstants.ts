@@ -121,6 +121,21 @@ export const GEMS = {
  * players shove harder and are harder to shove.
  */
 export const PUSH = {
+  /**
+   * Front and back. Every creature faces somewhere (its eyes show where). Front and side hits are
+   * bumper cars: both bounce apart, the lighter one farther, and nobody loses gems. A dash or a
+   * slingshot into someone's back (FACING.BACK_ARC) knocks gems out of them whatever their size:
+   * BACK_DASH_SHARE for a dash, BACK_SLING_MIN to BACK_SLING_MAX by charge for a slingshot. Under
+   * GEMS.SURVIVE_AT gems, a hit from behind knocks them out.
+   */
+  BACK_DASH_SHARE: 0.08,
+  BACK_DASH_MAX: 10,
+  BACK_SLING_MIN: 0.15,
+  BACK_SLING_MAX: 0.35,
+  BACK_SLING_CAP: 40,
+  BOUNCE: 110, // a plain dash bounces back off whoever it hits (lighter bounces farther)
+  BUMP: 150, // running into someone at speed: each bounces about this far (split by weight)
+  BUMP_SPEED: 0.5, // ...moving toward them at this share of top speed or more
   DISTANCE: 140, // how far a shove sends someone your own weight (about two hops)...
   MIN_RATIO: 0.3, // ...scaled by your weight over theirs, kept within these limits
   MAX_RATIO: 3,
@@ -235,6 +250,13 @@ export const COMETS = {
   MAX_SLANT: 65, // ...so always well off the lanes' axes
   CURVE_MIN: 20, // degrees a curving comet bends over a whole crossing
   CURVE_MAX: 30,
+} as const;
+
+/** Which way creatures face: small ones turn fast, big ones slower but still fast enough to defend */
+export const FACING = {
+  TURN_SMALL: 14, // radians a second at newcomer size...
+  TURN_BIG: 7, // ...down to this at full size
+  BACK_ARC: 60, // degrees either side of straight behind that count as the back
 } as const;
 
 export const SHIFT = {
@@ -379,6 +401,7 @@ export const GAME_CONSTANTS = {
   TRAFFIC,
   BALLS,
   COMETS,
+  FACING,
   SHIFT,
   KEYS,
   DEVICE_SETTINGS

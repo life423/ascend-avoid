@@ -52,6 +52,10 @@ export class GameRoom extends Room<GameState> {
     });
 
     // Holding DASH past a tap charges a slingshot; letting go launches it (or sliding off cancels)
+    // Where a charge is aimed: the creature turns to face it (no arrow; its eyes give it away)
+    this.onMessage("aim", (client, data: any) => {
+      this.state.players.get(client.sessionId)?.aimAt(Number(data?.x) || 0, Number(data?.y) || 0);
+    });
     this.onMessage("charge", (client) => {
       this.state.players.get(client.sessionId)?.startCharge(Date.now());
     });
@@ -123,6 +127,10 @@ export class GameRoom extends Room<GameState> {
       this.onMessage("test:traffic", (_client, data: any) => {
         // Forces the traffic cycle: "calm", "warning", "wave" or "always"
         this.state.forceTraffic(String(data?.phase ?? ""));
+      });
+      this.onMessage("test:face", (client, data: any) => {
+        const player = playerOf(client);
+        if (player) player.facing = Number(data?.angle) || 0;
       });
       this.onMessage("test:placeComet", (client, data: any) => {
         // Stands the first comet still, centered relative to the player's center

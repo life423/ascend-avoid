@@ -1,7 +1,7 @@
 import * as schema from "@colyseus/schema";
 const { Schema, type } = schema;
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
-import { walk } from "../game/movement.js";
+import { turnRate, turnToward, walk } from "../game/movement.js";
 import type { Box, Direction } from "../game/movement.js";
 
 const { ARENA_RULES, BOTS, GEMS, PLAYER_STATE, PUSH, WORLD } = GAME_CONSTANTS;
@@ -64,6 +64,11 @@ class PlayerSchema extends Schema {
   bursting: boolean;
   /** How the last shove came: "shove", "dash", "sling" or "crush" (for credits) */
   lastShoveKind = "";
+  /** Which way the creature faces (radians): its back is where it's vulnerable */
+  facing: number;
+  /** Server-only: where a charge is aimed (the creature turns to face it) */
+  aimX = 0;
+  aimY = 0;
   private dashSpeed: number = ARENA_RULES.DASH_SPEED;
   /** How hard the dash under way hits: -1 for a plain dash, 0 to 1 for a slingshot's charge */
   private launchPower = -1;
@@ -80,6 +85,7 @@ class PlayerSchema extends Schema {
     this.charging = false;
     this.airborne = false;
     this.bursting = false;
+    this.facing = -Math.PI / 2;
     this.sessionId = sessionId;
     this.playerIndex = playerIndex;
     this.name = `Player ${playerIndex + 1}`;
@@ -271,6 +277,8 @@ class PlayerSchema extends Schema {
     if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering || now < this.dashReadyAt) return;
     this.charging = true;
     this.chargeStartedAt = now;
+    this.aimX = 0;
+    this.aimY = 0;
   }
 
   /** Let go of a charge: launch along (x, y), or the way the player last moved */
@@ -312,6 +320,14 @@ class PlayerSchema extends Schema {
   /** How fast the player is moving right now: walking, dashing and sliding together */
   velocity(): { x: number; y: number } {
     return { x: this.walkX + this.vx, y: this.walkY + this.vy };
+  }
+
+  /** Where a charge is aimed (only while charging): the creature turns to face it */
+  aimAt(x: number, y: number): void {
+    const length = Math.hypot(x, y);
+    if (!this.charging || !Number.isFinite(length) || length < 1e-6) return;
+    this.aimX = x / length;
+    this.aimY = y / length;
   }
 
   /** Where the player is steering */
@@ -395,6 +411,12 @@ class PlayerSchema extends Schema {
     walk(box, velocity, steer, deltaTime, worldWidth, worldHeight, now < this.dashUntil ? { x: this.dashX * this.dashSpeed, y: this.dashY * this.dashSpeed } : null);
     this.walkX = velocity.x;
     this.walkY = velocity.y;
+    // Facing: toward the aim while charging, along a dash or flight, otherwise where you steer
+    const intent = this.charging ? { x: this.aimX, y: this.aimY } : now < this.dashUntil ? { x: this.dashX, y: this.dashY } : { x: this.steerX, y: this.steerY };
+    if (Math.hypot(intent.x, intent.y) > 0.25) {
+      const facing = turnToward(this.facing, Math.atan2(intent.y, intent.x), turnRate(this.width) * deltaTime);
+      if (facing !== this.facing) this.facing = facing;
+    }
     const bursting = now < this.dashUntil;
     if (this.bursting !== bursting) this.bursting = bursting;
     if (box.x !== this.x) this.x = box.x;
@@ -452,6 +474,7 @@ type("boolean")(PlayerSchema.prototype, "sliding");
 type("boolean")(PlayerSchema.prototype, "charging");
 type("boolean")(PlayerSchema.prototype, "airborne");
 type("boolean")(PlayerSchema.prototype, "bursting");
+type("number")(PlayerSchema.prototype, "facing");
 type("boolean")(PlayerSchema.prototype, "isBot");
 
 export { PlayerSchema };

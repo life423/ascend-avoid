@@ -12,7 +12,7 @@ import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 import { moveSpeed } from "../game/movement.js";
 import type { Direction } from "../game/movement.js";
 
-const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS, COMETS } = GAME_CONSTANTS;
+const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS, COMETS, FACING } = GAME_CONSTANTS;
 /** Which way each of a bot's decisions steers it */
 const STEER: Record<Direction, { x: number; y: number }> = {
   up: { x: 0, y: -1 },
@@ -318,70 +318,45 @@ class GameState extends Schema {
   }
 
   /**
-   * A clearly bigger player moving into a smaller one: a hard shove that spills their gems, by how
-   * much bigger (PUSH.BODY_CHECK_TIERS); at BODY_CHECK_KO_AT and up, a victim under GEMS.SURVIVE_AT
-   * gems is knocked out. A dash has already shoved and is plainly fast, so `dashed` skips both.
-   * Returns whether it happened.
-   */
-  private bodyCheck(attacker: PlayerSchema, victim: PlayerSchema, now: number, dashed = false): boolean {
-    const ratio = attacker.width / victim.width;
-    const tier = PUSH.BODY_CHECK_TIERS.find((t) => ratio >= t.at);
-    if (!tier) return false;
-    const dx = victim.x + victim.width / 2 - (attacker.x + attacker.width / 2);
-    const dy = victim.y + victim.height / 2 - (attacker.y + attacker.height / 2);
-    const distance = Math.hypot(dx, dy) || 1;
-    if (!dashed) {
-      // Only when the big player is really moving into them: never for drifting or standing still
-      const moving = attacker.velocity();
-      if ((moving.x * dx + moving.y * dy) / distance < PUSH.BODY_CHECK_SPEED * moveSpeed(attacker.width)) return false;
-    }
-    // The lowest tier only shoves harder; the bigger tiers strip gems, once per immunity window
-    if (tier.spill > 0 && !victim.takeBounty(now)) return false;
-    this.impact(attacker, victim);
-    if (ratio >= PUSH.BODY_CHECK_KO_AT && victim.gems < GEMS.SURVIVE_AT) {
-      this.knockOutWithGems(victim, now);
-      this.credit(victim, "crush", now, attacker.sessionId);
-      return true;
-    }
-    if (!dashed) victim.shoveAlong(dx, dy, tier.shove, attacker.sessionId, now, "crush");
-    const loose = tier.spill > 0 ? Math.min(victim.gems, PUSH.BODY_CHECK_MAX_SPILL, Math.max(1, Math.ceil(victim.gems * tier.spill))) : 0;
-    if (loose > 0) {
-      const centerX = victim.x + victim.width / 2;
-      const centerY = victim.y + victim.height / 2;
-      victim.setGems(victim.gems - loose, this.worldWidth, this.worldHeight);
-      this.sprayGems(centerX, centerY, loose, now, victim.sessionId);
-    }
-    return true;
-  }
-
-  /**
-   * A dash that runs into another player stops there and shoves them along it, farther if the
-   * dasher is heavier; shoving the leader knocks some of their gems loose. Players who just
-   * arrived are passed straight through.
+   * A dash (or a slingshot's flight) that runs into another creature stops at the moment of contact
+   * and shoves them along it, farther if the dasher is heavier (a slingshot mostly ignores weight).
+   * A plain dash also bounces back, bumper-car style. Into their back, it knocks gems out of them,
+   * whatever their size. Players who just arrived are passed straight through.
    */
   private checkDash(dasher: PlayerSchema, fromX: number, fromY: number, now: number): void {
-    // Everything the dash passed over this tick counts, so it can't skip over a small player
-    const path = {
-      x: Math.min(fromX, dasher.x),
-      y: Math.min(fromY, dasher.y),
-      width: dasher.width + Math.abs(dasher.x - fromX),
-      height: dasher.height + Math.abs(dasher.y - fromY),
-    };
-    const along = dasher.dashDirection();
-    const hit: { target: PlayerSchema | null; distance: number } = { target: null, distance: Infinity };
+    // Swept along everything the dash crossed this tick (as circles), so it can't skip past anyone
+    const radius = dasher.width / 2;
+    const startX = fromX + radius;
+    const startY = fromY + radius;
+    const moveX = dasher.x - fromX;
+    const moveY = dasher.y - fromY;
+    const hit: { target: PlayerSchema | null; t: number } = { target: null, t: Infinity };
     this.players.forEach((other) => {
       if (other === dasher || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected) return;
-      if (!(path.x < other.x + other.width && path.x + path.width > other.x && path.y < other.y + other.height && path.y + path.height > other.y)) return;
-      const distance = (other.x - fromX) * along.x + (other.y - fromY) * along.y;
-      if (distance < hit.distance) {
+      const reach = radius + other.width / 2;
+      const fx = startX - (other.x + other.width / 2);
+      const fy = startY - (other.y + other.height / 2);
+      const a = moveX * moveX + moveY * moveY;
+      const b = 2 * (fx * moveX + fy * moveY);
+      const c = fx * fx + fy * fy - reach * reach;
+      let t = 0;
+      if (c > 0) {
+        const disc = b * b - 4 * a * c;
+        if (a < 1e-9 || disc < 0) return;
+        t = (-b - Math.sqrt(disc)) / (2 * a);
+        if (t < 0 || t > 1) return;
+      }
+      if (t < hit.t) {
         hit.target = other;
-        hit.distance = distance;
+        hit.t = t;
       }
     });
     const target = hit.target;
     if (!target) return;
+    const along = dasher.dashDirection();
+    dasher.x = fromX + moveX * hit.t;
+    dasher.y = fromY + moveY * hit.t;
     dasher.endDash();
-    const leader = this.leader();
     const power = dasher.hitPower();
     const weightRatio = dasher.weight() / target.weight();
     const distance =
@@ -390,60 +365,73 @@ class GameState extends Schema {
         : // A slingshot mostly ignores weight: the small player's equalizer
           (PUSH.SLING_PUSH_MIN + (PUSH.SLING_PUSH_MAX - PUSH.SLING_PUSH_MIN) * power) *
           Math.min(PUSH.SLING_WEIGHT_MAX, Math.max(PUSH.SLING_WEIGHT_MIN, Math.pow(weightRatio, PUSH.SLING_WEIGHT_POWER)));
+    const fromBehind = this.isBehind(target, dasher.x + dasher.width / 2, dasher.y + dasher.height / 2);
     if (!target.shoveAlong(along.x, along.y, distance, dasher.sessionId, now, power < 0 ? "dash" : "sling")) return;
     this.impact(dasher, target);
     dasher.dropProtection();
-    // A plain dash from a clearly bigger player spills gems like any body-check
-    if (power < 0) this.bodyCheck(dasher, target, now, true);
-    // A dash only shoves. A slingshot hit also knocks gems loose: more for a harder charge, scaled
-    // a little by size, and at least a couple from the leader; at most once every
-    // PUSH.LEADER_BOUNTY_COOLDOWN_MS per player so nobody can be farmed
-    if (power >= 0 && target.takeBounty(now)) {
-      // A slingshot hit steals gems straight into the attacker: a share, more for a harder charge.
-      // A full-power hit, or one that leaves them under GEMS.SURVIVE_AT, eats them whole
-      const size = Math.min(PUSH.KNOCK_SIZE_MAX, Math.max(PUSH.KNOCK_SIZE_MIN, Math.sqrt(weightRatio)));
-      const share = (PUSH.KNOCK_SHARE_SLING_MIN + (PUSH.KNOCK_SHARE_SLING_MAX - PUSH.KNOCK_SHARE_SLING_MIN) * power) * size;
-      let taken = target.gems > 0 ? Math.min(Math.max(1, Math.ceil(target.gems * share)), PUSH.KNOCK_MAX_SLING) : 0;
-      if (target === leader) taken = Math.max(taken, PUSH.LEADER_BOUNTY_MIN);
-      taken = Math.min(taken, target.gems);
-      const eaten = power >= 0.97 || target.gems - taken < GEMS.SURVIVE_AT;
-      if (eaten) taken = target.gems;
-      const centerX = target.x + target.width / 2;
-      const centerY = target.y + target.height / 2;
-      const kept = Math.min(taken, Math.max(0, GEMS.MAX_HELD - dasher.gems));
-      if (kept > 0) dasher.setGems(dasher.gems + kept, this.worldWidth, this.worldHeight);
-      if (eaten) {
-        target.setGems(0, this.worldWidth, this.worldHeight);
-        target.knockOut(now);
-      } else {
-        target.setGems(target.gems - taken, this.worldWidth, this.worldHeight);
-      }
-      // A full-size attacker can't hold more: the rest bursts out where the target was
-      if (taken > kept) this.sprayGems(centerX, centerY, taken - kept, now);
-      this.credit(target, "sling", now, dasher.sessionId, { gems: kept, eaten });
+    // Bumper cars: a plain dash bounces back off whoever it hits, the lighter one farther
+    if (power < 0) {
+      dasher.shoveAlong(-along.x, -along.y, PUSH.BOUNCE * Math.min(PUSH.MAX_RATIO, Math.max(PUSH.MIN_RATIO, 1 / weightRatio)), target.sessionId, now, "bump");
     }
+    if (fromBehind) this.hitFromBehind(target, dasher, power, now);
   }
 
-  /** Players walking into each other are gently pushed apart, the lighter one more (dashing is what shoves) */
+  /** Whether a hit coming from (x, y) lands on the creature's back: within FACING.BACK_ARC of straight behind it */
+  isBehind(victim: PlayerSchema, x: number, y: number): boolean {
+    const dx = x - (victim.x + victim.width / 2);
+    const dy = y - (victim.y + victim.height / 2);
+    const distance = Math.hypot(dx, dy) || 1;
+    const facingThem = (dx * Math.cos(victim.facing) + dy * Math.sin(victim.facing)) / distance;
+    return facingThem <= -Math.cos((FACING.BACK_ARC * Math.PI) / 180);
+  }
+
+  /**
+   * A dash or slingshot into someone's back knocks gems out of them, whatever their size: a few
+   * for a dash, lots for a charged slingshot, bursting out for anyone to grab. Under
+   * GEMS.SURVIVE_AT gems, it knocks them out. At most once per immunity window, so nobody is farmed.
+   */
+  private hitFromBehind(victim: PlayerSchema, attacker: PlayerSchema, power: number, now: number): void {
+    if (!victim.takeBounty(now)) return;
+    if (victim.gems < GEMS.SURVIVE_AT) {
+      this.knockOutWithGems(victim, now);
+      this.credit(victim, "back", now, attacker.sessionId, { gems: 0 });
+      return;
+    }
+    const share = power < 0 ? PUSH.BACK_DASH_SHARE : PUSH.BACK_SLING_MIN + (PUSH.BACK_SLING_MAX - PUSH.BACK_SLING_MIN) * power;
+    const loose = Math.min(victim.gems, power < 0 ? PUSH.BACK_DASH_MAX : PUSH.BACK_SLING_CAP, Math.max(power < 0 ? 1 : 2, Math.ceil(victim.gems * share)));
+    const centerX = victim.x + victim.width / 2;
+    const centerY = victim.y + victim.height / 2;
+    victim.setGems(victim.gems - loose, this.worldWidth, this.worldHeight);
+    this.sprayGems(centerX, centerY, loose, now, victim.sessionId);
+    this.credit(victim, "back", now, attacker.sessionId, { gems: loose });
+  }
+
+  /**
+   * Creatures that touch are pushed apart (as circles), the lighter one more. Running into someone
+   * at speed is a bumper-car bump: both bounce apart, the lighter one farther. No gems: only a dash
+   * or slingshot into someone's back knocks those out.
+   */
   private nudgeApart(player: PlayerSchema, now: number): void {
     if (player.state !== PLAYER_STATE.ALIVE || player.spawnProtected) return;
     this.players.forEach((other) => {
       if (other === player || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected) return;
-      const overlapX = Math.min(player.x + player.width, other.x + other.width) - Math.max(player.x, other.x);
-      const overlapY = Math.min(player.y + player.height, other.y + other.height) - Math.max(player.y, other.y);
-      if (overlapX <= 0 || overlapY <= 0) return;
-      // A clearly bigger player barging in hits hard instead
-      if (this.bodyCheck(player, other, now)) return;
+      const dx = other.x + other.width / 2 - (player.x + player.width / 2);
+      const dy = other.y + other.height / 2 - (player.y + player.height / 2);
+      const distance = Math.hypot(dx, dy);
+      const overlap = (player.width + other.width) / 2 - distance;
+      if (overlap <= 0) return;
+      const nx = distance > 1e-6 ? dx / distance : 1;
+      const ny = distance > 1e-6 ? dy / distance : 0;
       const share = other.weight() / (player.weight() + other.weight());
-      if (overlapX < overlapY) {
-        const sign = player.x + player.width / 2 < other.x + other.width / 2 ? -1 : 1;
-        player.nudge(sign * overlapX * share, 0, this.worldWidth, this.worldHeight);
-        other.nudge(-sign * overlapX * (1 - share), 0, this.worldWidth, this.worldHeight);
-      } else {
-        const sign = player.y + player.height / 2 < other.y + other.height / 2 ? -1 : 1;
-        player.nudge(0, sign * overlapY * share, this.worldWidth, this.worldHeight);
-        other.nudge(0, -sign * overlapY * (1 - share), this.worldWidth, this.worldHeight);
+      const moving = player.velocity();
+      if (!player.sliding && !other.sliding && moving.x * nx + moving.y * ny >= PUSH.BUMP_SPEED * moveSpeed(player.width)) {
+        other.shoveAlong(nx, ny, PUSH.BUMP * 2 * (1 - share), player.sessionId, now, "bump");
+        player.shoveAlong(-nx, -ny, PUSH.BUMP * 2 * share, other.sessionId, now, "bump");
+        this.impact(player, other);
+        return;
       }
+      player.nudge(-nx * overlap * share, -ny * overlap * share, this.worldWidth, this.worldHeight);
+      other.nudge(nx * overlap * (1 - share), ny * overlap * (1 - share), this.worldWidth, this.worldHeight);
     });
   }
 
