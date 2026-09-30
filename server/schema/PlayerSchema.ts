@@ -4,7 +4,7 @@ import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 import { turnRate, turnToward, walk } from "../game/movement.js";
 import type { Box, Direction } from "../game/movement.js";
 
-const { ARENA_RULES, BOTS, GEMS, PLAYER_STATE, PUSH, WORLD } = GAME_CONSTANTS;
+const { ARENA_RULES, BOTS, GEMS, INHALE, PLAYER_STATE, PUSH, WORLD } = GAME_CONSTANTS;
 
 
 /** A player's size: small to start, growing with the square root of their gems, up to GEMS.MAX_SIZE */
@@ -70,6 +70,11 @@ class PlayerSchema extends Schema {
   inhaling: boolean;
   /** What's in your mouth to spit: "bomb" (or "lit" once its fuse is running), or "" */
   mouth: string;
+  /** Whose gems are streaming into your mouth right now ("" when nobody's) */
+  stealingFrom: string;
+  /** Server-only: gems part-stolen, and how many this run of stealing has taken */
+  stealProgress = 0;
+  stolenRun = 0;
   /** Server-only: when this breath runs out, and when you can spit again */
   inhaleStopAt = 0;
   spitReadyAt = 0;
@@ -95,6 +100,7 @@ class PlayerSchema extends Schema {
     this.facing = -Math.PI / 2;
     this.inhaling = false;
     this.mouth = "";
+    this.stealingFrom = "";
     this.sessionId = sessionId;
     this.playerIndex = playerIndex;
     this.name = `Player ${playerIndex + 1}`;
@@ -280,7 +286,7 @@ class PlayerSchema extends Schema {
 
   /** Queue a dash the browser asked for: several hops' worth at once (see ARENA_RULES.DASH_*) */
   requestDash(x: number, y: number): void {
-    if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering) return;
+    if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering || this.inhaling) return;
     const length = Math.hypot(x, y);
     this.queuedDash = Number.isFinite(length) && length > 1e-6 ? { x: x / length, y: y / length } : { x: this.facingX, y: this.facingY };
   }
@@ -432,7 +438,9 @@ class PlayerSchema extends Schema {
     }
     this.queuedDash = null;
     // Charging holds you still: the stick aims instead
-    const steer = this.recovering || this.charging || this.inhaling ? { x: 0, y: 0 } : { x: this.steerX, y: this.steerY };
+    // Inhaling: a slow crawl
+    const crawl = this.inhaling ? INHALE.CRAWL : 1;
+    const steer = this.recovering || this.charging ? { x: 0, y: 0 } : { x: this.steerX * crawl, y: this.steerY * crawl };
     const box = { x: this.x, y: this.y, width: this.width, height: this.height };
     const velocity = { x: this.walkX, y: this.walkY };
     walk(box, velocity, steer, deltaTime, worldWidth, worldHeight, now < this.dashUntil ? { x: this.dashX * this.dashSpeed, y: this.dashY * this.dashSpeed } : null);
@@ -441,7 +449,7 @@ class PlayerSchema extends Schema {
     // Facing: toward the aim while charging, along a dash or flight, otherwise where you steer
     const intent = this.charging || this.inhaling ? { x: this.aimX, y: this.aimY } : now < this.dashUntil ? { x: this.dashX, y: this.dashY } : { x: this.steerX, y: this.steerY };
     if (Math.hypot(intent.x, intent.y) > 0.25) {
-      const facing = turnToward(this.facing, Math.atan2(intent.y, intent.x), turnRate(this.width) * deltaTime);
+      const facing = turnToward(this.facing, Math.atan2(intent.y, intent.x), turnRate(this.width) * (this.inhaling ? INHALE.TURN : 1) * deltaTime);
       if (facing !== this.facing) this.facing = facing;
     }
     const bursting = now < this.dashUntil;
@@ -504,6 +512,7 @@ type("boolean")(PlayerSchema.prototype, "bursting");
 type("number")(PlayerSchema.prototype, "facing");
 type("boolean")(PlayerSchema.prototype, "inhaling");
 type("string")(PlayerSchema.prototype, "mouth");
+type("string")(PlayerSchema.prototype, "stealingFrom");
 type("boolean")(PlayerSchema.prototype, "isBot");
 
 export { PlayerSchema };

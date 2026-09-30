@@ -60,7 +60,7 @@ try {
 
     // This world starts with no loose gems, no bots, and traffic that can't hit anyone (the test
     // hits players itself), so nothing happens by accident and every count is exact
-    const alice = await join('Alice', { testFieldGems: 0, testCalm: true, testBots: 0, testTraffic: 'always' });
+    const alice = await join('Alice', { testFieldGems: 0, testCalm: true, testBots: 0, testTraffic: 'always', testBombs: true });
     const state = () => alice.state;
     const me = () => state().players.get(alice.sessionId);
     await waitFor(() => state().players?.size === 1, 2000, 'the first visitor is in the world right away');
@@ -429,6 +429,45 @@ try {
     await sleep(900);
     alice.send('exhale');
     check(bobState().state !== 'alive' && me().gems >= aliceBeforeGulp + 4, `inhaling swallows a smaller creature whole (Alice ${aliceBeforeGulp} then ${me().gems}, Bob ${bobState().state})`);
+    await waitFor(() => bobState().state === 'alive' && !bobState().spawnProtected, 6000, 'Bob is back');
+
+    // Gravity theft: inhale up close at anyone too big to swallow and their gems stream into you
+    alice.send('test:setGems', { count: 40 });
+    bob.send('test:setGems', { count: 40 });
+    await sleep(200);
+    alice.send('test:moveTo', { x: 700, y: 1750 });
+    alice.send('test:face', { angle: 0 });
+    bob.send('test:moveTo', { x: 700 + me().width + 20, y: 1750 });
+    bob.send('test:face', { angle: 0 });
+    await sleep(250);
+    const bobBeforeTheft = bobState().gems;
+    const aliceBeforeTheft = me().gems;
+    alice.send('inhale');
+    await sleep(700);
+    const streaming = me().stealingFrom === bob.sessionId;
+    await sleep(800);
+    alice.send('exhale');
+    await sleep(150);
+    const stolen = bobBeforeTheft - bobState().gems;
+    check(streaming && stolen >= 4 && me().gems - aliceBeforeTheft >= 4, `inhaling up close steals gems from anyone in front of your mouth (${stolen} stolen)`);
+    // Head-on, both inhaling each other: the stronger pull takes the whole stream
+    alice.send('test:setGems', { count: 50 });
+    bob.send('test:setGems', { count: 30 });
+    await sleep(200);
+    bob.send('test:moveTo', { x: 700 + me().width + 20, y: 1750 + (me().height - bobState().height) / 2 });
+    bob.send('test:face', { angle: Math.PI });
+    alice.send('test:face', { angle: 0 });
+    await sleep(250);
+    const aliceBeforeTug = me().gems;
+    const bobBeforeTug = bobState().gems;
+    alice.send('inhale');
+    bob.send('inhale');
+    await sleep(1500);
+    alice.send('exhale');
+    bob.send('exhale');
+    await sleep(150);
+    check(me().gems > aliceBeforeTug + 3 && bobState().gems < bobBeforeTug - 3, `head-on, the stronger pull wins the tug-of-war (Alice ${aliceBeforeTug} then ${me().gems}, Bob ${bobBeforeTug} then ${bobState().gems})`);
+    check(bobState().state !== 'alive', 'and once the loser is drained small enough, it gets swallowed whole');
     await waitFor(() => bobState().state === 'alive' && !bobState().spawnProtected, 6000, 'Bob is back');
 
     // Bumper cars: running into someone at speed bounces you both apart, the lighter one farther, and costs no gems

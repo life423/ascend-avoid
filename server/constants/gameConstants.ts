@@ -247,7 +247,7 @@ export const FACING = {
 } as const;
 
 /**
- * Inhale (hold the button): you stand still, turn to aim your mouth, and pull in everything in a
+ * Inhale (hold the button): you crawl (at CRAWL of your speed, turning slower) aiming your mouth, and pull in everything in a
  * cone in front of you. Gems are swallowed; creatures EAT_RATIO times smaller are swallowed whole
  * (all their gems become yours; they can escape if they run early); a bomb stays in your mouth,
  * safe until you spit it. Bigger creatures reach farther.
@@ -262,6 +262,19 @@ export const INHALE = {
   PULL_PREY_CLOSE: 250,
   EAT_RATIO: 1.25,
   MAX_MS: 3000, // how long one breath lasts
+  CRAWL: 0.3, // how fast you move while inhaling, as a share of your speed...
+  TURN: 0.6, // ...and how fast you turn
+  /**
+   * Gravity theft: up close, inhaling steals gems from the nearest creature in front of your mouth
+   * that's too big to swallow, STEAL_RATE a second times the square root of your weight (bigger
+   * pulls harder, but not in proportion). Head-on, both inhaling each other, the stronger pull takes
+   * the whole stream; within TUG_EDGE of each other, neither gains.
+   */
+  STEAL_REACH: 60, // the gap between you and them
+  STEAL_ARC: 50, // degrees either side of where you face
+  STEAL_RATE: 4,
+  TUG_EDGE: 1.08,
+  STOLE_NOTICE: 5, // a theft this big gets a banner and a line in the feed
 } as const;
 
 /**
@@ -273,6 +286,7 @@ export const INHALE = {
  * can still be inhaled, but its fuse keeps ticking. A bomb that has gone off turns up somewhere else.
  */
 export const BOMBS = {
+  ENABLED: false, // switched off while inhale-only combat is tested (the smoke test switches them on in its world)
   COUNT: 6,
   RADIUS: 15,
   SPIT_SPEED: 620,

@@ -45,18 +45,18 @@ export class DrawerUI {
                         <p>On a computer, use the <span class="highlight">arrow keys</span> or <span class="highlight">WASD</span>, or hold the mouse button and your player heads for the cursor.</p>
 
                         <h4>Gems</h4>
-                        <p>Gems are your score. Every one you grab makes you a little bigger and heavier. Big players shove harder and see more of the arena, but they're also bigger targets, so growth is power and risk at once. Bigger creatures can swallow smaller ones, but anyone can knock gems loose from anyone with a well-placed bomb. Full size is as big as anyone gets: at full size you can't pick up more gems, and the biggest players slowly shed them.</p>
+                        <p>Gems are your score. Every one you grab makes you a little bigger and heavier. Big players shove harder and see more of the arena, but they're also bigger targets, so growth is power and risk at once. Bigger creatures can swallow smaller ones, but anyone can steal gems from anyone by inhaling up close from where their mouth isn't pointing. Full size is as big as anyone gets: at full size you can't pick up more gems, and the biggest players slowly shed them.</p>
 
                         <h4>Dash and shove</h4>
                         <p>Tap the <span class="highlight">right side</span> of the screen (<span class="highlight">space</span> on a computer) to dash: a quick burst that costs a gem. Dash into another player to shove them. The heavier you are, the farther they go.</p>
                         <p>The leader wears a crown. A dash just shoves, but shoving someone off an island during an arena shift costs them plenty.</p>
 
-                        <h4>Inhale and bombs</h4>
-                        <p>Hold the button to <span class="highlight">inhale</span>: you stand still and pull in everything in front of your mouth. Gems are swallowed, and so are creatures clearly smaller than you, along with all their gems.</p>
-                        <p>Inhale a <span class="highlight">bomb</span> and it's safe in your mouth for as long as you like. Tap to spit it: it slides, and its fuse starts. When it goes off, everyone inside the red circle is knocked flying and has gems knocked loose, more near the middle, and under 3 gems it knocks you out. Anyone can nudge a bomb by walking into it or kick it with a dash, and a lit bomb can be inhaled, but it keeps ticking. Tap with an empty mouth to dash.</p>
+                        <h4>Inhale</h4>
+                        <p>Hold the button to <span class="highlight">inhale</span>: you slow to a crawl and pull in everything in front of your mouth. Gems are swallowed, and so are creatures clearly smaller than you, along with all their gems.</p>
+                        <p>Get right up close to anyone too big to swallow and inhale to <span class="highlight">steal</span> their gems: they stream straight into your mouth. Bigger creatures pull harder, so head-on, the stronger pull wins the tug-of-war. Small creatures turn faster, so steal from the side, where their mouth isn't pointing, and get away before they turn around. Tap to dash.</p>
 
                         <h4>Getting hit</h4>
-                        <p>Bumps and dashes just knock you around, but a bomb's blast knocks gems loose, and being swallowed costs you everything. Falling off the edge of the floor during an arena shift is a real hit: you skid, drop half your gems, and blink for a moment while nothing can touch you.</p>
+                        <p>Bumps and dashes just knock you around, but anyone inhaling right up against you can steal your gems, and being swallowed costs you everything. Falling off the edge of the floor during an arena shift is a real hit: you skid, drop half your gems, and blink for a moment while nothing can touch you.</p>
                         <p>Your dropped gems take a second before you can grab them back, but anyone else can grab them right away. With fewer than 3 gems, a hit knocks you out (a dashed red outline warns you), and you're back in two seconds.</p>
 
                         <h4>Arena shifts</h4>

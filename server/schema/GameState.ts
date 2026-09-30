@@ -126,9 +126,7 @@ class GameState extends Schema {
       comet.launch(this.worldWidth, this.worldHeight, i >= COMETS.STRAIGHT, true);
       this.comets.push(comet);
     }
-    for (let i = 0; i < BOMBS.COUNT; i++) {
-      this.bombs.push(new BombSchema(80 + Math.random() * (this.worldWidth - 160), 80 + Math.random() * (this.worldHeight - 160)));
-    }
+    if (BOMBS.ENABLED) this.enableBombs();
     if (this.trafficOn) {
       // Traffic comes in waves, and the world starts with one under way
       this.trafficWave = "wave";
@@ -323,7 +321,10 @@ class GameState extends Schema {
   private updateInhales(now: number, deltaTime: number): void {
     const cone = Math.cos((INHALE.ARC * Math.PI) / 180);
     this.players.forEach((eater) => {
-      if (!eater.inhaling || eater.state !== PLAYER_STATE.ALIVE) return;
+      if (!eater.inhaling || eater.state !== PLAYER_STATE.ALIVE) {
+        if (eater.stealingFrom) this.endTheft(eater, now);
+        return;
+      }
       const fx = Math.cos(eater.facing);
       const fy = Math.sin(eater.facing);
       const mouthX = eater.x + eater.width / 2 + fx * eater.width * 0.3;
@@ -373,7 +374,67 @@ class GameState extends Schema {
         const pull = (INHALE.PULL_PREY + INHALE.PULL_PREY_CLOSE * Math.max(0, 1 - d / reach)) * deltaTime;
         prey.nudge(((mouthX - px) / d) * pull, ((mouthY - py) / d) * pull, this.worldWidth, this.worldHeight);
       });
+      this.steal(eater, now, deltaTime);
     });
+  }
+
+  /** Whether `thief` is inhaling at `victim` up close: in front of its mouth, and too big to swallow */
+  private canSteal(thief: PlayerSchema, victim: PlayerSchema): boolean {
+    if (!thief.inhaling || thief.state !== PLAYER_STATE.ALIVE || victim.state !== PLAYER_STATE.ALIVE || victim.spawnProtected) return false;
+    if (victim.width * INHALE.EAT_RATIO <= thief.width) return false;
+    const dx = victim.x + victim.width / 2 - (thief.x + thief.width / 2);
+    const dy = victim.y + victim.height / 2 - (thief.y + thief.height / 2);
+    const d = Math.hypot(dx, dy);
+    if (d - (thief.width + victim.width) / 2 > INHALE.STEAL_REACH) return false;
+    return d < 1e-6 || (dx * Math.cos(thief.facing) + dy * Math.sin(thief.facing)) / d >= Math.cos((INHALE.STEAL_ARC * Math.PI) / 180);
+  }
+
+  /**
+   * Gravity theft: the nearest creature up close in front of the mouth has its gems streamed into the
+   * thief. Head-on, both inhaling each other, only the stronger pull gets the stream (nearly equal
+   * pulls stall).
+   */
+  private steal(thief: PlayerSchema, now: number, deltaTime: number): void {
+    let victim: PlayerSchema | null = null;
+    let nearest = Infinity;
+    this.players.forEach((other) => {
+      if (other === thief || other.gems <= 0 || !this.canSteal(thief, other)) return;
+      const d = Math.hypot(other.x - thief.x, other.y - thief.y);
+      if (d < nearest) {
+        nearest = d;
+        victim = other;
+      }
+    });
+    const target = victim as PlayerSchema | null;
+    const pull = Math.sqrt(thief.weight());
+    const wins = !!target && (!this.canSteal(target, thief) || pull >= Math.sqrt(target.weight()) * INHALE.TUG_EDGE);
+    const from = target && wins && thief.gems < GEMS.MAX_HELD ? target.sessionId : "";
+    if (from !== thief.stealingFrom) this.endTheft(thief, now, from);
+    if (!target || !from) return;
+    thief.stealProgress += deltaTime * INHALE.STEAL_RATE * pull;
+    while (thief.stealProgress >= 1 && target.gems > 0 && thief.gems < GEMS.MAX_HELD) {
+      thief.stealProgress -= 1;
+      target.setGems(target.gems - 1, this.worldWidth, this.worldHeight);
+      thief.setGems(thief.gems + 1, this.worldWidth, this.worldHeight);
+      thief.stolenRun += 1;
+    }
+  }
+
+  /** A run of stealing ends (or switches to someone else): a big one gets a banner and a line in the feed */
+  private endTheft(thief: PlayerSchema, now: number, next = ""): void {
+    const victim = thief.stealingFrom ? this.players.get(thief.stealingFrom) : undefined;
+    if (victim && thief.stolenRun >= INHALE.STOLE_NOTICE) this.credit(victim, "stole", now, thief.sessionId, { gems: thief.stolenRun });
+    thief.stolenRun = 0;
+    thief.stealProgress = 0;
+    if (thief.stealingFrom !== next) thief.stealingFrom = next;
+  }
+
+  /** Bombs in the arena (switched off by BOMBS.ENABLED; the automated test switches them on) */
+  enableBombs(): void {
+    if (this.bombs.length > 0) return;
+    for (let i = 0; i < BOMBS.COUNT; i++) {
+      this.bombs.push(new BombSchema(80 + Math.random() * (this.worldWidth - 160), 80 + Math.random() * (this.worldHeight - 160)));
+    }
   }
 
   /** Swallowed whole: knocked out, and all their gems go to the eater (what it can't hold bursts out) */
@@ -547,6 +608,17 @@ class GameState extends Schema {
       return;
     }
     if (bot.inhaling || Math.random() > 0.12) return;
+    // Someone stealing from this bot: usually it turns and fights back
+    let thief: PlayerSchema | null = null;
+    this.players.forEach((other) => {
+      if (other.stealingFrom === bot.sessionId) thief = other;
+    });
+    const robber = thief as PlayerSchema | null;
+    if (robber && Math.random() < 0.6) {
+      bot.startInhale(now, 900 + Math.random() * 600);
+      bot.aimAt(robber.x + robber.width / 2 - cx, robber.y + robber.height / 2 - cy);
+      return;
+    }
     const reach = INHALE.REACH + bot.width * INHALE.REACH_PER_SIZE;
     let want: { x: number; y: number } | null = null;
     let nearest = reach;
@@ -557,6 +629,16 @@ class GameState extends Schema {
         nearest = d;
         want = { x: other.x + other.width / 2, y: other.y + other.height / 2 };
       }
+    });
+    // Nothing to swallow: steal from someone close who isn't facing this way
+    this.players.forEach((other) => {
+      if (want || other === bot || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected || other.gems < 3) return;
+      const ox = other.x + other.width / 2;
+      const oy = other.y + other.height / 2;
+      const d = Math.hypot(ox - cx, oy - cy);
+      if (d - (bot.width + other.width) / 2 > INHALE.STEAL_REACH + 20) return;
+      if (((cx - ox) * Math.cos(other.facing) + (cy - oy) * Math.sin(other.facing)) / Math.max(d, 1e-6) > 0.3) return;
+      want = { x: ox, y: oy };
     });
     this.bombs.forEach((bomb) => {
       if (bomb.heldBy || bomb.respawnAt || bomb.lit()) return;

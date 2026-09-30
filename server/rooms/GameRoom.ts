@@ -35,6 +35,8 @@ export class GameRoom extends Room<GameState> {
     if (!IS_PRODUCTION && options.testCalm === true) this.state.trafficHits = false;
     // ...and one where traffic never goes calm
     if (!IS_PRODUCTION && options.testTraffic === "always") this.state.forceTraffic("always");
+    // ...and one with bombs (switched off in live worlds)
+    if (!IS_PRODUCTION && options.testBombs === true) this.state.enableBombs();
     // ...and one with no bots
     if (!IS_PRODUCTION && Number.isInteger(options.testBots)) this.state.botFill = options.testBots;
     // Moments worth telling everyone about (who shoved whom off the edge, who took the jackpot)

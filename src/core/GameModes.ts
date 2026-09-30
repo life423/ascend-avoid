@@ -1049,12 +1049,7 @@ export class MultiplayerMode extends GameMode {
             this.multiplayerManager?.sendMessage('aim', { x: this.aim.x, y: this.aim.y })
         }
         for (const event of events) {
-            if (event === 'dash' && now >= this.dashReadyAt && !this.charging && me.mouth) {
-                // Something in your mouth: spit it the way you're facing
-                this.multiplayerManager?.sendMessage('spit', { x: Math.cos(this.localFacing), y: Math.sin(this.localFacing) })
-                this.cooldownMs = BOMBS.SPIT_COOLDOWN_MS
-                this.dashReadyAt = now + this.cooldownMs
-            } else if (event === 'dash' && now >= this.dashReadyAt && !this.charging) {
+            if (event === 'dash' && now >= this.dashReadyAt && !this.charging) {
                 // A burst the way you're steering (or last went)
                 this.dashDir = steering > 0.05 ? { x: steer.x / steering, y: steer.y / steering } : { ...this.facing }
                 this.dashSpeed = ARENA_RULES.DASH_SPEED
@@ -1083,9 +1078,10 @@ export class MultiplayerMode extends GameMode {
         // Facing, worked out like the server does: the aim while charging, along a dash, else where you steer
         const intent = this.charging ? this.aim : dashing ?? steer
         if (Math.hypot(intent.x, intent.y) > 0.25) {
-            this.localFacing = turnToward(this.localFacing, Math.atan2(intent.y, intent.x), turnRate(me.width) * deltaTime)
+            this.localFacing = turnToward(this.localFacing, Math.atan2(intent.y, intent.x), turnRate(me.width) * (this.charging ? INHALE.TURN : 1) * deltaTime)
         }
-        walk(box, this.velocity, this.charging ? { x: 0, y: 0 } : steer, deltaTime, state.worldWidth, state.worldHeight, dashing)
+        // Inhaling: a slow crawl
+        walk(box, this.velocity, this.charging ? { x: steer.x * INHALE.CRAWL, y: steer.y * INHALE.CRAWL } : steer, deltaTime, state.worldWidth, state.worldHeight, dashing)
 
         // The server shows where you were about a round trip ago: quietly correct any drift from that
         this.history.push({ at: now, x: box.x, y: box.y })
@@ -1241,6 +1237,7 @@ export class MultiplayerMode extends GameMode {
             if (!present.has(id)) this.lastCenters.delete(id)
         }
 
+        this.drawTheft(ctx, state, timestamp)
         this.drawBlasts(ctx, timestamp)
         this.drawBursts(ctx, timestamp)
         this.drawPickups(ctx, me, timestamp)
@@ -1579,13 +1576,14 @@ export class MultiplayerMode extends GameMode {
         const target = targetIsYou ? 'you' : String(data?.target ?? 'someone')
         const how = String(data?.how ?? '')
         const eaten = how === 'sling' && data?.eaten === true
-        const verb = how === 'ate' ? 'swallowed' : how === 'bomb' ? 'blew up' : how === 'crush' ? 'crushed' : eaten ? 'ate' : how === 'sling' || data?.kind === 'sling' ? 'slingshotted' : 'shoved'
-        const where = how === 'edge' ? 'off the edge' : how === 'traffic' ? 'into traffic' : ''
+        const verb = how === 'stole' ? 'robbed' : how === 'ate' ? 'swallowed' : how === 'bomb' ? 'blew up' : how === 'crush' ? 'crushed' : eaten ? 'ate' : how === 'sling' || data?.kind === 'sling' ? 'slingshotted' : 'shoved'
+        const where = how === 'stole' ? `of ${Number(data?.gems) || 0} gems` : how === 'edge' ? 'off the edge' : how === 'traffic' ? 'into traffic' : ''
         if (data?.byId === localId) {
             const name = String(data?.target ?? 'someone')
-            const title = how === 'ate' ? `You swallowed ${name}!` : how === 'bomb' ? `You blew up ${name}!` : how === 'crush' ? `You crushed ${name}!` : eaten ? `You ate ${name}!` : how === 'sling' ? `Direct hit on ${name}!` : `You wrecked ${name}!`
+            const title = how === 'stole' ? `You stole ${Number(data?.gems) || 0} gems from ${name}!` : how === 'ate' ? `You swallowed ${name}!` : how === 'bomb' ? `You blew up ${name}!` : how === 'crush' ? `You crushed ${name}!` : eaten ? `You ate ${name}!` : how === 'sling' ? `Direct hit on ${name}!` : `You wrecked ${name}!`
             const parts =
-                how === 'ate' ? [`+${Number(data?.gems) || 0} gems`]
+                how === 'stole' ? []
+                : how === 'ate' ? [`+${Number(data?.gems) || 0} gems`]
                 : how === 'bomb' ? [data?.out ? 'knocked out' : `${Number(data?.gems) || 0} gems knocked loose`]
                 : how === 'sling' ? [`+${Number(data?.gems) || 0} gems`]
                 : [where, data?.out ? 'knocked out' : '']
@@ -1836,6 +1834,46 @@ export class MultiplayerMode extends GameMode {
         ctx.textBaseline = 'middle'
         ctx.fillText(text, canvas.width / 2, y + 15)
         ctx.restore()
+    }
+
+    /** Gravity theft: gems streaming out of whoever is being stolen from, into the thief's mouth */
+    private drawTheft(ctx: CanvasRenderingContext2D, state: any, timestamp: number): void {
+        state.players.forEach((thief: any, id: string) => {
+            if (!thief.stealingFrom) return
+            const victim = state.players.get(thief.stealingFrom)
+            if (!victim) return
+            const from = this.drawnPositions.get(thief.stealingFrom) ?? victim
+            const to = this.drawnPositions.get(id) ?? thief
+            const fromX = from.x + victim.width / 2
+            const fromY = from.y + victim.height / 2
+            const toX = to.x + thief.width / 2
+            const toY = to.y + thief.height / 2
+            ctx.save()
+            ctx.strokeStyle = 'rgba(255, 209, 102, 0.35)'
+            ctx.lineWidth = 3
+            ctx.setLineDash([6, 8])
+            ctx.lineDashOffset = -timestamp / 20
+            ctx.beginPath()
+            ctx.moveTo(fromX, fromY)
+            ctx.lineTo(toX, toY)
+            ctx.stroke()
+            ctx.setLineDash([])
+            ctx.fillStyle = '#ffd166'
+            for (let i = 0; i < 4; i++) {
+                const t = (timestamp / 380 + i / 4) % 1
+                const gx = fromX + (toX - fromX) * t
+                const gy = fromY + (toY - fromY) * t
+                const g = 4.5 * (1 - t * 0.4)
+                ctx.beginPath()
+                ctx.moveTo(gx, gy - g)
+                ctx.lineTo(gx + g * 0.7, gy)
+                ctx.lineTo(gx, gy + g)
+                ctx.lineTo(gx - g * 0.7, gy)
+                ctx.closePath()
+                ctx.fill()
+            }
+            ctx.restore()
+        })
     }
 
     /** Bomb blasts: a bright flash, then a ring racing out to the edge of the blast */
