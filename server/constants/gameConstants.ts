@@ -195,6 +195,16 @@ export const TRAFFIC = {
   LANES: 14, // in each direction (across and down), so lanes are 150 units apart
   MIN_GAP: 220, // between obstacles in the same lane
   STAGGER: 150, // between an entering obstacle and those in the lanes beside it
+  /**
+   * Traffic comes in waves: between them the arena is calm (no lane traffic, comets or balls).
+   * Every WAVE_GAP_MIN_MS to WAVE_GAP_MAX_MS a chip warns "Traffic incoming" for WAVE_WARNING_MS,
+   * then everything streams in for WAVE_MS and leaves on its own. Never alongside an arena shift.
+   */
+  WAVE_GAP_MIN_MS: 60000,
+  WAVE_GAP_MAX_MS: 180000,
+  WAVE_WARNING_MS: 3000,
+  WAVE_MS: 25000,
+  WAVE_SHIFT_MARGIN_MS: 5000, // a wave waits if it would end within this long of a shift starting
 } as const;
 
 /** Round hazards that roll diagonally and bounce off the arena's walls, cutting across the lanes */

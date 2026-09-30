@@ -50,10 +50,10 @@ export class DrawerUI {
                         <h4>Dash, slingshot and shove</h4>
                         <p>Tap the <span class="highlight">right side</span> of the screen (<span class="highlight">space</span> on a computer) to dash: a quick burst that costs a gem. Dash into another player to shove them. The heavier you are, the farther they go.</p>
                         <p>Hold the button instead of tapping to charge a <span class="highlight">slingshot</span>. You stop, a ring fills around you, and the joystick aims. On a computer, hold space, then turn the arrow to any angle with WASD or the arrow keys (or point with the mouse button held). Let go to launch: the longer you held, the farther you fly and the harder you hit, even the biggest players. You fly over the void, so a good slingshot can jump the gap between islands during a shift. It costs 2 gems and takes a few seconds to recharge. Slide off the button to cancel.</p>
-                        <p>The leader wears a crown. A slingshot hit also knocks gems loose, more for a harder charge, and they can't grab them back for a moment. A dash just shoves, but shoving someone into traffic or off an island costs them plenty.</p>
+                        <p>The leader wears a crown. A slingshot hit steals gems straight from them into you, more for a harder charge, and a full-power hit (or one that leaves them under 3 gems) eats them whole. A dash just shoves, but shoving someone into traffic or off an island costs them plenty.</p>
 
                         <h4>Getting hit</h4>
-                        <p>Traffic, comets, bouncing balls and the edge of the floor all knock you around. Take a hit and you skid, drop half your gems, and blink for a moment while nothing can touch you.</p>
+                        <p>Traffic comes in waves: every minute or three, \u201cTraffic incoming\u201d warns you, then lane traffic, comets and bouncing balls stream through for a while before the arena clears. They and the edge of the floor all knock you around. Take a hit and you skid, drop half your gems, and blink for a moment while nothing can touch you.</p>
                         <p>Your dropped gems take a second before you can grab them back, but anyone else can grab them right away. With fewer than 3 gems, a hit knocks you out (a dashed red outline warns you), and you're back in two seconds.</p>
 
                         <h4>Arena shifts</h4>

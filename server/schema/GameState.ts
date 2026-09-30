@@ -64,6 +64,12 @@ class GameState extends Schema {
 
   /** Server-only: whether traffic hits players (the automated test turns this off) */
   trafficHits = true;
+  /** Server-only: never calm (the automated test), and when the next traffic wave is due */
+  alwaysTraffic = false;
+  private nextWaveAt = 0;
+  /** Traffic comes in waves: "calm", "warning" (a chip counts down) or "wave"; waveAt is when that part ends */
+  trafficWave: string;
+  waveAt: number;
   /** Server-only: bots fill in until this many are playing (the automated test sets 0) */
   botFill: number = BOTS.FILL_TO;
   private brains = new Map<string, BotBrain>();
@@ -115,6 +121,9 @@ class GameState extends Schema {
       comet.launch(this.worldWidth, this.worldHeight, i >= COMETS.STRAIGHT, true);
       this.comets.push(comet);
     }
+    // Traffic comes in waves, and the world starts with one under way
+    this.trafficWave = "wave";
+    this.waveAt = TRAFFIC.WAVE_MS;
     this.topUpField();
   }
 
@@ -138,14 +147,20 @@ class GameState extends Schema {
     if (!this.startedAt) this.startedAt = now;
     this.time = Math.round(now - this.startedAt);
     this.updateShift(deltaTime, now);
+    this.updateTraffic();
     this.obstacles.forEach((obstacle) => {
       if (!obstacle.update(deltaTime, this.worldWidth, this.worldHeight)) {
-        if (!this.launchObstacle(obstacle, false)) obstacle.park();
+        // Between waves, traffic that leaves stays out of the world
+        if (this.trafficWave !== "wave" || !this.launchObstacle(obstacle, false)) obstacle.park();
       }
     });
-    this.balls.forEach((ball) => ball.update(deltaTime, this.worldWidth, this.worldHeight));
+    this.balls.forEach((ball) => {
+      if (!ball.update(deltaTime, this.worldWidth, this.worldHeight, this.trafficWave === "wave")) ball.park();
+    });
     this.comets.forEach((comet, index) => {
-      if (!comet.update(deltaTime, this.worldWidth, this.worldHeight)) comet.launch(this.worldWidth, this.worldHeight, index >= COMETS.STRAIGHT);
+      if (comet.update(deltaTime, this.worldWidth, this.worldHeight)) return;
+      if (this.trafficWave === "wave") comet.launch(this.worldWidth, this.worldHeight, index >= COMETS.STRAIGHT);
+      else comet.placeAt(-500, -500);
     });
 
     const expired: string[] = [];
@@ -372,17 +387,29 @@ class GameState extends Schema {
     // A dash only shoves. A slingshot hit also knocks gems loose: more for a harder charge, scaled
     // a little by size, and at least a couple from the leader; at most once every
     // PUSH.LEADER_BOUNTY_COOLDOWN_MS per player so nobody can be farmed
-    if (power >= 0 && target.gems > 0 && target.takeBounty(now)) {
+    if (power >= 0 && target.takeBounty(now)) {
+      // A slingshot hit steals gems straight into the attacker: a share, more for a harder charge.
+      // A full-power hit, or one that leaves them under GEMS.SURVIVE_AT, eats them whole
       const size = Math.min(PUSH.KNOCK_SIZE_MAX, Math.max(PUSH.KNOCK_SIZE_MIN, Math.sqrt(weightRatio)));
       const share = (PUSH.KNOCK_SHARE_SLING_MIN + (PUSH.KNOCK_SHARE_SLING_MAX - PUSH.KNOCK_SHARE_SLING_MIN) * power) * size;
-      let loose = Math.min(Math.max(1, Math.ceil(target.gems * share)), PUSH.KNOCK_MAX_SLING);
-      if (target === leader) loose = Math.max(loose, PUSH.LEADER_BOUNTY_MIN);
-      loose = Math.min(loose, target.gems);
+      let taken = target.gems > 0 ? Math.min(Math.max(1, Math.ceil(target.gems * share)), PUSH.KNOCK_MAX_SLING) : 0;
+      if (target === leader) taken = Math.max(taken, PUSH.LEADER_BOUNTY_MIN);
+      taken = Math.min(taken, target.gems);
+      const eaten = power >= 0.97 || target.gems - taken < GEMS.SURVIVE_AT;
+      if (eaten) taken = target.gems;
       const centerX = target.x + target.width / 2;
       const centerY = target.y + target.height / 2;
-      target.setGems(target.gems - loose, this.worldWidth, this.worldHeight);
-      this.sprayGems(centerX, centerY, loose, now, target.sessionId);
-      this.credit(target, "sling", now, dasher.sessionId, { gems: loose });
+      const kept = Math.min(taken, Math.max(0, GEMS.MAX_HELD - dasher.gems));
+      if (kept > 0) dasher.setGems(dasher.gems + kept, this.worldWidth, this.worldHeight);
+      if (eaten) {
+        target.setGems(0, this.worldWidth, this.worldHeight);
+        target.knockOut(now);
+      } else {
+        target.setGems(target.gems - taken, this.worldWidth, this.worldHeight);
+      }
+      // A full-size attacker can't hold more: the rest bursts out where the target was
+      if (taken > kept) this.sprayGems(centerX, centerY, taken - kept, now);
+      this.credit(target, "sling", now, dasher.sessionId, { gems: kept, eaten });
     }
   }
 
@@ -407,6 +434,60 @@ class GameState extends Schema {
         other.nudge(0, -sign * overlapY * (1 - share), this.worldWidth, this.worldHeight);
       }
     });
+  }
+
+  /**
+   * The traffic cycle: calm, then (every minute or three) a "Traffic incoming" warning, then a wave
+   * that streams everything in for TRAFFIC.WAVE_MS before the arena clears again. A wave never
+   * runs alongside an arena shift: if one is due soon, the wave waits until it's over.
+   */
+  private updateTraffic(): void {
+    if (this.alwaysTraffic) {
+      if (this.trafficWave !== "wave") this.startWave();
+      return;
+    }
+    const t = this.time;
+    if (this.trafficWave === "wave" && t >= this.waveAt) {
+      this.trafficWave = "calm";
+      this.nextWaveAt = t + TRAFFIC.WAVE_GAP_MIN_MS + Math.random() * (TRAFFIC.WAVE_GAP_MAX_MS - TRAFFIC.WAVE_GAP_MIN_MS);
+    } else if (this.trafficWave === "calm" && t >= this.nextWaveAt) {
+      const clearOfShift =
+        this.shiftPhase === "normal" &&
+        this.phaseEndsAt - t > TRAFFIC.WAVE_WARNING_MS + TRAFFIC.WAVE_MS + TRAFFIC.WAVE_SHIFT_MARGIN_MS;
+      if (clearOfShift) {
+        this.trafficWave = "warning";
+        this.waveAt = t + TRAFFIC.WAVE_WARNING_MS;
+      } else {
+        this.nextWaveAt = t + 5000;
+      }
+    } else if (this.trafficWave === "warning" && t >= this.waveAt) {
+      this.startWave();
+    }
+  }
+
+  /** A traffic wave begins: comets and balls stream in (lane traffic enters as its lanes allow) */
+  private startWave(): void {
+    this.trafficWave = "wave";
+    this.waveAt = this.time + TRAFFIC.WAVE_MS;
+    this.comets.forEach((comet, index) => comet.launch(this.worldWidth, this.worldHeight, index >= COMETS.STRAIGHT));
+    this.balls.forEach((ball) => ball.enter(this.worldWidth, this.worldHeight));
+  }
+
+  /** Force the traffic cycle: "calm" (clears it now), "warning", "wave", or "always" (never calm). For the automated test */
+  forceTraffic(phase: string): void {
+    this.alwaysTraffic = phase === "always";
+    if (phase === "calm") {
+      this.trafficWave = "calm";
+      this.nextWaveAt = this.time + 600000;
+      this.obstacles.forEach((obstacle) => obstacle.park());
+      this.comets.forEach((comet) => comet.placeAt(-500, -500));
+      this.balls.forEach((ball) => ball.park());
+    } else if (phase === "warning") {
+      this.trafficWave = "warning";
+      this.waveAt = this.time + TRAFFIC.WAVE_WARNING_MS;
+    } else if (phase === "wave" || phase === "always") {
+      this.startWave();
+    }
   }
 
   /** Give every traffic lane a new direction and speed */
@@ -832,6 +913,8 @@ type("string")(GameState.prototype, "shiftPhase");
 type("number")(GameState.prototype, "phaseEndsAt");
 type("string")(GameState.prototype, "floor");
 type("boolean")(GameState.prototype, "jackpotOn");
+type("string")(GameState.prototype, "trafficWave");
+type("number")(GameState.prototype, "waveAt");
 type("number")(GameState.prototype, "jackpotX");
 type("number")(GameState.prototype, "jackpotY");
 type("number")(GameState.prototype, "jackpotLandsAt");

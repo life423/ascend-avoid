@@ -60,7 +60,7 @@ try {
 
     // This world starts with no loose gems, no bots, and traffic that can't hit anyone (the test
     // hits players itself), so nothing happens by accident and every count is exact
-    const alice = await join('Alice', { testFieldGems: 0, testCalm: true, testBots: 0 });
+    const alice = await join('Alice', { testFieldGems: 0, testCalm: true, testBots: 0, testTraffic: 'always' });
     const state = () => alice.state;
     const me = () => state().players.get(alice.sessionId);
     await waitFor(() => state().players?.size === 1, 2000, 'the first visitor is in the world right away');
@@ -156,6 +156,28 @@ try {
         bends.push(Math.abs(Math.atan2(Math.sin(change), Math.cos(change))));
     });
     check(bends.length >= 1 && bends.every((b) => b > 0.004 && b < 0.2), `some bend gently as they fly (${bends.map((b) => (b * 180 / Math.PI).toFixed(1) + '°').join(', ')} in 0.6s)`);
+
+    // Traffic comes in waves: between them the arena is calm
+    alice.send('test:traffic', { phase: 'calm' });
+    await sleep(300);
+    let stillMoving = 0;
+    state().obstacles.forEach((o) => { if (o.vx || o.vy) stillMoving++; });
+    state().comets.forEach((c) => { if (c.vx || c.vy) stillMoving++; });
+    state().balls.forEach((b) => { if (b.vx || b.vy) stillMoving++; });
+    check(state().trafficWave === 'calm' && stillMoving === 0, `between traffic waves the arena is calm (${stillMoving} hazards moving)`);
+    alice.send('test:traffic', { phase: 'warning' });
+    await sleep(200);
+    check(state().trafficWave === 'warning', 'a wave is announced first (Traffic incoming)');
+    await waitFor(() => state().trafficWave === 'wave', 4000, 'then the wave arrives');
+    await sleep(1200);
+    let arrived = 0;
+    state().comets.forEach((c) => { if (c.vx || c.vy) arrived++; });
+    state().balls.forEach((b) => { if (b.vx || b.vy) arrived++; });
+    let lanesBack = 0;
+    state().obstacles.forEach((o) => { if (o.vx || o.vy) lanesBack++; });
+    check(arrived === 8 && lanesBack >= 3, `and brings comets, balls and lane traffic streaming in (${arrived} of 8, ${lanesBack} lanes)`);
+    alice.send('test:traffic', { phase: 'always' });
+    await sleep(200);
     let diagonal = 0;
     const ballsBefore = [];
     state().balls.forEach((b) => {
@@ -344,16 +366,31 @@ try {
     const bobAfterSling = bobState().gems;
     const aliceDropped = 100 - me().gems;
     check(bob.messages.some((m) => m.type === 'credit' && m.message.how === 'sling' && m.message.targetId === alice.sessionId), 'a slingshot hit is credited to whoever landed it');
-    check(bob.messages.some((m) => m.type === 'burst' && m.message.count >= 10), 'and the gems burst out for everyone to see');
     await sleep(1150);
     const flung = me().x - heavyStart;
     check(flung > 200 && flung > light * 4, `a slingshot launches even a heavy player (${Math.round(flung)} units, where a dash moved them ${Math.round(light)})`);
-    check(aliceDropped >= 15, `and a hit that hard knocks lots of gems loose (${aliceDropped} of 100)`);
-    check(bobAfterSling === 2, `the slingshot costs 2 gems (${bobAfterSling} left of 4)`);
+    check(aliceDropped >= 15, `and a hit that hard takes lots of their gems (${aliceDropped} of 100)`);
+    check(Math.abs(bobAfterSling - (2 + aliceDropped)) <= 1, `straight into the attacker, after the slingshot's 2-gem cost (Bob has ${bobAfterSling})`);
     const restX = bobState().x;
     bob.send('dash', { x: -1, y: 0 });
     await sleep(300);
     check(Math.abs(bobState().x - restX) < 3, 'then needs a few seconds to recharge');
+
+    // A slingshot that leaves them under 3 gems (or lands at full power) eats them whole
+    await sleep(2700);
+    alice.send('test:setGems', { count: 3 });
+    bob.send('test:setGems', { count: 10 });
+    await sleep(150);
+    bob.send('test:moveTo', { x: 700, y: 1750 });
+    alice.send('test:moveTo', { x: 700 + bobState().width + 60, y: 1750 });
+    await sleep(250);
+    const bobBeforeEat = bobState().gems;
+    bob.send('charge');
+    await sleep(600);
+    bob.send('sling', { x: 1, y: 0 });
+    await sleep(400);
+    check(me().state !== 'alive' && bobState().gems === bobBeforeEat - 2 + 3, `a slingshot that leaves them under 3 eats them whole (Bob ${bobBeforeEat} -> ${bobState().gems}, Alice ${me().state})`);
+    await waitFor(() => me().state === 'alive' && !me().spawnProtected, 6000, 'Alice is back');
 
     // Body-checks: a much bigger player moving into you spills your gems, and can knock you out when you're low
     async function bodyCheck(bigGems, smallGems) {

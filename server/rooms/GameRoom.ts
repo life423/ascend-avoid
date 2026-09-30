@@ -33,6 +33,8 @@ export class GameRoom extends Room<GameState> {
     this.setState(new GameState(fieldGems));
     // ...and a world where traffic can't hit anyone (the test hits players itself)
     if (!IS_PRODUCTION && options.testCalm === true) this.state.trafficHits = false;
+    // ...and one where traffic never goes calm
+    if (!IS_PRODUCTION && options.testTraffic === "always") this.state.alwaysTraffic = true;
     // ...and one with no bots
     if (!IS_PRODUCTION && Number.isInteger(options.testBots)) this.state.botFill = options.testBots;
     // Moments worth telling everyone about (who shoved whom off the edge, who took the jackpot)
@@ -117,6 +119,10 @@ export class GameRoom extends Room<GameState> {
       this.onMessage("test:jackpot", (client) => {
         const player = playerOf(client);
         if (player) this.state.dropJackpot(player.x + player.width / 2, player.y + player.height / 2, 0);
+      });
+      this.onMessage("test:traffic", (_client, data: any) => {
+        // Forces the traffic cycle: "calm", "warning", "wave" or "always"
+        this.state.forceTraffic(String(data?.phase ?? ""));
       });
       this.onMessage("test:placeComet", (client, data: any) => {
         // Stands the first comet still, centered relative to the player's center

@@ -551,6 +551,26 @@ function bounce(position: number, distance: number, low: number, high: number): 
     return low + (p > span ? 2 * span - p : p)
 }
 
+/** Eyes and a smile, so a player never looks like traffic */
+function drawFace(ctx: CanvasRenderingContext2D, left: number, top: number, size: number): void {
+    const eyeY = top + size * 0.42
+    for (const eyeX of [left + size * 0.32, left + size * 0.68]) {
+        ctx.fillStyle = '#ffffff'
+        ctx.beginPath()
+        ctx.arc(eyeX, eyeY, size * 0.13, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = '#10151f'
+        ctx.beginPath()
+        ctx.arc(eyeX, eyeY + size * 0.03, size * 0.065, 0, Math.PI * 2)
+        ctx.fill()
+    }
+    ctx.strokeStyle = 'rgba(16, 21, 31, 0.85)'
+    ctx.lineWidth = Math.max(1, size * 0.05)
+    ctx.beginPath()
+    ctx.arc(left + size / 2, top + size * 0.6, size * 0.16, 0.2 * Math.PI, 0.8 * Math.PI)
+    ctx.stroke()
+}
+
 /** A comet: a glowing violet head with a tail trailing back along its path */
 function drawComet(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, vx: number, vy: number): void {
     const speed = Math.hypot(vx, vy) || 1
@@ -1078,9 +1098,13 @@ export class MultiplayerMode extends GameMode {
             if (x > right || x + obstacle.width < left || y > bottom || y + obstacle.height < top) return
             this.drawObstacle(ctx, { x, y, width: obstacle.width, height: obstacle.height, variant: obstacle.variant }, timestamp)
         })
+        const rolling = state.trafficWave === 'wave'
         state.balls?.forEach((ball: any) => {
-            const x = bounce(ball.x, (ball.vx ?? 0) * lead, ball.radius, state.worldWidth - ball.radius)
-            const y = bounce(ball.y, (ball.vy ?? 0) * lead, ball.radius, state.worldHeight - ball.radius)
+            // Out of the world between traffic waves (and rolling straight out as one ends)
+            const r = ball.radius
+            if (ball.x < -r || ball.y < -r || ball.x > state.worldWidth + r || ball.y > state.worldHeight + r) return
+            const x = rolling ? bounce(ball.x, (ball.vx ?? 0) * lead, r, state.worldWidth - r) : ball.x + (ball.vx ?? 0) * lead
+            const y = rolling ? bounce(ball.y, (ball.vy ?? 0) * lead, r, state.worldHeight - r) : ball.y + (ball.vy ?? 0) * lead
             if (x + ball.radius < left || x - ball.radius > right || y + ball.radius < top || y - ball.radius > bottom) return
             drawBall(ctx, x, y, ball.radius)
         })
@@ -1115,6 +1139,7 @@ export class MultiplayerMode extends GameMode {
         this.drawLeaderboard(ctx, canvas, state, localId, leaderId)
         this.drawNotices(ctx, canvas)
         this.drawShiftChip(ctx, canvas, state, timestamp)
+        this.drawTrafficChip(ctx, canvas, state, timestamp)
         this.drawBanner(ctx, canvas)
         this.controls?.draw(ctx, timestamp, Math.max(0, Math.min(1, 1 - (this.dashReadyAt - performance.now()) / this.cooldownMs)), this.charging ? this.aim : null)
         if (me && me.state !== 'alive') this.drawKnockedOut(ctx, canvas)
@@ -1320,9 +1345,14 @@ export class MultiplayerMode extends GameMode {
         if (isLocal) {
             ctx.drawImage(getSprite('player', 0, timestamp), left, top, size, size)
         } else {
+            // Players have faces and a white outline, so they never look like traffic
             ctx.fillStyle = PLAYER_COLORS[player.playerIndex % PLAYER_COLORS.length]
-            roundedRect(ctx, left, top, size, size, size * 0.18)
+            roundedRect(ctx, left, top, size, size, size * 0.28)
             ctx.fill()
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)'
+            ctx.lineWidth = Math.max(1.5, size * 0.07)
+            ctx.stroke()
+            drawFace(ctx, left, top, size)
         }
         ctx.globalAlpha = 1
         ctx.font = `600 16px ${FONT}`
@@ -1444,16 +1474,17 @@ export class MultiplayerMode extends GameMode {
         const targetIsYou = data?.targetId === localId
         const target = targetIsYou ? 'you' : String(data?.target ?? 'someone')
         const how = String(data?.how ?? '')
-        const verb = how === 'crush' ? 'crushed' : how === 'sling' || data?.kind === 'sling' ? 'slingshotted' : 'shoved'
+        const eaten = how === 'sling' && data?.eaten === true
+        const verb = how === 'crush' ? 'crushed' : eaten ? 'ate' : how === 'sling' || data?.kind === 'sling' ? 'slingshotted' : 'shoved'
         const where = how === 'edge' ? 'off the edge' : how === 'traffic' ? 'into traffic' : ''
         if (data?.byId === localId) {
             const name = String(data?.target ?? 'someone')
-            const title = how === 'crush' ? `You crushed ${name}!` : how === 'sling' ? `Direct hit on ${name}!` : `You wrecked ${name}!`
-            const parts = how === 'sling' ? [`${Number(data?.gems) || 0} gems knocked loose`] : [where, data?.out ? 'knocked out' : '']
+            const title = how === 'crush' ? `You crushed ${name}!` : eaten ? `You ate ${name}!` : how === 'sling' ? `Direct hit on ${name}!` : `You wrecked ${name}!`
+            const parts = how === 'sling' ? [`+${Number(data?.gems) || 0} gems`] : [where, data?.out ? 'knocked out' : '']
             this.banner = { title, sub: parts.filter(Boolean).join(' · ').toUpperCase(), at: performance.now() }
             return
         }
-        const out = how !== 'crush' && data?.out ? (targetIsYou ? ' and knocked you out' : ' and knocked them out') : ''
+        const out = how !== 'crush' && !eaten && data?.out ? (targetIsYou ? ' and knocked you out' : ' and knocked them out') : ''
         this.addNotice(`${this.nameOf(data?.byId, data?.by)} ${verb} ${target}${where ? ' ' + where : ''}${out}!`, data?.out === true)
     }
 
@@ -1668,6 +1699,28 @@ export class MultiplayerMode extends GameMode {
         roundedRect(ctx, (canvas.width - width) / 2, y, width, 30, 15)
         ctx.fill()
         ctx.strokeStyle = urgent ? 'rgba(255, 130, 130, 0.9)' : 'rgba(79, 209, 197, 0.7)'
+        ctx.lineWidth = 1.5
+        ctx.stroke()
+        ctx.fillStyle = '#ffffff'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(text, canvas.width / 2, y + 15)
+        ctx.restore()
+    }
+
+    /** "Traffic incoming 3" just before a traffic wave */
+    private drawTrafficChip(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, state: any, timestamp: number): void {
+        if (state.trafficWave !== 'warning') return
+        const left = Math.max(1, Math.ceil((state.waveAt - this.worldNow(state, timestamp)) / 1000))
+        const text = `Traffic incoming ${left}`
+        const y = canvas.width < 560 ? 30 + Math.min(6, state.players.size) * 18 : 12
+        ctx.save()
+        ctx.font = `700 14px ${FONT}`
+        const width = ctx.measureText(text).width + 32
+        ctx.fillStyle = 'rgba(60, 38, 5, 0.85)'
+        roundedRect(ctx, (canvas.width - width) / 2, y, width, 30, 15)
+        ctx.fill()
+        ctx.strokeStyle = 'rgba(255, 196, 64, 0.9)'
         ctx.lineWidth = 1.5
         ctx.stroke()
         ctx.fillStyle = '#ffffff'
