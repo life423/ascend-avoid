@@ -69,6 +69,16 @@ try {
     check(me().spawnProtected === true, 'a new arrival starts protected');
     check(me().width === 20, `and starts small (${me().width} units)`);
     const hazards = state().obstacles.length + (state().comets?.length ?? 0) + (state().balls?.length ?? 0);
+    // Live worlds have no traffic at all (this test world switches it on to keep that code working)
+    const fresh = await new Client(URL).create('game_room', { name: 'Fresh', testBots: 0 });
+    fresh.onMessage('*', () => {});
+    await sleep(600);
+    let freshMoving = 0;
+    fresh.state.obstacles.forEach((o) => { if (o.vx || o.vy) freshMoving++; });
+    fresh.state.comets?.forEach((c) => { if (c.vx || c.vy) freshMoving++; });
+    fresh.state.balls?.forEach((b) => { if (b.vx || b.vy) freshMoving++; });
+    check(freshMoving === 0 && fresh.state.trafficWave === 'calm', `a normal world has no traffic at all (${freshMoving} moving)`);
+    await fresh.leave();
     check(hazards >= 12, `traffic fills the world (${state().obstacles.length} in lanes, ${state().comets?.length} comets, ${state().balls?.length} balls)`);
 
     const bob = await join('Bob');

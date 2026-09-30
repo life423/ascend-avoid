@@ -192,6 +192,12 @@ export const BOTS = {
  * player, and lanes side by side are staggered, so traffic never lines up into a wall.
  */
 export const TRAFFIC = {
+  /**
+   * Traffic is switched off: live worlds have no lane traffic, comets or balls, so the danger comes
+   * from other players and the void during arena shifts. The code stays, dormant, so this one line
+   * brings it back (the automated test still switches it on in its own world to keep it working).
+   */
+  ENABLED: false,
   LANES: 14, // in each direction (across and down), so lanes are 150 units apart
   MIN_GAP: 220, // between obstacles in the same lane
   STAGGER: 150, // between an entering obstacle and those in the lanes beside it

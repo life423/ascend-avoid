@@ -66,6 +66,8 @@ class GameState extends Schema {
   trafficHits = true;
   /** Server-only: never calm (the automated test), and when the next traffic wave is due */
   alwaysTraffic = false;
+  /** Server-only: whether this world has traffic at all (TRAFFIC.ENABLED; the test can switch it on) */
+  private trafficOn: boolean = TRAFFIC.ENABLED;
   private nextWaveAt = 0;
   /** Traffic comes in waves: "calm", "warning" (a chip counts down) or "wave"; waveAt is when that part ends */
   trafficWave: string;
@@ -121,9 +123,18 @@ class GameState extends Schema {
       comet.launch(this.worldWidth, this.worldHeight, i >= COMETS.STRAIGHT, true);
       this.comets.push(comet);
     }
-    // Traffic comes in waves, and the world starts with one under way
-    this.trafficWave = "wave";
-    this.waveAt = TRAFFIC.WAVE_MS;
+    if (this.trafficOn) {
+      // Traffic comes in waves, and the world starts with one under way
+      this.trafficWave = "wave";
+      this.waveAt = TRAFFIC.WAVE_MS;
+    } else {
+      // No traffic: everything waits out of the world
+      this.trafficWave = "calm";
+      this.waveAt = 0;
+      this.obstacles.forEach((obstacle) => obstacle.park());
+      this.comets.forEach((comet) => comet.placeAt(-500, -500));
+      this.balls.forEach((ball) => ball.park());
+    }
     this.topUpField();
   }
 
@@ -442,6 +453,7 @@ class GameState extends Schema {
    * runs alongside an arena shift: if one is due soon, the wave waits until it's over.
    */
   private updateTraffic(): void {
+    if (!this.trafficOn) return;
     if (this.alwaysTraffic) {
       if (this.trafficWave !== "wave") this.startWave();
       return;
@@ -475,6 +487,7 @@ class GameState extends Schema {
 
   /** Force the traffic cycle: "calm" (clears it now), "warning", "wave", or "always" (never calm). For the automated test */
   forceTraffic(phase: string): void {
+    this.trafficOn = true;
     this.alwaysTraffic = phase === "always";
     if (phase === "calm") {
       this.trafficWave = "calm";
