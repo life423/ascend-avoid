@@ -511,6 +511,42 @@ try {
     alice.send('exhale');
     check(!me().inhaling && afterBreath - beforeBreath > plainWalk * 0.55, `running out of breath doesn't change how you move (${Math.round(afterBreath - beforeBreath)} units in 0.8s)`);
     await sleep(1200);
+    // Stealing works on the move: walking up to someone while inhaling (no bouncing off them), and
+    // chasing someone who runs (the pull drags them back)
+    alice.send('test:setGems', { count: 40 });
+    bob.send('test:setGems', { count: 40 });
+    await sleep(200);
+    alice.send('test:moveTo', { x: 300, y: 900 });
+    bob.send('test:moveTo', { x: 600, y: 900 });
+    alice.send('test:face', { angle: 0 });
+    await sleep(1300);
+    const bobBeforeApproach = bobState().gems;
+    alice.send('inhale');
+    alice.send('steer', { x: 1, y: 0 });
+    await sleep(2000);
+    alice.send('steer', { x: 0, y: 0 });
+    alice.send('exhale');
+    check(bobBeforeApproach - bobState().gems >= 4, `walking up to someone while inhaling steals from them (${bobBeforeApproach - bobState().gems} stolen)`);
+    await sleep(1300);
+    bob.send('test:setGems', { count: 40 });
+    await sleep(200);
+    alice.send('test:moveTo', { x: 300, y: 1300 });
+    bob.send('test:moveTo', { x: 300 + me().width + 60, y: 1300 + (me().height - bobState().height) / 2 });
+    alice.send('test:face', { angle: 0 });
+    await sleep(1300);
+    const bobBeforeChase = bobState().gems;
+    alice.send('inhale');
+    alice.send('steer', { x: 1, y: 0 });
+    bob.send('steer', { x: 1, y: 0 });
+    await sleep(2500);
+    alice.send('steer', { x: 0, y: 0 });
+    bob.send('steer', { x: 0, y: 0 });
+    alice.send('exhale');
+    check(bobBeforeChase - bobState().gems >= 4, `chasing someone who runs keeps stealing: the pull drags them back (${bobBeforeChase - bobState().gems} stolen)`);
+    // (Drained small enough, he may have been swallowed: wait for him)
+    await waitFor(() => bobState().state === 'alive' && !bobState().spawnProtected, 6000, 'Bob is back');
+    bob.send('steer', { x: 0, y: 0 }); // his stop may have arrived while he was swallowed
+    await sleep(1300);
 
     // Bumper cars: running into someone at speed bounces you both apart, the lighter one farther, and costs no gems
     async function bump(bigGems, smallGems) {
@@ -569,6 +605,8 @@ try {
     alice.send('test:parkTraffic');
     alice.send('test:moveTo', { x: 1000, y: 1000 });
     alice.send('test:trafficHits', { on: true });
+    // Keep the arena shift well away (during a shift's grace nobody can be hurt), however long the checks before took
+    alice.send('test:shift', { phase: 'normal', msLeft: 120000 });
     await waitFor(() => !me().recovering && !me().spawnProtected, 3000, 'traffic is parked and Alice is ready');
     /** Stand the block where `place(half)` says (from Alice's center; half = half her width), maybe hop, and report a hit */
     async function struck(place, hopDirection) {

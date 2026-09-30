@@ -896,6 +896,9 @@ export class MultiplayerMode extends GameMode {
     private bursts: { x: number; y: number; size: number; color: string; at: number }[] = []
     /** Bomb blasts going off: a flash and a ring racing out to the blast's edge */
     private blasts: { x: number; y: number; radius: number; at: number }[] = []
+    /** Gravity theft on screen: each victim's gems last frame, and the stolen gems in flight */
+    private theftGems = new Map<string, number>()
+    private theftParticles: { from: string; to: string; at: number; angle: number }[] = []
     private pickups: { amount: number; at: number }[] = []
     private shakeUntil = 0
     /** Gems shown in the header (as Score), and the most you've held this visit (as High Score) */
@@ -1864,44 +1867,77 @@ export class MultiplayerMode extends GameMode {
         ctx.restore()
     }
 
-    /** Gravity theft: gems streaming out of whoever is being stolen from, into the thief's mouth */
+    /**
+     * Gravity theft: every gem stolen pops out of the victim and arcs into the thief's mouth, so you
+     * can watch them shrink, with a faint gold tether between the two while the stream runs
+     */
     private drawTheft(ctx: CanvasRenderingContext2D, state: any, timestamp: number): void {
+        const now = performance.now()
+        const robbed = new Set<string>()
         state.players.forEach((thief: any, id: string) => {
             if (!thief.stealingFrom) return
             const victim = state.players.get(thief.stealingFrom)
             if (!victim) return
-            const from = this.drawnPositions.get(thief.stealingFrom) ?? victim
-            const to = this.drawnPositions.get(id) ?? thief
-            const fromX = from.x + victim.width / 2
-            const fromY = from.y + victim.height / 2
-            const toX = to.x + thief.width / 2
-            const toY = to.y + thief.height / 2
+            robbed.add(thief.stealingFrom)
+            // Each gem the victim just lost pops out and heads for the thief
+            const had = this.theftGems.get(thief.stealingFrom) ?? victim.gems
+            for (let i = 0; i < Math.min(8, had - victim.gems); i++) {
+                this.theftParticles.push({ from: thief.stealingFrom, to: id, at: now + i * 45, angle: Math.random() * Math.PI * 2 })
+            }
+            this.theftGems.set(thief.stealingFrom, victim.gems)
+            const a = this.centerOf(thief.stealingFrom, victim)
+            const b = this.centerOf(id, thief)
             ctx.save()
-            ctx.strokeStyle = 'rgba(255, 209, 102, 0.35)'
-            ctx.lineWidth = 3
-            ctx.setLineDash([6, 8])
+            ctx.strokeStyle = 'rgba(255, 209, 102, 0.25)'
+            ctx.lineWidth = 2
+            ctx.setLineDash([4, 8])
             ctx.lineDashOffset = -timestamp / 20
             ctx.beginPath()
-            ctx.moveTo(fromX, fromY)
-            ctx.lineTo(toX, toY)
+            ctx.moveTo(a.x, a.y)
+            ctx.lineTo(b.x, b.y)
             ctx.stroke()
-            ctx.setLineDash([])
-            ctx.fillStyle = '#ffd166'
-            for (let i = 0; i < 4; i++) {
-                const t = (timestamp / 380 + i / 4) % 1
-                const gx = fromX + (toX - fromX) * t
-                const gy = fromY + (toY - fromY) * t
-                const g = 4.5 * (1 - t * 0.4)
-                ctx.beginPath()
-                ctx.moveTo(gx, gy - g)
-                ctx.lineTo(gx + g * 0.7, gy)
-                ctx.lineTo(gx, gy + g)
-                ctx.lineTo(gx - g * 0.7, gy)
-                ctx.closePath()
-                ctx.fill()
-            }
             ctx.restore()
         })
+        for (const id of [...this.theftGems.keys()]) if (!robbed.has(id)) this.theftGems.delete(id)
+        // The stolen gems in flight: out of the victim's body, a little arc, then sucked into the mouth
+        this.theftParticles = this.theftParticles.filter((p) => now - p.at < 450)
+        for (const p of this.theftParticles) {
+            const t = (now - p.at) / 450
+            if (t < 0) continue
+            const victim = state.players.get(p.from)
+            const thief = state.players.get(p.to)
+            if (!victim || !thief) continue
+            const a = this.centerOf(p.from, victim)
+            const b = this.centerOf(p.to, thief)
+            const facing = thief.facing ?? 0
+            const mouthX = b.x + Math.cos(facing) * thief.width * 0.35
+            const mouthY = b.y + Math.sin(facing) * thief.width * 0.35
+            const startX = a.x + Math.cos(p.angle) * victim.width * 0.45
+            const startY = a.y + Math.sin(p.angle) * victim.width * 0.45
+            const ease = t * t
+            const lift = Math.sin(t * Math.PI) * 18
+            const x = startX + (mouthX - startX) * ease
+            const y = startY + (mouthY - startY) * ease - lift
+            const g = 6.5 * (1 - t * 0.5)
+            ctx.save()
+            ctx.shadowColor = 'rgba(255, 209, 102, 0.9)'
+            ctx.shadowBlur = 8
+            ctx.fillStyle = '#ffd166'
+            ctx.beginPath()
+            ctx.moveTo(x, y - g)
+            ctx.lineTo(x + g * 0.7, y)
+            ctx.lineTo(x, y + g)
+            ctx.lineTo(x - g * 0.7, y)
+            ctx.closePath()
+            ctx.fill()
+            ctx.restore()
+        }
+    }
+
+    /** Where a player is drawn this frame (its center) */
+    private centerOf(id: string, player: any): { x: number; y: number } {
+        const at = this.drawnPositions.get(id) ?? player
+        return { x: at.x + player.width / 2, y: at.y + player.height / 2 }
     }
 
     /** Bomb blasts: a bright flash, then a ring racing out to the edge of the blast */
