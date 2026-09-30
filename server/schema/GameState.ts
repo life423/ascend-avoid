@@ -9,12 +9,10 @@ import { BotBrain } from "../game/bots.js";
 import { closestFloorPoint, isFloor, jackpotSpot, layoutToString, pickLayout, randomFloorPoint } from "../game/layouts.js";
 import type { Layout } from "../game/layouts.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
-import { moveSpeed, pushOutOfWalls } from "../game/movement.js";
-import type { Box, Direction } from "../game/movement.js";
-import { ENTRANCES, isUnderground, keepTunnelsOpen, outsideTunnels, overlapsTunnel, tunnelWalls, tunnelsStayOpen } from "../game/tunnels.js";
+import { moveSpeed } from "../game/movement.js";
+import type { Direction } from "../game/movement.js";
 
 const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS, COMETS } = GAME_CONSTANTS;
-const NO_WALLS: Box[] = [];
 /** Which way each of a bot's decisions steers it */
 const STEER: Record<Direction, { x: number; y: number }> = {
   up: { x: 0, y: -1 },
@@ -70,10 +68,6 @@ class GameState extends Schema {
   alwaysTraffic = false;
   /** Server-only: whether this world has traffic at all (TRAFFIC.ENABLED; the test can switch it on) */
   private trafficOn: boolean = TRAFFIC.ENABLED;
-  /** Tunnel entrances, one letter each: o open, w closing (the ground outside is about to drop away), x closed ("" with no tunnels) */
-  tunnelDoors: string;
-  /** Server-only: whether this world has tunnels (the automated test's main world doesn't) */
-  private tunnelsOn = true;
   private nextWaveAt = 0;
   /** Traffic comes in waves: "calm", "warning" (a chip counts down) or "wave"; waveAt is when that part ends */
   trafficWave: string;
@@ -129,7 +123,6 @@ class GameState extends Schema {
       comet.launch(this.worldWidth, this.worldHeight, i >= COMETS.STRAIGHT, true);
       this.comets.push(comet);
     }
-    this.tunnelDoors = "o".repeat(ENTRANCES.length);
     if (this.trafficOn) {
       // Traffic comes in waves, and the world starts with one under way
       this.trafficWave = "wave";
@@ -166,7 +159,6 @@ class GameState extends Schema {
     this.time = Math.round(now - this.startedAt);
     this.updateShift(deltaTime, now);
     this.updateTraffic();
-    this.updateDoors();
     this.obstacles.forEach((obstacle) => {
       if (!obstacle.update(deltaTime, this.worldWidth, this.worldHeight)) {
         // Between waves, traffic that leaves stays out of the world
@@ -190,11 +182,6 @@ class GameState extends Schema {
         return;
       }
       gem.unlock(now);
-      // Gems never lie in tunnels (nobody can collect them underground)
-      if (this.underground(gem.x, gem.y)) {
-        const out = outsideTunnels({ x: gem.x, y: gem.y });
-        gem.moveTo(out.x, out.y);
-      }
       // During a shift, gems stop at the floor's edge instead of sliding out over the void
       if (layout && !isFloor(layout, gem.x, gem.y)) {
         const spot = closestFloorPoint(layout, gem.x, gem.y, 12);
@@ -251,16 +238,9 @@ class GameState extends Schema {
       }
       const fromX = player.x;
       const fromY = player.y;
-      const walls = this.walls();
-      player.updateMovement(this.worldWidth, this.worldHeight, now, deltaTime, walls);
+      player.updateMovement(this.worldWidth, this.worldHeight, now, deltaTime);
       if (player.dashing(now)) this.checkDash(player, fromX, fromY, now);
       this.nudgeApart(player, now);
-      // Nobody ends up inside rock (after growing, or being nudged)
-      const inRock = { x: player.x, y: player.y, width: player.width, height: player.height };
-      if (pushOutOfWalls(inRock, walls)) {
-        player.x = inRock.x;
-        player.y = inRock.y;
-      }
       this.collectGems(player, now, fromX, fromY);
       player.decay(deltaTime, this.worldWidth, this.worldHeight);
       // A skid after a hit never carries anyone off the edge
@@ -579,49 +559,7 @@ class GameState extends Schema {
 
   /** Whether a point is on the floor: always outside a shift; during one (or its grace period), the new floor */
   isFloorAt(x: number, y: number): boolean {
-    return !this.layout || isFloor(this.layout, x, y) || this.underground(x, y);
-  }
-
-  /** The walls nobody can pass: tunnel rock, and seals across closed entrances */
-  walls(): Box[] {
-    return this.tunnelsOn ? tunnelWalls(this.tunnelDoors) : NO_WALLS;
-  }
-
-  /** Whether a point is underground (in a tunnel) */
-  underground(x: number, y: number): boolean {
-    return this.tunnelsOn && isUnderground(x, y);
-  }
-
-  /** Whether a box overlaps a tunnel (bots keep out of them, and nobody spawns in one) */
-  inTunnel(box: Box): boolean {
-    return this.tunnelsOn && overlapsTunnel(box);
-  }
-
-  /** A world without tunnels (the automated test's main world) */
-  disableTunnels(): void {
-    this.tunnelsOn = false;
-    this.tunnelDoors = "";
-  }
-
-  /** A random point on the floor that isn't in a tunnel */
-  private floorPointOutsideTunnels(margin = 40): { x: number; y: number } {
-    let spot = randomFloorPoint(this.layout!, margin);
-    for (let tries = 0; tries < 12 && this.underground(spot.x, spot.y); tries++) spot = randomFloorPoint(this.layout!, margin);
-    return spot;
-  }
-
-  /**
-   * Tunnel entrances: open; closing (flashing) while a new floor is shown, if the ground outside is
-   * about to drop away; closed while it's gone. They all reopen when the arena returns.
-   */
-  private updateDoors(): void {
-    if (!this.tunnelsOn) return;
-    let doors = "";
-    for (const entrance of ENTRANCES) {
-      const ground = !this.layout || isFloor(this.layout, entrance.outX, entrance.outY);
-      doors += ground ? "o" : this.shiftPhase === "shift" ? "x" : "w";
-    }
-    if (doors !== this.tunnelDoors) this.tunnelDoors = doors;
+    return !this.layout || isFloor(this.layout, x, y);
   }
 
   /** The nearest point on the (new) floor */
@@ -646,7 +584,7 @@ class GameState extends Schema {
       this.dropGems(SHIFT.SHOWER_GEMS, progress < 1 / 3 ? 1 : progress < 2 / 3 ? 2 : 3, now);
     }
     if (!this.jackpotDropped && left <= SHIFT.JACKPOT_DROPS_WITH_MS_LEFT) {
-      const spot = this.tunnelsOn ? outsideTunnels(jackpotSpot(this.layout)) : jackpotSpot(this.layout);
+      const spot = jackpotSpot(this.layout);
       this.dropJackpot(spot.x, spot.y, SHIFT.DROP_MS * 1.5);
     }
     this.updateJackpot(deltaTime);
@@ -660,13 +598,7 @@ class GameState extends Schema {
     this.players.forEach((player) => {
       if (player.state === PLAYER_STATE.ALIVE) people.push({ x: player.x + player.width / 2, y: player.y + player.height / 2 });
     });
-    let picked = pickLayout(people, this.players.size, this.lastLayoutName);
-    // Every tunnel keeps at least two open entrances, so nobody underground is ever shut in
-    for (let tries = 0; this.tunnelsOn && tries < 40 && !tunnelsStayOpen(picked.layout); tries++) {
-      picked = pickLayout(people, this.players.size, this.lastLayoutName);
-    }
-    // ...and if no shape managed that on its own, open up the ground outside enough entrances
-    if (this.tunnelsOn && !tunnelsStayOpen(picked.layout)) picked = { ...picked, layout: keepTunnelsOpen(picked.layout) };
+    const picked = pickLayout(people, this.players.size, this.lastLayoutName);
     this.layout = picked.layout;
     this.lastLayoutName = picked.name;
     this.floor = layoutToString(picked.layout);
@@ -716,7 +648,7 @@ class GameState extends Schema {
   private dropGems(count: number, value: number, now: number): void {
     if (!this.layout) return;
     for (let i = 0; i < count && this.gems.size < GEMS.MAX_GEMS; i++) {
-      const spot = this.floorPointOutsideTunnels();
+      const spot = randomFloorPoint(this.layout);
       const gem = new GemSchema(spot.x, spot.y, value);
       gem.drop(now);
       this.gems.set(`g${this.nextGemId++}`, gem);
@@ -742,7 +674,7 @@ class GameState extends Schema {
     if (!this.jackpotOn || this.time < this.jackpotLandsAt) return;
     const on: PlayerSchema[] = [];
     this.players.forEach((player) => {
-      if (player.state !== PLAYER_STATE.ALIVE || this.underground(player.x + player.width / 2, player.y + player.height / 2)) return;
+      if (player.state !== PLAYER_STATE.ALIVE) return;
       const box = player.hitBox();
       const dx = Math.max(box.x - this.jackpotX, 0, this.jackpotX - (box.x + box.width));
       const dy = Math.max(box.y - this.jackpotY, 0, this.jackpotY - (box.y + box.height));
@@ -854,18 +786,12 @@ class GameState extends Schema {
   /** A loose gem somewhere in the world, or at a given spot */
   addGem(x?: number, y?: number): void {
     const margin = 40;
-    // Somewhere open: on the floor during a shift, and never inside a tunnel
-    let spot = { x: x ?? 0, y: y ?? 0 };
-    if (x === undefined || y === undefined) {
-      for (let tries = 0; tries < 12; tries++) {
-        spot =
-          this.shiftPhase === "shift" && this.layout
-            ? randomFloorPoint(this.layout)
-            : { x: margin + Math.random() * (this.worldWidth - 2 * margin), y: margin + Math.random() * (this.worldHeight - 2 * margin) };
-        if (!this.underground(spot.x, spot.y)) break;
-      }
-    }
-    const gem = new GemSchema(spot.x, spot.y);
+    // During a shift, new gems appear on the floor
+    const spot = this.shiftPhase === "shift" && this.layout ? randomFloorPoint(this.layout) : null;
+    const gem = new GemSchema(
+      x ?? spot?.x ?? margin + Math.random() * (this.worldWidth - 2 * margin),
+      y ?? spot?.y ?? margin + Math.random() * (this.worldHeight - 2 * margin)
+    );
     this.gems.set(`g${this.nextGemId++}`, gem);
     this.fieldGems++;
   }
@@ -877,8 +803,6 @@ class GameState extends Schema {
 
   /** Pick up every gem the player is touching */
   private collectGems(player: PlayerSchema, now: number, fromX = player.x, fromY = player.y): void {
-    // Nothing can be collected underground
-    if (this.underground(player.x + player.width / 2, player.y + player.height / 2)) return;
     // Everything the player passed over this tick counts, so a dash or a skid can't skip a gem
     // (unless they were moved somewhere else entirely, like a respawn)
     const moved = Math.hypot(player.x - fromX, player.y - fromY);
@@ -951,7 +875,6 @@ class GameState extends Schema {
       const onFloor = this.layout ? randomFloorPoint(this.layout, size / 2 + 10) : null;
       const x = onFloor ? onFloor.x - size / 2 : margin + Math.random() * (this.worldWidth - size - 2 * margin);
       const y = onFloor ? onFloor.y - size / 2 : margin + Math.random() * (this.worldHeight - size - 2 * margin);
-      if (this.inTunnel({ x, y, width: size, height: size })) continue;
       const clearance = this.clearanceAt(x + size / 2, y + size / 2, player, leader);
       if (clearance > bestClearance) {
         best = { x, y };
@@ -1004,7 +927,6 @@ type("number")(GameState.prototype, "phaseEndsAt");
 type("string")(GameState.prototype, "floor");
 type("boolean")(GameState.prototype, "jackpotOn");
 type("string")(GameState.prototype, "trafficWave");
-type("string")(GameState.prototype, "tunnelDoors");
 type("number")(GameState.prototype, "waveAt");
 type("number")(GameState.prototype, "jackpotX");
 type("number")(GameState.prototype, "jackpotY");

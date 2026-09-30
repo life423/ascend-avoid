@@ -1,7 +1,7 @@
 import * as schema from "@colyseus/schema";
 const { Schema, type } = schema;
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
-import { moveWithWalls, walk } from "../game/movement.js";
+import { walk } from "../game/movement.js";
 import type { Box, Direction } from "../game/movement.js";
 
 const { ARENA_RULES, BOTS, GEMS, PLAYER_STATE, PUSH, WORLD } = GAME_CONSTANTS;
@@ -348,7 +348,7 @@ class PlayerSchema extends Schema {
    * (eased, so starts and stops are smooth), or burst along a dash. No steering while recovering.
    * Protection and recovery wear off here too.
    */
-  updateMovement(worldWidth: number, worldHeight: number, now: number, deltaTime: number, walls: Box[] = []): void {
+  updateMovement(worldWidth: number, worldHeight: number, now: number, deltaTime: number): void {
     if (this.state !== PLAYER_STATE.ALIVE) return;
     if (this.spawnProtected && now >= this.protectedUntil) this.spawnProtected = false;
     if (this.recovering && now >= this.recoverUntil) this.recovering = false;
@@ -358,7 +358,7 @@ class PlayerSchema extends Schema {
       this.walkY = 0;
       this.queuedDash = null;
       if (this.bursting) this.bursting = false;
-      this.slide(deltaTime, worldWidth, worldHeight, walls);
+      this.slide(deltaTime, worldWidth, worldHeight);
       return;
     }
     if (this.queuedSling && this.charging && !this.recovering) {
@@ -392,15 +392,9 @@ class PlayerSchema extends Schema {
     const steer = this.recovering || this.charging ? { x: 0, y: 0 } : { x: this.steerX, y: this.steerY };
     const box = { x: this.x, y: this.y, width: this.width, height: this.height };
     const velocity = { x: this.walkX, y: this.walkY };
-    const bumped = walk(box, velocity, steer, deltaTime, worldWidth, worldHeight, now < this.dashUntil ? { x: this.dashX * this.dashSpeed, y: this.dashY * this.dashSpeed } : null, walls);
+    walk(box, velocity, steer, deltaTime, worldWidth, worldHeight, now < this.dashUntil ? { x: this.dashX * this.dashSpeed, y: this.dashY * this.dashSpeed } : null);
     this.walkX = velocity.x;
     this.walkY = velocity.y;
-    if (bumped && now < this.dashUntil) {
-      // Rock stops a dash (or a slingshot's flight) dead, and a flight lands right there
-      this.endDash();
-      this.airborneUntil = 0;
-      this.airborne = false;
-    }
     const bursting = now < this.dashUntil;
     if (this.bursting !== bursting) this.bursting = bursting;
     if (box.x !== this.x) this.x = box.x;
@@ -413,7 +407,7 @@ class PlayerSchema extends Schema {
   }
 
   /** Slide after a shove, slowing to a stop; the world's walls stop you dead */
-  private slide(deltaTime: number, worldWidth: number, worldHeight: number, walls: Box[] = []): void {
+  private slide(deltaTime: number, worldWidth: number, worldHeight: number): void {
     const margin = ARENA_RULES.EDGE_MARGIN;
     // Exactly how far this tick's slowing slide goes, so a shove travels PUSH.DISTANCE
     const slow = Math.exp(-PUSH.FRICTION * deltaTime);
@@ -428,14 +422,6 @@ class PlayerSchema extends Schema {
       y = Math.max(margin, Math.min(y, worldHeight - this.height - margin));
       this.vy = 0;
     }
-    // Rock stops a slide dead
-    const box = { x: this.x, y: this.y, width: this.width, height: this.height };
-    if (moveWithWalls(box, x - this.x, y - this.y, walls)) {
-      this.vx = 0;
-      this.vy = 0;
-    }
-    x = box.x;
-    y = box.y;
     this.x = x;
     this.y = y;
     this.vx *= slow;

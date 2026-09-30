@@ -82,9 +82,8 @@ export function walk(
   deltaTime: number,
   worldWidth: number,
   worldHeight: number,
-  dash: { x: number; y: number } | null = null,
-  walls: Box[] = []
-): boolean {
+  dash: { x: number; y: number } | null = null
+): void {
   const speed = moveSpeed(box.width);
   if (dash) {
     velocity.x = dash.x;
@@ -102,68 +101,9 @@ export function walk(
     if (steer.x === 0 && Math.abs(velocity.x) < 2) velocity.x = 0;
     if (steer.y === 0 && Math.abs(velocity.y) < 2) velocity.y = 0;
   }
-  const bumped = moveWithWalls(box, velocity.x * deltaTime, velocity.y * deltaTime, walls);
   const margin = ARENA_RULES.EDGE_MARGIN;
-  box.x = Math.max(margin, Math.min(box.x, worldWidth - box.width - margin));
-  box.y = Math.max(margin, Math.min(box.y, worldHeight - box.height - margin));
-  return bumped;
-}
-
-/** Whether two boxes overlap (touching doesn't count) */
-function overlapsBox(a: Box, b: Box): boolean {
-  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
-}
-
-/**
- * Move a box by (dx, dy) without entering walls: axis by axis, in steps small enough that even a
- * slingshot can't skip through rock. Returns whether it ran into one.
- */
-export function moveWithWalls(box: Box, dx: number, dy: number, walls: Box[]): boolean {
-  if (walls.length === 0) {
-    box.x += dx;
-    box.y += dy;
-    return false;
-  }
-  const steps = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 12));
-  let bumped = false;
-  for (let step = 0; step < steps; step++) {
-    box.x += dx / steps;
-    for (const wall of walls) {
-      if (!overlapsBox(box, wall)) continue;
-      box.x = dx > 0 ? wall.x - box.width : wall.x + wall.width;
-      bumped = true;
-    }
-    box.y += dy / steps;
-    for (const wall of walls) {
-      if (!overlapsBox(box, wall)) continue;
-      box.y = dy > 0 ? wall.y - box.height : wall.y + wall.height;
-      bumped = true;
-    }
-  }
-  return bumped;
-}
-
-/** If a box ended up inside a wall (it grew, or was nudged), push it out the shortest way */
-export function pushOutOfWalls(box: Box, walls: Box[]): boolean {
-  let moved = false;
-  for (let pass = 0; pass < 4; pass++) {
-    let pushed = false;
-    for (const wall of walls) {
-      if (!overlapsBox(box, wall)) continue;
-      const left = box.x + box.width - wall.x;
-      const right = wall.x + wall.width - box.x;
-      const up = box.y + box.height - wall.y;
-      const down = wall.y + wall.height - box.y;
-      const least = Math.min(left, right, up, down);
-      if (least === left) box.x -= left;
-      else if (least === right) box.x += right;
-      else if (least === up) box.y -= up;
-      else box.y += down;
-      pushed = moved = true;
-    }
-    if (!pushed) break;
-  }
-  return moved;
+  box.x = Math.max(margin, Math.min(box.x + velocity.x * deltaTime, worldWidth - box.width - margin));
+  box.y = Math.max(margin, Math.min(box.y + velocity.y * deltaTime, worldHeight - box.height - margin));
 }
 
 /** How far one hop goes for a player this wide: HOP while small, then a little more than your own size */
