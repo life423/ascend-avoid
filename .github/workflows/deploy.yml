@@ -46,6 +46,12 @@ jobs:
         echo "Checking server build..."
         ls -la server/dist/
 
+    - name: Run the multiplayer smoke test
+      # Every deploy is guarded: the built server plus scripted players checking every game rule.
+      # If any check fails, the deploy job below never runs.
+      timeout-minutes: 10
+      run: npm test
+
   deploy:
     name: Deploy to Azure
     needs: build-and-test

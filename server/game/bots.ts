@@ -72,8 +72,6 @@ export class BotBrain {
   nextThinkAt = 0;
   /** Who the bot is hunting, if anyone (it dashes into them once close) */
   victim: PlayerSchema | null = null;
-  /** When a bot that's charging a slingshot lets go (0 when it isn't) */
-  slingAt = 0;
   private goal: Goal | null = null;
   private readonly thinkMs: number;
   private readonly mistakeChance: number;
@@ -137,18 +135,16 @@ export class BotBrain {
     const cy = bot.y + bot.height / 2;
     // A new floor is coming: get onto it
     if (world.shiftPhase !== "normal" && !world.isFloorAt(cx, cy)) return world.nearestFloorPoint(cx, cy);
-    // Something much bigger close by: get away from it (unless charging a slingshot to fight back)
-    if (!bot.charging) {
-      const threat = { x: 0, y: 0, distance: BOTS.FLEE_RANGE };
-      world.players.forEach((other) => {
-        if (other === bot || other.state !== PLAYER_STATE.ALIVE || other.width < bot.width * BOTS.FLEE_RATIO) return;
-        const ox = other.x + other.width / 2;
-        const oy = other.y + other.height / 2;
-        const distance = Math.hypot(ox - cx, oy - cy) - other.width / 2;
-        if (distance < threat.distance) Object.assign(threat, { x: ox, y: oy, distance });
-      });
-      if (threat.distance < BOTS.FLEE_RANGE) return { x: cx + (cx - threat.x) * 3, y: cy + (cy - threat.y) * 3 };
-    }
+    // Something much bigger close by: get away from it
+    const threat = { x: 0, y: 0, distance: BOTS.FLEE_RANGE };
+    world.players.forEach((other) => {
+      if (other === bot || other.state !== PLAYER_STATE.ALIVE || other.width < bot.width * BOTS.FLEE_RATIO) return;
+      const ox = other.x + other.width / 2;
+      const oy = other.y + other.height / 2;
+      const distance = Math.hypot(ox - cx, oy - cy) - other.width / 2;
+      if (distance < threat.distance) Object.assign(threat, { x: ox, y: oy, distance });
+    });
+    if (threat.distance < BOTS.FLEE_RANGE) return { x: cx + (cx - threat.x) * 3, y: cy + (cy - threat.y) * 3 };
     // Low on gems (or just reckless): go for the jackpot
     if (world.jackpotOn && (bot.gems < 20 || this.reckless)) return { x: world.jackpotX, y: world.jackpotY };
     const victim = this.shoveTarget(bot, world);
