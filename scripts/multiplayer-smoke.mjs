@@ -481,6 +481,36 @@ try {
     check(me().gems > aliceBeforeTug + 3 && bobState().gems < bobBeforeTug - 3, `head-on, the stronger pull wins the tug-of-war (Alice ${aliceBeforeTug} then ${me().gems}, Bob ${bobBeforeTug} then ${bobState().gems})`);
     check(bobState().state !== 'alive', 'and once the loser is drained small enough, it gets swallowed whole');
     await waitFor(() => bobState().state === 'alive' && !bobState().spawnProtected, 6000, 'Bob is back');
+    // Inhaling never slows you down
+    const stroll = async (inhaling) => {
+        alice.send('test:moveTo', { x: 300, y: 1200 });
+        await sleep(250);
+        const from = me().x;
+        if (inhaling) alice.send('inhale');
+        alice.send('steer', { x: 1, y: 0 });
+        await sleep(1200); // long enough that one tick of timing jitter is only a few percent
+        const moved = me().x - from;
+        alice.send('steer', { x: 0, y: 0 });
+        alice.send('exhale');
+        await sleep(1200);
+        return moved;
+    };
+    const plainWalk = await stroll(false);
+    const inhaleWalk = await stroll(true);
+    check(inhaleWalk > plainWalk * 0.88, `inhaling never slows you down (${Math.round(inhaleWalk)} vs ${Math.round(plainWalk)} units)`);
+    // ...and neither does running out of breath partway (a breath lasts 3 seconds)
+    alice.send('test:moveTo', { x: 300, y: 1300 });
+    await sleep(250);
+    alice.send('inhale');
+    alice.send('steer', { x: 1, y: 0 });
+    await sleep(2600);
+    const beforeBreath = me().x;
+    await sleep(800);
+    const afterBreath = me().x;
+    alice.send('steer', { x: 0, y: 0 });
+    alice.send('exhale');
+    check(!me().inhaling && afterBreath - beforeBreath > plainWalk * 0.55, `running out of breath doesn't change how you move (${Math.round(afterBreath - beforeBreath)} units in 0.8s)`);
+    await sleep(1200);
 
     // Bumper cars: running into someone at speed bounces you both apart, the lighter one farther, and costs no gems
     async function bump(bigGems, smallGems) {

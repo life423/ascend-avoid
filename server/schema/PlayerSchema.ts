@@ -351,7 +351,7 @@ class PlayerSchema extends Schema {
     this.aimY = y / length;
   }
 
-  /** Start inhaling (for up to `forMs`, INHALE.MAX_MS for players): you stand still and turn to aim */
+  /** Start inhaling (for up to `forMs`, INHALE.MAX_MS for players): you move as usual, and your mouth turns toward your aim */
   startInhale(now: number, forMs = 3000): void {
     if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering || now < this.inhaleReadyAt) return;
     this.inhaling = true;
