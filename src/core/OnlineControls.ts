@@ -103,7 +103,7 @@ export class OnlineControls {
 
     /**
      * Draw the controls. On a touchscreen: the joystick (or, until you touch it, a faint pulsing one
-     * where thumbs usually land) and the button, which shows its state: INHALE (tap: dash), a
+     * where thumbs usually land) and the button, which shows its state: INHALE, a
      * ring running round as a hold becomes an inhale, your breath draining while you inhale and
      * refilling while you catch it, a flash on a dash, and a darkened clock while the dash recharges.
      * With a keyboard: a small label for space that also shows your breath.
@@ -176,12 +176,12 @@ export class OnlineControls {
         else if (readyShare < 1) arc(readyShare, 'rgba(255, 255, 255, 0.6)', 3)
         else if (this.press) arc((now - this.press.at) / ARENA_RULES.CHARGE_AFTER_MS, 'rgba(79, 209, 197, 0.9)', 3)
 
-        ctx.fillStyle = dim ? 'rgba(255, 255, 255, 0.4)' : '#ffffff'
+        // Just the word, centered on its letters (the rim shows your breath; it flashes red when low)
+        ctx.fillStyle = dim ? 'rgba(255, 255, 255, 0.4)' : low ? breathColor : '#ffffff'
         ctx.font = `800 14px ${FONT}`
-        ctx.fillText('INHALE', x, y - 5)
-        ctx.font = `600 8px ${FONT}`
-        ctx.fillStyle = low ? breathColor : `rgba(255, 255, 255, ${dim ? 0.35 : 0.6})`
-        ctx.fillText(recovering ? 'BREATHE…' : inhaling ? (low ? 'LOW!' : '') : 'TAP: DASH', x, y + 11)
+        ctx.textBaseline = 'alphabetic'
+        const word = ctx.measureText('INHALE')
+        ctx.fillText('INHALE', x, y + (word.actualBoundingBoxAscent - word.actualBoundingBoxDescent) / 2)
         ctx.restore()
     }
 
