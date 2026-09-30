@@ -270,7 +270,7 @@ export const INHALE = {
    * pulls harder, but not in proportion). Head-on, both inhaling each other, the stronger pull takes
    * the whole stream; within TUG_EDGE of each other, neither gains.
    */
-  STEAL_REACH: 60, // the gap between you and them
+  STEAL_REACH: 100, // the gap between you and them: enough to latch onto someone running away (the drag then reels them in)
   STEAL_ARC: 50, // degrees either side of where you face
   STEAL_RATE: 4,
   TUG_EDGE: 1.08,

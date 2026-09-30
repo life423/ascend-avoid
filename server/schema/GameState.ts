@@ -768,7 +768,8 @@ class GameState extends Schema {
       const ny = distance > 1e-6 ? dy / distance : 0;
       const share = other.weight() / (player.weight() + other.weight());
       const moving = player.velocity();
-      if (!player.sliding && !other.sliding && moving.x * nx + moving.y * ny >= PUSH.BUMP_SPEED * moveSpeed(player.width)) {
+      // (An inhaling creature presses up against whoever it runs into instead of bouncing off, so a theft isn't broken)
+      if (!player.inhaling && !player.sliding && !other.sliding && moving.x * nx + moving.y * ny >= PUSH.BUMP_SPEED * moveSpeed(player.width)) {
         other.shoveAlong(nx, ny, PUSH.BUMP * 2 * (1 - share), player.sessionId, now, "bump");
         player.shoveAlong(-nx, -ny, PUSH.BUMP * 2 * share, other.sessionId, now, "bump");
         this.impact(player, other);
