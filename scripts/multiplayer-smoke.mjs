@@ -371,10 +371,11 @@ try {
     check(Math.abs(bobState().y - bobStillY) < 2, 'charging holds you still');
     bob.send('steer', { x: 0, y: 0 });
     await sleep(250);
+    const aliceBeforeSling = me().gems; // she sheds a gem a second at 100, so measure right before the hit
     bob.send('sling', { x: 1, y: 0 });
     await sleep(250);
     const bobAfterSling = bobState().gems;
-    const aliceDropped = 100 - me().gems;
+    const aliceDropped = aliceBeforeSling - me().gems;
     check(bob.messages.some((m) => m.type === 'credit' && m.message.how === 'sling' && m.message.targetId === alice.sessionId), 'a slingshot hit is credited to whoever landed it');
     await sleep(1150);
     const flung = me().x - heavyStart;
