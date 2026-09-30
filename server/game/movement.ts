@@ -1,4 +1,4 @@
-import { ARENA_RULES, GEMS, FACING } from "../constants/gameConstants.js";
+import { ARENA_RULES, FACING } from "../constants/gameConstants.js";
 
 export type Direction = "up" | "down" | "left" | "right";
 export const DIRECTIONS: readonly Direction[] = ["up", "down", "left", "right"];
@@ -64,10 +64,9 @@ export function hopsThisFrame(
   return hops;
 }
 
-/** Top speed for a player this wide: quick when small, a little slower at full size */
+/** Top speed for a creature this wide: quick when small, slowing smoothly as it grows (no floor or ceiling) */
 export function moveSpeed(width: number): number {
-  const growth = Math.max(0, Math.min(1, (width - ARENA_RULES.PLAYER_SIZE) / (GEMS.MAX_SIZE - ARENA_RULES.PLAYER_SIZE)));
-  return ARENA_RULES.MOVE_SPEED + (ARENA_RULES.MOVE_SPEED_BIG - ARENA_RULES.MOVE_SPEED) * growth;
+  return ARENA_RULES.MOVE_SPEED * Math.pow(ARENA_RULES.PLAYER_SIZE / Math.max(ARENA_RULES.PLAYER_SIZE, width), ARENA_RULES.SPEED_FALLOFF);
 }
 
 /**
@@ -144,12 +143,6 @@ export function stopAgainst(box: Box, direction: Direction, fromX: number, fromY
   return hit;
 }
 
-/** Seconds between hops while holding a direction: six a second when small, four at full size */
-export function holdRepeat(width: number): number {
-  const growth = Math.max(0, Math.min(1, (width - ARENA_RULES.PLAYER_SIZE) / (GEMS.MAX_SIZE - ARENA_RULES.PLAYER_SIZE)));
-  return ARENA_RULES.HOP_REPEAT * (1 + 0.5 * growth);
-}
-
 /**
  * Move one hop in a direction, staying inside the world. Hops grow with the player, so one hop
  * always clears your own body. The server and the browser both use this.
@@ -168,8 +161,7 @@ export function hop(player: Box, direction: Direction, worldWidth: number, world
 
 /** How fast a creature turns (radians a second): small ones whip around, big ones still quickly enough to defend */
 export function turnRate(width: number): number {
-  const grown = Math.max(0, Math.min(1, (width - 20) / 80));
-  return FACING.TURN_SMALL + (FACING.TURN_BIG - FACING.TURN_SMALL) * grown;
+  return FACING.TURN_SMALL * Math.pow(ARENA_RULES.PLAYER_SIZE / Math.max(ARENA_RULES.PLAYER_SIZE, width), FACING.TURN_FALLOFF);
 }
 
 /** Turn from one heading toward another (radians), by at most `step` the short way round */

@@ -7,9 +7,9 @@ import type { Box, Direction } from "../game/movement.js";
 const { ARENA_RULES, BOTS, GEMS, INHALE, PLAYER_STATE, PUSH, WORLD } = GAME_CONSTANTS;
 
 
-/** A player's size: small to start, growing with the square root of their gems, up to GEMS.MAX_SIZE */
+/** A creature's size: small to start, growing with the square root of its gems, with no ceiling */
 function sizeFor(gems: number): number {
-  const size = Math.min(GEMS.MAX_SIZE, ARENA_RULES.PLAYER_SIZE + GEMS.SIZE_PER_ROOT * Math.sqrt(gems));
+  const size = ARENA_RULES.PLAYER_SIZE + GEMS.SIZE_PER_ROOT * Math.sqrt(gems);
   return Math.round(size * 2) / 2;
 }
 
@@ -224,7 +224,7 @@ class PlayerSchema extends Schema {
 
   /** Change the gem count; the player grows or shrinks around their center, staying inside the world */
   setGems(count: number, worldWidth: number, worldHeight: number): void {
-    this.gems = Math.max(0, Math.min(GEMS.MAX_HELD, Math.round(count)));
+    this.gems = Math.max(0, Math.round(count));
     const size = sizeFor(this.gems);
     if (size === this.width) return;
     const centerX = this.x + this.width / 2;
@@ -243,16 +243,18 @@ class PlayerSchema extends Schema {
   }
 
   /**
-   * Very big players slowly shed gems: none at the decay start, one a second at twice that. Bots
-   * start shedding sooner, so people can outgrow them.
+   * Big creatures slowly shed gems, faster the bigger they are (a share of what they hold above the
+   * decay start each second), so growth slows down instead of hitting a ceiling. Bots start sooner
+   * and shed faster, so people can outgrow them.
    */
   decay(deltaTime: number, worldWidth: number, worldHeight: number): void {
     const start = this.isBot ? BOTS.DECAY_START : GEMS.DECAY_START;
+    const rate = this.isBot ? BOTS.DECAY_RATE : GEMS.DECAY_RATE;
     if (this.gems <= start) {
       this.decayProgress = 0;
       return;
     }
-    this.decayProgress += (deltaTime * (this.gems - start)) / start;
+    this.decayProgress += deltaTime * (this.gems - start) * rate;
     if (this.decayProgress < 1) return;
     const lost = Math.floor(this.decayProgress);
     this.decayProgress -= lost;

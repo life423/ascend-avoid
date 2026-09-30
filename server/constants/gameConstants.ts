@@ -76,15 +76,16 @@ export const PLAYER_STATE = {
  * within the aspect limits, so a bigger monitor doesn't see more.
  */
 export const WORLD = {
-  WIDTH: 2100,
-  HEIGHT: 2100,
+  WIDTH: 4200, // big enough for 12-15x giants to roam, filled to match (gems, bots, showers)
+  HEIGHT: 4200,
   VIEW_AREA: 720000,
   MIN_VIEW_ASPECT: 0.6,
   MAX_VIEW_ASPECT: 1.8,
-  /** Small players see a closer view and big ones see farther: the view's width at the
-   * smallest size and at the biggest, as a share of the view VIEW_AREA gives */
+  /** Small players see a closer view and big ones see farther: a newborn's view is VIEW_ZOOM_SMALL of
+   * the width VIEW_AREA gives, widening with (width / newborn width) ^ VIEW_GROWTH, less than you
+   * grow, so a giant still fills a good part of the screen (about a sixth of its height at 12x) */
   VIEW_ZOOM_SMALL: 0.8,
-  VIEW_ZOOM_BIG: 1.3,
+  VIEW_GROWTH: 0.3,
   OBSTACLE_COUNT: 6, // lane traffic (comets and balls cross it at other angles); open space to fight and charge in
   RESPAWN_DELAY_MS: 2000,
   SPAWN_PROTECTION_MS: 1500,
@@ -97,11 +98,14 @@ export const WORLD = {
  * you bigger, with longer hops and a slower rhythm when holding a direction.
  */
 export const GEMS = {
-  FIELD_COUNT: 60, // loose gems lying around the world
+  FIELD_COUNT: 240, // loose gems lying around the world
   RADIUS: 9,
-  SIZE_PER_ROOT: 6, // size = PLAYER_SIZE + this x the square root of your gems (26 at 1 gem, 80 at 100)...
-  MAX_SIZE: 100, // ...up to this...
-  MAX_HELD: 178, // ...which you reach at this many gems. Like Agar.io, that is the cap: a full-size player picks up no more (the gems stay for others)
+  /**
+   * Size = PLAYER_SIZE + this x the square root of your gems, with no ceiling: area grows with gems,
+   * like Agar.io. 45 wide at 10 gems, 100 at 100 (5x a newborn), 240 at 750 (12x), 300 at 1,200 (15x).
+   * Shedding (DECAY_*) slows growth down instead of stopping it.
+   */
+  SIZE_PER_ROOT: 8,
   SPRAY_SHARE: 0.5, // a hit sprays out this share of your gems...
   SURVIVE_AT: 3, // ...but with fewer than this, a hit knocks you out (your last gems burst out)
   SPRAY_PIECES: 24, // at most this many gems fly out; big piles make bigger gems
@@ -112,8 +116,9 @@ export const GEMS = {
   SPRAY_LIFETIME_MS: 15000, // uncollected sprayed gems vanish
   HIT_RECOVERY_MS: 800, // after a hit you skid and blink: traffic passes through you and you can't hop
   OWNER_PICKUP_DELAY_MS: 1500, // your own spilled gems wait this long for you, so whoever caused it gets first crack
-  DECAY_START: 50, // above this many gems you slowly shed them (one a second at twice this)
-  MAX_GEMS: 300, // cap on gems in the world at once
+  DECAY_START: 100, // above this many gems you slowly shed them...
+  DECAY_RATE: 0.0025, // ...this share of what's above DECAY_START each second (1.6 a second at 750, 2.7 at 1,200)
+  MAX_GEMS: 1400, // cap on gems in the world at once
 } as const;
 
 /**
@@ -140,20 +145,21 @@ export const PUSH = {
  * faster), dodge the traffic they see coming, chase gems and shove now and then.
  */
 export const BOTS = {
-  FILL_TO: 6, // bots fill in until this many are playing, and leave as people arrive
-  NAMES: ["Bolt", "Pixel", "Zippy", "Nova", "Sprocket", "Blip", "Widget", "Gizmo", "Rivet", "Chip"],
+  FILL_TO: 11, // bots fill in until this many are playing, and leave as people arrive
+  NAMES: ["Bolt", "Pixel", "Zippy", "Nova", "Sprocket", "Blip", "Widget", "Gizmo", "Rivet", "Chip", "Pebble", "Comet", "Fizz", "Mochi", "Dot"],
   THINK_MS_MIN: 200, // each bot decides on a hop every 200-320 ms (it varies by bot)...
   THINK_MS_MAX: 320,
   LOOK_AHEAD: 0.7, // ...watching the next 0.7 seconds of traffic...
   SAFETY_MARGIN: 10, // ...and keeping this far clear of it
   MISTAKE_CHANCE: 0.07, // how often a bot hops at random instead (varies by bot, up to 1.5x this)
   MAX_AGGRESSION: 0.35, // how keen the keenest bot is to shove whoever is next to it
-  GEM_SIGHT: 700, // bots go for gems within this distance...
+  GEM_SIGHT: 1000, // bots go for gems within this distance...
   FLEE_RATIO: 1.5, // bots run from anyone this many times their size who comes within FLEE_RANGE
-  FLEE_RANGE: 260,
+  FLEE_RANGE: 420, // (a giant's inhale reaches about 400)
   DASH_REACH: 70, // bots dash into whoever they're hunting once this close (gap between them)
   CONTENT_AT: 30, // ...until they have this many; then they just wander, dodge and shove
-  DECAY_START: 20, // bots shed gems above this (people above GEMS.DECAY_START), so people can outgrow them
+  DECAY_START: 20, // bots shed gems above this, and faster (people: GEMS.DECAY_*), so people can outgrow them...
+  DECAY_RATE: 0.02, // ...this share of what's above DECAY_START each second (1 a second at 70)
 } as const;
 
 /**
@@ -214,8 +220,8 @@ export const COMETS = {
 
 /** Which way creatures face: small ones turn fast, big ones slower but still fast enough to defend */
 export const FACING = {
-  TURN_SMALL: 14, // radians a second at newcomer size...
-  TURN_BIG: 7, // ...down to this at full size
+  TURN_SMALL: 14, // radians a second for a newborn...
+  TURN_FALLOFF: 0.55, // ...falling as TURN_SMALL x (PLAYER_SIZE / width) ^ this: about 5.8 at 5x, 3.6 at 12x (a second to turn around)
 } as const;
 
 /**
@@ -242,6 +248,7 @@ export const INHALE = {
    * pulls harder, but not in proportion). Head-on, both inhaling each other, the stronger pull takes
    * the whole stream; within TUG_EDGE of each other, neither gains.
    */
+  STEAL_REACH_PER_SIZE: 0.25, // plus this times the thief's width (bigger creatures reach farther)
   STEAL_REACH: 100, // the gap between you and them: enough to latch onto someone running away (the drag then reels them in)
   STEAL_ARC: 50, // degrees either side of where you face
   STEAL_RATE: 4,
@@ -277,7 +284,7 @@ export const BOMBS = {
 } as const;
 
 export const SHIFT = {
-  GRID: 10, // shapes are drawn on a 10x10 grid of tiles (210 units each)
+  GRID: 10, // shapes are drawn on a 10x10 grid of tiles (420 units each)
   FIRST_AFTER_MS: 90000, // the first shift comes this long after a world starts...
   EVERY_MS: 150000, // ...then this long after the arena returns
   GRACE_MS: 8000, // the new shape is shown, and nobody can be hurt while they get onto it
@@ -287,11 +294,11 @@ export const SHIFT = {
   BASE_SHARE: 0.42, // ...about this much with six players, growing slower than the player count
   MAX_REACH_TILES: 5, // every spot is within this many tiles of the new floor
   CANDIDATES: 6, // shapes tried each time; the best one is used
-  GRACE_GEMS: 12, // gems that drop onto the new floor during the grace period
+  GRACE_GEMS: 48, // gems that drop onto the new floor during the grace period
   SHOWER_EVERY_MS: 4000, // gem showers during the shift, richer as it goes on
-  SHOWER_GEMS: 6,
+  SHOWER_GEMS: 24,
   DROP_MS: 800, // a dropping gem can't be picked up until it lands
-  JACKPOT_VALUE: 20,
+  JACKPOT_VALUE: 40,
   JACKPOT_DROPS_WITH_MS_LEFT: 12000,
   JACKPOT_CLAIM_MS: 600, // stand on it alone this long to claim it (a shove resets it; two on it stalls it)
   JACKPOT_RADIUS: 26,
@@ -307,8 +314,8 @@ export const ARENA_RULES = {
   PLAYER_SIZE: 20, // a new player's size; gems make you bigger (GEMS.SIZE_PER_ROOT)
   HOP: 60, // one tap = one hop, while you're small...
   HOP_BEYOND_SIZE: 12, // ...and once you're big, your size plus this, so a hop always clears you
-  MOVE_SPEED: 320, // top speed (units a second) for the smallest player...
-  MOVE_SPEED_BIG: 250, // ...and for the biggest
+  MOVE_SPEED: 320, // top speed (units a second) for a newborn...
+  SPEED_FALLOFF: 0.35, // ...falling as MOVE_SPEED x (PLAYER_SIZE / width) ^ this: about 180 at 5x, 135 at 12x
   MOVE_RESPONSE: 14, // how quickly you reach the speed you're steering (and glide to a stop)
   DASH_SPEED: 900, // a dash is a burst at this speed...
   DASH_MS: 200, // ...for this long (about 180 units)...

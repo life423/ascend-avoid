@@ -65,7 +65,7 @@ try {
     const me = () => state().players.get(alice.sessionId);
     await waitFor(() => state().players?.size === 1, 2000, 'the first visitor is in the world right away');
     check(me().state === 'alive', 'no waiting room: you start in play');
-    check(state().worldWidth === 2100 && state().worldHeight === 2100, `the world is several screens across (${state().worldWidth}×${state().worldHeight})`);
+    check(state().worldWidth >= 4000 && state().worldHeight === state().worldWidth, `the world is many screens across, room for giants (${state().worldWidth}×${state().worldHeight})`);
     check(me().spawnProtected === true, 'a new arrival starts protected');
     check(me().width === 20, `and starts small (${me().width} units)`);
     const hazards = state().obstacles.length + (state().comets?.length ?? 0) + (state().balls?.length ?? 0);
@@ -135,8 +135,9 @@ try {
         if (o.vx || o.vy) cruising.push(o);
     });
     const acrossOf = (o) => (o.vx ? [o.y, o.height] : [o.x, o.width]);
-    const laneOf = (o) => Math.floor((acrossOf(o)[0] + acrossOf(o)[1] / 2) / 150);
-    const insideLane = (o) => acrossOf(o)[0] >= laneOf(o) * 150 - 0.5 && acrossOf(o)[0] + acrossOf(o)[1] <= (laneOf(o) + 1) * 150 + 0.5;
+    const laneSize = state().worldWidth / 14; // TRAFFIC.LANES lanes across the world
+    const laneOf = (o) => Math.floor((acrossOf(o)[0] + acrossOf(o)[1] / 2) / laneSize);
+    const insideLane = (o) => acrossOf(o)[0] >= laneOf(o) * laneSize - 0.5 && acrossOf(o)[0] + acrossOf(o)[1] <= (laneOf(o) + 1) * laneSize + 0.5;
     check(cruising.every(insideLane), `traffic keeps to lanes (${cruising.length} obstacles)`);
     let tightest = Infinity;
     for (const a of cruising) {
@@ -200,7 +201,7 @@ try {
     let inside = true;
     state().balls.forEach((b, i) => {
         if (Math.hypot(b.x - ballsBefore[i].x, b.y - ballsBefore[i].y) > 40) rolled++;
-        if (b.x < b.radius - 1 || b.x > 2100 - b.radius + 1 || b.y < b.radius - 1 || b.y > 2100 - b.radius + 1) inside = false;
+        if (b.x < b.radius - 1 || b.x > state().worldWidth - b.radius + 1 || b.y < b.radius - 1 || b.y > state().worldHeight - b.radius + 1) inside = false;
     });
     check(rolled === 3 && inside, `they keep rolling, bouncing off the walls (${rolled} of 3 moved)`);
 
@@ -234,10 +235,10 @@ try {
 
     alice.send('test:setGems', { count: 100 });
     await waitFor(() => me().gems >= 99, 1000, 'Alice now holds 100 gems');
-    check(me().width >= 78 && me().width <= 80.5, `gems make you much bigger (${me().width} units wide at 100 gems)`);
-    alice.send('test:setGems', { count: 300 });
+    check(me().width >= 99 && me().width <= 100.5, `gems make you much bigger (${me().width} units wide at 100 gems, 5x a newborn)`);
+    alice.send('test:setGems', { count: 750 });
     await sleep(200);
-    check(me().gems <= 178 && me().width === 100, `full size is as big as it gets, like Agar.io (${me().gems} gems, ${me().width} units)`);
+    check(me().gems >= 745 && me().width >= 235, `there's no size cap: 750 gems makes a giant 12x a newborn's width (${me().width} units)`);
     alice.send('test:setGems', { count: 100 });
     await sleep(200);
     alice.send('steer', { x: sideways() === 'right' ? 1 : -1, y: 0 });
@@ -246,11 +247,12 @@ try {
     await sleep(500);
     const bigSpeed = Math.abs(me().x - bigFrom) / 0.5;
     alice.send('steer', { x: 0, y: 0 });
-    check(bigSpeed > 200 && bigSpeed < bobSpeed, `and a little slower (${Math.round(bigSpeed)} vs ${Math.round(bobSpeed)} units a second)`);
+    check(bigSpeed > 140 && bigSpeed < bobSpeed * 0.75, `and slower (${Math.round(bigSpeed)} vs ${Math.round(bobSpeed)} units a second)`);
+    alice.send('test:setGems', { count: 400 });
     await sleep(400);
     const shedFrom = me().gems;
     await sleep(2500);
-    check(me().gems < shedFrom, `very big players slowly shed gems (${shedFrom} to ${me().gems} in 2.5s)`);
+    check(me().gems < shedFrom && me().gems > shedFrom - 5, `big creatures slowly shed gems, instead of hitting a ceiling (${shedFrom} to ${me().gems} in 2.5s)`);
 
     alice.send('test:setGems', { count: 20 });
     await waitFor(() => me().gems === 20, 1000, 'down to 20 gems');
@@ -639,13 +641,14 @@ try {
     alice.send('test:trafficHits', { on: false });
 
     // The arena shift
-    const tileCenter = (i) => ({ x: (i % 10) * 210 + 105, y: Math.floor(i / 10) * 210 + 105 });
+    const shiftTile = state().worldWidth / 10; // the shift draws its floor on a 10x10 grid
+    const tileCenter = (i) => ({ x: (i % 10) * shiftTile + shiftTile / 2, y: Math.floor(i / 10) * shiftTile + shiftTile / 2 });
     const centerOf = (p) => ({ x: p.x + p.width / 2, y: p.y + p.height / 2 });
     const onFloor = (p) => {
         const floor = state().floor;
         if (!floor) return true;
         const c = centerOf(p);
-        return floor[Math.min(9, Math.floor(c.y / 210)) * 10 + Math.min(9, Math.floor(c.x / 210))] === '1';
+        return floor[Math.min(9, Math.floor(c.y / shiftTile)) * 10 + Math.min(9, Math.floor(c.x / shiftTile))] === '1';
     };
     const placeCenter = (room, player, point) =>
         room.send('test:moveTo', { x: point.x - player.width / 2, y: point.y - player.height / 2 });
@@ -703,8 +706,8 @@ try {
     alice.send('test:setGems', { count: 6 });
     bob.send('test:setGems', { count: 0 });
     await sleep(150);
-    const tileRight = ((edge % 10) + 1) * 210;
-    const rowMiddle = Math.floor(edge / 10) * 210 + 105;
+    const tileRight = ((edge % 10) + 1) * shiftTile;
+    const rowMiddle = Math.floor(edge / 10) * shiftTile + shiftTile / 2;
     alice.send('test:moveTo', { x: tileRight - me().width - 4, y: rowMiddle - me().height / 2 });
     bob.send('test:moveTo', { x: tileRight - me().width - 4 - bobState().width - 20, y: rowMiddle - bobState().height / 2 });
     await sleep(250);
@@ -754,17 +757,17 @@ try {
         });
         return found;
     };
-    await waitFor(() => dave.state.players.size === 6 && botsIn(dave).length === 5, 2000, 'bots fill a quiet world up to six players');
+    await waitFor(() => dave.state.players.size === 11 && botsIn(dave).length === 10, 2000, 'bots fill a quiet world up to eleven players');
     const names = botsIn(dave).map((bot) => bot.name);
-    check(new Set(names).size === 5, `each with its own name (${names.join(', ')})`);
+    check(new Set(names).size === 10, `each with its own name (${names.join(', ')})`);
     const botStarts = botsIn(dave).map((bot) => ({ bot, x: bot.x, y: bot.y }));
     await sleep(2500);
     const wandered = botStarts.filter(({ bot, x, y }) => Math.hypot(bot.x - x, bot.y - y) > 50).length;
-    check(wandered >= 3, `bots move around on their own (${wandered} of 5)`);
+    check(wandered >= 6, `bots move around on their own (${wandered} of 10)`);
     const erin = await join('Erin');
-    await waitFor(() => dave.state.players.size === 6 && botsIn(dave).length === 4, 2000, 'a bot makes room when a person joins');
+    await waitFor(() => dave.state.players.size === 11 && botsIn(dave).length === 9, 2000, 'a bot makes room when a person joins');
     await erin.leave();
-    await waitFor(() => botsIn(dave).length === 5, 2000, 'and another fills in when they leave');
+    await waitFor(() => botsIn(dave).length === 10, 2000, 'and another fills in when they leave');
     await dave.leave();
 } catch (error) {
     check(false, `unexpected error: ${error.message}`);
