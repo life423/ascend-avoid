@@ -45,7 +45,7 @@ export class DrawerUI {
                         <p>On a computer, use the <span class="highlight">arrow keys</span> or <span class="highlight">WASD</span>, or hold the mouse button and your player heads for the cursor.</p>
 
                         <h4>Gems</h4>
-                        <p>Gems are your score. Every one you grab makes you a little bigger and heavier. Big players shove harder and see more of the arena, but they're also bigger targets, so growth is power and risk at once. Bigger creatures can swallow smaller ones, but anyone can steal gems from anyone by inhaling up close from where their mouth isn't pointing. Full size is as big as anyone gets: at full size you can't pick up more gems, and the biggest players slowly shed them.</p>
+                        <p>Gems are your score. Every one you grab makes you a little bigger and heavier. Big players shove harder and see more of the arena, but they're also bigger targets, so growth is power and risk at once. Bigger creatures can swallow smaller ones, but anyone can steal gems from anyone by inhaling up close from where their mouth isn't pointing. There's no size limit, but big creatures slowly shed gems, faster the bigger they get, so becoming a giant takes real effort.</p>
 
                         <h4>Dash and shove</h4>
                         <p>Tap the <span class="highlight">right side</span> of the screen (<span class="highlight">space</span> on a computer) to dash: a quick burst that costs a gem. Dash into another player to shove them. The heavier you are, the farther they go.</p>

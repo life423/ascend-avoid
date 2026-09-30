@@ -1260,9 +1260,9 @@ export class MultiplayerMode extends GameMode {
      */
     private updateCamera(canvas: HTMLCanvasElement, state: any, me: any, timestamp: number): View {
         const aspect = Math.min(WORLD.MAX_VIEW_ASPECT, Math.max(WORLD.MIN_VIEW_ASPECT, canvas.width / canvas.height))
-        // Small players see a closer view, big ones farther
-        const growth = me ? Math.max(0, Math.min(1, (me.width - ARENA_RULES.PLAYER_SIZE) / (GEMS.MAX_SIZE - ARENA_RULES.PLAYER_SIZE))) : 0
-        this.zoom += (WORLD.VIEW_ZOOM_SMALL + (WORLD.VIEW_ZOOM_BIG - WORLD.VIEW_ZOOM_SMALL) * growth - this.zoom) * 0.05
+        // The view widens as you grow, but less than you do, so a giant still fills a good part of the screen
+        const grown = me ? Math.max(1, me.width / ARENA_RULES.PLAYER_SIZE) : 1
+        this.zoom += (WORLD.VIEW_ZOOM_SMALL * Math.pow(grown, WORLD.VIEW_GROWTH) - this.zoom) * 0.05
         const area = WORLD.VIEW_AREA * this.zoom * this.zoom
         const scale = Math.max(
             canvas.width / Math.sqrt(area * aspect),

@@ -385,7 +385,7 @@ class GameState extends Schema {
     const dx = victim.x + victim.width / 2 - (thief.x + thief.width / 2);
     const dy = victim.y + victim.height / 2 - (thief.y + thief.height / 2);
     const d = Math.hypot(dx, dy);
-    if (d - (thief.width + victim.width) / 2 > INHALE.STEAL_REACH) return false;
+    if (d - (thief.width + victim.width) / 2 > INHALE.STEAL_REACH + thief.width * INHALE.STEAL_REACH_PER_SIZE) return false;
     return d < 1e-6 || (dx * Math.cos(thief.facing) + dy * Math.sin(thief.facing)) / d >= Math.cos((INHALE.STEAL_ARC * Math.PI) / 180);
   }
 
@@ -408,11 +408,11 @@ class GameState extends Schema {
     const target = victim as PlayerSchema | null;
     const pull = Math.sqrt(thief.weight());
     const wins = !!target && (!this.canSteal(target, thief) || pull >= Math.sqrt(target.weight()) * INHALE.TUG_EDGE);
-    const from = target && wins && thief.gems < GEMS.MAX_HELD ? target.sessionId : "";
+    const from = target && wins ? target.sessionId : "";
     if (from !== thief.stealingFrom) this.endTheft(thief, now, from);
     if (!target || !from) return;
     thief.stealProgress += deltaTime * INHALE.STEAL_RATE * pull;
-    while (thief.stealProgress >= 1 && target.gems > 0 && thief.gems < GEMS.MAX_HELD) {
+    while (thief.stealProgress >= 1 && target.gems > 0) {
       thief.stealProgress -= 1;
       target.setGems(target.gems - 1, this.worldWidth, this.worldHeight);
       thief.setGems(thief.gems + 1, this.worldWidth, this.worldHeight);
@@ -450,17 +450,13 @@ class GameState extends Schema {
     }
   }
 
-  /** Swallowed whole: knocked out, and all their gems go to the eater (what it can't hold bursts out) */
+  /** Swallowed whole: knocked out, and all their gems go to the eater */
   private swallow(eater: PlayerSchema, prey: PlayerSchema, now: number): void {
     const gems = prey.gems;
-    const kept = Math.min(gems, Math.max(0, GEMS.MAX_HELD - eater.gems));
-    const centerX = prey.x + prey.width / 2;
-    const centerY = prey.y + prey.height / 2;
-    if (kept > 0) eater.setGems(eater.gems + kept, this.worldWidth, this.worldHeight);
+    if (gems > 0) eater.setGems(eater.gems + gems, this.worldWidth, this.worldHeight);
     prey.setGems(0, this.worldWidth, this.worldHeight);
     prey.knockOut(now);
-    if (gems > kept) this.sprayGems(centerX, centerY, gems - kept, now);
-    this.credit(prey, "ate", now, eater.sessionId, { gems: kept });
+    this.credit(prey, "ate", now, eater.sessionId, { gems });
   }
 
   /** Spit the bomb in the mouth along (x, y) (or the way the creature faces): it slides, and its fuse starts */
@@ -661,7 +657,7 @@ class GameState extends Schema {
       const ox = other.x + other.width / 2;
       const oy = other.y + other.height / 2;
       const d = Math.hypot(ox - cx, oy - cy);
-      if (d - (bot.width + other.width) / 2 > INHALE.STEAL_REACH + 20) return;
+      if (d - (bot.width + other.width) / 2 > INHALE.STEAL_REACH + bot.width * INHALE.STEAL_REACH_PER_SIZE + 20) return;
       if (((cx - ox) * Math.cos(other.facing) + (cy - oy) * Math.sin(other.facing)) / Math.max(d, 1e-6) > 0.3) return;
       want = { x: ox, y: oy };
     });
@@ -1141,8 +1137,6 @@ class GameState extends Schema {
     let collected = 0;
     const taken: string[] = [];
     this.gems.forEach((gem, id) => {
-      // Full size is the cap, like Agar.io: no more pickups (the gems stay for everyone else)
-      if (player.gems + collected >= GEMS.MAX_HELD) return;
       if (!gem.touches(path, now, player.sessionId)) return;
       collected += gem.value;
       taken.push(id);
