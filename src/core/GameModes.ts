@@ -6,7 +6,7 @@ import Player from '../entities/Player'
 import { InputState } from '../types'
 import { getSprite } from '../utils/sprites'
 import { GameEvents } from '../constants/client-constants'
-import { ARENA_RULES, GEMS, PLAYER_COLORS, SHIFT, WORLD } from '../../server/constants/gameConstants'
+import { ARENA_RULES, FACING, GEMS, PLAYER_COLORS, SHIFT, WORLD } from '../../server/constants/gameConstants'
 import { turnRate, turnToward, walk } from '../../server/game/movement'
 import { OnlineControls } from './OnlineControls'
 import type { MultiplayerManager } from '../managers/MultiplayerManager'
@@ -552,7 +552,7 @@ function bounce(position: number, distance: number, low: number, high: number): 
 }
 
 /** A round creature with eyes toward where it faces, so everyone can see which side is its back */
-function drawCreature(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string, facing: number): void {
+function drawCreature(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string, facing: number, timestamp = 0): void {
     const r = size / 2
     ctx.fillStyle = color
     ctx.beginPath()
@@ -561,6 +561,37 @@ function drawCreature(ctx: CanvasRenderingContext2D, x: number, y: number, size:
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)'
     ctx.lineWidth = Math.max(1.5, size * 0.06)
     ctx.stroke()
+    // The weak spot: a bullseye on the back, and a glowing edge just outside the body over exactly
+    // the back that a hit from behind lands on (outside, so it never reads as a mouth)
+    const back = facing + Math.PI
+    const spread = (FACING.BACK_ARC * Math.PI) / 180
+    const glow = 0.75 + 0.25 * Math.sin(timestamp / 180)
+    const edge = Math.max(2.5, size * 0.07)
+    ctx.save()
+    ctx.shadowColor = 'rgba(255, 60, 90, 0.9)'
+    ctx.shadowBlur = Math.max(6, size * 0.2)
+    ctx.strokeStyle = `rgba(255, 70, 100, ${glow})`
+    ctx.lineWidth = edge
+    ctx.lineCap = 'round'
+    ctx.beginPath()
+    ctx.arc(x, y, r + edge * 0.9, back - spread, back + spread)
+    ctx.stroke()
+    ctx.restore()
+    const bx = x + Math.cos(back) * r * 0.58
+    const by = y + Math.sin(back) * r * 0.58
+    const target = Math.max(3.5, r * 0.26)
+    ctx.fillStyle = `rgba(255, 60, 90, ${glow})`
+    ctx.beginPath()
+    ctx.arc(bx, by, target, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = '#ffffff'
+    ctx.beginPath()
+    ctx.arc(bx, by, target * 0.62, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = 'rgba(255, 60, 90, 1)'
+    ctx.beginPath()
+    ctx.arc(bx, by, target * 0.3, 0, Math.PI * 2)
+    ctx.fill()
     const fx = Math.cos(facing)
     const fy = Math.sin(facing)
     for (const side of [-1, 1]) {
@@ -1368,7 +1399,7 @@ export class MultiplayerMode extends GameMode {
         }
         // A round creature whose eyes show which way it faces (its back is where it's vulnerable)
         const facing = isLocal ? this.localFacing : (player.facing ?? -Math.PI / 2)
-        drawCreature(ctx, left + size / 2, top + size / 2, size, isLocal ? '#ffffff' : PLAYER_COLORS[player.playerIndex % PLAYER_COLORS.length], facing)
+        drawCreature(ctx, left + size / 2, top + size / 2, size, isLocal ? '#ffffff' : PLAYER_COLORS[player.playerIndex % PLAYER_COLORS.length], facing, timestamp)
         ctx.globalAlpha = 1
         ctx.font = `600 16px ${FONT}`
         ctx.textAlign = 'center'
