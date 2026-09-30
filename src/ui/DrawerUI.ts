@@ -56,6 +56,9 @@ export class DrawerUI {
                         <p>Bigger players barging into you, slingshots, and the edge of the floor during an arena shift all knock you around. Take a hit and you skid, drop half your gems, and blink for a moment while nothing can touch you.</p>
                         <p>Your dropped gems take a second before you can grab them back, but anyone else can grab them right away. With fewer than 3 gems, a hit knocks you out (a dashed red outline warns you), and you're back in two seconds.</p>
 
+                        <h4>Tunnels</h4>
+                        <p>Rocky <span class="highlight">tunnels</span> have passages only small players fit through: the main entrances take players up to about 34 gems, the narrow ones only the smallest. Underground, big players can't reach you, but you can't collect gems or the jackpot either. When the arena shifts, entrances onto ground that's about to drop away flash, then close until the arena returns. Every tunnel always keeps at least two ways out, and the void can't reach you underground.</p>
+
                         <h4>Arena shifts</h4>
                         <p>Every few minutes the floor changes shape. You'll see the new floor first, and nobody can be hurt while everyone gets onto it. Then the rest falls away into the void.</p>
                         <p>While the arena is small, gems rain down. Near the end a jackpot crystal drops: stand on it alone to claim 20 gems. If anyone else is touching it, nobody's claim moves.</p>

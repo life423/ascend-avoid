@@ -241,7 +241,7 @@ export const SHIFT = {
   GRID: 10, // shapes are drawn on a 10x10 grid of tiles (210 units each)
   FIRST_AFTER_MS: 90000, // the first shift comes this long after a world starts...
   EVERY_MS: 150000, // ...then this long after the arena returns
-  GRACE_MS: 8000, // the new shape is shown, and nobody can be hurt while they get onto it
+  GRACE_MS: 10000, // the new shape is shown, and nobody can be hurt while they get onto it (tunnel entrances about to close flash)
   SHIFT_MS: 45000, // then the rest drops away for this long, and the whole arena returns
   FLOOR_SHARE_MIN: 0.35, // the floor covers 35-65% of the arena...
   FLOOR_SHARE_MAX: 0.65,

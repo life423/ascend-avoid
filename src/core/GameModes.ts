@@ -8,6 +8,7 @@ import { getSprite } from '../utils/sprites'
 import { GameEvents } from '../constants/client-constants'
 import { ARENA_RULES, GEMS, PLAYER_COLORS, SHIFT, WORLD } from '../../server/constants/gameConstants'
 import { walk } from '../../server/game/movement'
+import { ENTRANCES, TUNNELS, tunnelWalls } from '../../server/game/tunnels'
 import { OnlineControls } from './OnlineControls'
 import type { MultiplayerManager } from '../managers/MultiplayerManager'
 
@@ -950,7 +951,13 @@ export class MultiplayerMode extends GameMode {
         // Move exactly the way the server does
         const box = { x: this.predicted.x, y: this.predicted.y, width: me.width, height: me.height }
         const dashing = now < this.dashUntil ? { x: this.dashDir.x * this.dashSpeed, y: this.dashDir.y * this.dashSpeed } : null
-        walk(box, this.velocity, this.charging ? { x: 0, y: 0 } : steer, deltaTime, state.worldWidth, state.worldHeight, dashing)
+        const walls = state.tunnelDoors ? tunnelWalls(state.tunnelDoors) : []
+        const bumped = walk(box, this.velocity, this.charging ? { x: 0, y: 0 } : steer, deltaTime, state.worldWidth, state.worldHeight, dashing, walls)
+        if (bumped && now < this.dashUntil) {
+            // Rock stops a dash (or a slingshot's flight) dead
+            this.dashUntil = 0
+            this.airborneUntil = 0
+        }
 
         // The server shows where you were about a round trip ago: quietly correct any drift from that
         this.history.push({ at: now, x: box.x, y: box.y })
@@ -975,6 +982,42 @@ export class MultiplayerMode extends GameMode {
             }
         }
         this.predicted = { x: box.x, y: box.y }
+    }
+
+    /**
+     * Tunnels: solid rock, and a see-through roof over the passages so everyone can watch who's
+     * underground (drawn after the players, so they show through it dimmed). Entrances about to
+     * close flash amber; closed ones are sealed with rock and a red edge.
+     */
+    private drawTunnels(ctx: CanvasRenderingContext2D, state: any, timestamp: number): void {
+        const doors: string = state.tunnelDoors ?? ''
+        if (!doors) return
+        ctx.save()
+        for (const tunnel of TUNNELS) {
+            ctx.fillStyle = 'rgba(62, 54, 48, 0.96)'
+            for (const rock of tunnel.rock) ctx.fillRect(rock.x, rock.y, rock.width, rock.height)
+            // One shape for all the passages, so the roof isn't doubled where they meet
+            ctx.fillStyle = 'rgba(24, 18, 14, 0.42)'
+            ctx.beginPath()
+            for (const passage of tunnel.passages) ctx.rect(passage.x, passage.y, passage.width, passage.height)
+            ctx.fill()
+        }
+        const pulse = 0.5 + 0.5 * Math.sin(timestamp / 110)
+        ENTRANCES.forEach((entrance, index) => {
+            const door = doors[index]
+            const g = entrance.gate
+            if (door === 'w') {
+                ctx.fillStyle = `rgba(255, 196, 64, ${0.35 + 0.5 * pulse})`
+                ctx.fillRect(g.x, g.y, g.width, g.height)
+            } else if (door === 'x') {
+                ctx.fillStyle = 'rgba(62, 54, 48, 1)'
+                ctx.fillRect(g.x, g.y, g.width, g.height)
+                ctx.strokeStyle = 'rgba(255, 90, 90, 0.9)'
+                ctx.lineWidth = 2
+                ctx.strokeRect(g.x + 1, g.y + 1, g.width - 2, g.height - 2)
+            }
+        })
+        ctx.restore()
     }
 
     /** How charged your slingshot is, 0 to 1 */
@@ -1130,6 +1173,7 @@ export class MultiplayerMode extends GameMode {
             if (!present.has(id)) this.lastCenters.delete(id)
         }
 
+        this.drawTunnels(ctx, state, timestamp)
         this.drawBursts(ctx, timestamp)
         this.drawPickups(ctx, me, timestamp)
 
@@ -1432,6 +1476,22 @@ export class MultiplayerMode extends GameMode {
                 drawCrown(ctx, x + (position.x + player.width / 2) * scale, y + (position.y + player.height / 2) * scale - 4, 10)
             }
         })
+        const tunnelDoors: string = state.tunnelDoors ?? ''
+        if (tunnelDoors) {
+            // Tunnels, and whether each entrance is open (green), closing (amber) or closed (red)
+            ctx.fillStyle = 'rgba(150, 128, 108, 0.55)'
+            for (const tunnel of TUNNELS) {
+                ctx.fillRect(x + tunnel.block.x * scale, y + tunnel.block.y * scale, tunnel.block.width * scale, tunnel.block.height * scale)
+            }
+            ENTRANCES.forEach((entrance, index) => {
+                const door = tunnelDoors[index]
+                ctx.fillStyle = door === 'x' ? '#ff5a5a' : door === 'w' ? '#ffc440' : '#4ade80'
+                const g = entrance.gate
+                ctx.beginPath()
+                ctx.arc(x + (g.x + g.width / 2) * scale, y + (g.y + g.height / 2) * scale, 2.5, 0, Math.PI * 2)
+                ctx.fill()
+            })
+        }
         if (state.jackpotOn) {
             // The jackpot is the one thing the minimap points out
             const jx = x + state.jackpotX * scale

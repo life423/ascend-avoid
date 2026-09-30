@@ -110,6 +110,8 @@ export class BotBrain {
     for (const move of MOVES) {
       const box = { x: bot.x, y: bot.y, width: bot.width, height: bot.height };
       if (move) hop(box, move, world.worldWidth, world.worldHeight);
+      // Bots keep out of tunnels
+      if (move && world.inTunnel(box)) continue;
       const impact = bot.isSafe() ? Infinity : timeToImpact(box, world);
       // Staying clear of traffic comes first (the later a hit would come, the better); then
       // getting closer to the goal
@@ -191,7 +193,7 @@ export class BotBrain {
     const leader = world.leader();
     const pick: { target: PlayerSchema | null } = { target: null };
     world.players.forEach((other) => {
-      if (pick.target || other === bot || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected || other.sliding) return;
+      if (pick.target || other === bot || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected || other.sliding || world.underground(other.x + other.width / 2, other.y + other.height / 2)) return;
       const dx = Math.abs(other.x + other.width / 2 - cx);
       const dy = Math.abs(other.y + other.height / 2 - cy);
       const halfWidths = (bot.width + other.width) / 2;

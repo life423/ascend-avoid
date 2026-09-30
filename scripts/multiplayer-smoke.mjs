@@ -60,7 +60,7 @@ try {
 
     // This world starts with no loose gems, no bots, and traffic that can't hit anyone (the test
     // hits players itself), so nothing happens by accident and every count is exact
-    const alice = await join('Alice', { testFieldGems: 0, testCalm: true, testBots: 0, testTraffic: 'always' });
+    const alice = await join('Alice', { testFieldGems: 0, testCalm: true, testBots: 0, testTraffic: 'always', testTunnels: false });
     const state = () => alice.state;
     const me = () => state().players.get(alice.sessionId);
     await waitFor(() => state().players?.size === 1, 2000, 'the first visitor is in the world right away');
@@ -79,6 +79,43 @@ try {
     fresh.state.balls?.forEach((b) => { if (b.vx || b.vy) freshMoving++; });
     check(freshMoving === 0 && fresh.state.trafficWave === 'calm', `a normal world has no traffic at all (${freshMoving} moving)`);
     await fresh.leave();
+
+    // Tunnels: only small players fit, the void can't reach underground, every tunnel keeps two ways out
+    const tun = await new Client(URL).create('game_room', { name: 'Mole', testBots: 0, testFieldGems: 0, testCalm: true });
+    tun.onMessage('*', () => {});
+    await sleep(400);
+    const mole = () => tun.state.players.get(tun.sessionId);
+    check(/^o{12}$/.test(tun.state.tunnelDoors), `4 tunnels with 3 entrances each, all open (${tun.state.tunnelDoors})`);
+    // The first tunnel's main passage runs east-west through x 210-630, y 602-658
+    tun.send('test:setGems', { count: 60 });
+    await sleep(200);
+    tun.send('test:moveTo', { x: 120, y: 630 - mole().height / 2 });
+    await sleep(250);
+    tun.send('steer', { x: 1, y: 0 });
+    await sleep(1000);
+    tun.send('steer', { x: 0, y: 0 });
+    await sleep(200);
+    check(mole().x + mole().width / 2 < 210, `a big player can't get into a tunnel (size ${mole().width}, stopped at ${Math.round(mole().x + mole().width)})`);
+    tun.send('test:setGems', { count: 0 });
+    await sleep(200);
+    tun.send('test:moveTo', { x: 150, y: 620 });
+    await sleep(250);
+    tun.send('steer', { x: 1, y: 0 });
+    await sleep(1000);
+    tun.send('steer', { x: 0, y: 0 });
+    await sleep(200);
+    check(mole().x + mole().width / 2 > 260, `a small player walks right in (x ${Math.round(mole().x)})`);
+    tun.send('test:shift', { phase: 'grace', msLeft: 3000 });
+    await sleep(300);
+    const doorsWarned = tun.state.tunnelDoors;
+    tun.send('test:shift', { phase: 'shift', msLeft: 20000 });
+    await sleep(1500);
+    const doorsNow = tun.state.tunnelDoors;
+    let shutIn = 0;
+    for (let t = 0; t < 4; t++) if ((doorsNow.slice(t * 3, t * 3 + 3).match(/o/g) ?? []).length < 2) shutIn++;
+    check(!/x/.test(doorsWarned) && shutIn === 0, `during a shift every tunnel keeps two ways out (${doorsWarned} then ${doorsNow})`);
+    check(mole().state === 'alive' && !mole().recovering, "and underground, the void can't reach you");
+    await tun.leave();
     check(hazards >= 12, `traffic fills the world (${state().obstacles.length} in lanes, ${state().comets?.length} comets, ${state().balls?.length} balls)`);
 
     const bob = await join('Bob');
@@ -371,10 +408,11 @@ try {
     check(Math.abs(bobState().y - bobStillY) < 2, 'charging holds you still');
     bob.send('steer', { x: 0, y: 0 });
     await sleep(250);
+    const aliceBeforeSling = me().gems; // she sheds a gem a second at 100, so measure right before the hit
     bob.send('sling', { x: 1, y: 0 });
     await sleep(250);
     const bobAfterSling = bobState().gems;
-    const aliceDropped = 100 - me().gems;
+    const aliceDropped = aliceBeforeSling - me().gems;
     check(bob.messages.some((m) => m.type === 'credit' && m.message.how === 'sling' && m.message.targetId === alice.sessionId), 'a slingshot hit is credited to whoever landed it');
     await sleep(1150);
     const flung = me().x - heavyStart;
