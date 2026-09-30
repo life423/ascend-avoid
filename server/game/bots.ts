@@ -198,8 +198,6 @@ export class BotBrain {
       const halfHeights = (bot.height + other.height) / 2;
       const linedUp = (dy < halfHeights && dx < halfWidths + reach) || (dx < halfWidths && dy < halfHeights + reach);
       if (!linedUp) return;
-      // Anyone as big or bigger is only worth hitting from behind
-      if (other.width >= bot.width && !world.isBehind(other, cx, cy)) return;
       const keenness = other === leader ? 1 : other.weight() < bot.weight() ? this.aggression * 2 : this.aggression;
       // Bots get pushier during a shift
       if (Math.random() < keenness * (world.shiftPhase === "shift" ? 1.5 : 1)) pick.target = other;

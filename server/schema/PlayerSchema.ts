@@ -66,7 +66,14 @@ class PlayerSchema extends Schema {
   lastShoveKind = "";
   /** Which way the creature faces (radians): its back is where it's vulnerable */
   facing: number;
-  /** Server-only: where a charge is aimed (the creature turns to face it) */
+  /** Inhaling (holding the button): rooted, pulling in what's in front. See GameState.updateInhales */
+  inhaling: boolean;
+  /** What's in your mouth to spit: "rock", or "" */
+  mouth: string;
+  /** Server-only: when this breath runs out, and when you can spit again */
+  inhaleStopAt = 0;
+  spitReadyAt = 0;
+  /** Server-only: where a charge or an inhale is aimed (the creature turns to face it) */
   aimX = 0;
   aimY = 0;
   private dashSpeed: number = ARENA_RULES.DASH_SPEED;
@@ -86,6 +93,8 @@ class PlayerSchema extends Schema {
     this.airborne = false;
     this.bursting = false;
     this.facing = -Math.PI / 2;
+    this.inhaling = false;
+    this.mouth = "";
     this.sessionId = sessionId;
     this.playerIndex = playerIndex;
     this.name = `Player ${playerIndex + 1}`;
@@ -112,6 +121,7 @@ class PlayerSchema extends Schema {
     this.queuedDash = null;
     this.dashUntil = 0;
     this.charging = false;
+    this.inhaling = false;
     this.queuedSling = null;
     this.airborneUntil = 0;
     this.airborne = false;
@@ -143,6 +153,7 @@ class PlayerSchema extends Schema {
     this.queuedDash = null;
     this.dashUntil = 0;
     this.charging = false;
+    this.inhaling = false;
     this.queuedSling = null;
     this.airborneUntil = 0;
     this.airborne = false;
@@ -189,6 +200,7 @@ class PlayerSchema extends Schema {
     this.queuedDash = null;
     this.dashUntil = 0;
     this.charging = false;
+    this.inhaling = false;
     this.queuedSling = null;
     this.airborneUntil = 0;
     this.airborne = false;
@@ -211,6 +223,7 @@ class PlayerSchema extends Schema {
     this.queuedDash = null;
     this.dashUntil = 0;
     this.charging = false;
+    this.inhaling = false;
     this.queuedSling = null;
     this.airborneUntil = 0;
     this.airborne = false;
@@ -325,9 +338,22 @@ class PlayerSchema extends Schema {
   /** Where a charge is aimed (only while charging): the creature turns to face it */
   aimAt(x: number, y: number): void {
     const length = Math.hypot(x, y);
-    if (!this.charging || !Number.isFinite(length) || length < 1e-6) return;
+    if (!(this.charging || this.inhaling) || !Number.isFinite(length) || length < 1e-6) return;
     this.aimX = x / length;
     this.aimY = y / length;
+  }
+
+  /** Start inhaling (for up to `forMs`, INHALE.MAX_MS for players): you stand still and turn to aim */
+  startInhale(now: number, forMs = 3000): void {
+    if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering) return;
+    this.inhaling = true;
+    this.inhaleStopAt = now + forMs;
+    this.aimX = 0;
+    this.aimY = 0;
+  }
+
+  stopInhale(): void {
+    this.inhaling = false;
   }
 
   /** Where the player is steering */
@@ -369,6 +395,7 @@ class PlayerSchema extends Schema {
     if (this.spawnProtected && now >= this.protectedUntil) this.spawnProtected = false;
     if (this.recovering && now >= this.recoverUntil) this.recovering = false;
     if (this.airborne && now >= this.airborneUntil) this.airborne = false;
+    if (this.inhaling && now >= this.inhaleStopAt) this.inhaling = false;
     if (this.sliding) {
       this.walkX = 0;
       this.walkY = 0;
@@ -405,14 +432,14 @@ class PlayerSchema extends Schema {
     }
     this.queuedDash = null;
     // Charging holds you still: the stick aims instead
-    const steer = this.recovering || this.charging ? { x: 0, y: 0 } : { x: this.steerX, y: this.steerY };
+    const steer = this.recovering || this.charging || this.inhaling ? { x: 0, y: 0 } : { x: this.steerX, y: this.steerY };
     const box = { x: this.x, y: this.y, width: this.width, height: this.height };
     const velocity = { x: this.walkX, y: this.walkY };
     walk(box, velocity, steer, deltaTime, worldWidth, worldHeight, now < this.dashUntil ? { x: this.dashX * this.dashSpeed, y: this.dashY * this.dashSpeed } : null);
     this.walkX = velocity.x;
     this.walkY = velocity.y;
     // Facing: toward the aim while charging, along a dash or flight, otherwise where you steer
-    const intent = this.charging ? { x: this.aimX, y: this.aimY } : now < this.dashUntil ? { x: this.dashX, y: this.dashY } : { x: this.steerX, y: this.steerY };
+    const intent = this.charging || this.inhaling ? { x: this.aimX, y: this.aimY } : now < this.dashUntil ? { x: this.dashX, y: this.dashY } : { x: this.steerX, y: this.steerY };
     if (Math.hypot(intent.x, intent.y) > 0.25) {
       const facing = turnToward(this.facing, Math.atan2(intent.y, intent.x), turnRate(this.width) * deltaTime);
       if (facing !== this.facing) this.facing = facing;
@@ -475,6 +502,8 @@ type("boolean")(PlayerSchema.prototype, "charging");
 type("boolean")(PlayerSchema.prototype, "airborne");
 type("boolean")(PlayerSchema.prototype, "bursting");
 type("number")(PlayerSchema.prototype, "facing");
+type("boolean")(PlayerSchema.prototype, "inhaling");
+type("string")(PlayerSchema.prototype, "mouth");
 type("boolean")(PlayerSchema.prototype, "isBot");
 
 export { PlayerSchema };

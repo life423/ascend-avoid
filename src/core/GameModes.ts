@@ -6,7 +6,7 @@ import Player from '../entities/Player'
 import { InputState } from '../types'
 import { getSprite } from '../utils/sprites'
 import { GameEvents } from '../constants/client-constants'
-import { ARENA_RULES, FACING, GEMS, PLAYER_COLORS, SHIFT, WORLD } from '../../server/constants/gameConstants'
+import { ARENA_RULES, GEMS, INHALE, PLAYER_COLORS, ROCKS, SHIFT, WORLD } from '../../server/constants/gameConstants'
 import { turnRate, turnToward, walk } from '../../server/game/movement'
 import { OnlineControls } from './OnlineControls'
 import type { MultiplayerManager } from '../managers/MultiplayerManager'
@@ -552,7 +552,7 @@ function bounce(position: number, distance: number, low: number, high: number): 
 }
 
 /** A round creature with eyes toward where it faces, so everyone can see which side is its back */
-function drawCreature(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string, facing: number, timestamp = 0): void {
+function drawCreature(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string, facing: number, timestamp = 0, mouth = '', inhaling = false): void {
     const r = size / 2
     ctx.fillStyle = color
     ctx.beginPath()
@@ -561,37 +561,6 @@ function drawCreature(ctx: CanvasRenderingContext2D, x: number, y: number, size:
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)'
     ctx.lineWidth = Math.max(1.5, size * 0.06)
     ctx.stroke()
-    // The weak spot: a bullseye on the back, and a glowing edge just outside the body over exactly
-    // the back that a hit from behind lands on (outside, so it never reads as a mouth)
-    const back = facing + Math.PI
-    const spread = (FACING.BACK_ARC * Math.PI) / 180
-    const glow = 0.75 + 0.25 * Math.sin(timestamp / 180)
-    const edge = Math.max(2.5, size * 0.07)
-    ctx.save()
-    ctx.shadowColor = 'rgba(255, 60, 90, 0.9)'
-    ctx.shadowBlur = Math.max(6, size * 0.2)
-    ctx.strokeStyle = `rgba(255, 70, 100, ${glow})`
-    ctx.lineWidth = edge
-    ctx.lineCap = 'round'
-    ctx.beginPath()
-    ctx.arc(x, y, r + edge * 0.9, back - spread, back + spread)
-    ctx.stroke()
-    ctx.restore()
-    const bx = x + Math.cos(back) * r * 0.58
-    const by = y + Math.sin(back) * r * 0.58
-    const target = Math.max(3.5, r * 0.26)
-    ctx.fillStyle = `rgba(255, 60, 90, ${glow})`
-    ctx.beginPath()
-    ctx.arc(bx, by, target, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.fillStyle = '#ffffff'
-    ctx.beginPath()
-    ctx.arc(bx, by, target * 0.62, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.fillStyle = 'rgba(255, 60, 90, 1)'
-    ctx.beginPath()
-    ctx.arc(bx, by, target * 0.3, 0, Math.PI * 2)
-    ctx.fill()
     const fx = Math.cos(facing)
     const fy = Math.sin(facing)
     for (const side of [-1, 1]) {
@@ -609,6 +578,83 @@ function drawCreature(ctx: CanvasRenderingContext2D, x: number, y: number, size:
         ctx.arc(ex + fx * r * 0.1, ey + fy * r * 0.1, r * 0.13, 0, Math.PI * 2)
         ctx.fill()
     }
+    // The mouth: wide open while inhaling, bulging with a rock when full
+    const mx = x + fx * r * 0.74
+    const my = y + fy * r * 0.74
+    if (inhaling) {
+        ctx.fillStyle = '#10151f'
+        ctx.beginPath()
+        ctx.arc(mx, my, r * (0.24 + 0.03 * Math.sin(timestamp / 60)), 0, Math.PI * 2)
+        ctx.fill()
+    } else if (mouth) {
+        ctx.fillStyle = '#8b8f99'
+        ctx.beginPath()
+        ctx.arc(x + fx * r * 0.82, y + fy * r * 0.82, r * 0.3, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.strokeStyle = 'rgba(30, 34, 44, 0.8)'
+        ctx.lineWidth = Math.max(1, size * 0.03)
+        ctx.stroke()
+    }
+}
+
+/** Air rushing into an inhaling creature's mouth: a fading cone with streaks flowing in */
+function drawInhaleCone(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, facing: number, timestamp: number): void {
+    const r = size / 2
+    const reach = INHALE.REACH + size * INHALE.REACH_PER_SIZE
+    const spread = (INHALE.ARC * Math.PI) / 180
+    ctx.save()
+    const glow = ctx.createRadialGradient(x, y, r, x, y, r + reach)
+    glow.addColorStop(0, 'rgba(180, 230, 255, 0.3)')
+    glow.addColorStop(1, 'rgba(180, 230, 255, 0)')
+    ctx.fillStyle = glow
+    ctx.beginPath()
+    ctx.arc(x, y, r + reach, facing - spread, facing + spread)
+    ctx.arc(x, y, r, facing + spread, facing - spread, true)
+    ctx.closePath()
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(220, 245, 255, 0.6)'
+    ctx.lineWidth = 2
+    ctx.lineCap = 'round'
+    for (let i = 0; i < 7; i++) {
+        const t = (timestamp / 450 + i / 7) % 1
+        const along = r + reach * (1 - t)
+        const angle = facing + spread * 0.85 * Math.sin(i * 2.3)
+        ctx.beginPath()
+        ctx.moveTo(x + Math.cos(angle) * along, y + Math.sin(angle) * along)
+        ctx.lineTo(x + Math.cos(angle) * Math.max(r, along - 20), y + Math.sin(angle) * Math.max(r, along - 20))
+        ctx.stroke()
+    }
+    ctx.restore()
+}
+
+/** A rock: a grey boulder, with a streak behind it while it flies */
+function drawRock(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, vx: number, vy: number): void {
+    const speed = Math.hypot(vx, vy)
+    if (speed > 1) {
+        const tail = ctx.createLinearGradient(x, y, x - (vx / speed) * radius * 5, y - (vy / speed) * radius * 5)
+        tail.addColorStop(0, 'rgba(200, 205, 215, 0.55)')
+        tail.addColorStop(1, 'rgba(200, 205, 215, 0)')
+        ctx.strokeStyle = tail
+        ctx.lineWidth = radius * 1.4
+        ctx.lineCap = 'round'
+        ctx.beginPath()
+        ctx.moveTo(x, y)
+        ctx.lineTo(x - (vx / speed) * radius * 5, y - (vy / speed) * radius * 5)
+        ctx.stroke()
+    }
+    ctx.fillStyle = '#8b8f99'
+    ctx.beginPath()
+    ctx.arc(x, y, radius, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.25)'
+    ctx.beginPath()
+    ctx.arc(x - radius * 0.3, y - radius * 0.3, radius * 0.35, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(30, 34, 44, 0.8)'
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.arc(x, y, radius, 0, Math.PI * 2)
+    ctx.stroke()
 }
 
 /** A comet: a glowing violet head with a tail trailing back along its path */
@@ -965,7 +1011,12 @@ export class MultiplayerMode extends GameMode {
             this.multiplayerManager?.sendMessage('aim', { x: this.aim.x, y: this.aim.y })
         }
         for (const event of events) {
-            if (event === 'dash' && now >= this.dashReadyAt && !this.charging) {
+            if (event === 'dash' && now >= this.dashReadyAt && !this.charging && me.mouth) {
+                // Something in your mouth: spit it the way you're facing
+                this.multiplayerManager?.sendMessage('spit', { x: Math.cos(this.localFacing), y: Math.sin(this.localFacing) })
+                this.cooldownMs = ROCKS.SPIT_COOLDOWN_MS
+                this.dashReadyAt = now + this.cooldownMs
+            } else if (event === 'dash' && now >= this.dashReadyAt && !this.charging) {
                 // A burst the way you're steering (or last went)
                 this.dashDir = steering > 0.05 ? { x: steer.x / steering, y: steer.y / steering } : { ...this.facing }
                 this.dashSpeed = ARENA_RULES.DASH_SPEED
@@ -977,22 +1028,14 @@ export class MultiplayerMode extends GameMode {
                 this.charging = true
                 this.chargeStartedAt = now
                 this.sentAim = { x: 0, y: 0 }
-                this.multiplayerManager?.sendMessage('charge', {})
+                this.multiplayerManager?.sendMessage('inhale', {})
             } else if (event === 'sling' && this.charging) {
-                // Launch where you're aiming: farther the longer you held, flying over the void
-                const distance = ARENA_RULES.SLING_MIN + (ARENA_RULES.SLING_MAX - ARENA_RULES.SLING_MIN) * this.chargePower()
-                this.dashDir = { ...this.aim }
-                this.dashSpeed = ARENA_RULES.SLING_SPEED
-                this.dashUntil = now + (distance / ARENA_RULES.SLING_SPEED) * 1000
-                this.launchedAt = now
-                this.airborneUntil = this.dashUntil
-                this.cooldownMs = ARENA_RULES.SLING_COOLDOWN_MS
-                this.dashReadyAt = now + this.cooldownMs
+                // Let go: stop inhaling
                 this.charging = false
-                this.multiplayerManager?.sendMessage('sling', { x: this.aim.x, y: this.aim.y })
+                this.multiplayerManager?.sendMessage('exhale', {})
             } else if (event === 'cancel' && this.charging) {
                 this.charging = false
-                this.multiplayerManager?.sendMessage('cancel', {})
+                this.multiplayerManager?.sendMessage('exhale', {})
             }
         }
 
@@ -1040,39 +1083,6 @@ export class MultiplayerMode extends GameMode {
      * A slingshot charging: everyone sees a pulsing glow. For your own, also the power ring, and an
      * arrow to where you'll land (it pulses red at full power, so there's no reason to keep holding)
      */
-    private drawCharge(ctx: CanvasRenderingContext2D, isLocal: boolean, x: number, y: number, size: number, timestamp: number): void {
-        const pulse = 0.5 + 0.5 * Math.sin(timestamp / 90)
-        ctx.strokeStyle = `rgba(255, 196, 64, ${0.35 + 0.35 * pulse})`
-        ctx.lineWidth = 3
-        ctx.beginPath()
-        ctx.arc(x, y, size * 0.85 + 4, 0, Math.PI * 2)
-        ctx.stroke()
-        if (!isLocal) return
-        const power = this.chargePower()
-        ctx.strokeStyle = power >= 1 ? `rgba(255, 107, 107, ${0.7 + 0.3 * pulse})` : 'rgba(255, 255, 255, 0.9)'
-        ctx.lineWidth = power >= 1 ? 4 + 2 * pulse : 4
-        ctx.beginPath()
-        ctx.arc(x, y, size * 0.85 + 10, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0.02, power))
-        ctx.stroke()
-        const reach = ARENA_RULES.SLING_MIN + (ARENA_RULES.SLING_MAX - ARENA_RULES.SLING_MIN) * power
-        const endX = x + this.aim.x * reach
-        const endY = y + this.aim.y * reach
-        const from = size * 0.85 + 16
-        ctx.setLineDash([10, 8])
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)'
-        ctx.lineWidth = 3
-        ctx.beginPath()
-        ctx.moveTo(x + this.aim.x * from, y + this.aim.y * from)
-        ctx.lineTo(endX, endY)
-        ctx.stroke()
-        ctx.setLineDash([])
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)'
-        ctx.lineWidth = 2
-        ctx.beginPath()
-        ctx.arc(endX, endY, size / 2 + 4, 0, Math.PI * 2)
-        ctx.stroke()
-    }
-
     /** A small impact ring where a flying player touches down */
     private drawLanding(ctx: CanvasRenderingContext2D, id: string, flying: boolean, x: number, y: number, size: number, timestamp: number): void {
         if (flying) {
@@ -1161,6 +1171,13 @@ export class MultiplayerMode extends GameMode {
             const y = rolling ? bounce(ball.y, (ball.vy ?? 0) * lead, r, state.worldHeight - r) : ball.y + (ball.vy ?? 0) * lead
             if (x + ball.radius < left || x - ball.radius > right || y + ball.radius < top || y - ball.radius > bottom) return
             drawBall(ctx, x, y, ball.radius)
+        })
+        state.rocks?.forEach((rock: any) => {
+            if (rock.x < -100) return // in someone's mouth
+            const x = rock.x + (rock.vx ?? 0) * lead
+            const y = rock.y + (rock.vy ?? 0) * lead
+            if (x + 80 < left || x - 80 > right || y + 80 < top || y - 80 > bottom) return
+            drawRock(ctx, x, y, rock.radius, rock.vx ?? 0, rock.vy ?? 0)
         })
         state.comets?.forEach((comet: any) => {
             const x = comet.x + (comet.vx ?? 0) * lead
@@ -1376,7 +1393,7 @@ export class MultiplayerMode extends GameMode {
             ctx.fill()
         }
         this.drawLanding(ctx, sessionId, flying, centerX, drawn.y + player.height, size, timestamp)
-        if (player.charging || (isLocal && this.charging)) this.drawCharge(ctx, isLocal, centerX, centerY, size, timestamp)
+        if (player.inhaling || (isLocal && this.charging)) drawInhaleCone(ctx, centerX, centerY, size, isLocal ? this.localFacing : (player.facing ?? -Math.PI / 2), timestamp)
         if (isLocal && player.gems < GEMS.SURVIVE_AT) {
             // One hit from behind from being knocked out: a cracked red ring
             ctx.save()
@@ -1399,7 +1416,7 @@ export class MultiplayerMode extends GameMode {
         }
         // A round creature whose eyes show which way it faces (its back is where it's vulnerable)
         const facing = isLocal ? this.localFacing : (player.facing ?? -Math.PI / 2)
-        drawCreature(ctx, left + size / 2, top + size / 2, size, isLocal ? '#ffffff' : PLAYER_COLORS[player.playerIndex % PLAYER_COLORS.length], facing, timestamp)
+        drawCreature(ctx, left + size / 2, top + size / 2, size, isLocal ? '#ffffff' : PLAYER_COLORS[player.playerIndex % PLAYER_COLORS.length], facing, timestamp, player.mouth ?? '', Boolean(player.inhaling || (isLocal && this.charging)))
         ctx.globalAlpha = 1
         ctx.font = `600 16px ${FONT}`
         ctx.textAlign = 'center'
@@ -1521,13 +1538,14 @@ export class MultiplayerMode extends GameMode {
         const target = targetIsYou ? 'you' : String(data?.target ?? 'someone')
         const how = String(data?.how ?? '')
         const eaten = how === 'sling' && data?.eaten === true
-        const verb = how === 'back' ? 'hit' : how === 'crush' ? 'crushed' : eaten ? 'ate' : how === 'sling' || data?.kind === 'sling' ? 'slingshotted' : 'shoved'
-        const where = how === 'back' ? 'from behind' : how === 'edge' ? 'off the edge' : how === 'traffic' ? 'into traffic' : ''
+        const verb = how === 'ate' ? 'swallowed' : how === 'rock' ? 'hit' : how === 'crush' ? 'crushed' : eaten ? 'ate' : how === 'sling' || data?.kind === 'sling' ? 'slingshotted' : 'shoved'
+        const where = how === 'rock' ? 'with a rock' : how === 'edge' ? 'off the edge' : how === 'traffic' ? 'into traffic' : ''
         if (data?.byId === localId) {
             const name = String(data?.target ?? 'someone')
-            const title = how === 'back' ? `You hit ${name} from behind!` : how === 'crush' ? `You crushed ${name}!` : eaten ? `You ate ${name}!` : how === 'sling' ? `Direct hit on ${name}!` : `You wrecked ${name}!`
+            const title = how === 'ate' ? `You swallowed ${name}!` : how === 'rock' ? `Direct hit on ${name}!` : how === 'crush' ? `You crushed ${name}!` : eaten ? `You ate ${name}!` : how === 'sling' ? `Direct hit on ${name}!` : `You wrecked ${name}!`
             const parts =
-                how === 'back' ? [data?.out ? 'knocked out' : `${Number(data?.gems) || 0} gems knocked loose`]
+                how === 'ate' ? [`+${Number(data?.gems) || 0} gems`]
+                : how === 'rock' ? [data?.out ? 'knocked out' : `${Number(data?.gems) || 0} gems knocked loose`]
                 : how === 'sling' ? [`+${Number(data?.gems) || 0} gems`]
                 : [where, data?.out ? 'knocked out' : '']
             this.banner = { title, sub: parts.filter(Boolean).join(' · ').toUpperCase(), at: performance.now() }

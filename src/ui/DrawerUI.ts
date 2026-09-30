@@ -45,18 +45,17 @@ export class DrawerUI {
                         <p>On a computer, use the <span class="highlight">arrow keys</span> or <span class="highlight">WASD</span>, or hold the mouse button and your player heads for the cursor.</p>
 
                         <h4>Gems</h4>
-                        <p>Gems are your score. Every one you grab makes you a little bigger and heavier. Big players shove harder and see more of the arena, but they're also bigger targets, so growth is power and risk at once. Bigger creatures bump harder and small ones turn faster, but anyone can knock gems out of anyone by hitting them from behind. Full size is as big as anyone gets: at full size you can't pick up more gems, and the biggest players slowly shed them.</p>
+                        <p>Gems are your score. Every one you grab makes you a little bigger and heavier. Big players shove harder and see more of the arena, but they're also bigger targets, so growth is power and risk at once. Bigger creatures can swallow smaller ones, but anyone can knock gems loose from anyone with a spat rock. Full size is as big as anyone gets: at full size you can't pick up more gems, and the biggest players slowly shed them.</p>
 
-                        <h4>Dash, slingshot and shove</h4>
+                        <h4>Dash and shove</h4>
                         <p>Tap the <span class="highlight">right side</span> of the screen (<span class="highlight">space</span> on a computer) to dash: a quick burst that costs a gem. Dash into another player to shove them. The heavier you are, the farther they go.</p>
-                        <p>Hold the button instead of tapping to charge a <span class="highlight">slingshot</span>. You stop, a ring fills around you, and the joystick aims. On a computer, hold space, then turn the arrow to any angle with WASD or the arrow keys (or point with the mouse button held). Let go to launch: the longer you held, the farther you fly and the harder you hit, even the biggest players. You fly over the void, so a good slingshot can jump the gap between islands during a shift. It costs 2 gems and takes a few seconds to recharge. Slide off the button to cancel.</p>
-                        <p>The leader wears a crown. Hit someone from behind with it and lots of gems burst out of them, whatever their size. A dash just shoves, but shoving someone off an island during an arena shift costs them plenty.</p>
+                        <p>The leader wears a crown. A dash just shoves, but shoving someone off an island during an arena shift costs them plenty.</p>
 
-                        <h4>Front and back</h4>
-                        <p>Every creature's <span class="highlight">eyes</span> show which way it's facing, and the glowing red crescent on its back is its <span class="highlight">weak spot</span>. Run into someone from the front or side and you both bounce apart like bumper cars, the lighter one farther, and nobody loses gems. Hit someone from <span class="highlight">behind</span> with a dash or a slingshot and gems burst out of them for anyone to grab, whatever their size: a few for a dash, lots for a charged slingshot. With under 3 gems, a hit from behind knocks you out. Big creatures hit harder; small ones turn faster.</p>
+                        <h4>Inhale and spit</h4>
+                        <p>Hold the button to <span class="highlight">inhale</span>: you stand still and pull in everything in front of your mouth. Gems are swallowed, and so are creatures clearly smaller than you, along with all their gems. A rock stays in your mouth: tap to <span class="highlight">spit</span> it. A hit knocks gems loose from anyone, whatever their size, and knocks them back, so near the edge during a shift it can send them over. Tap with an empty mouth to dash.</p>
 
                         <h4>Getting hit</h4>
-                        <p>Bumps, dashes and slingshots knock you around, but only hits from behind cost you gems. Falling off the edge of the floor during an arena shift is a real hit: you skid, drop half your gems, and blink for a moment while nothing can touch you.</p>
+                        <p>Bumps and dashes just knock you around, but a spat rock knocks gems loose, and being swallowed costs you everything. Falling off the edge of the floor during an arena shift is a real hit: you skid, drop half your gems, and blink for a moment while nothing can touch you.</p>
                         <p>Your dropped gems take a second before you can grab them back, but anyone else can grab them right away. With fewer than 3 gems, a hit knocks you out (a dashed red outline warns you), and you're back in two seconds.</p>
 
                         <h4>Arena shifts</h4>
@@ -68,7 +67,7 @@ export class DrawerUI {
 
                         <h4>Tips</h4>
                         <ul>
-                            <li>Watch the eyes: a creature charging a slingshot turns to face its aim. Keep your back away from it.</li>
+                            <li>Watch the eyes: an inhaling creature is aiming its mouth. Stay out of the way of anything bigger than you.</li>
                             <li>When someone drops their gems, move fast, because they can't grab them back right away.</li>
                             <li>Shoving someone off the edge during a shift is the biggest swing in the game.</li>
                         </ul>

@@ -5,6 +5,7 @@ import { ObstacleSchema } from "./ObstacleSchema.js";
 import { GemSchema } from "./GemSchema.js";
 import { BallSchema } from "./BallSchema.js";
 import { CometSchema } from "./CometSchema.js";
+import { RockSchema } from "./RockSchema.js";
 import { BotBrain } from "../game/bots.js";
 import { closestFloorPoint, isFloor, jackpotSpot, layoutToString, pickLayout, randomFloorPoint } from "../game/layouts.js";
 import type { Layout } from "../game/layouts.js";
@@ -12,7 +13,7 @@ import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 import { moveSpeed } from "../game/movement.js";
 import type { Direction } from "../game/movement.js";
 
-const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS, COMETS, FACING } = GAME_CONSTANTS;
+const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS, COMETS, INHALE, ROCKS } = GAME_CONSTANTS;
 /** Which way each of a bot's decisions steers it */
 const STEER: Record<Direction, { x: number; y: number }> = {
   up: { x: 0, y: -1 },
@@ -43,6 +44,7 @@ class GameState extends Schema {
   obstacles: schema.ArraySchema<ObstacleSchema>;
   balls: schema.ArraySchema<BallSchema>;
   comets: schema.ArraySchema<CometSchema>;
+  rocks: schema.ArraySchema<RockSchema>;
   gems: schema.MapSchema<GemSchema>;
   worldWidth: number;
   worldHeight: number;
@@ -97,6 +99,7 @@ class GameState extends Schema {
     this.obstacles = new ArraySchema<ObstacleSchema>();
     this.balls = new ArraySchema<BallSchema>();
     this.comets = new ArraySchema<CometSchema>();
+    this.rocks = new ArraySchema<RockSchema>();
     this.gems = new MapSchema<GemSchema>();
     this.worldWidth = WORLD.WIDTH;
     this.worldHeight = WORLD.HEIGHT;
@@ -122,6 +125,9 @@ class GameState extends Schema {
       const comet = new CometSchema();
       comet.launch(this.worldWidth, this.worldHeight, i >= COMETS.STRAIGHT, true);
       this.comets.push(comet);
+    }
+    for (let i = 0; i < ROCKS.COUNT; i++) {
+      this.rocks.push(new RockSchema(80 + Math.random() * (this.worldWidth - 160), 80 + Math.random() * (this.worldHeight - 160)));
     }
     if (this.trafficOn) {
       // Traffic comes in waves, and the world starts with one under way
@@ -159,6 +165,8 @@ class GameState extends Schema {
     this.time = Math.round(now - this.startedAt);
     this.updateShift(deltaTime, now);
     this.updateTraffic();
+    this.updateInhales(now, deltaTime);
+    this.updateRocks(now, deltaTime);
     this.obstacles.forEach((obstacle) => {
       if (!obstacle.update(deltaTime, this.worldWidth, this.worldHeight)) {
         // Between waves, traffic that leaves stays out of the world
@@ -206,23 +214,7 @@ class GameState extends Schema {
           if (Math.hypot(dx, dy) < (bot.width + victim.width) / 2 + BOTS.DASH_REACH) bot.requestDash(dx, dy);
         }
       }
-      // Now and then a bot charges a slingshot at whoever it's hunting (everyone can see it coming)
-      if (bot && brain.slingAt && now >= brain.slingAt) {
-        const target = brain.victim;
-        if (target && bot.charging) {
-          bot.requestSling(target.x + target.width / 2 - (bot.x + bot.width / 2), target.y + target.height / 2 - (bot.y + bot.height / 2));
-        } else {
-          bot.cancelCharge();
-        }
-        brain.slingAt = 0;
-      } else if (bot && deciding && !bot.charging && brain.victim && Math.random() < BOTS.SLING_CHANCE) {
-        const target = brain.victim;
-        const gap = Math.hypot(target.x - bot.x, target.y - bot.y);
-        if (gap > 150 && gap < 400) {
-          bot.startCharge(now);
-          if (bot.charging) brain.slingAt = now + 500 + Math.random() * 700;
-        }
-      }
+      if (bot) this.botMouth(bot, now);
       // Between decisions, a bot stops rather than walk off the edge
       if (bot && this.shiftPhase === "shift") {
         const way = bot.steering();
@@ -318,6 +310,207 @@ class GameState extends Schema {
   }
 
   /**
+   * Inhaling: everything in a cone in front of the creature's mouth is pulled in. Gems are
+   * swallowed (they reach the mouth and are collected); a rock stays in the mouth; a creature
+   * INHALE.EAT_RATIO times smaller is dragged in (harder the closer it gets) and swallowed whole.
+   */
+  private updateInhales(now: number, deltaTime: number): void {
+    const cone = Math.cos((INHALE.ARC * Math.PI) / 180);
+    this.players.forEach((eater) => {
+      if (!eater.inhaling || eater.state !== PLAYER_STATE.ALIVE) return;
+      const fx = Math.cos(eater.facing);
+      const fy = Math.sin(eater.facing);
+      const mouthX = eater.x + eater.width / 2 + fx * eater.width * 0.3;
+      const mouthY = eater.y + eater.height / 2 + fy * eater.width * 0.3;
+      const reach = INHALE.REACH + eater.width * INHALE.REACH_PER_SIZE;
+      /** How far (x, y) is from the mouth, if it's in the cone and within reach (else -1) */
+      const inCone = (x: number, y: number, extra = 0): number => {
+        const dx = x - mouthX;
+        const dy = y - mouthY;
+        const d = Math.hypot(dx, dy);
+        if (d > reach + extra) return -1;
+        if (d < 1) return d;
+        return (dx * fx + dy * fy) / d >= cone ? d : -1;
+      };
+      this.gems.forEach((gem) => {
+        const d = inCone(gem.x, gem.y);
+        if (d < 1) return;
+        const step = Math.min(d, INHALE.PULL_GEMS * deltaTime);
+        gem.moveTo(gem.x + ((mouthX - gem.x) / d) * step, gem.y + ((mouthY - gem.y) / d) * step);
+      });
+      if (!eater.mouth) {
+        this.rocks.forEach((rock) => {
+          if (rock.heldBy || eater.mouth) return;
+          const d = inCone(rock.x, rock.y);
+          if (d < 0) return;
+          if (d <= eater.width * 0.35 + rock.radius) {
+            rock.hold(eater.sessionId);
+            eater.mouth = "rock";
+            return;
+          }
+          if (rock.flying()) return;
+          const step = Math.min(d, INHALE.PULL_ROCKS * deltaTime);
+          rock.placeAt(rock.x + ((mouthX - rock.x) / d) * step, rock.y + ((mouthY - rock.y) / d) * step);
+        });
+      }
+      this.players.forEach((prey) => {
+        if (prey === eater || prey.state !== PLAYER_STATE.ALIVE || prey.spawnProtected) return;
+        if (prey.width * INHALE.EAT_RATIO > eater.width) return;
+        const px = prey.x + prey.width / 2;
+        const py = prey.y + prey.height / 2;
+        const d = inCone(px, py, prey.width / 2);
+        if (d < 0) return;
+        if (d <= eater.width * 0.35 + prey.width / 2) {
+          this.swallow(eater, prey, now);
+          return;
+        }
+        const pull = (INHALE.PULL_PREY + INHALE.PULL_PREY_CLOSE * Math.max(0, 1 - d / reach)) * deltaTime;
+        prey.nudge(((mouthX - px) / d) * pull, ((mouthY - py) / d) * pull, this.worldWidth, this.worldHeight);
+      });
+    });
+  }
+
+  /** Swallowed whole: knocked out, and all their gems go to the eater (what it can't hold bursts out) */
+  private swallow(eater: PlayerSchema, prey: PlayerSchema, now: number): void {
+    const gems = prey.gems;
+    const kept = Math.min(gems, Math.max(0, GEMS.MAX_HELD - eater.gems));
+    const centerX = prey.x + prey.width / 2;
+    const centerY = prey.y + prey.height / 2;
+    if (kept > 0) eater.setGems(eater.gems + kept, this.worldWidth, this.worldHeight);
+    prey.setGems(0, this.worldWidth, this.worldHeight);
+    prey.knockOut(now);
+    if (gems > kept) this.sprayGems(centerX, centerY, gems - kept, now);
+    this.credit(prey, "ate", now, eater.sessionId, { gems: kept });
+  }
+
+  /** Spit whatever's in the mouth, along (x, y) (or the way the creature faces) */
+  spit(player: PlayerSchema, x: number, y: number, now: number): void {
+    if (player.state !== PLAYER_STATE.ALIVE || !player.mouth || now < player.spitReadyAt) return;
+    let held: RockSchema | null = null;
+    this.rocks.forEach((rock) => {
+      if (rock.heldBy === player.sessionId) held = rock;
+    });
+    const rock = held as RockSchema | null;
+    player.mouth = "";
+    if (!rock) return;
+    const length = Math.hypot(x, y);
+    const dx = Number.isFinite(length) && length > 1e-6 ? x / length : Math.cos(player.facing);
+    const dy = Number.isFinite(length) && length > 1e-6 ? y / length : Math.sin(player.facing);
+    const out = player.width / 2 + rock.radius + 2;
+    rock.launch(player.x + player.width / 2 + dx * out, player.y + player.height / 2 + dy * out, dx, dy, player.sessionId, now);
+    player.facing = Math.atan2(dy, dx);
+    player.spitReadyAt = now + ROCKS.SPIT_COOLDOWN_MS;
+  }
+
+  /**
+   * Rocks: a rock whose holder is gone drops where they were; a flying rock hits the first creature
+   * it touches (not whoever spat it, for a moment), unless that creature is inhaling toward it, in
+   * which case it's caught in their mouth
+   */
+  private updateRocks(now: number, deltaTime: number): void {
+    const cone = Math.cos((INHALE.ARC * Math.PI) / 180);
+    this.rocks.forEach((rock) => {
+      if (rock.heldBy) {
+        const holder = this.players.get(rock.heldBy);
+        if (holder && holder.state === PLAYER_STATE.ALIVE && holder.mouth) return;
+        if (holder) holder.mouth = "";
+        rock.heldBy = "";
+        const x = holder ? holder.x + holder.width / 2 : this.worldWidth / 2;
+        const y = holder ? holder.y + holder.height / 2 : this.worldHeight / 2;
+        rock.placeAt(Math.max(rock.radius, Math.min(x, this.worldWidth - rock.radius)), Math.max(rock.radius, Math.min(y, this.worldHeight - rock.radius)));
+        return;
+      }
+      if (!rock.flying()) return;
+      rock.update(deltaTime, this.worldWidth, this.worldHeight);
+      this.players.forEach((target) => {
+        if (!rock.flying() || target.state !== PLAYER_STATE.ALIVE || target.spawnProtected) return;
+        if (target.sessionId === rock.thrownBy && now - rock.thrownAt < 400) return;
+        const dx = rock.x - (target.x + target.width / 2);
+        const dy = rock.y - (target.y + target.height / 2);
+        const d = Math.hypot(dx, dy);
+        if (d > rock.radius + target.width / 2) return;
+        // Inhaling toward it: caught in the mouth
+        if (target.inhaling && !target.mouth && d > 0 && (dx * Math.cos(target.facing) + dy * Math.sin(target.facing)) / d >= cone) {
+          rock.hold(target.sessionId);
+          target.mouth = "rock";
+          return;
+        }
+        this.rockHit(rock, target, now);
+      });
+    });
+  }
+
+  /** A spat rock hits: knocked back, and gems knocked loose (a share, the same for every size) */
+  private rockHit(rock: RockSchema, target: PlayerSchema, now: number): void {
+    const speed = Math.hypot(rock.vx, rock.vy) || 1;
+    const dx = rock.vx / speed;
+    const dy = rock.vy / speed;
+    rock.placeAt(rock.x, rock.y);
+    target.shoveAlong(dx, dy, ROCKS.KNOCKBACK, rock.thrownBy, now, "rock");
+    const thrower = this.players.get(rock.thrownBy);
+    if (thrower) this.impact(thrower, target);
+    if (!target.takeBounty(now)) return;
+    if (target.gems < GEMS.SURVIVE_AT) {
+      this.knockOutWithGems(target, now);
+      this.credit(target, "rock", now, rock.thrownBy, { gems: 0 });
+      return;
+    }
+    const loose = Math.min(target.gems, ROCKS.HIT_MAX, Math.max(ROCKS.HIT_MIN, Math.ceil(target.gems * ROCKS.HIT_SHARE)));
+    const centerX = target.x + target.width / 2;
+    const centerY = target.y + target.height / 2;
+    target.setGems(target.gems - loose, this.worldWidth, this.worldHeight);
+    this.sprayGems(centerX, centerY, loose, now, target.sessionId);
+    this.credit(target, "rock", now, rock.thrownBy, { gems: loose });
+  }
+
+  /** Bots swallow smaller creatures, pick up rocks, and spit them at whoever's near */
+  private botMouth(bot: PlayerSchema, now: number): void {
+    if (bot.state !== PLAYER_STATE.ALIVE || bot.sliding || bot.recovering) return;
+    const cx = bot.x + bot.width / 2;
+    const cy = bot.y + bot.height / 2;
+    if (bot.mouth) {
+      if (Math.random() > 0.05) return;
+      let target: PlayerSchema | null = null;
+      let nearest = 520;
+      this.players.forEach((other) => {
+        if (other === bot || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected) return;
+        const d = Math.hypot(other.x + other.width / 2 - cx, other.y + other.height / 2 - cy);
+        if (d < nearest) {
+          nearest = d;
+          target = other;
+        }
+      });
+      const aim = target as PlayerSchema | null;
+      if (aim) this.spit(bot, aim.x + aim.width / 2 - cx + (Math.random() - 0.5) * 40, aim.y + aim.height / 2 - cy + (Math.random() - 0.5) * 40, now);
+      return;
+    }
+    if (bot.inhaling || Math.random() > 0.12) return;
+    const reach = INHALE.REACH + bot.width * INHALE.REACH_PER_SIZE;
+    let want: { x: number; y: number } | null = null;
+    let nearest = reach;
+    this.players.forEach((other) => {
+      if (other === bot || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected || other.width * INHALE.EAT_RATIO > bot.width) return;
+      const d = Math.hypot(other.x + other.width / 2 - cx, other.y + other.height / 2 - cy);
+      if (d < nearest) {
+        nearest = d;
+        want = { x: other.x + other.width / 2, y: other.y + other.height / 2 };
+      }
+    });
+    this.rocks.forEach((rock) => {
+      if (rock.heldBy || rock.flying()) return;
+      const d = Math.hypot(rock.x - cx, rock.y - cy);
+      if (d < Math.min(nearest, 170)) {
+        nearest = d;
+        want = { x: rock.x, y: rock.y };
+      }
+    });
+    const goal = want as { x: number; y: number } | null;
+    if (!goal) return;
+    bot.startInhale(now, 700 + Math.random() * 600);
+    bot.aimAt(goal.x - cx, goal.y - cy);
+  }
+
+  /**
    * A dash (or a slingshot's flight) that runs into another creature stops at the moment of contact
    * and shoves them along it, farther if the dasher is heavier (a slingshot mostly ignores weight).
    * A plain dash also bounces back, bumper-car style. Into their back, it knocks gems out of them,
@@ -365,7 +558,6 @@ class GameState extends Schema {
         : // A slingshot mostly ignores weight: the small player's equalizer
           (PUSH.SLING_PUSH_MIN + (PUSH.SLING_PUSH_MAX - PUSH.SLING_PUSH_MIN) * power) *
           Math.min(PUSH.SLING_WEIGHT_MAX, Math.max(PUSH.SLING_WEIGHT_MIN, Math.pow(weightRatio, PUSH.SLING_WEIGHT_POWER)));
-    const fromBehind = this.isBehind(target, dasher.x + dasher.width / 2, dasher.y + dasher.height / 2);
     if (!target.shoveAlong(along.x, along.y, distance, dasher.sessionId, now, power < 0 ? "dash" : "sling")) return;
     this.impact(dasher, target);
     dasher.dropProtection();
@@ -373,37 +565,6 @@ class GameState extends Schema {
     if (power < 0) {
       dasher.shoveAlong(-along.x, -along.y, PUSH.BOUNCE * Math.min(PUSH.MAX_RATIO, Math.max(PUSH.MIN_RATIO, 1 / weightRatio)), target.sessionId, now, "bump");
     }
-    if (fromBehind) this.hitFromBehind(target, dasher, power, now);
-  }
-
-  /** Whether a hit coming from (x, y) lands on the creature's back: within FACING.BACK_ARC of straight behind it */
-  isBehind(victim: PlayerSchema, x: number, y: number): boolean {
-    const dx = x - (victim.x + victim.width / 2);
-    const dy = y - (victim.y + victim.height / 2);
-    const distance = Math.hypot(dx, dy) || 1;
-    const facingThem = (dx * Math.cos(victim.facing) + dy * Math.sin(victim.facing)) / distance;
-    return facingThem <= -Math.cos((FACING.BACK_ARC * Math.PI) / 180);
-  }
-
-  /**
-   * A dash or slingshot into someone's back knocks gems out of them, whatever their size: a few
-   * for a dash, lots for a charged slingshot, bursting out for anyone to grab. Under
-   * GEMS.SURVIVE_AT gems, it knocks them out. At most once per immunity window, so nobody is farmed.
-   */
-  private hitFromBehind(victim: PlayerSchema, attacker: PlayerSchema, power: number, now: number): void {
-    if (!victim.takeBounty(now)) return;
-    if (victim.gems < GEMS.SURVIVE_AT) {
-      this.knockOutWithGems(victim, now);
-      this.credit(victim, "back", now, attacker.sessionId, { gems: 0 });
-      return;
-    }
-    const share = power < 0 ? PUSH.BACK_DASH_SHARE : PUSH.BACK_SLING_MIN + (PUSH.BACK_SLING_MAX - PUSH.BACK_SLING_MIN) * power;
-    const loose = Math.min(victim.gems, power < 0 ? PUSH.BACK_DASH_MAX : PUSH.BACK_SLING_CAP, Math.max(power < 0 ? 1 : 2, Math.ceil(victim.gems * share)));
-    const centerX = victim.x + victim.width / 2;
-    const centerY = victim.y + victim.height / 2;
-    victim.setGems(victim.gems - loose, this.worldWidth, this.worldHeight);
-    this.sprayGems(centerX, centerY, loose, now, victim.sessionId);
-    this.credit(victim, "back", now, attacker.sessionId, { gems: loose });
   }
 
   /**
@@ -906,6 +1067,7 @@ type({ map: PlayerSchema })(GameState.prototype, "players");
 type([ObstacleSchema])(GameState.prototype, "obstacles");
 type([BallSchema])(GameState.prototype, "balls");
 type([CometSchema])(GameState.prototype, "comets");
+type([RockSchema])(GameState.prototype, "rocks");
 type({ map: GemSchema })(GameState.prototype, "gems");
 type("number")(GameState.prototype, "worldWidth");
 type("number")(GameState.prototype, "worldHeight");

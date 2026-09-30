@@ -379,32 +379,50 @@ try {
     await sleep(250);
     const bobAfterSling = bobState().gems;
     const aliceDropped = aliceBeforeSling - me().gems;
-    check(bob.messages.some((m) => m.type === 'credit' && m.message.how === 'back' && m.message.targetId === alice.sessionId), 'a slingshot into her back is credited to whoever landed it');
     await sleep(1150);
     const flung = me().x - heavyStart;
     check(flung > 200 && flung > light * 4, `a slingshot launches even a heavy player (${Math.round(flung)} units, where a dash moved them ${Math.round(light)})`);
-    check(aliceDropped >= 15, `and a hit that hard from behind knocks lots of gems out (${aliceDropped} of 100)`);
-    check(bob.messages.some((m) => m.type === 'burst' && m.message.count >= 15) && bobAfterSling <= 4, `they burst out for anyone to grab, not into the attacker (Bob has ${bobAfterSling})`);
     const restX = bobState().x;
     bob.send('dash', { x: -1, y: 0 });
     await sleep(300);
     check(Math.abs(bobState().x - restX) < 3, 'then needs a few seconds to recharge');
 
-    // A hit from behind when you have under 3 gems knocks you out
+    // Inhale a rock, then spit it: a hit knocks gems loose and knocks them back
     await sleep(2700);
-    alice.send('test:setGems', { count: 2 });
-    bob.send('test:setGems', { count: 10 });
-    await sleep(150);
-    bob.send('test:moveTo', { x: 700, y: 1750 });
-    alice.send('test:moveTo', { x: 700 + bobState().width + 60, y: 1750 });
+    alice.send('test:setGems', { count: 40 });
+    bob.send('test:setGems', { count: 20 });
+    await sleep(200);
+    alice.send('test:moveTo', { x: 700, y: 1750 });
     alice.send('test:face', { angle: 0 });
-    await sleep(250);
-    bob.send('charge');
+    bob.send('test:moveTo', { x: 400, y: 400 });
+    await sleep(150);
+    alice.send('test:placeRock', { x: 700 + me().width + 60, y: 1750 + me().height / 2 });
+    await sleep(150);
+    alice.send('inhale');
+    await sleep(700);
+    alice.send('exhale');
+    check(me().mouth === 'rock', `inhaling pulls a rock into your mouth (${me().mouth || 'empty'})`);
+    bob.send('test:moveTo', { x: 700 + me().width + 200, y: 1750 + (me().height - bobState().height) / 2 });
+    await sleep(300);
+    const bobHad = bobState().gems;
+    const bobFrom = bobState().x;
+    alice.send('spit', { x: 1, y: 0 });
     await sleep(600);
-    bob.send('sling', { x: 1, y: 0 });
-    await sleep(400);
-    check(me().state !== 'alive', `a hit from behind with under 3 gems knocks you out (Alice ${me().state})`);
-    await waitFor(() => me().state === 'alive' && !me().spawnProtected, 6000, 'Alice is back');
+    check(me().mouth === '' && bobHad - bobState().gems >= 2, `spitting it knocks gems loose from whoever it hits (${bobHad - bobState().gems} of ${bobHad})`);
+    check(bobState().x - bobFrom > 100, `and knocks them back (${Math.round(bobState().x - bobFrom)} units)`);
+
+    // Inhale a smaller creature and it's swallowed whole, gems and all
+    await sleep(1500);
+    bob.send('test:setGems', { count: 5 });
+    await sleep(200);
+    bob.send('test:moveTo', { x: 700 + me().width + 40, y: 1750 + (me().height - bobState().height) / 2 });
+    await sleep(250);
+    const aliceBeforeGulp = me().gems;
+    alice.send('inhale');
+    await sleep(900);
+    alice.send('exhale');
+    check(bobState().state !== 'alive' && me().gems >= aliceBeforeGulp + 4, `inhaling swallows a smaller creature whole (Alice ${aliceBeforeGulp} then ${me().gems}, Bob ${bobState().state})`);
+    await waitFor(() => bobState().state === 'alive' && !bobState().spawnProtected, 6000, 'Bob is back');
 
     // Bumper cars: running into someone at speed bounces you both apart, the lighter one farther, and costs no gems
     async function bump(bigGems, smallGems) {

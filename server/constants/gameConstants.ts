@@ -121,18 +121,6 @@ export const GEMS = {
  * players shove harder and are harder to shove.
  */
 export const PUSH = {
-  /**
-   * Front and back. Every creature faces somewhere (its eyes show where). Front and side hits are
-   * bumper cars: both bounce apart, the lighter one farther, and nobody loses gems. A dash or a
-   * slingshot into someone's back (FACING.BACK_ARC) knocks gems out of them whatever their size:
-   * BACK_DASH_SHARE for a dash, BACK_SLING_MIN to BACK_SLING_MAX by charge for a slingshot. Under
-   * GEMS.SURVIVE_AT gems, a hit from behind knocks them out.
-   */
-  BACK_DASH_SHARE: 0.08,
-  BACK_DASH_MAX: 10,
-  BACK_SLING_MIN: 0.15,
-  BACK_SLING_MAX: 0.35,
-  BACK_SLING_CAP: 40,
   BOUNCE: 110, // a plain dash bounces back off whoever it hits (lighter bounces farther)
   BUMP: 150, // running into someone at speed: each bounces about this far (split by weight)
   BUMP_SPEED: 0.5, // ...moving toward them at this share of top speed or more
@@ -256,7 +244,41 @@ export const COMETS = {
 export const FACING = {
   TURN_SMALL: 14, // radians a second at newcomer size...
   TURN_BIG: 7, // ...down to this at full size
-  BACK_ARC: 60, // degrees either side of straight behind that count as the back
+} as const;
+
+/**
+ * Inhale (hold the button): you stand still, turn to aim your mouth, and pull in everything in a
+ * cone in front of you. Gems are swallowed; creatures EAT_RATIO times smaller are swallowed whole
+ * (all their gems become yours; they can escape if they run early); a rock (or a rock flying at
+ * you) stays in your mouth, to spit. Bigger creatures reach farther.
+ */
+export const INHALE = {
+  REACH: 110, // plus REACH_PER_SIZE times your size
+  REACH_PER_SIZE: 1.2,
+  ARC: 35, // degrees either side of where you face
+  PULL_GEMS: 520, // units a second
+  PULL_ROCKS: 420,
+  PULL_PREY: 150, // at the edge of your reach, rising by PULL_PREY_CLOSE right at your mouth
+  PULL_PREY_CLOSE: 250,
+  EAT_RATIO: 1.25,
+  MAX_MS: 3000, // how long one breath lasts
+} as const;
+
+/**
+ * Rocks lie around the arena. Inhale one and tap to spit it: a hit knocks HIT_SHARE of anyone's
+ * gems loose (the same rule for every size) and knocks them back; under GEMS.SURVIVE_AT gems it
+ * knocks them out. A spat rock lands where it stops and can be used again.
+ */
+export const ROCKS = {
+  COUNT: 14,
+  RADIUS: 14,
+  SPEED: 950,
+  RANGE: 650,
+  HIT_SHARE: 0.12,
+  HIT_MIN: 2,
+  HIT_MAX: 25,
+  KNOCKBACK: 260,
+  SPIT_COOLDOWN_MS: 400,
 } as const;
 
 export const SHIFT = {
@@ -295,7 +317,7 @@ export const ARENA_RULES = {
   MOVE_RESPONSE: 14, // how quickly you reach the speed you're steering (and glide to a stop)
   DASH_SPEED: 900, // a dash is a burst at this speed...
   DASH_MS: 200, // ...for this long (about 180 units)...
-  CHARGE_AFTER_MS: 400, // holding DASH this long turns it into a slingshot charge (you stand still)...
+  CHARGE_AFTER_MS: 220, // holding DASH this long turns it into a slingshot charge (you stand still)...
   CHARGE_FULL_MS: 1000, // ...full power this much later...
   SLING_MIN: 250, // ...launching you this far at the least charge...
   SLING_MAX: 500, // ...and this far at full, flying over the void as you go
@@ -402,6 +424,8 @@ export const GAME_CONSTANTS = {
   BALLS,
   COMETS,
   FACING,
+  INHALE,
+  ROCKS,
   SHIFT,
   KEYS,
   DEVICE_SETTINGS

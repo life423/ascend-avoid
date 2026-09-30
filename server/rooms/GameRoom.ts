@@ -56,6 +56,17 @@ export class GameRoom extends Room<GameState> {
     this.onMessage("aim", (client, data: any) => {
       this.state.players.get(client.sessionId)?.aimAt(Number(data?.x) || 0, Number(data?.y) || 0);
     });
+    // Hold the button to inhale, release to stop; tap with something in your mouth to spit it
+    this.onMessage("inhale", (client) => {
+      this.state.players.get(client.sessionId)?.startInhale(Date.now());
+    });
+    this.onMessage("exhale", (client) => {
+      this.state.players.get(client.sessionId)?.stopInhale();
+    });
+    this.onMessage("spit", (client, data: any) => {
+      const player = this.state.players.get(client.sessionId);
+      if (player) this.state.spit(player, Number(data?.x) || 0, Number(data?.y) || 0, Date.now());
+    });
     this.onMessage("charge", (client) => {
       this.state.players.get(client.sessionId)?.startCharge(Date.now());
     });
@@ -131,6 +142,13 @@ export class GameRoom extends Room<GameState> {
       this.onMessage("test:face", (client, data: any) => {
         const player = playerOf(client);
         if (player) player.facing = Number(data?.angle) || 0;
+      });
+      this.onMessage("test:placeRock", (_client, data: any) => {
+        this.state.rocks.forEach((rock, index) => {
+          if (index !== 0) return;
+          rock.heldBy = "";
+          rock.placeAt(Number(data?.x) || 0, Number(data?.y) || 0);
+        });
       });
       this.onMessage("test:placeComet", (client, data: any) => {
         // Stands the first comet still, centered relative to the player's center
