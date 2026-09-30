@@ -418,6 +418,19 @@ class GameState extends Schema {
       thief.setGems(thief.gems + 1, this.worldWidth, this.worldHeight);
       thief.stolenRun += 1;
     }
+    // Being inhaled drags you toward the thief's mouth, harder the bigger the thief: walking away
+    // isn't enough, so a victim dashes free or turns and inhales back
+    if (target.sliding) return;
+    const tx = target.x + target.width / 2;
+    const ty = target.y + target.height / 2;
+    const mx = thief.x + thief.width / 2 + Math.cos(thief.facing) * thief.width * 0.5;
+    const my = thief.y + thief.height / 2 + Math.sin(thief.facing) * thief.width * 0.5;
+    const d = Math.hypot(mx - tx, my - ty);
+    const snug = target.width / 2 + 4;
+    if (d <= snug) return;
+    const drag = INHALE.DRAG * Math.min(2, Math.max(0.5, Math.sqrt(thief.weight() / target.weight()))) * deltaTime;
+    const step = Math.min(drag, d - snug);
+    target.nudge(((mx - tx) / d) * step, ((my - ty) / d) * step, this.worldWidth, this.worldHeight);
   }
 
   /** A run of stealing ends (or switches to someone else): a big one gets a banner and a line in the feed */
@@ -607,16 +620,28 @@ class GameState extends Schema {
       }
       return;
     }
-    if (bot.inhaling || Math.random() > 0.12) return;
-    // Someone stealing from this bot: usually it turns and fights back
+    // Inhaling: keep the mouth on whoever it's robbing
+    if (bot.inhaling) {
+      const robbing = bot.stealingFrom ? this.players.get(bot.stealingFrom) : undefined;
+      if (robbing) bot.aimAt(robbing.x + robbing.width / 2 - cx, robbing.y + robbing.height / 2 - cy);
+      return;
+    }
+    if (Math.random() > 0.12) return;
+    // Someone stealing from this bot: it turns and fights back, or dashes free
     let thief: PlayerSchema | null = null;
     this.players.forEach((other) => {
       if (other.stealingFrom === bot.sessionId) thief = other;
     });
     const robber = thief as PlayerSchema | null;
-    if (robber && Math.random() < 0.6) {
-      bot.startInhale(now, 900 + Math.random() * 600);
-      bot.aimAt(robber.x + robber.width / 2 - cx, robber.y + robber.height / 2 - cy);
+    if (robber) {
+      const toX = robber.x + robber.width / 2 - cx;
+      const toY = robber.y + robber.height / 2 - cy;
+      if (Math.random() < 0.55) {
+        bot.startInhale(now, 900 + Math.random() * 600);
+        bot.aimAt(toX, toY);
+      } else {
+        bot.requestDash(-toX, -toY);
+      }
       return;
     }
     const reach = INHALE.REACH + bot.width * INHALE.REACH_PER_SIZE;

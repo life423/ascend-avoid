@@ -52,8 +52,8 @@ export class DrawerUI {
                         <p>The leader wears a crown. A dash just shoves, but shoving someone off an island during an arena shift costs them plenty.</p>
 
                         <h4>Inhale</h4>
-                        <p>Hold the button to <span class="highlight">inhale</span>: you slow to a crawl and pull in everything in front of your mouth. Gems are swallowed, and so are creatures clearly smaller than you, along with all their gems.</p>
-                        <p>Get right up close to anyone too big to swallow and inhale to <span class="highlight">steal</span> their gems: they stream straight into your mouth. Bigger creatures pull harder, so head-on, the stronger pull wins the tug-of-war. Small creatures turn faster, so steal from the side, where their mouth isn't pointing, and get away before they turn around. Tap to dash.</p>
+                        <p>Hold the button to <span class="highlight">inhale</span> and pull in everything in front of your mouth, for up to 3 seconds before you need a breath. Gems are swallowed, and so are creatures clearly smaller than you, along with all their gems.</p>
+                        <p>Get right up close to anyone too big to swallow and inhale to <span class="highlight">steal</span> their gems: they stream straight into your mouth, and they're dragged toward you. To escape a thief, dash to break free, or turn and inhale back. Bigger creatures pull harder, so head-on, the stronger pull wins the tug-of-war. Small creatures turn faster, so steal from the side, where their mouth isn't pointing, and get away before they turn around. Tap to dash.</p>
 
                         <h4>Getting hit</h4>
                         <p>Bumps and dashes just knock you around, but anyone inhaling right up against you can steal your gems, and being swallowed costs you everything. Falling off the edge of the floor during an arena shift is a real hit: you skid, drop half your gems, and blink for a moment while nothing can touch you.</p>

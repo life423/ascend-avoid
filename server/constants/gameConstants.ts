@@ -247,7 +247,7 @@ export const FACING = {
 } as const;
 
 /**
- * Inhale (hold the button): you crawl (at CRAWL of your speed, turning slower) aiming your mouth, and pull in everything in a
+ * Inhale (hold the button): you keep moving at full speed, aiming your mouth, and pull in everything in a
  * cone in front of you. Gems are swallowed; creatures EAT_RATIO times smaller are swallowed whole
  * (all their gems become yours; they can escape if they run early); a bomb stays in your mouth,
  * safe until you spit it. Bigger creatures reach farther.
@@ -261,9 +261,9 @@ export const INHALE = {
   PULL_PREY: 150, // at the edge of your reach, rising by PULL_PREY_CLOSE right at your mouth
   PULL_PREY_CLOSE: 250,
   EAT_RATIO: 1.25,
-  MAX_MS: 3000, // how long one breath lasts
-  CRAWL: 0.3, // how fast you move while inhaling, as a share of your speed...
-  TURN: 0.6, // ...and how fast you turn
+  MAX_MS: 3000, // how long one breath lasts...
+  RECOVER_MS: 1000, // ...and how long you need to catch it before the next
+  DRAG: 140, // units a second someone you're stealing from is dragged toward your mouth (more if you're bigger)
   /**
    * Gravity theft: up close, inhaling steals gems from the nearest creature in front of your mouth
    * that's too big to swallow, STEAL_RATE a second times the square root of your weight (bigger

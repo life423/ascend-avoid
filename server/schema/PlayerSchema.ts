@@ -77,6 +77,8 @@ class PlayerSchema extends Schema {
   stolenRun = 0;
   /** Server-only: when this breath runs out, and when you can spit again */
   inhaleStopAt = 0;
+  /** Server-only: when you've caught your breath for the next inhale */
+  inhaleReadyAt = 0;
   spitReadyAt = 0;
   /** Server-only: where a charge or an inhale is aimed (the creature turns to face it) */
   aimX = 0;
@@ -351,15 +353,18 @@ class PlayerSchema extends Schema {
 
   /** Start inhaling (for up to `forMs`, INHALE.MAX_MS for players): you stand still and turn to aim */
   startInhale(now: number, forMs = 3000): void {
-    if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering) return;
+    if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering || now < this.inhaleReadyAt) return;
     this.inhaling = true;
     this.inhaleStopAt = now + forMs;
     this.aimX = 0;
     this.aimY = 0;
   }
 
-  stopInhale(): void {
+  /** Stop inhaling: you need a moment (INHALE.RECOVER_MS) to catch your breath before the next one */
+  stopInhale(now = Date.now()): void {
+    if (!this.inhaling) return;
     this.inhaling = false;
+    this.inhaleReadyAt = now + INHALE.RECOVER_MS;
   }
 
   /** Where the player is steering */
@@ -401,7 +406,7 @@ class PlayerSchema extends Schema {
     if (this.spawnProtected && now >= this.protectedUntil) this.spawnProtected = false;
     if (this.recovering && now >= this.recoverUntil) this.recovering = false;
     if (this.airborne && now >= this.airborneUntil) this.airborne = false;
-    if (this.inhaling && now >= this.inhaleStopAt) this.inhaling = false;
+    if (this.inhaling && now >= this.inhaleStopAt) this.stopInhale(now);
     if (this.sliding) {
       this.walkX = 0;
       this.walkY = 0;
@@ -438,9 +443,7 @@ class PlayerSchema extends Schema {
     }
     this.queuedDash = null;
     // Charging holds you still: the stick aims instead
-    // Inhaling: a slow crawl
-    const crawl = this.inhaling ? INHALE.CRAWL : 1;
-    const steer = this.recovering || this.charging ? { x: 0, y: 0 } : { x: this.steerX * crawl, y: this.steerY * crawl };
+    const steer = this.recovering || this.charging ? { x: 0, y: 0 } : { x: this.steerX, y: this.steerY };
     const box = { x: this.x, y: this.y, width: this.width, height: this.height };
     const velocity = { x: this.walkX, y: this.walkY };
     walk(box, velocity, steer, deltaTime, worldWidth, worldHeight, now < this.dashUntil ? { x: this.dashX * this.dashSpeed, y: this.dashY * this.dashSpeed } : null);
@@ -449,7 +452,7 @@ class PlayerSchema extends Schema {
     // Facing: toward the aim while charging, along a dash or flight, otherwise where you steer
     const intent = this.charging || this.inhaling ? { x: this.aimX, y: this.aimY } : now < this.dashUntil ? { x: this.dashX, y: this.dashY } : { x: this.steerX, y: this.steerY };
     if (Math.hypot(intent.x, intent.y) > 0.25) {
-      const facing = turnToward(this.facing, Math.atan2(intent.y, intent.x), turnRate(this.width) * (this.inhaling ? INHALE.TURN : 1) * deltaTime);
+      const facing = turnToward(this.facing, Math.atan2(intent.y, intent.x), turnRate(this.width) * deltaTime);
       if (facing !== this.facing) this.facing = facing;
     }
     const bursting = now < this.dashUntil;

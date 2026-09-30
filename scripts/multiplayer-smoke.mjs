@@ -441,6 +441,7 @@ try {
     bob.send('test:face', { angle: 0 });
     await sleep(250);
     const bobBeforeTheft = bobState().gems;
+    const bobTheftX = bobState().x;
     const aliceBeforeTheft = me().gems;
     alice.send('inhale');
     await sleep(700);
@@ -450,6 +451,17 @@ try {
     await sleep(150);
     const stolen = bobBeforeTheft - bobState().gems;
     check(streaming && stolen >= 4 && me().gems - aliceBeforeTheft >= 4, `inhaling up close steals gems from anyone in front of your mouth (${stolen} stolen)`);
+    check(bobState().x < bobTheftX - 5, `and they're dragged toward your mouth (${Math.round(bobTheftX - bobState().x)} units)`);
+    // A breath lasts a moment, and you need a moment to catch it
+    alice.send('inhale');
+    await sleep(200);
+    const tooSoon = me().inhaling;
+    await sleep(1000);
+    alice.send('inhale');
+    await sleep(200);
+    check(!tooSoon && me().inhaling, 'you need a moment to catch your breath between inhales');
+    alice.send('exhale');
+    await sleep(1100);
     // Head-on, both inhaling each other: the stronger pull takes the whole stream
     alice.send('test:setGems', { count: 50 });
     bob.send('test:setGems', { count: 30 });

@@ -1078,10 +1078,9 @@ export class MultiplayerMode extends GameMode {
         // Facing, worked out like the server does: the aim while charging, along a dash, else where you steer
         const intent = this.charging ? this.aim : dashing ?? steer
         if (Math.hypot(intent.x, intent.y) > 0.25) {
-            this.localFacing = turnToward(this.localFacing, Math.atan2(intent.y, intent.x), turnRate(me.width) * (this.charging ? INHALE.TURN : 1) * deltaTime)
+            this.localFacing = turnToward(this.localFacing, Math.atan2(intent.y, intent.x), turnRate(me.width) * deltaTime)
         }
-        // Inhaling: a slow crawl
-        walk(box, this.velocity, this.charging ? { x: steer.x * INHALE.CRAWL, y: steer.y * INHALE.CRAWL } : steer, deltaTime, state.worldWidth, state.worldHeight, dashing)
+        walk(box, this.velocity, steer, deltaTime, state.worldWidth, state.worldHeight, dashing)
 
         // The server shows where you were about a round trip ago: quietly correct any drift from that
         this.history.push({ at: now, x: box.x, y: box.y })
@@ -1431,7 +1430,7 @@ export class MultiplayerMode extends GameMode {
             ctx.fill()
         }
         this.drawLanding(ctx, sessionId, flying, centerX, drawn.y + player.height, size, timestamp)
-        if (player.inhaling || (isLocal && this.charging)) drawInhaleCone(ctx, centerX, centerY, size, isLocal ? this.localFacing : (player.facing ?? -Math.PI / 2), timestamp)
+        if (player.inhaling) drawInhaleCone(ctx, centerX, centerY, size, isLocal ? this.localFacing : (player.facing ?? -Math.PI / 2), timestamp)
         if (isLocal && player.gems < GEMS.SURVIVE_AT) {
             // One hit from behind from being knocked out: a cracked red ring
             ctx.save()
@@ -1454,7 +1453,7 @@ export class MultiplayerMode extends GameMode {
         }
         // A round creature whose eyes show which way it faces (its back is where it's vulnerable)
         const facing = isLocal ? this.localFacing : (player.facing ?? -Math.PI / 2)
-        drawCreature(ctx, left + size / 2, top + size / 2, size, isLocal ? '#ffffff' : PLAYER_COLORS[player.playerIndex % PLAYER_COLORS.length], facing, timestamp, player.mouth ?? '', Boolean(player.inhaling || (isLocal && this.charging)))
+        drawCreature(ctx, left + size / 2, top + size / 2, size, isLocal ? '#ffffff' : PLAYER_COLORS[player.playerIndex % PLAYER_COLORS.length], facing, timestamp, player.mouth ?? '', Boolean(player.inhaling))
         ctx.globalAlpha = 1
         ctx.font = `600 16px ${FONT}`
         ctx.textAlign = 'center'
