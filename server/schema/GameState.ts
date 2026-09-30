@@ -5,7 +5,7 @@ import { ObstacleSchema } from "./ObstacleSchema.js";
 import { GemSchema } from "./GemSchema.js";
 import { BallSchema } from "./BallSchema.js";
 import { CometSchema } from "./CometSchema.js";
-import { RockSchema } from "./RockSchema.js";
+import { BombSchema } from "./BombSchema.js";
 import { BotBrain } from "../game/bots.js";
 import { closestFloorPoint, isFloor, jackpotSpot, layoutToString, pickLayout, randomFloorPoint } from "../game/layouts.js";
 import type { Layout } from "../game/layouts.js";
@@ -13,7 +13,7 @@ import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 import { moveSpeed } from "../game/movement.js";
 import type { Direction } from "../game/movement.js";
 
-const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS, COMETS, INHALE, ROCKS } = GAME_CONSTANTS;
+const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS, COMETS, INHALE, BOMBS } = GAME_CONSTANTS;
 /** Which way each of a bot's decisions steers it */
 const STEER: Record<Direction, { x: number; y: number }> = {
   up: { x: 0, y: -1 },
@@ -44,7 +44,7 @@ class GameState extends Schema {
   obstacles: schema.ArraySchema<ObstacleSchema>;
   balls: schema.ArraySchema<BallSchema>;
   comets: schema.ArraySchema<CometSchema>;
-  rocks: schema.ArraySchema<RockSchema>;
+  bombs: schema.ArraySchema<BombSchema>;
   gems: schema.MapSchema<GemSchema>;
   worldWidth: number;
   worldHeight: number;
@@ -99,7 +99,7 @@ class GameState extends Schema {
     this.obstacles = new ArraySchema<ObstacleSchema>();
     this.balls = new ArraySchema<BallSchema>();
     this.comets = new ArraySchema<CometSchema>();
-    this.rocks = new ArraySchema<RockSchema>();
+    this.bombs = new ArraySchema<BombSchema>();
     this.gems = new MapSchema<GemSchema>();
     this.worldWidth = WORLD.WIDTH;
     this.worldHeight = WORLD.HEIGHT;
@@ -126,8 +126,8 @@ class GameState extends Schema {
       comet.launch(this.worldWidth, this.worldHeight, i >= COMETS.STRAIGHT, true);
       this.comets.push(comet);
     }
-    for (let i = 0; i < ROCKS.COUNT; i++) {
-      this.rocks.push(new RockSchema(80 + Math.random() * (this.worldWidth - 160), 80 + Math.random() * (this.worldHeight - 160)));
+    for (let i = 0; i < BOMBS.COUNT; i++) {
+      this.bombs.push(new BombSchema(80 + Math.random() * (this.worldWidth - 160), 80 + Math.random() * (this.worldHeight - 160)));
     }
     if (this.trafficOn) {
       // Traffic comes in waves, and the world starts with one under way
@@ -166,7 +166,7 @@ class GameState extends Schema {
     this.updateShift(deltaTime, now);
     this.updateTraffic();
     this.updateInhales(now, deltaTime);
-    this.updateRocks(now, deltaTime);
+    this.updateBombs(now, deltaTime);
     this.obstacles.forEach((obstacle) => {
       if (!obstacle.update(deltaTime, this.worldWidth, this.worldHeight)) {
         // Between waves, traffic that leaves stays out of the world
@@ -207,6 +207,12 @@ class GameState extends Schema {
         // Bots steer the way they decided (or stop), and dash into whoever they're hunting once close
         const way = move ? STEER[move] : { x: 0, y: 0 };
         bot.steer(way.x, way.y);
+        // Clear out of a lit bomb's blast
+        const escape = this.bombDanger(bot);
+        if (escape) {
+          if (bot.inhaling) bot.stopInhale();
+          bot.steer(escape.x, escape.y);
+        }
         const victim = brain.victim;
         if (move && victim && victim.state === PLAYER_STATE.ALIVE && !victim.spawnProtected) {
           const dx = victim.x + victim.width / 2 - (bot.x + bot.width / 2);
@@ -311,7 +317,7 @@ class GameState extends Schema {
 
   /**
    * Inhaling: everything in a cone in front of the creature's mouth is pulled in. Gems are
-   * swallowed (they reach the mouth and are collected); a rock stays in the mouth; a creature
+   * swallowed (they reach the mouth and are collected); a bomb stays in the mouth (safe until it's spat); a creature
    * INHALE.EAT_RATIO times smaller is dragged in (harder the closer it gets) and swallowed whole.
    */
   private updateInhales(now: number, deltaTime: number): void {
@@ -339,18 +345,18 @@ class GameState extends Schema {
         gem.moveTo(gem.x + ((mouthX - gem.x) / d) * step, gem.y + ((mouthY - gem.y) / d) * step);
       });
       if (!eater.mouth) {
-        this.rocks.forEach((rock) => {
-          if (rock.heldBy || eater.mouth) return;
-          const d = inCone(rock.x, rock.y);
+        this.bombs.forEach((bomb) => {
+          if (bomb.heldBy || bomb.respawnAt || eater.mouth) return;
+          const d = inCone(bomb.x, bomb.y);
           if (d < 0) return;
-          if (d <= eater.width * 0.35 + rock.radius) {
-            rock.hold(eater.sessionId);
-            eater.mouth = "rock";
+          if (d <= eater.width * 0.35 + bomb.radius) {
+            // A lit bomb keeps ticking in your mouth
+            bomb.hold(eater.sessionId);
+            eater.mouth = bomb.lit() ? "lit" : "bomb";
             return;
           }
-          if (rock.flying()) return;
-          const step = Math.min(d, INHALE.PULL_ROCKS * deltaTime);
-          rock.placeAt(rock.x + ((mouthX - rock.x) / d) * step, rock.y + ((mouthY - rock.y) / d) * step);
+          const step = Math.min(d, INHALE.PULL_BOMBS * deltaTime);
+          bomb.placeAt(bomb.x + ((mouthX - bomb.x) / d) * step, bomb.y + ((mouthY - bomb.y) / d) * step);
         });
       }
       this.players.forEach((prey) => {
@@ -383,105 +389,161 @@ class GameState extends Schema {
     this.credit(prey, "ate", now, eater.sessionId, { gems: kept });
   }
 
-  /** Spit whatever's in the mouth, along (x, y) (or the way the creature faces) */
+  /** Spit the bomb in the mouth along (x, y) (or the way the creature faces): it slides, and its fuse starts */
   spit(player: PlayerSchema, x: number, y: number, now: number): void {
     if (player.state !== PLAYER_STATE.ALIVE || !player.mouth || now < player.spitReadyAt) return;
-    let held: RockSchema | null = null;
-    this.rocks.forEach((rock) => {
-      if (rock.heldBy === player.sessionId) held = rock;
+    let held: BombSchema | null = null;
+    this.bombs.forEach((bomb) => {
+      if (bomb.heldBy === player.sessionId) held = bomb;
     });
-    const rock = held as RockSchema | null;
+    const bomb = held as BombSchema | null;
     player.mouth = "";
-    if (!rock) return;
+    if (!bomb) return;
     const length = Math.hypot(x, y);
     const dx = Number.isFinite(length) && length > 1e-6 ? x / length : Math.cos(player.facing);
     const dy = Number.isFinite(length) && length > 1e-6 ? y / length : Math.sin(player.facing);
-    const out = player.width / 2 + rock.radius + 2;
-    rock.launch(player.x + player.width / 2 + dx * out, player.y + player.height / 2 + dy * out, dx, dy, player.sessionId, now);
+    const out = player.width / 2 + bomb.radius + 2;
+    bomb.launch(player.x + player.width / 2 + dx * out, player.y + player.height / 2 + dy * out, dx, dy, BOMBS.SPIT_SPEED, player.sessionId);
+    // The fuse starts now (a bomb caught already lit keeps its fuse)
+    if (!bomb.lit()) bomb.explodesAt = this.time + BOMBS.FUSE_MS;
     player.facing = Math.atan2(dy, dx);
-    player.spitReadyAt = now + ROCKS.SPIT_COOLDOWN_MS;
+    player.spitReadyAt = now + BOMBS.SPIT_COOLDOWN_MS;
   }
 
   /**
-   * Rocks: a rock whose holder is gone drops where they were; a flying rock hits the first creature
-   * it touches (not whoever spat it, for a moment), unless that creature is inhaling toward it, in
-   * which case it's caught in their mouth
+   * Bombs: back after going off; safe in a mouth unless lit (then it goes off right there); dropped
+   * where a holder was if they're gone; sliding, nudged by anyone walking into it, kicked by a dash;
+   * and going off when the fuse runs down
    */
-  private updateRocks(now: number, deltaTime: number): void {
-    const cone = Math.cos((INHALE.ARC * Math.PI) / 180);
-    this.rocks.forEach((rock) => {
-      if (rock.heldBy) {
-        const holder = this.players.get(rock.heldBy);
-        if (holder && holder.state === PLAYER_STATE.ALIVE && holder.mouth) return;
-        if (holder) holder.mouth = "";
-        rock.heldBy = "";
-        const x = holder ? holder.x + holder.width / 2 : this.worldWidth / 2;
-        const y = holder ? holder.y + holder.height / 2 : this.worldHeight / 2;
-        rock.placeAt(Math.max(rock.radius, Math.min(x, this.worldWidth - rock.radius)), Math.max(rock.radius, Math.min(y, this.worldHeight - rock.radius)));
+  private updateBombs(now: number, deltaTime: number): void {
+    this.bombs.forEach((bomb) => {
+      if (bomb.respawnAt) {
+        if (this.time < bomb.respawnAt) return;
+        bomb.respawnAt = 0;
+        const spot = this.layout ? randomFloorPoint(this.layout) : { x: 80 + Math.random() * (this.worldWidth - 160), y: 80 + Math.random() * (this.worldHeight - 160) };
+        bomb.placeAt(spot.x, spot.y);
         return;
       }
-      if (!rock.flying()) return;
-      rock.update(deltaTime, this.worldWidth, this.worldHeight);
-      this.players.forEach((target) => {
-        if (!rock.flying() || target.state !== PLAYER_STATE.ALIVE || target.spawnProtected) return;
-        if (target.sessionId === rock.thrownBy && now - rock.thrownAt < 400) return;
-        const dx = rock.x - (target.x + target.width / 2);
-        const dy = rock.y - (target.y + target.height / 2);
-        const d = Math.hypot(dx, dy);
-        if (d > rock.radius + target.width / 2) return;
-        // Inhaling toward it: caught in the mouth
-        if (target.inhaling && !target.mouth && d > 0 && (dx * Math.cos(target.facing) + dy * Math.sin(target.facing)) / d >= cone) {
-          rock.hold(target.sessionId);
-          target.mouth = "rock";
+      if (bomb.heldBy) {
+        const holder = this.players.get(bomb.heldBy);
+        if (holder && holder.state === PLAYER_STATE.ALIVE && holder.mouth) {
+          const mouth = bomb.lit() ? "lit" : "bomb";
+          if (holder.mouth !== mouth) holder.mouth = mouth;
+          if (!bomb.lit() || this.time < bomb.explodesAt) return;
+          // Went off in their mouth
+          holder.mouth = "";
+          bomb.heldBy = "";
+          bomb.placeAt(holder.x + holder.width / 2, holder.y + holder.height / 2);
+          this.explode(bomb, now);
           return;
         }
-        this.rockHit(rock, target, now);
+        if (holder) holder.mouth = "";
+        bomb.heldBy = "";
+        const x = holder ? holder.x + holder.width / 2 : this.worldWidth / 2;
+        const y = holder ? holder.y + holder.height / 2 : this.worldHeight / 2;
+        bomb.placeAt(Math.max(bomb.radius, Math.min(x, this.worldWidth - bomb.radius)), Math.max(bomb.radius, Math.min(y, this.worldHeight - bomb.radius)));
+      }
+      bomb.update(deltaTime, this.worldWidth, this.worldHeight);
+      this.players.forEach((player) => {
+        if (player.state !== PLAYER_STATE.ALIVE) return;
+        const cx = player.x + player.width / 2;
+        const cy = player.y + player.height / 2;
+        const dx = bomb.x - cx;
+        const dy = bomb.y - cy;
+        const d = Math.hypot(dx, dy);
+        const reach = player.width / 2 + bomb.radius;
+        if (d >= reach || d < 1e-6) return;
+        const nx = dx / d;
+        const ny = dy / d;
+        if (player.dashing(now)) {
+          // Kicked
+          const along = player.dashDirection();
+          bomb.launch(bomb.x, bomb.y, along.x, along.y, BOMBS.KICK_SPEED, player.sessionId);
+          return;
+        }
+        // Nudged out of the way, rolling off a little
+        const moving = player.velocity();
+        const push = Math.max(60, moving.x * nx + moving.y * ny) * 1.1;
+        bomb.x = cx + nx * reach;
+        bomb.y = cy + ny * reach;
+        bomb.vx = nx * push;
+        bomb.vy = ny * push;
       });
+      if (bomb.lit() && this.time >= bomb.explodesAt) this.explode(bomb, now);
     });
   }
 
-  /** A spat rock hits: knocked back, and gems knocked loose (a share, the same for every size) */
-  private rockHit(rock: RockSchema, target: PlayerSchema, now: number): void {
-    const speed = Math.hypot(rock.vx, rock.vy) || 1;
-    const dx = rock.vx / speed;
-    const dy = rock.vy / speed;
-    rock.placeAt(rock.x, rock.y);
-    target.shoveAlong(dx, dy, ROCKS.KNOCKBACK, rock.thrownBy, now, "rock");
-    const thrower = this.players.get(rock.thrownBy);
-    if (thrower) this.impact(thrower, target);
-    if (!target.takeBounty(now)) return;
-    if (target.gems < GEMS.SURVIVE_AT) {
-      this.knockOutWithGems(target, now);
-      this.credit(target, "rock", now, rock.thrownBy, { gems: 0 });
-      return;
-    }
-    const loose = Math.min(target.gems, ROCKS.HIT_MAX, Math.max(ROCKS.HIT_MIN, Math.ceil(target.gems * ROCKS.HIT_SHARE)));
-    const centerX = target.x + target.width / 2;
-    const centerY = target.y + target.height / 2;
-    target.setGems(target.gems - loose, this.worldWidth, this.worldHeight);
-    this.sprayGems(centerX, centerY, loose, now, target.sessionId);
-    this.credit(target, "rock", now, rock.thrownBy, { gems: loose });
+  /**
+   * A bomb goes off: everyone in the blast is knocked outward (lighter creatures farther) and has
+   * gems knocked loose, more near the middle; under GEMS.SURVIVE_AT gems it knocks them out. Other
+   * bombs caught in it go off a moment later. Credit goes to whoever spat or kicked it last.
+   */
+  private explode(bomb: BombSchema, now: number): void {
+    const x = bomb.x;
+    const y = bomb.y;
+    const by = bomb.thrownBy;
+    bomb.vanish(this.time + BOMBS.RESPAWN_MS);
+    this.onEvent?.("blast", { x: Math.round(x), y: Math.round(y), radius: BOMBS.BLAST_RADIUS });
+    this.players.forEach((target) => {
+      if (target.state !== PLAYER_STATE.ALIVE || target.spawnProtected) return;
+      const tx = target.x + target.width / 2;
+      const ty = target.y + target.height / 2;
+      const d = Math.hypot(tx - x, ty - y);
+      const reach = BOMBS.BLAST_RADIUS + target.width / 2;
+      if (d >= reach) return;
+      const strength = 1 - d / reach;
+      const awayX = d > 1e-6 ? (tx - x) / d : -Math.cos(target.facing);
+      const awayY = d > 1e-6 ? (ty - y) / d : -Math.sin(target.facing);
+      const lightness = Math.min(1, Math.max(0.5, 1 / Math.sqrt(target.weight())));
+      target.shoveAlong(awayX, awayY, (BOMBS.PUSH_MIN + (BOMBS.PUSH_MAX - BOMBS.PUSH_MIN) * strength) * lightness, by, now, "bomb");
+      if (!target.takeBounty(now)) return;
+      const credited = by !== "" && by !== target.sessionId;
+      if (target.gems < GEMS.SURVIVE_AT) {
+        this.knockOutWithGems(target, now);
+        if (credited) this.credit(target, "bomb", now, by, { gems: 0 });
+        return;
+      }
+      const share = BOMBS.SHARE_MIN + (BOMBS.SHARE_MAX - BOMBS.SHARE_MIN) * strength;
+      const loose = Math.min(target.gems, BOMBS.LOOSE_MAX, Math.max(1, Math.ceil(target.gems * share)));
+      target.setGems(target.gems - loose, this.worldWidth, this.worldHeight);
+      this.sprayGems(tx, ty, loose, now, target.sessionId);
+      if (credited) this.credit(target, "bomb", now, by, { gems: loose });
+    });
+    this.bombs.forEach((other) => {
+      if (other === bomb || other.respawnAt || other.heldBy) return;
+      if (Math.hypot(other.x - x, other.y - y) > BOMBS.BLAST_RADIUS + other.radius) return;
+      const soon = this.time + BOMBS.CHAIN_MS;
+      if (!other.lit() || other.explodesAt > soon) other.explodesAt = soon;
+    });
   }
 
-  /** Bots swallow smaller creatures, pick up rocks, and spit them at whoever's near */
+  /**
+   * Bots swallow smaller creatures, pick up bombs, and spit them at a good target: someone big,
+   * slow, or rooted while inhaling. A lit bomb in the mouth goes straight back out.
+   */
   private botMouth(bot: PlayerSchema, now: number): void {
     if (bot.state !== PLAYER_STATE.ALIVE || bot.sliding || bot.recovering) return;
     const cx = bot.x + bot.width / 2;
     const cy = bot.y + bot.height / 2;
     if (bot.mouth) {
-      if (Math.random() > 0.05) return;
       let target: PlayerSchema | null = null;
-      let nearest = 520;
+      let best = -Infinity;
       this.players.forEach((other) => {
         if (other === bot || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected) return;
         const d = Math.hypot(other.x + other.width / 2 - cx, other.y + other.height / 2 - cy);
-        if (d < nearest) {
-          nearest = d;
+        if (d < 140 || d > 360) return;
+        const score = other.width + (other.inhaling ? 60 : 0) - d * 0.1;
+        if (score > best) {
+          best = score;
           target = other;
         }
       });
       const aim = target as PlayerSchema | null;
-      if (aim) this.spit(bot, aim.x + aim.width / 2 - cx + (Math.random() - 0.5) * 40, aim.y + aim.height / 2 - cy + (Math.random() - 0.5) * 40, now);
+      if (bot.mouth === "lit") {
+        this.spit(bot, aim ? aim.x + aim.width / 2 - cx : Math.cos(bot.facing), aim ? aim.y + aim.height / 2 - cy : Math.sin(bot.facing), now);
+      } else if (aim && Math.random() < 0.03) {
+        this.spit(bot, aim.x + aim.width / 2 - cx + (Math.random() - 0.5) * 60, aim.y + aim.height / 2 - cy + (Math.random() - 0.5) * 60, now);
+      }
       return;
     }
     if (bot.inhaling || Math.random() > 0.12) return;
@@ -496,18 +558,32 @@ class GameState extends Schema {
         want = { x: other.x + other.width / 2, y: other.y + other.height / 2 };
       }
     });
-    this.rocks.forEach((rock) => {
-      if (rock.heldBy || rock.flying()) return;
-      const d = Math.hypot(rock.x - cx, rock.y - cy);
+    this.bombs.forEach((bomb) => {
+      if (bomb.heldBy || bomb.respawnAt || bomb.lit()) return;
+      const d = Math.hypot(bomb.x - cx, bomb.y - cy);
       if (d < Math.min(nearest, 170)) {
         nearest = d;
-        want = { x: rock.x, y: rock.y };
+        want = { x: bomb.x, y: bomb.y };
       }
     });
     const goal = want as { x: number; y: number } | null;
     if (!goal) return;
     bot.startInhale(now, 700 + Math.random() * 600);
     bot.aimAt(goal.x - cx, goal.y - cy);
+  }
+
+  /** Which way a bot should run to get clear of a lit bomb about to go off (null when it's safe) */
+  private bombDanger(bot: PlayerSchema): { x: number; y: number } | null {
+    const cx = bot.x + bot.width / 2;
+    const cy = bot.y + bot.height / 2;
+    let escape: { x: number; y: number } | null = null;
+    this.bombs.forEach((bomb) => {
+      if (escape || !bomb.lit() || bomb.heldBy || bomb.respawnAt) return;
+      const d = Math.hypot(cx - bomb.x, cy - bomb.y);
+      if (d > BOMBS.BLAST_RADIUS + bot.width / 2 + 40 || bomb.explodesAt - this.time > 1600) return;
+      escape = d > 1e-6 ? { x: (cx - bomb.x) / d, y: (cy - bomb.y) / d } : { x: 1, y: 0 };
+    });
+    return escape as { x: number; y: number } | null;
   }
 
   /**
@@ -1067,7 +1143,7 @@ type({ map: PlayerSchema })(GameState.prototype, "players");
 type([ObstacleSchema])(GameState.prototype, "obstacles");
 type([BallSchema])(GameState.prototype, "balls");
 type([CometSchema])(GameState.prototype, "comets");
-type([RockSchema])(GameState.prototype, "rocks");
+type([BombSchema])(GameState.prototype, "bombs");
 type({ map: GemSchema })(GameState.prototype, "gems");
 type("number")(GameState.prototype, "worldWidth");
 type("number")(GameState.prototype, "worldHeight");

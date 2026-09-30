@@ -185,6 +185,7 @@ export class MultiplayerManager {
         this.room.onMessage('jackpot', (data) => this.eventBus.emit('multiplayer:jackpot', data));
         this.room.onMessage('burst', (data) => this.eventBus.emit('multiplayer:burst', data));
         this.room.onMessage('impact', (data) => this.eventBus.emit('multiplayer:impact', data));
+        this.room.onMessage('blast', (data) => this.eventBus.emit('multiplayer:blast', data));
 
 
         // Handle errors

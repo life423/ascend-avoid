@@ -68,7 +68,7 @@ class PlayerSchema extends Schema {
   facing: number;
   /** Inhaling (holding the button): rooted, pulling in what's in front. See GameState.updateInhales */
   inhaling: boolean;
-  /** What's in your mouth to spit: "rock", or "" */
+  /** What's in your mouth to spit: "bomb" (or "lit" once its fuse is running), or "" */
   mouth: string;
   /** Server-only: when this breath runs out, and when you can spit again */
   inhaleStopAt = 0;

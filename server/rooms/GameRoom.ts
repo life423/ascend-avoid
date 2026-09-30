@@ -143,11 +143,14 @@ export class GameRoom extends Room<GameState> {
         const player = playerOf(client);
         if (player) player.facing = Number(data?.angle) || 0;
       });
-      this.onMessage("test:placeRock", (_client, data: any) => {
-        this.state.rocks.forEach((rock, index) => {
+      this.onMessage("test:placeBomb", (_client, data: any) => {
+        // The first bomb, at (x, y), lit with fuseMs left if given
+        this.state.bombs.forEach((bomb, index) => {
           if (index !== 0) return;
-          rock.heldBy = "";
-          rock.placeAt(Number(data?.x) || 0, Number(data?.y) || 0);
+          bomb.heldBy = "";
+          bomb.respawnAt = 0;
+          bomb.placeAt(Number(data?.x) || 0, Number(data?.y) || 0);
+          bomb.explodesAt = Number(data?.fuseMs) > 0 ? this.state.time + Number(data.fuseMs) : 0;
         });
       });
       this.onMessage("test:placeComet", (client, data: any) => {

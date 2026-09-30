@@ -249,15 +249,15 @@ export const FACING = {
 /**
  * Inhale (hold the button): you stand still, turn to aim your mouth, and pull in everything in a
  * cone in front of you. Gems are swallowed; creatures EAT_RATIO times smaller are swallowed whole
- * (all their gems become yours; they can escape if they run early); a rock (or a rock flying at
- * you) stays in your mouth, to spit. Bigger creatures reach farther.
+ * (all their gems become yours; they can escape if they run early); a bomb stays in your mouth,
+ * safe until you spit it. Bigger creatures reach farther.
  */
 export const INHALE = {
   REACH: 110, // plus REACH_PER_SIZE times your size
   REACH_PER_SIZE: 1.2,
   ARC: 35, // degrees either side of where you face
   PULL_GEMS: 520, // units a second
-  PULL_ROCKS: 420,
+  PULL_BOMBS: 420,
   PULL_PREY: 150, // at the edge of your reach, rising by PULL_PREY_CLOSE right at your mouth
   PULL_PREY_CLOSE: 250,
   EAT_RATIO: 1.25,
@@ -265,19 +265,28 @@ export const INHALE = {
 } as const;
 
 /**
- * Rocks lie around the arena. Inhale one and tap to spit it: a hit knocks HIT_SHARE of anyone's
- * gems loose (the same rule for every size) and knocks them back; under GEMS.SURVIVE_AT gems it
- * knocks them out. A spat rock lands where it stops and can be used again.
+ * Bombs lie around the arena. Inhale one and it's safe in your mouth for as long as you like. Tap to
+ * spit it: it slides, slows to a stop and bounces off walls, and its fuse starts. When it goes off,
+ * everyone within BLAST_RADIUS is knocked outward (lighter creatures farther) and has gems knocked
+ * loose (more near the middle); under GEMS.SURVIVE_AT gems it knocks you out. Other bombs in the
+ * blast go off too. Anyone can nudge a bomb by walking into it, or kick it with a dash. A lit bomb
+ * can still be inhaled, but its fuse keeps ticking. A bomb that has gone off turns up somewhere else.
  */
-export const ROCKS = {
-  COUNT: 14,
-  RADIUS: 14,
-  SPEED: 950,
-  RANGE: 650,
-  HIT_SHARE: 0.12,
-  HIT_MIN: 2,
-  HIT_MAX: 25,
-  KNOCKBACK: 260,
+export const BOMBS = {
+  COUNT: 6,
+  RADIUS: 15,
+  SPIT_SPEED: 620,
+  FRICTION: 2.3, // how fast a sliding bomb slows (it slides about SPIT_SPEED / FRICTION units)
+  KICK_SPEED: 700,
+  FUSE_MS: 2200,
+  CHAIN_MS: 150, // a bomb caught in a blast goes off this soon after
+  BLAST_RADIUS: 150,
+  PUSH_MIN: 160, // knockback at the blast's edge...
+  PUSH_MAX: 380, // ...and at its middle (lighter creatures fly farther)
+  SHARE_MIN: 0.08, // share of gems knocked loose at the edge...
+  SHARE_MAX: 0.25, // ...and at the middle
+  LOOSE_MAX: 30,
+  RESPAWN_MS: 6000,
   SPIT_COOLDOWN_MS: 400,
 } as const;
 
@@ -425,7 +434,7 @@ export const GAME_CONSTANTS = {
   COMETS,
   FACING,
   INHALE,
-  ROCKS,
+  BOMBS,
   SHIFT,
   KEYS,
   DEVICE_SETTINGS

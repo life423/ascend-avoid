@@ -6,7 +6,7 @@ import Player from '../entities/Player'
 import { InputState } from '../types'
 import { getSprite } from '../utils/sprites'
 import { GameEvents } from '../constants/client-constants'
-import { ARENA_RULES, GEMS, INHALE, PLAYER_COLORS, ROCKS, SHIFT, WORLD } from '../../server/constants/gameConstants'
+import { ARENA_RULES, BOMBS, GEMS, INHALE, PLAYER_COLORS, SHIFT, WORLD } from '../../server/constants/gameConstants'
 import { turnRate, turnToward, walk } from '../../server/game/movement'
 import { OnlineControls } from './OnlineControls'
 import type { MultiplayerManager } from '../managers/MultiplayerManager'
@@ -587,13 +587,22 @@ function drawCreature(ctx: CanvasRenderingContext2D, x: number, y: number, size:
         ctx.arc(mx, my, r * (0.24 + 0.03 * Math.sin(timestamp / 60)), 0, Math.PI * 2)
         ctx.fill()
     } else if (mouth) {
-        ctx.fillStyle = '#8b8f99'
+        // A bomb held in the mouth (sparking if its fuse is running)
+        const bx = x + fx * r * 0.82
+        const by = y + fy * r * 0.82
+        ctx.fillStyle = '#23262f'
         ctx.beginPath()
-        ctx.arc(x + fx * r * 0.82, y + fy * r * 0.82, r * 0.3, 0, Math.PI * 2)
+        ctx.arc(bx, by, r * 0.32, 0, Math.PI * 2)
         ctx.fill()
-        ctx.strokeStyle = 'rgba(30, 34, 44, 0.8)'
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'
         ctx.lineWidth = Math.max(1, size * 0.03)
         ctx.stroke()
+        if (mouth === 'lit' && Math.sin(timestamp / 60) > 0) {
+            ctx.fillStyle = '#ffb347'
+            ctx.beginPath()
+            ctx.arc(bx + fx * r * 0.3, by + fy * r * 0.3, Math.max(2.5, r * 0.12), 0, Math.PI * 2)
+            ctx.fill()
+        }
     }
 }
 
@@ -627,34 +636,60 @@ function drawInhaleCone(ctx: CanvasRenderingContext2D, x: number, y: number, siz
     ctx.restore()
 }
 
-/** A rock: a grey boulder, with a streak behind it while it flies */
-function drawRock(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, vx: number, vy: number): void {
-    const speed = Math.hypot(vx, vy)
-    if (speed > 1) {
-        const tail = ctx.createLinearGradient(x, y, x - (vx / speed) * radius * 5, y - (vy / speed) * radius * 5)
-        tail.addColorStop(0, 'rgba(200, 205, 215, 0.55)')
-        tail.addColorStop(1, 'rgba(200, 205, 215, 0)')
-        ctx.strokeStyle = tail
-        ctx.lineWidth = radius * 1.4
-        ctx.lineCap = 'round'
+/**
+ * A bomb: round, black, with a fuse. Lit, its spark and a red glow blink faster as the fuse runs
+ * down, and its blast circle shows on the ground so everyone can see where not to be.
+ */
+function drawBomb(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, fuseLeft: number | null, timestamp: number): void {
+    const lit = fuseLeft !== null
+    const urgency = lit ? 1 - Math.max(0, Math.min(1, fuseLeft / BOMBS.FUSE_MS)) : 0
+    const blink = lit && Math.sin(timestamp / Math.max(35, (fuseLeft ?? 0) / 10)) > 0
+    if (lit) {
+        ctx.save()
+        ctx.fillStyle = `rgba(255, 80, 60, ${0.05 + 0.12 * urgency})`
+        ctx.strokeStyle = `rgba(255, 110, 90, ${0.35 + 0.45 * urgency})`
+        ctx.lineWidth = 2
+        ctx.setLineDash([10, 8])
         ctx.beginPath()
-        ctx.moveTo(x, y)
-        ctx.lineTo(x - (vx / speed) * radius * 5, y - (vy / speed) * radius * 5)
+        ctx.arc(x, y, BOMBS.BLAST_RADIUS, 0, Math.PI * 2)
+        ctx.fill()
         ctx.stroke()
+        ctx.restore()
     }
-    ctx.fillStyle = '#8b8f99'
+    if (blink) {
+        ctx.fillStyle = 'rgba(255, 70, 50, 0.45)'
+        ctx.beginPath()
+        ctx.arc(x, y, radius * 1.7, 0, Math.PI * 2)
+        ctx.fill()
+    }
+    ctx.fillStyle = '#23262f'
     ctx.beginPath()
     ctx.arc(x, y, radius, 0, Math.PI * 2)
     ctx.fill()
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.25)'
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.22)'
     ctx.beginPath()
-    ctx.arc(x - radius * 0.3, y - radius * 0.3, radius * 0.35, 0, Math.PI * 2)
+    ctx.arc(x - radius * 0.35, y - radius * 0.35, radius * 0.32, 0, Math.PI * 2)
     ctx.fill()
-    ctx.strokeStyle = 'rgba(30, 34, 44, 0.8)'
-    ctx.lineWidth = 2
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)'
+    ctx.lineWidth = 1.5
     ctx.beginPath()
     ctx.arc(x, y, radius, 0, Math.PI * 2)
     ctx.stroke()
+    // The fuse
+    const tipX = x + radius * 0.95
+    const tipY = y - radius * 1.2
+    ctx.strokeStyle = '#c9a36b'
+    ctx.lineWidth = 3
+    ctx.beginPath()
+    ctx.moveTo(x + radius * 0.5, y - radius * 0.75)
+    ctx.quadraticCurveTo(x + radius * 1.1, y - radius * 0.9, tipX, tipY)
+    ctx.stroke()
+    if (lit) {
+        ctx.fillStyle = blink ? '#fff2b0' : '#ff8c3a'
+        ctx.beginPath()
+        ctx.arc(tipX, tipY, blink ? 5 : 3.5, 0, Math.PI * 2)
+        ctx.fill()
+    }
 }
 
 /** A comet: a glowing violet head with a tail trailing back along its path */
@@ -816,6 +851,8 @@ export class MultiplayerMode extends GameMode {
     /** Each player as of the last frame, to spot hits and pickups */
     private lastSeen = new Map<string, { alive: boolean; recovering: boolean; sliding: boolean; gems: number; cx: number; cy: number }>()
     private bursts: { x: number; y: number; size: number; color: string; at: number }[] = []
+    /** Bomb blasts going off: a flash and a ring racing out to the blast's edge */
+    private blasts: { x: number; y: number; radius: number; at: number }[] = []
     private pickups: { amount: number; at: number }[] = []
     private shakeUntil = 0
     /** Gems shown in the header (as Score), and the most you've held this visit (as High Score) */
@@ -859,6 +896,7 @@ export class MultiplayerMode extends GameMode {
         eventBus.on('multiplayer:credit', (data: any) => this.noteCredit(data))
         eventBus.on('multiplayer:burst', (data: any) => this.noteBurst(data))
         eventBus.on('multiplayer:impact', (data: any) => this.noteImpact(data))
+        eventBus.on('multiplayer:blast', (data: any) => this.blasts.push({ x: Number(data?.x) || 0, y: Number(data?.y) || 0, radius: Number(data?.radius) || BOMBS.BLAST_RADIUS, at: performance.now() }))
         eventBus.on('multiplayer:jackpot', (data: any) => {
             this.addNotice(`${this.nameOf(data?.byId, data?.by)} took the jackpot! +${data?.value ?? ''}`, true)
         })
@@ -1014,7 +1052,7 @@ export class MultiplayerMode extends GameMode {
             if (event === 'dash' && now >= this.dashReadyAt && !this.charging && me.mouth) {
                 // Something in your mouth: spit it the way you're facing
                 this.multiplayerManager?.sendMessage('spit', { x: Math.cos(this.localFacing), y: Math.sin(this.localFacing) })
-                this.cooldownMs = ROCKS.SPIT_COOLDOWN_MS
+                this.cooldownMs = BOMBS.SPIT_COOLDOWN_MS
                 this.dashReadyAt = now + this.cooldownMs
             } else if (event === 'dash' && now >= this.dashReadyAt && !this.charging) {
                 // A burst the way you're steering (or last went)
@@ -1172,12 +1210,14 @@ export class MultiplayerMode extends GameMode {
             if (x + ball.radius < left || x - ball.radius > right || y + ball.radius < top || y - ball.radius > bottom) return
             drawBall(ctx, x, y, ball.radius)
         })
-        state.rocks?.forEach((rock: any) => {
-            if (rock.x < -100) return // in someone's mouth
-            const x = rock.x + (rock.vx ?? 0) * lead
-            const y = rock.y + (rock.vy ?? 0) * lead
-            if (x + 80 < left || x - 80 > right || y + 80 < top || y - 80 > bottom) return
-            drawRock(ctx, x, y, rock.radius, rock.vx ?? 0, rock.vy ?? 0)
+        state.bombs?.forEach((bomb: any) => {
+            if (bomb.x < -100) return // in someone's mouth, or about to turn up again
+            const x = bomb.x + (bomb.vx ?? 0) * lead
+            const y = bomb.y + (bomb.vy ?? 0) * lead
+            const reach = BOMBS.BLAST_RADIUS + 20
+            if (x + reach < left || x - reach > right || y + reach < top || y - reach > bottom) return
+            const fuseLeft = bomb.explodesAt > 0 ? bomb.explodesAt - this.worldNow(state, timestamp) : null
+            drawBomb(ctx, x, y, bomb.radius, fuseLeft, timestamp)
         })
         state.comets?.forEach((comet: any) => {
             const x = comet.x + (comet.vx ?? 0) * lead
@@ -1201,6 +1241,7 @@ export class MultiplayerMode extends GameMode {
             if (!present.has(id)) this.lastCenters.delete(id)
         }
 
+        this.drawBlasts(ctx, timestamp)
         this.drawBursts(ctx, timestamp)
         this.drawPickups(ctx, me, timestamp)
 
@@ -1538,14 +1579,14 @@ export class MultiplayerMode extends GameMode {
         const target = targetIsYou ? 'you' : String(data?.target ?? 'someone')
         const how = String(data?.how ?? '')
         const eaten = how === 'sling' && data?.eaten === true
-        const verb = how === 'ate' ? 'swallowed' : how === 'rock' ? 'hit' : how === 'crush' ? 'crushed' : eaten ? 'ate' : how === 'sling' || data?.kind === 'sling' ? 'slingshotted' : 'shoved'
-        const where = how === 'rock' ? 'with a rock' : how === 'edge' ? 'off the edge' : how === 'traffic' ? 'into traffic' : ''
+        const verb = how === 'ate' ? 'swallowed' : how === 'bomb' ? 'blew up' : how === 'crush' ? 'crushed' : eaten ? 'ate' : how === 'sling' || data?.kind === 'sling' ? 'slingshotted' : 'shoved'
+        const where = how === 'edge' ? 'off the edge' : how === 'traffic' ? 'into traffic' : ''
         if (data?.byId === localId) {
             const name = String(data?.target ?? 'someone')
-            const title = how === 'ate' ? `You swallowed ${name}!` : how === 'rock' ? `Direct hit on ${name}!` : how === 'crush' ? `You crushed ${name}!` : eaten ? `You ate ${name}!` : how === 'sling' ? `Direct hit on ${name}!` : `You wrecked ${name}!`
+            const title = how === 'ate' ? `You swallowed ${name}!` : how === 'bomb' ? `You blew up ${name}!` : how === 'crush' ? `You crushed ${name}!` : eaten ? `You ate ${name}!` : how === 'sling' ? `Direct hit on ${name}!` : `You wrecked ${name}!`
             const parts =
                 how === 'ate' ? [`+${Number(data?.gems) || 0} gems`]
-                : how === 'rock' ? [data?.out ? 'knocked out' : `${Number(data?.gems) || 0} gems knocked loose`]
+                : how === 'bomb' ? [data?.out ? 'knocked out' : `${Number(data?.gems) || 0} gems knocked loose`]
                 : how === 'sling' ? [`+${Number(data?.gems) || 0} gems`]
                 : [where, data?.out ? 'knocked out' : '']
             this.banner = { title, sub: parts.filter(Boolean).join(' · ').toUpperCase(), at: performance.now() }
@@ -1795,6 +1836,27 @@ export class MultiplayerMode extends GameMode {
         ctx.textBaseline = 'middle'
         ctx.fillText(text, canvas.width / 2, y + 15)
         ctx.restore()
+    }
+
+    /** Bomb blasts: a bright flash, then a ring racing out to the edge of the blast */
+    private drawBlasts(ctx: CanvasRenderingContext2D, timestamp: number): void {
+        this.blasts = this.blasts.filter((blast) => timestamp - blast.at < 500)
+        for (const blast of this.blasts) {
+            const t = Math.max(0, (timestamp - blast.at) / 500)
+            ctx.save()
+            if (t < 0.3) {
+                ctx.fillStyle = `rgba(255, 220, 150, ${0.55 * (1 - t / 0.3)})`
+                ctx.beginPath()
+                ctx.arc(blast.x, blast.y, blast.radius * (0.4 + t), 0, Math.PI * 2)
+                ctx.fill()
+            }
+            ctx.strokeStyle = `rgba(255, 140, 80, ${0.9 * (1 - t)})`
+            ctx.lineWidth = 6 * (1 - t) + 1
+            ctx.beginPath()
+            ctx.arc(blast.x, blast.y, blast.radius * Math.min(1, 0.3 + t * 1.2), 0, Math.PI * 2)
+            ctx.stroke()
+            ctx.restore()
+        }
     }
 
     /** Whoever has the most gems (nobody, until someone has one) */

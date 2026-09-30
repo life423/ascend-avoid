@@ -387,7 +387,7 @@ try {
     await sleep(300);
     check(Math.abs(bobState().x - restX) < 3, 'then needs a few seconds to recharge');
 
-    // Inhale a rock, then spit it: a hit knocks gems loose and knocks them back
+    // Bombs: safe in your mouth, lit when spat, and the blast knocks everyone flying and gems loose
     await sleep(2700);
     alice.send('test:setGems', { count: 40 });
     bob.send('test:setGems', { count: 20 });
@@ -396,20 +396,27 @@ try {
     alice.send('test:face', { angle: 0 });
     bob.send('test:moveTo', { x: 400, y: 400 });
     await sleep(150);
-    alice.send('test:placeRock', { x: 700 + me().width + 60, y: 1750 + me().height / 2 });
+    alice.send('test:placeBomb', { x: 700 + me().width + 60, y: 1750 + me().height / 2 });
     await sleep(150);
     alice.send('inhale');
     await sleep(700);
     alice.send('exhale');
-    check(me().mouth === 'rock', `inhaling pulls a rock into your mouth (${me().mouth || 'empty'})`);
-    bob.send('test:moveTo', { x: 700 + me().width + 200, y: 1750 + (me().height - bobState().height) / 2 });
+    check(me().mouth === 'bomb', `inhaling pulls a bomb into your mouth (${me().mouth || 'empty'})`);
+    const aliceHolding = me().gems;
+    await sleep(2600);
+    check(me().mouth === 'bomb' && me().state === 'alive' && me().gems >= aliceHolding - 1, 'and it stays safe in your mouth until you spit it');
+    bob.send('test:moveTo', { x: 700 + me().width + 170, y: 1750 + (me().height - bobState().height) / 2 });
     await sleep(300);
     const bobHad = bobState().gems;
     const bobFrom = bobState().x;
     alice.send('spit', { x: 1, y: 0 });
-    await sleep(600);
-    check(me().mouth === '' && bobHad - bobState().gems >= 2, `spitting it knocks gems loose from whoever it hits (${bobHad - bobState().gems} of ${bobHad})`);
-    check(bobState().x - bobFrom > 100, `and knocks them back (${Math.round(bobState().x - bobFrom)} units)`);
+    await sleep(300);
+    let lit = 0;
+    state().bombs.forEach((bomb) => { if (bomb.explodesAt > 0) lit++; });
+    check(me().mouth === '' && lit >= 1 && bobState().gems === bobHad, 'spitting it lights the fuse, and nothing happens until it runs down');
+    await sleep(2400);
+    check(bobHad - bobState().gems >= 2, `then it blows, knocking gems loose (${bobHad - bobState().gems} of ${bobHad})`);
+    check(Math.abs(bobState().x - bobFrom) > 60, `and everyone in the blast is knocked flying (${Math.round(bobState().x - bobFrom)} units)`);
 
     // Inhale a smaller creature and it's swallowed whole, gems and all
     await sleep(1500);
