@@ -389,11 +389,11 @@ class GameState extends Schema {
           heldAt = d;
         }
         if (d < 1) return;
+        // Never more than it can outrun, even with the eater chasing it at full speed (smaller is faster)
+        const preySpeed = moveSpeed(prey.width);
+        const escape = Math.min(INHALE.PREY_PULL_CAP * preySpeed, preySpeed - INHALE.ESCAPE_EDGE * moveSpeed(eater.width));
         const pull =
-          Math.min(
-            INHALE.PULL_PREY * suctionScale(eater.width, prey.width) * Math.pow(Math.max(0, 1 - d / reach), 2),
-            INHALE.PREY_PULL_CAP * moveSpeed(prey.width)
-          ) * deltaTime;
+          Math.max(0, Math.min(INHALE.PULL_PREY * suctionScale(eater.width, prey.width) * Math.pow(Math.max(0, 1 - d / reach), 2), escape)) * deltaTime;
         prey.nudge(((mouthX - px) / d) * pull, ((mouthY - py) / d) * pull, this.worldWidth, this.worldHeight);
       });
       const caught = held as PlayerSchema | null;

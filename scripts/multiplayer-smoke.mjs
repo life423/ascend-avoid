@@ -231,7 +231,7 @@ try {
     await sleep(500);
     const bigSpeed = Math.abs(me().x - bigFrom) / 0.5;
     alice.send('steer', { x: 0, y: 0 });
-    check(bigSpeed > 140 && bigSpeed < bobSpeed * 0.75, `and slower (${Math.round(bigSpeed)} vs ${Math.round(bobSpeed)} units a second)`);
+    check(bigSpeed > 80 && bigSpeed < bobSpeed * 0.5, `and much slower (${Math.round(bigSpeed)} vs ${Math.round(bobSpeed)} units a second)`);
     alice.send('test:setGems', { count: 400 });
     await sleep(400);
     const shedFrom = me().gems;
@@ -388,14 +388,14 @@ try {
     // (These checks take a while: keep the first arena shift away until its own checks below)
     alice.send('test:shift', { phase: 'normal', msLeft: 120000 });
     await sleep(1500);
-    alice.send('test:setGems', { count: 40 });
+    alice.send('test:setGems', { count: 100 });
     bob.send('test:setGems', { count: 5 });
     await sleep(200);
     // (The blast knocked Alice back: put her where Bob will be in front of her mouth)
     alice.send('test:moveTo', { x: 700, y: 1750 });
     alice.send('test:face', { angle: 0 });
     await sleep(150);
-    bob.send('test:moveTo', { x: 700 + me().width + 40, y: 1750 + (me().height - bobState().height) / 2 });
+    bob.send('test:moveTo', { x: 700 + me().width + 20, y: 1750 + (me().height - bobState().height) / 2 });
     await sleep(1100); // a breath taken just before needs a moment to come back
     const aliceBeforeGulp = me().gems;
     alice.send('inhale');

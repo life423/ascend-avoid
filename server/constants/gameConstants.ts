@@ -242,13 +242,14 @@ export const SUCTION = {
  * swallowed whole once you've held it at your mouth for GULP_MS. The same button for everyone.
  */
 export const INHALE = {
-  REACH: 110, // plus REACH_PER_SIZE times your size
-  REACH_PER_SIZE: 1.2,
+  REACH: 100, // plus REACH_PER_SIZE times your width: 150 for a newborn, 350 at 5x, 700 at 12x (big creatures are slow, but suck in from far away)
+  REACH_PER_SIZE: 2.5,
   ARC: 35, // degrees either side of where you face
   PULL_GEMS: 520, // units a second
   PULL_BOMBS: 420,
   PULL_PREY: 320, // units a second right at your mouth (times SUCTION), easing to nothing at the edge of your reach...
-  PREY_PULL_CAP: 0.85, // ...but never more than this share of the prey's own top speed: running straight away always gets you out
+  PREY_PULL_CAP: 0.85, // ...but never more than this share of the prey's own top speed...
+  ESCAPE_EDGE: 1.3, // ...nor more than its top speed less this many times yours: running straight away always gets it out, even with you chasing
   EAT_RATIO: 1.5, // you can only swallow a creature this many times narrower (about 2.25 times smaller)...
   GULP_REACH: 0.35, // ...held this close to your mouth (times your width, plus its radius)...
   GULP_MS: 750, // ...for this long (if it gets away first, it starts over)
@@ -358,7 +359,7 @@ export const ARENA_RULES = {
   HOP: 60, // one tap = one hop, while you're small...
   HOP_BEYOND_SIZE: 12, // ...and once you're big, your size plus this, so a hop always clears you
   MOVE_SPEED: 320, // top speed (units a second) for a newborn...
-  SPEED_FALLOFF: 0.35, // ...falling as MOVE_SPEED x (PLAYER_SIZE / width) ^ this: about 180 at 5x, 135 at 12x
+  SPEED_FALLOFF: 0.6, // ...falling as MOVE_SPEED x (PLAYER_SIZE / width) ^ this: about 210 at 2x, 120 at 5x, 70 at 12x (smaller is much faster, like agar.io)
   MOVE_RESPONSE: 14, // how quickly you reach the speed you're steering (and glide to a stop)
   HOP_REPEAT_DELAY: 0.2, // holding a direction: the first repeat hop comes after this many seconds,
   HOP_REPEAT: 1 / 6, // then one every this many seconds (six a second)
