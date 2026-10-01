@@ -219,10 +219,10 @@ try {
 
     alice.send('test:setGems', { count: 100 });
     await waitFor(() => me().gems >= 99, 1000, 'Alice now holds 100 gems');
-    check(me().width >= 99 && me().width <= 100.5, `gems make you much bigger (${me().width} units wide at 100 gems, 5x a newborn)`);
+    check(me().width >= 139 && me().width <= 140.5, `gems make you much bigger (${me().width} units wide at 100 gems, 7x a newborn)`);
     alice.send('test:setGems', { count: 750 });
     await sleep(200);
-    check(me().gems >= 745 && me().width >= 235, `there's no size cap: 750 gems makes a giant 12x a newborn's width (${me().width} units)`);
+    check(me().gems >= 745 && me().width >= 340, `there's no size cap: 750 gems makes a giant 17x a newborn's width (${me().width} units)`);
     alice.send('test:setGems', { count: 100 });
     await sleep(200);
     alice.send('steer', { x: sideways() === 'right' ? 1 : -1, y: 0 });
@@ -231,7 +231,7 @@ try {
     await sleep(500);
     const bigSpeed = Math.abs(me().x - bigFrom) / 0.5;
     alice.send('steer', { x: 0, y: 0 });
-    check(bigSpeed > 80 && bigSpeed < bobSpeed * 0.5, `and much slower (${Math.round(bigSpeed)} vs ${Math.round(bobSpeed)} units a second)`);
+    check(bigSpeed > 45 && bigSpeed < bobSpeed * 0.3, `and much slower (${Math.round(bigSpeed)} vs ${Math.round(bobSpeed)} units a second)`);
     alice.send('test:setGems', { count: 400 });
     await sleep(400);
     const shedFrom = me().gems;
@@ -812,6 +812,9 @@ try {
 
     await waitFor(() => !me().recovering && !me().sliding, 2000, 'Alice is steady');
 
+    // (Both newborn-sized, so both fit on the jackpot at once: bodies are solid)
+    alice.send('test:setGems', { count: 0 });
+    await sleep(150);
     const spot = tileCenter(floorTiles[Math.floor(floorTiles.length / 2)]);
     placeCenter(alice, me(), spot);
     placeCenter(bob, bobState(), { x: spot.x + 10, y: spot.y });

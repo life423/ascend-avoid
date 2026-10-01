@@ -66,7 +66,7 @@ export function hopsThisFrame(
 
 /** Top speed for a creature this wide: quick when small, slowing smoothly as it grows (no floor or ceiling) */
 export function moveSpeed(width: number): number {
-  return ARENA_RULES.MOVE_SPEED * Math.pow(ARENA_RULES.PLAYER_SIZE / Math.max(ARENA_RULES.PLAYER_SIZE, width), ARENA_RULES.SPEED_FALLOFF);
+  return Math.max(ARENA_RULES.MIN_SPEED, ARENA_RULES.MOVE_SPEED * Math.pow(ARENA_RULES.PLAYER_SIZE / Math.max(ARENA_RULES.PLAYER_SIZE, width), ARENA_RULES.SPEED_FALLOFF));
 }
 
 /**
