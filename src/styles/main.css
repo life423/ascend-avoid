@@ -646,11 +646,13 @@ body.online-mode .touch-controls-area {
 /* ============================================
    DESKTOP: THE ARENA GETS THE SPACE
    The header is one slim bar that can slide up out of sight (F, or its button; a tab in the
-   top-right corner brings it back), and How to Play lives in the slide-in drawer (? or H)
-   instead of a column beside the game. See DesktopChrome.ts.
+   top-right corner brings it back). Your name is typed right into it, and How to Play slides in
+   from the right, next to the ? (or H) that opens it. See DesktopChrome.ts.
    ============================================ */
 .bar-actions,
-.bar-tab {
+.bar-tab,
+.bar-name,
+.drawer-close {
     display: none;
 }
 
@@ -723,6 +725,97 @@ body.online-mode .touch-controls-area {
     .bar-button:focus-visible {
         outline: 2px solid var(--accent-secondary);
         outline-offset: 2px;
+    }
+
+    /* Your name, right in the bar: Enter or clicking away saves it, Esc puts it back */
+    .bar-name {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--text-light);
+        font-size: 0.85rem;
+        white-space: nowrap;
+    }
+
+    .bar-name span {
+        opacity: 0.65;
+        font-weight: 600;
+    }
+
+    .bar-name-input {
+        width: 170px;
+        height: 32px;
+        padding: 0 10px;
+        font: inherit;
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--text-light);
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(79, 209, 197, 0.35);
+        border-radius: 8px;
+        outline: none;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .bar-name-input:hover {
+        border-color: rgba(79, 209, 197, 0.6);
+    }
+
+    .bar-name-input:focus {
+        border-color: #4fd1c5;
+        box-shadow: 0 0 0 3px rgba(79, 209, 197, 0.2);
+    }
+
+    .bar-name-input.saved {
+        border-color: #4fd1c5;
+        box-shadow: 0 0 0 4px rgba(79, 209, 197, 0.4);
+    }
+
+    /* How to Play slides in from the right, next to the ? that opened it (body: these beat the drawer's own styles) */
+    body .drawer {
+        left: auto;
+        right: 0;
+        width: 380px;
+        border-right: 0;
+        border-left: 1px solid rgba(12, 199, 199, 0.3);
+        transform: translateX(100%);
+    }
+
+    body .drawer.active {
+        transform: translateX(0);
+    }
+
+    body .drawer-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    /* Your name is in the bar here, so the drawer doesn't repeat it */
+    body .drawer .name-section {
+        display: none;
+    }
+
+    .drawer-close {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: none;
+        width: 32px;
+        height: 32px;
+        border: 1px solid rgba(79, 209, 197, 0.5);
+        border-radius: 8px;
+        background: rgba(79, 209, 197, 0.1);
+        color: var(--text-light);
+        font: inherit;
+        font-size: 20px;
+        line-height: 1;
+        cursor: pointer;
+    }
+
+    .drawer-close:hover {
+        background: rgba(79, 209, 197, 0.25);
     }
 
     /* Shown once the bar is hidden: help and a way back, tucked into the top-right corner */

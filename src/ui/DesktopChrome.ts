@@ -1,3 +1,5 @@
+import { NAME_EVENT, playerName, setPlayerName } from '../core/PlayerName'
+
 const STORAGE_KEY = 'ascend.barHidden'
 const DESKTOP = '(min-width: 1200px)'
 
@@ -6,9 +8,10 @@ const CHEVRON_DOWN = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidde
 
 /**
  * Desktop page chrome that stays out of the arena's way. The header is one slim bar that can
- * slide up out of sight (its button or F; a small tab in the top-right corner brings it back),
- * and How to Play opens in the slide-in drawer (? or H, Esc to close) instead of taking a column
- * beside the game. Whether the bar is hidden is remembered. Phones are untouched.
+ * slide up out of sight (its button or F; a small tab in the top-right corner brings it back).
+ * Your name is typed right into it, and How to Play slides in from the right, next to the ? that
+ * opens it (or H; Esc or its x closes it). Whether the bar is hidden is remembered. Phones are
+ * untouched.
  */
 export class DesktopChrome {
     constructor(private toggleHelp: () => void) {
@@ -21,6 +24,12 @@ export class DesktopChrome {
             <button type="button" class="bar-button" data-action="help" aria-label="How to play" title="How to play (H)">?</button>
             <button type="button" class="bar-button" data-action="hide" aria-label="Hide the bar" title="Hide the bar (F)">${CHEVRON_UP}</button>
         `
+        const nameField = document.createElement('label')
+        nameField.className = 'bar-name'
+        nameField.innerHTML = `<span>Name</span><input class="bar-name-input" type="text" maxlength="20" spellcheck="false" autocomplete="off" aria-label="Your name" title="Everyone sees it above your creature and on the leaderboard">`
+        header.appendChild(nameField)
+        const nameInput = nameField.querySelector<HTMLInputElement>('.bar-name-input')
+        if (nameInput) this.setUpName(nameInput)
         header.appendChild(actions)
 
         const tab = document.createElement('div')
@@ -47,6 +56,34 @@ export class DesktopChrome {
         })
 
         this.setBarHidden(this.savedHidden())
+    }
+
+    /** Your name, right in the bar: Enter or clicking away saves it (it glows for a moment), Esc puts it back */
+    private setUpName(input: HTMLInputElement): void {
+        input.value = playerName()
+        input.addEventListener('keydown', (e: KeyboardEvent) => {
+            if (e.key === 'Enter') {
+                input.blur()
+            } else if (e.key === 'Escape') {
+                input.value = playerName()
+                input.blur()
+            }
+        })
+        input.addEventListener('blur', () => {
+            if (input.value.trim() === playerName()) {
+                input.value = playerName()
+                return
+            }
+            const name = setPlayerName(input.value)
+            input.value = name ?? playerName()
+            if (!name) return
+            input.classList.add('saved')
+            window.setTimeout(() => input.classList.remove('saved'), 900)
+        })
+        // Renamed some other way: keep the bar in step
+        window.addEventListener(NAME_EVENT, (e: Event) => {
+            if (document.activeElement !== input) input.value = (e as CustomEvent<string>).detail
+        })
     }
 
     private setBarHidden(hidden: boolean): void {

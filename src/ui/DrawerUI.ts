@@ -34,6 +34,7 @@ export class DrawerUI {
         this.drawer.innerHTML = `
             <div class="drawer-header">
                 <h2>Game Menu</h2>
+                <button type="button" class="drawer-close" aria-label="Close">&times;</button>
             </div>
             <div class="drawer-content">
                 <div class="menu-section name-section">
@@ -114,6 +115,9 @@ export class DrawerUI {
         this.drawer.addEventListener('click', (e: Event) => {
             e.stopPropagation();
         });
+
+        // Desktop has no menu button to close it with, so the drawer has its own x
+        this.drawer.querySelector('.drawer-close')?.addEventListener('click', () => this.close());
 
         // Your name: saved on this device, and everyone sees the change right away
         this.injectNameStyles();
