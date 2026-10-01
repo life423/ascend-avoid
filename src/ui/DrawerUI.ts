@@ -64,8 +64,8 @@ export class DrawerUI {
                         <h4>Inhale</h4>
                         <p>Hold <span class="highlight">Space</span> or the inhale button to steal gems from anyone in front of you. Take their last gem and they're out. Much smaller creatures can be swallowed: hold them at your mouth.</p>
 
-                        <h4>Shove</h4>
-                        <p>Bump players around. Knock them off the floor when the arena shifts.</p>
+                        <h4>Bodies</h4>
+                        <p>Creatures are solid: block, corner and crowd each other, but nobody gets shoved.</p>
 
                         <h4>Turbines</h4>
                         <p>The <span class="highlight">intake</span> rips gems out of anyone close; the <span class="highlight">exhaust</span> fires them across the arena.</p>

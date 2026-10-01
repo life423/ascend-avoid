@@ -53,6 +53,10 @@ class PlayerSchema extends Schema {
   private steerY = 0;
   private walkX = 0;
   private walkY = 0;
+  /** Server-only: where the player's middle was and how big it was when this tick began (see GameState.keepApart) */
+  tickX = 0;
+  tickY = 0;
+  tickRadius = 0;
   /** How the last shove came (for credits): "bump", or "bomb" */
   lastShoveKind = "";
   /** Which way the creature faces (radians): its back is where it's vulnerable */
@@ -263,6 +267,27 @@ class PlayerSchema extends Schema {
     const scale = length > 1 ? 1 / length : 1;
     this.steerX = x * scale;
     this.steerY = y * scale;
+  }
+
+  /** A new tick begins: remember where the player's middle is, and how big it is */
+  markTick(): void {
+    this.tickX = this.x + this.width / 2;
+    this.tickY = this.y + this.height / 2;
+    this.tickRadius = this.width / 2;
+  }
+
+  /** Ran into something solid along (nx, ny): stop moving that way (moving along it carries on, so it slides) */
+  blockAlong(nx: number, ny: number): void {
+    const walk = this.walkX * nx + this.walkY * ny;
+    if (walk > 0) {
+      this.walkX -= walk * nx;
+      this.walkY -= walk * ny;
+    }
+    const slide = this.vx * nx + this.vy * ny;
+    if (slide > 0) {
+      this.vx -= slide * nx;
+      this.vy -= slide * ny;
+    }
   }
 
   /** How fast the player is moving right now: walking and sliding together */

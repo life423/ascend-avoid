@@ -312,36 +312,46 @@ try {
     const room = clearance(state(), me());
     check(room >= 100, `somewhere clear of traffic (${Math.round(room)} units from the nearest obstacle)`);
 
-    // Shoving
+    // Bodies are solid: nobody overlaps or passes through anyone, and touching never shoves anyone
     await waitFor(() => !me().spawnProtected && !bobState().spawnProtected, 3000, 'neither player is protected');
-    /** Line `left` up just left of `right`, have `left` run into `right`, and return how far `right` slides */
-    async function shove(left, right, leftGems, rightGems) {
-        const leftState = () => state().players.get(left.sessionId);
-        const rightState = () => state().players.get(right.sessionId);
-        left.send('test:setGems', { count: leftGems });
-        right.send('test:setGems', { count: rightGems });
+    /** Line `walker` up just left of `wall` and walk it right (and down, at an angle); returns how far `wall` moved, how far `walker` got down, and the gap between them */
+    async function walkInto(walker, wall, walkerGems, wallGems, { down = 0, inhale = false } = {}) {
+        const walkerState = () => state().players.get(walker.sessionId);
+        const wallState = () => state().players.get(wall.sessionId);
+        walker.send('test:setGems', { count: walkerGems });
+        wall.send('test:setGems', { count: wallGems });
         await sleep(150);
-        left.send('test:moveTo', { x: 700, y: 1000 });
-        right.send('test:moveTo', { x: 700 + leftState().width + 20, y: 1000 });
-        right.send('test:face', { angle: Math.PI });
+        walker.send('test:moveTo', { x: 700, y: 1000 });
+        wall.send('test:moveTo', { x: 700 + walkerState().width + 20, y: 1000 + (walkerState().height - wallState().height) / 2 });
+        walker.send('test:face', { angle: 0 });
         await sleep(250);
-        const startX = rightState().x;
-        left.send('steer', { x: 1, y: 0 });
-        await sleep(250);
-        left.send('steer', { x: 0, y: 0 });
-        await sleep(900);
-        return rightState().x - startX;
+        const middle = (who) => ({ x: who.x + who.width / 2, y: who.y + who.height / 2 });
+        const wallFrom = middle(wallState());
+        const walkerFromY = walkerState().y;
+        if (inhale) walker.send('inhale');
+        walker.send('steer', { x: 1, y: down });
+        await sleep(700);
+        const w = walkerState();
+        const v = wallState();
+        const gap = Math.hypot(v.x + v.width / 2 - (w.x + w.width / 2), v.y + v.height / 2 - (w.y + w.height / 2)) - (w.width + v.width) / 2;
+        walker.send('steer', { x: 0, y: 0 });
+        if (inhale) walker.send('exhale');
+        await sleep(400);
+        return {
+            wallMoved: Math.round(Math.hypot(middle(wallState()).x - wallFrom.x, middle(wallState()).y - wallFrom.y)),
+            walkerDown: Math.round(walkerState().y - walkerFromY),
+            gap: Math.round(gap),
+        };
     }
-    const even = await shove(alice, bob, 0, 0);
-    check(even > 100 && even < 200, `running into someone shoves them (${Math.round(even)} units)`);
-    check(bobState().sliding === false, 'and they slide to a stop');
-    const heavy = await shove(alice, bob, 100, 5);
-    check(heavy > even * 1.15, `heavier players shove harder (${Math.round(heavy)} units)`);
-    const light = await shove(bob, alice, 0, 100);
-    check(light < even * 0.6, `and are harder to shove (${Math.round(light)} units)`);
-
-    const knockedLoose = 100 - me().gems;
-    check(knockedLoose <= 2, `bumping someone just shoves: even the leader keeps their gems (${knockedLoose} lost, only the usual shedding)`);
+    const even = await walkInto(alice, bob, 0, 0);
+    check(even.wallMoved <= 2 && even.gap >= -2 && even.gap <= 8, `walking into someone stops you at their edge: no shove, no overlap (they moved ${even.wallMoved}, gap ${even.gap})`);
+    const giantWalk = await walkInto(alice, bob, 100, 5);
+    check(giantWalk.wallMoved <= 2 && giantWalk.gap >= -2, `a giant can't ram anyone either (they moved ${giantWalk.wallMoved}, gap ${giantWalk.gap})`);
+    const slide = await walkInto(alice, bob, 0, 0, { down: 1 });
+    check(slide.wallMoved <= 2 && slide.walkerDown > 80, `at an angle you slide along them (${slide.walkerDown} units down, they moved ${slide.wallMoved})`);
+    await sleep(1100);
+    const inhaleRam = await walkInto(alice, bob, 10, 10, { inhale: true });
+    check(inhaleRam.wallMoved <= 2 && inhaleRam.gap >= -2, `inhaling changes nothing: you can't ram someone out of position (they moved ${inhaleRam.wallMoved})`);
 
     // Bombs: safe in your mouth, lit when spat, and the blast knocks everyone flying and gems loose
     await sleep(2700);
@@ -605,30 +615,23 @@ try {
     check(bobState().state === 'alive' && escapeTo > escapeFrom + 50, `smaller is faster: a newborn caught in a big creature's inhale outruns it (gap ${Math.round(escapeFrom)} to ${Math.round(escapeTo)})`);
     await sleep(1300);
 
-    // Bumper cars: running into someone at speed bounces you both apart, the lighter one farther, and costs no gems
-    async function bump(bigGems, smallGems) {
-        alice.send('test:setGems', { count: bigGems });
-        bob.send('test:setGems', { count: smallGems });
-        await sleep(200);
-        alice.send('test:moveTo', { x: 600, y: 400 });
-        bob.send('test:moveTo', { x: 600 + me().width + 30, y: 400 + (me().height - bobState().height) / 2 });
-        bob.send('test:face', { angle: Math.PI });
-        await sleep(250);
-        const aliceFrom = me().x;
-        const bobFrom = bobState().x;
-        const had = bobState().gems;
-        alice.send('steer', { x: 1, y: 0 });
-        await sleep(450);
-        alice.send('steer', { x: 0, y: 0 });
-        await sleep(900);
-        const result = { lost: had - bobState().gems, bobMoved: Math.round(bobState().x - bobFrom), aliceMoved: Math.round(me().x - aliceFrom) };
-        await sleep(600);
-        return result;
-    }
-    const evenBump = await bump(10, 10);
-    check(evenBump.bobMoved > 100 && evenBump.aliceMoved < 30 && evenBump.lost === 0, `running into someone bounces you both apart like bumper cars (him ${evenBump.bobMoved}, you ${evenBump.aliceMoved}, ${evenBump.lost} gems lost)`);
-    const bigBump = await bump(100, 10);
-    check(bigBump.bobMoved > evenBump.bobMoved * 1.2 && bigBump.lost === 0, `a bigger creature bumps harder, but from the front nobody loses gems (${bigBump.bobMoved} units, ${bigBump.lost} lost)`);
+    // Walking into each other, both just stop: nobody bounces
+    alice.send('test:setGems', { count: 10 });
+    bob.send('test:setGems', { count: 10 });
+    await sleep(200);
+    alice.send('test:moveTo', { x: 600, y: 400 });
+    bob.send('test:moveTo', { x: 600 + me().width + 60, y: 400 + (me().height - bobState().height) / 2 });
+    await sleep(250);
+    alice.send('steer', { x: 1, y: 0 });
+    bob.send('steer', { x: -1, y: 0 });
+    await sleep(600);
+    alice.send('steer', { x: 0, y: 0 });
+    bob.send('steer', { x: 0, y: 0 });
+    await sleep(150);
+    const metAt = { alice: me().x, bob: bobState().x };
+    const headOnGap = bobState().x - (me().x + me().width);
+    await sleep(500);
+    check(headOnGap >= -2 && headOnGap <= 8 && Math.abs(me().x - metAt.alice) < 3 && Math.abs(bobState().x - metAt.bob) < 3, `walking into each other, both just stop: nobody bounces (gap ${Math.round(headOnGap)})`);
     await waitFor(() => bobState().state === 'alive' && !bobState().spawnProtected, 6000, 'Bob is back');
 
     // The 3-gem rule: with fewer than 3 gems, any hit knocks you out
@@ -648,14 +651,11 @@ try {
         if (Math.hypot(gem.x - me().x, gem.y - me().y) < 350) nearby += gem.value;
     });
     check(nearby >= 2, `and they burst out for the taking (${nearby} nearby)`);
+    // Someone who just arrived is solid too
     bob.send('test:protect', { ms: 3000 });
-    const shielded = await shove(alice, bob, 0, 0);
-    check(Math.abs(shielded) < 5, `players who just arrived can't be shoved (${Math.round(shielded)} units)`);
+    const shielded = await walkInto(alice, bob, 0, 0);
     bob.send('test:protect', { ms: 0 });
-    alice.send('test:protect', { ms: 3000 });
-    await sleep(100);
-    const freed = await shove(alice, bob, 0, 0);
-    check(freed > 100 && me().spawnProtected === false, `shoving someone ends your own protection (${Math.round(freed)} units; Alice protected: ${me().spawnProtected}; Bob ${bobState().state}${bobState().spawnProtected ? ', protected' : ''}${bobState().recovering ? ', recovering' : ''})`);
+    check(shielded.wallMoved <= 2 && shielded.gap >= -2, `someone who just arrived is solid too (they moved ${shielded.wallMoved}, gap ${shielded.gap})`);
 
     // Traffic hits follow the shapes on screen and count along the whole path of a hop. All
     // traffic but one standing block is parked in a far corner, so only that block can hit Alice.
@@ -800,12 +800,12 @@ try {
     bob.send('test:moveTo', { x: tileRight - me().width - 4 - bobState().width - 20, y: rowMiddle - bobState().height / 2 });
     await sleep(250);
     bob.messages.length = 0;
+    const aliceAtEdge = me().x;
     bob.send('steer', { x: 1, y: 0 });
-    await sleep(300);
+    await sleep(700);
     bob.send('steer', { x: 0, y: 0 });
-    await waitFor(() => bob.messages.some((m) => m.type === 'credit' && m.message.how === 'edge'), 2000, 'bumping someone off the edge is credited');
-    const credit = bob.messages.find((m) => m.type === 'credit')?.message;
-    check(credit?.by === 'Bob' && credit?.target === 'Alice', `everyone sees who did it (${credit?.by} shoved ${credit?.target})`);
+    await sleep(300);
+    check(me().state === 'alive' && onFloor(me()) && Math.abs(me().x - aliceAtEdge) < 3 && !bob.messages.some((m) => m.type === 'credit'), `nobody can be rammed off the edge: bodies are solid (Alice moved ${Math.round(me().x - aliceAtEdge)} units)`);
 
     await waitFor(() => !me().recovering && !me().sliding, 2000, 'Alice is steady');
 

@@ -1276,6 +1276,26 @@ export class MultiplayerMode extends GameMode {
             this.localFacing = turnToward(this.localFacing, Math.atan2(intent.y, intent.x), turnRate(me.width) * deltaTime)
         }
         walk(box, this.velocity, steer, deltaTime, state.worldWidth, state.worldHeight)
+        // Creatures are solid: stop at anyone you walk into and slide along them, as the server does
+        const myId = this.multiplayerManager?.localSessionId
+        state.players.forEach((other: any, id: string) => {
+            if (id === myId || other.state !== 'alive') return
+            const at = this.drawnPositions.get(id) ?? { x: other.x, y: other.y }
+            const dx = box.x + box.width / 2 - (at.x + other.width / 2)
+            const dy = box.y + box.height / 2 - (at.y + other.height / 2)
+            const distance = Math.hypot(dx, dy)
+            const overlap = (box.width + other.width) / 2 - distance
+            if (overlap <= 0 || distance < 1e-6) return
+            const nx = dx / distance
+            const ny = dy / distance
+            box.x += nx * overlap
+            box.y += ny * overlap
+            const into = -(this.velocity.x * nx + this.velocity.y * ny)
+            if (into > 0) {
+                this.velocity.x += into * nx
+                this.velocity.y += into * ny
+            }
+        })
 
         // The server shows where you were about a round trip ago: quietly correct any drift from that
         this.history.push({ at: now, x: box.x, y: box.y })

@@ -178,6 +178,7 @@ class GameState extends Schema {
   update(deltaTime: number, now: number = Date.now()): void {
     if (!this.startedAt) this.startedAt = now;
     this.time = Math.round(now - this.startedAt);
+    this.players.forEach((player) => player.markTick());
     this.updateShift(deltaTime, now);
     this.updateTraffic();
     this.updateInhales(now, deltaTime);
@@ -247,7 +248,7 @@ class GameState extends Schema {
       const fromX = player.x;
       const fromY = player.y;
       player.updateMovement(this.worldWidth, this.worldHeight, now, deltaTime);
-      this.nudgeApart(player, now);
+      this.keepApart(player);
       this.collectGems(player, now, fromX, fromY);
       player.decay(deltaTime, this.worldWidth, this.worldHeight);
       // A skid after a hit never carries anyone off the edge
@@ -735,15 +736,17 @@ class GameState extends Schema {
   }
 
   /**
-   * Creatures that touch are pushed apart (as circles), the lighter one more. Running into someone
-   * at speed is a bumper-car bump: both bounce apart, the lighter one farther. No gems change hands,
-   * and an inhaling creature presses up against whoever it runs into instead of bouncing off.
+   * Creatures are solid: nobody overlaps or passes through anyone, and touching never shoves,
+   * bounces or knocks anyone back. When two overlap, whoever moved (or grew) into the other this
+   * tick gives way: walking into someone standing still stops you and never moves them, two
+   * walking into each other both stop, anyone pulled into someone by suction is the one moved back,
+   * and a thief growing as it steals is the one that makes room. The one doing the moving stops
+   * going that way, so at an angle it slides along. Inhaling changes nothing.
    */
-  private nudgeApart(player: PlayerSchema, now: number): void {
-    // (Someone just arrived can bump others, which ends their protection, but can't be bumped)
+  private keepApart(player: PlayerSchema): void {
     if (player.state !== PLAYER_STATE.ALIVE) return;
     this.players.forEach((other) => {
-      if (other === player || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected) return;
+      if (other === player || other.state !== PLAYER_STATE.ALIVE) return;
       const dx = other.x + other.width / 2 - (player.x + player.width / 2);
       const dy = other.y + other.height / 2 - (player.y + player.height / 2);
       const distance = Math.hypot(dx, dy);
@@ -751,20 +754,14 @@ class GameState extends Schema {
       if (overlap <= 0) return;
       const nx = distance > 1e-6 ? dx / distance : 1;
       const ny = distance > 1e-6 ? dy / distance : 0;
-      const share = other.weight() / (player.weight() + other.weight());
-      const moving = player.velocity();
-      // (An inhaling creature presses up against whoever it runs into instead of bouncing off, so a theft isn't broken)
-      if (!player.inhaling && !player.sliding && !other.sliding && moving.x * nx + moving.y * ny >= PUSH.BUMP_SPEED * moveSpeed(player.width)) {
-        other.shoveAlong(nx, ny, PUSH.BUMP * 2 * (1 - share), player.sessionId, now, "bump");
-        player.shoveAlong(-nx, -ny, PUSH.BUMP * 2 * share, other.sessionId, now, "bump");
-        this.impact(player, other);
-        player.dropProtection();
-        return;
-      }
-      // Someone just arrived passes through, unless they run into you
-      if (player.spawnProtected) return;
+      // How far each moved (or grew) toward the other this tick
+      const mine = Math.max(0, (player.x + player.width / 2 - player.tickX) * nx + (player.y + player.height / 2 - player.tickY) * ny + player.width / 2 - player.tickRadius);
+      const theirs = Math.max(0, -((other.x + other.width / 2 - other.tickX) * nx + (other.y + other.height / 2 - other.tickY) * ny) + other.width / 2 - other.tickRadius);
+      const share = mine + theirs > 1e-6 ? mine / (mine + theirs) : 0.5;
       player.nudge(-nx * overlap * share, -ny * overlap * share, this.worldWidth, this.worldHeight);
       other.nudge(nx * overlap * (1 - share), ny * overlap * (1 - share), this.worldWidth, this.worldHeight);
+      if (mine > 0) player.blockAlong(nx, ny);
+      if (theirs > 0) other.blockAlong(-nx, -ny);
     });
   }
 
@@ -1053,17 +1050,6 @@ class GameState extends Schema {
       kind: target.lastShoveKind,
       out: target.gems <= 0,
       ...extra,
-    });
-  }
-
-  /** A bump connected: browsers draw a shockwave (and jolt the two players involved) */
-  private impact(attacker: PlayerSchema, victim: PlayerSchema): void {
-    this.onEvent?.("impact", {
-      x: Math.round((attacker.x + attacker.width / 2 + victim.x + victim.width / 2) / 2),
-      y: Math.round((attacker.y + attacker.height / 2 + victim.y + victim.height / 2) / 2),
-      size: attacker.width,
-      byId: attacker.sessionId,
-      targetId: victim.sessionId,
     });
   }
 

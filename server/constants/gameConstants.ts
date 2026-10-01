@@ -122,12 +122,10 @@ export const GEMS = {
 } as const;
 
 /**
- * Shoving: hop into someone and they slide away. Weight grows with size (1 to 2.25), so heavier
- * players shove harder and are harder to shove.
+ * Knockback from blasts and hits. Creatures never shove each other: touching just stops you (see
+ * GameState.keepApart). Weight grows with size, so heavier creatures slide less.
  */
 export const PUSH = {
-  BUMP: 150, // running into someone at speed: each bounces about this far (split by weight)
-  BUMP_SPEED: 0.5, // ...moving toward them at this share of top speed or more
   DISTANCE: 140, // how far a shove sends someone your own weight (about two hops)...
   MIN_RATIO: 0.3, // ...scaled by your weight over theirs, kept within these limits
   MAX_RATIO: 3,
