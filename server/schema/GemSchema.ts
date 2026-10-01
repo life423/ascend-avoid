@@ -2,6 +2,7 @@ import * as schema from "@colyseus/schema";
 const { Schema, type } = schema;
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 import type { Box } from "../game/movement.js";
+import { launchDuration, launchPosition } from "../game/turbine.js";
 
 const { GEMS, SHIFT } = GAME_CONSTANTS;
 
@@ -28,6 +29,14 @@ class GemSchema extends Schema {
   /** Who spilled it, and whether they still can't grab it back (their browser shows it faded until then) */
   owner: string;
   locked: boolean;
+  /** Fired out of a turbine: when (world time), from where, which way and how fast (0 when it wasn't). Every browser draws its flight from these */
+  launchAt: number;
+  launchX: number;
+  launchY: number;
+  launchAngle: number;
+  launchSpeed: number;
+  /** Server-only: when (server clock) it was fired, while it's still in the air */
+  private launchedAt = 0;
   private ownerPickupAt = 0;
   private pickupAt = 0;
   private expiresAt = 0;
@@ -47,6 +56,11 @@ class GemSchema extends Schema {
     this.value = value;
     this.expiring = false;
     this.falling = false;
+    this.launchAt = 0;
+    this.launchX = 0;
+    this.launchY = 0;
+    this.launchAngle = 0;
+    this.launchSpeed = 0;
   }
 
   /** Drop from the sky onto a spot: it can be picked up once it lands, and vanishes if nobody does */
@@ -67,6 +81,31 @@ class GemSchema extends Schema {
     this.y = Math.round(y);
   }
 
+  /**
+   * Fired out of a turbine's exhaust: it flies a set path (game/turbine.ts, the same in every
+   * browser), can't be grabbed until it lands, and then stays: a field gem stays a field gem
+   * (`counted`), and none of them expire.
+   */
+  launch(x: number, y: number, angle: number, speed: number, now: number, worldTime: number, counted: boolean): void {
+    this.sprayed = !counted;
+    this.owner = "";
+    this.locked = false;
+    this.expiresAt = Infinity;
+    this.launchX = Math.round(x);
+    this.launchY = Math.round(y);
+    this.launchAngle = Math.round(angle * 1000) / 1000;
+    this.launchSpeed = Math.round(speed);
+    this.launchAt = worldTime;
+    this.launchedAt = now;
+    this.pickupAt = now + launchDuration(this.launchSpeed) * 1000;
+    this.moveTo(this.launchX, this.launchY);
+  }
+
+  /** Still in the air after a turbine fired it */
+  inFlight(): boolean {
+    return this.launchedAt > 0;
+  }
+
   /** Burst outward from a hit: it slides out, can't be grabbed for a moment, and vanishes if nobody does */
   spray(angle: number, speed: number, now: number, owner = ""): void {
     this.sprayed = true;
@@ -82,6 +121,18 @@ class GemSchema extends Schema {
   /** Slide, bouncing off the world's walls; returns false once a sprayed gem has expired */
   update(deltaTime: number, worldWidth: number, worldHeight: number, now: number): boolean {
     if (this.falling && now >= this.pickupAt) this.falling = false;
+    if (this.launchedAt > 0) {
+      // Fired from a turbine: on its set path until it lands, then an ordinary gem
+      const at = launchPosition(this.launchX, this.launchY, this.launchAngle, this.launchSpeed, (now - this.launchedAt) / 1000, worldWidth, worldHeight);
+      this.px = at.x;
+      this.py = at.y;
+      const x = Math.round(at.x);
+      const y = Math.round(at.y);
+      if (x !== this.x) this.x = x;
+      if (y !== this.y) this.y = y;
+      if (at.done) this.launchedAt = 0;
+      return true;
+    }
     if (!this.sprayed) return true;
     if (now >= this.expiresAt) return false;
     if (this.vx !== 0 || this.vy !== 0) {
@@ -141,5 +192,10 @@ type("boolean")(GemSchema.prototype, "expiring");
 type("string")(GemSchema.prototype, "owner");
 type("boolean")(GemSchema.prototype, "locked");
 type("boolean")(GemSchema.prototype, "falling");
+type("number")(GemSchema.prototype, "launchAt");
+type("number")(GemSchema.prototype, "launchX");
+type("number")(GemSchema.prototype, "launchY");
+type("number")(GemSchema.prototype, "launchAngle");
+type("number")(GemSchema.prototype, "launchSpeed");
 
 export { GemSchema };

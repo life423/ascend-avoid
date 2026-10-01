@@ -1,4 +1,4 @@
-import { BOTS, PLAYER_STATE } from "../constants/gameConstants.js";
+import { BOTS, PLAYER_STATE, TURBINE } from "../constants/gameConstants.js";
 import { hop, hopLength } from "./movement.js";
 import type { Box, Direction } from "./movement.js";
 import type { GameState } from "../schema/GameState.js";
@@ -144,6 +144,14 @@ export class BotBrain {
       const oy = other.y + other.height / 2;
       const distance = Math.hypot(ox - cx, oy - cy) - other.width / 2;
       if (distance < threat.distance) Object.assign(threat, { x: ox, y: oy, distance });
+    });
+    // ...or a turbine's intake: keep out of its inner zone
+    world.turbines.forEach((turbine) => {
+      if (turbine.phase !== "active") return;
+      const mx = turbine.x + Math.cos(turbine.intake) * TURBINE.BODY_RADIUS;
+      const my = turbine.y + Math.sin(turbine.intake) * TURBINE.BODY_RADIUS;
+      const distance = Math.hypot(mx - cx, my - cy) - bot.width / 2;
+      if (distance < TURBINE.DANGER_REACH + 160 && distance < threat.distance) Object.assign(threat, { x: mx, y: my, distance });
     });
     if (threat.distance < BOTS.FLEE_RANGE) return { x: cx + (cx - threat.x) * 3, y: cy + (cy - threat.y) * 3 };
     // Low on gems (or just reckless): go for the jackpot

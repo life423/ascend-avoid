@@ -112,6 +112,8 @@ export default class InputManager {
      * @param e - The keyboard event
      */
     private handleKeyDown(e: KeyboardEvent): void {
+        const target = e.target as HTMLElement | null
+        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return
         // Look for movement keys
         if (this.keyMappings.UP.includes(e.key) || e.keyCode === 38) {
             this.keys.up = true
@@ -153,6 +155,8 @@ export default class InputManager {
      * @param e - The keyboard event
      */
     private handleKeyUp(e: KeyboardEvent): void {
+        const target = e.target as HTMLElement | null
+        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return
         // Release movement keys
         if (this.keyMappings.UP.includes(e.key) || e.keyCode === 38) {
             this.keys.up = false

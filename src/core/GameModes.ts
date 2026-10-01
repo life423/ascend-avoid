@@ -6,8 +6,9 @@ import Player from '../entities/Player'
 import { InputState } from '../types'
 import { getSprite } from '../utils/sprites'
 import { GameEvents } from '../constants/client-constants'
-import { ARENA_RULES, BOMBS, GEMS, INHALE, PLAYER_COLORS, SHIFT, WORLD } from '../../server/constants/gameConstants'
+import { ARENA_RULES, BOMBS, GEMS, INHALE, PLAYER_COLORS, SHIFT, TURBINE, WORLD } from '../../server/constants/gameConstants'
 import { turnRate, turnToward, walk } from '../../server/game/movement'
+import { exhaustAngle, launchDuration, launchPosition } from '../../server/game/turbine'
 import { OnlineControls } from './OnlineControls'
 import type { Breath } from './OnlineControls'
 import type { MultiplayerManager } from '../managers/MultiplayerManager'
@@ -497,6 +498,182 @@ function roundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, width:
 }
 
 /** A gold gem: a faceted diamond with a soft glow */
+/** A wedge from (x, y): `reach` long, `arc` radians either side of `angle` */
+function wedge(ctx: CanvasRenderingContext2D, x: number, y: number, reach: number, angle: number, arc: number): void {
+    ctx.beginPath()
+    ctx.moveTo(x, y)
+    ctx.arc(x, y, reach, angle - arc, angle + arc)
+    ctx.closePath()
+}
+
+/** A turbine about to switch on: a pulsing ring filling up, a warning sign, and a hint of where the intake will pull */
+function drawTurbineWarning(ctx: CanvasRenderingContext2D, x: number, y: number, intake: number, progress: number, timestamp: number): void {
+    const r = TURBINE.BODY_RADIUS
+    const pulse = 0.5 + 0.5 * Math.sin(timestamp / 120)
+    ctx.save()
+    ctx.fillStyle = `rgba(255, 209, 102, ${0.06 + 0.1 * progress})`
+    wedge(ctx, x + Math.cos(intake) * r, y + Math.sin(intake) * r, TURBINE.INTAKE_REACH * progress, intake, TURBINE.INTAKE_ARC)
+    ctx.fill()
+    ctx.strokeStyle = `rgba(255, 209, 102, ${0.35 + 0.45 * pulse})`
+    ctx.lineWidth = 3
+    ctx.setLineDash([10, 8])
+    ctx.lineDashOffset = -timestamp / 30
+    ctx.beginPath()
+    ctx.arc(x, y, r + 14, 0, Math.PI * 2)
+    ctx.stroke()
+    ctx.setLineDash([])
+    ctx.strokeStyle = 'rgba(255, 209, 102, 0.9)'
+    ctx.lineWidth = 4
+    ctx.beginPath()
+    ctx.arc(x, y, r - 6, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress)
+    ctx.stroke()
+    ctx.fillStyle = 'rgba(255, 209, 102, 0.95)'
+    ctx.font = `800 ${Math.round(r * 0.9)}px Montserrat, system-ui, sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText('!', x, y + 2)
+    ctx.restore()
+}
+
+/** The intake's suction: a cone strongest near the mouth, its inner zone tinted red, and streaks rushing in */
+function drawIntakeWind(ctx: CanvasRenderingContext2D, x: number, y: number, intake: number, power: number, timestamp: number): void {
+    const r = TURBINE.BODY_RADIUS
+    const mx = x + Math.cos(intake) * r
+    const my = y + Math.sin(intake) * r
+    ctx.save()
+    const glow = ctx.createRadialGradient(mx, my, 0, mx, my, TURBINE.INTAKE_REACH)
+    glow.addColorStop(0, `rgba(120, 200, 255, ${0.32 * power})`)
+    glow.addColorStop(1, 'rgba(120, 200, 255, 0)')
+    ctx.fillStyle = glow
+    wedge(ctx, mx, my, TURBINE.INTAKE_REACH, intake, TURBINE.INTAKE_ARC)
+    ctx.fill()
+    ctx.fillStyle = `rgba(255, 107, 107, ${0.14 * power})`
+    wedge(ctx, mx, my, TURBINE.DANGER_REACH, intake, TURBINE.INTAKE_ARC)
+    ctx.fill()
+    ctx.strokeStyle = `rgba(255, 107, 107, ${0.55 * power})`
+    ctx.lineWidth = 2
+    ctx.setLineDash([6, 6])
+    ctx.beginPath()
+    ctx.arc(mx, my, TURBINE.DANGER_REACH, intake - TURBINE.INTAKE_ARC, intake + TURBINE.INTAKE_ARC)
+    ctx.stroke()
+    ctx.setLineDash([])
+    ctx.strokeStyle = 'rgba(210, 238, 255, 0.9)'
+    ctx.lineWidth = 2
+    ctx.lineCap = 'round'
+    for (let i = 0; i < 22; i++) {
+        const lane = ((i * 0.618) % 1) * 2 - 1
+        const phase = (timestamp / 900 + i * 0.37) % 1
+        const distance = TURBINE.INTAKE_REACH * Math.pow(1 - phase, 1.6)
+        const angle = intake + lane * TURBINE.INTAKE_ARC * 0.9 * (0.3 + 0.7 * (distance / TURBINE.INTAKE_REACH))
+        const length = 10 + 34 * phase
+        ctx.globalAlpha = Math.min(1, phase * 3) * 0.6 * power
+        ctx.beginPath()
+        ctx.moveTo(mx + Math.cos(angle) * distance, my + Math.sin(angle) * distance)
+        ctx.lineTo(mx + Math.cos(angle) * Math.max(0, distance - length), my + Math.sin(angle) * Math.max(0, distance - length))
+        ctx.stroke()
+    }
+    ctx.restore()
+}
+
+/** The exhaust's wind: a cone where it points right now, with streamlines blowing out */
+function drawExhaustWind(ctx: CanvasRenderingContext2D, x: number, y: number, exhaust: number, power: number, timestamp: number): void {
+    const r = TURBINE.BODY_RADIUS
+    const nx = x + Math.cos(exhaust) * r
+    const ny = y + Math.sin(exhaust) * r
+    ctx.save()
+    const glow = ctx.createRadialGradient(nx, ny, 0, nx, ny, TURBINE.EXHAUST_REACH)
+    glow.addColorStop(0, `rgba(255, 255, 255, ${0.2 * power})`)
+    glow.addColorStop(1, 'rgba(255, 255, 255, 0)')
+    ctx.fillStyle = glow
+    wedge(ctx, nx, ny, TURBINE.EXHAUST_REACH, exhaust, TURBINE.EXHAUST_ARC)
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)'
+    ctx.lineWidth = 2
+    ctx.lineCap = 'round'
+    for (let i = 0; i < 16; i++) {
+        const lane = ((i * 0.618) % 1) * 2 - 1
+        const phase = (timestamp / 600 + i * 0.29) % 1
+        const distance = 10 + TURBINE.EXHAUST_REACH * phase
+        const angle = exhaust + lane * TURBINE.EXHAUST_ARC * 0.85 * Math.min(1, 0.4 + phase)
+        const length = 16 + 30 * (1 - phase)
+        ctx.globalAlpha = (1 - phase) * 0.7 * power
+        ctx.beginPath()
+        ctx.moveTo(nx + Math.cos(angle) * distance, ny + Math.sin(angle) * distance)
+        ctx.lineTo(nx + Math.cos(angle) * (distance + length), ny + Math.sin(angle) * (distance + length))
+        ctx.stroke()
+    }
+    ctx.restore()
+}
+
+/** The machine: a fixed intake funnel, a nozzle that turns with the exhaust, and a fan that spins (slowing as it powers down) */
+function drawTurbineBody(ctx: CanvasRenderingContext2D, x: number, y: number, intake: number, exhaust: number, power: number, timestamp: number): void {
+    const r = TURBINE.BODY_RADIUS
+    ctx.save()
+    ctx.translate(x, y)
+    ctx.save()
+    ctx.rotate(exhaust)
+    ctx.fillStyle = '#3a4a5c'
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)'
+    ctx.lineWidth = 2
+    ctx.fillRect(r * 0.55, -r * 0.32, r * 0.72, r * 0.64)
+    ctx.strokeRect(r * 0.55, -r * 0.32, r * 0.72, r * 0.64)
+    ctx.fillStyle = `rgba(255, 255, 255, ${0.25 + 0.45 * power})`
+    ctx.fillRect(r * 1.22, -r * 0.27, 5, r * 0.54)
+    ctx.restore()
+    ctx.save()
+    ctx.rotate(intake)
+    ctx.fillStyle = '#2b3846'
+    ctx.strokeStyle = 'rgba(160, 220, 255, 0.85)'
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.moveTo(r * 0.6, -r * 0.45)
+    ctx.lineTo(r * 1.15, -r * 0.8)
+    ctx.lineTo(r * 1.15, r * 0.8)
+    ctx.lineTo(r * 0.6, r * 0.45)
+    ctx.closePath()
+    ctx.fill()
+    ctx.stroke()
+    ctx.restore()
+    const body = ctx.createRadialGradient(-r * 0.3, -r * 0.3, r * 0.1, 0, 0, r)
+    body.addColorStop(0, '#5a6f84')
+    body.addColorStop(1, '#1e2833')
+    ctx.fillStyle = body
+    ctx.beginPath()
+    ctx.arc(0, 0, r, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(79, 209, 197, 0.85)'
+    ctx.lineWidth = 3
+    ctx.stroke()
+    ctx.rotate((timestamp / 90) * power)
+    ctx.fillStyle = 'rgba(200, 225, 240, 0.85)'
+    for (let i = 0; i < 5; i++) {
+        ctx.rotate((Math.PI * 2) / 5)
+        ctx.beginPath()
+        ctx.ellipse(r * 0.38, 0, r * 0.36, r * 0.12, 0.5, 0, Math.PI * 2)
+        ctx.fill()
+    }
+    ctx.fillStyle = '#1e2833'
+    ctx.beginPath()
+    ctx.arc(0, 0, r * 0.16, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.restore()
+}
+
+/** A puff of air where a turbine just fired a gem (k: 0 to 1 over the puff) */
+function drawLaunchPuff(ctx: CanvasRenderingContext2D, x: number, y: number, angle: number, k: number): void {
+    ctx.save()
+    ctx.globalAlpha = 1 - k
+    ctx.fillStyle = 'rgba(235, 245, 255, 0.6)'
+    for (let i = 0; i < 3; i++) {
+        const spread = (i - 1) * 0.45
+        const distance = 8 + 26 * k
+        ctx.beginPath()
+        ctx.arc(x + Math.cos(angle + spread) * distance, y + Math.sin(angle + spread) * distance, 5 + 9 * k, 0, Math.PI * 2)
+        ctx.fill()
+    }
+    ctx.restore()
+}
+
 function drawGem(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number): void {
     ctx.fillStyle = 'rgba(255, 209, 102, 0.18)'
     ctx.beginPath()
@@ -1168,6 +1345,7 @@ export class MultiplayerMode extends GameMode {
         const right = view.x + view.width / 2 + margin
         const top = view.y - view.height / 2 - margin
         const bottom = view.y + view.height / 2 + margin
+        this.drawTurbines(ctx, state, timestamp)
         this.drawGems(ctx, state, left, right, top, bottom, timestamp)
         this.drawGemBursts(ctx)
         this.drawJackpot(ctx, state, localId, timestamp)
@@ -1217,6 +1395,7 @@ export class MultiplayerMode extends GameMode {
         }
 
         this.drawTheft(ctx, state, timestamp)
+        this.drawTurbineFlights(ctx, state, timestamp)
         this.drawBlasts(ctx, timestamp)
         this.drawBursts(ctx, timestamp)
         this.drawPickups(ctx, me, timestamp)
@@ -1486,6 +1665,18 @@ export class MultiplayerMode extends GameMode {
             if (sessionId === leaderId) {
                 drawCrown(ctx, x + (position.x + player.width / 2) * scale, y + (position.y + player.height / 2) * scale - 4, 10)
             }
+        })
+        state.turbines?.forEach((turbine: any) => {
+            // Turbines: a ring, with a tick for where the intake points (gold while one is about to switch on)
+            const tx = x + turbine.x * scale
+            const ty = y + turbine.y * scale
+            ctx.strokeStyle = turbine.phase === 'warning' ? 'rgba(255, 209, 102, 0.95)' : 'rgba(160, 220, 255, 0.95)'
+            ctx.lineWidth = 1.5
+            ctx.beginPath()
+            ctx.arc(tx, ty, 3.5, 0, Math.PI * 2)
+            ctx.moveTo(tx, ty)
+            ctx.lineTo(tx + Math.cos(turbine.intake) * 7, ty + Math.sin(turbine.intake) * 7)
+            ctx.stroke()
         })
         if (state.jackpotOn) {
             // The jackpot is the one thing the minimap points out
@@ -1935,6 +2126,72 @@ export class MultiplayerMode extends GameMode {
     }
 
     /** Gems lying around, and sprayed ones sliding to a stop (eased, like other players) */
+    /** Turbines, under the gems and players: warnings, the intake's suction, the exhaust's wind, and the machines */
+    private drawTurbines(ctx: CanvasRenderingContext2D, state: any, timestamp: number): void {
+        if (!state.turbines?.length) return
+        const now = this.worldNow(state, timestamp)
+        state.turbines.forEach((turbine: any) => {
+            if (turbine.phase === 'warning') {
+                const progress = Math.max(0, Math.min(1, 1 - (turbine.phaseEndsAt - now) / TURBINE.WARNING_MS))
+                drawTurbineWarning(ctx, turbine.x, turbine.y, turbine.intake, progress, timestamp)
+                return
+            }
+            const power = turbine.phase === 'ending' ? Math.max(0, Math.min(1, (turbine.phaseEndsAt - now) / TURBINE.POWER_DOWN_MS)) : 1
+            const exhaust = exhaustAngle(turbine.intake, turbine.sweepFrom, now)
+            drawIntakeWind(ctx, turbine.x, turbine.y, turbine.intake, power, timestamp)
+            drawExhaustWind(ctx, turbine.x, turbine.y, exhaust, power, timestamp)
+            drawTurbineBody(ctx, turbine.x, turbine.y, turbine.intake, exhaust, power, timestamp)
+        })
+    }
+
+    /**
+     * Gems on their way through turbines, over everything: out of the victim's body (a pop where it
+     * leaves), rushing into the intake, then across the machine to the exhaust. Everyone sees the
+     * same ones, timed by the server; once fired, the gem itself takes over (see drawGems).
+     */
+    private drawTurbineFlights(ctx: CanvasRenderingContext2D, state: any, timestamp: number): void {
+        if (!state.flights?.size) return
+        const now = this.worldNow(state, timestamp)
+        const turbines = new Map<string, any>()
+        state.turbines?.forEach((turbine: any) => turbines.set(turbine.id, turbine))
+        const r = TURBINE.BODY_RADIUS
+        state.flights.forEach((flight: any) => {
+            const turbine = turbines.get(flight.turbine)
+            if (!turbine || now >= flight.fireAt) return
+            const mouthX = turbine.x + Math.cos(turbine.intake) * r
+            const mouthY = turbine.y + Math.sin(turbine.intake) * r
+            if (now < flight.arriveAt) {
+                const k = Math.max(0, Math.min(1, (now - flight.startAt) / Math.max(1, flight.arriveAt - flight.startAt)))
+                if (k < 0.25) {
+                    // Popping out of the victim
+                    ctx.strokeStyle = `rgba(255, 209, 102, ${0.8 * (1 - k * 4)})`
+                    ctx.lineWidth = 2
+                    ctx.beginPath()
+                    ctx.arc(flight.fromX, flight.fromY, 6 + 40 * k, 0, Math.PI * 2)
+                    ctx.stroke()
+                }
+                for (let back = 2; back >= 0; back--) {
+                    const e = Math.max(0, k - back * 0.06) ** 2
+                    ctx.globalAlpha = back ? 0.25 / back : 1
+                    drawGem(ctx, flight.fromX + (mouthX - flight.fromX) * e, flight.fromY + (mouthY - flight.fromY) * e, GEMS.RADIUS * (1 - back * 0.15))
+                }
+                ctx.globalAlpha = 1
+                return
+            }
+            // Across the machine, from the intake to where the exhaust will be pointing when it fires
+            const k = (now - flight.arriveAt) / Math.max(1, flight.fireAt - flight.arriveAt)
+            const out = exhaustAngle(turbine.intake, turbine.sweepFrom, flight.fireAt)
+            const nx = turbine.x + Math.cos(out) * r
+            const ny = turbine.y + Math.sin(out) * r
+            const a = (1 - k) * (1 - k)
+            const b = 2 * (1 - k) * k
+            const c = k * k
+            ctx.globalAlpha = 0.85
+            drawGem(ctx, a * mouthX + b * turbine.x + c * nx, a * mouthY + b * turbine.y + c * ny, GEMS.RADIUS * 0.75)
+            ctx.globalAlpha = 1
+        })
+    }
+
     private drawGems(
         ctx: CanvasRenderingContext2D,
         state: any,
@@ -1946,10 +2203,25 @@ export class MultiplayerMode extends GameMode {
     ): void {
         const present = new Set<string>()
         const localId = this.multiplayerManager?.localSessionId
+        const clock = this.worldNow(state, timestamp)
         state.gems?.forEach((gem: any, id: string) => {
             present.add(id)
             let drawn = this.drawnGems.get(id)
-            if (!drawn || Math.hypot(gem.x - drawn.x, gem.y - drawn.y) > SNAP_DISTANCE) {
+            const flying = gem.launchAt > 0 ? clock - gem.launchAt : -1
+            if (flying >= 0 && flying < launchDuration(gem.launchSpeed) * 1000) {
+                // Fired out of a turbine: exactly on its path (the same for everyone), with a short trail and a puff as it leaves
+                const at = (ms: number) => launchPosition(gem.launchX, gem.launchY, gem.launchAngle, gem.launchSpeed, Math.max(0, ms) / 1000, state.worldWidth, state.worldHeight)
+                const here = at(flying)
+                drawn = { x: here.x, y: here.y }
+                this.drawnGems.set(id, drawn)
+                if (flying < 260) drawLaunchPuff(ctx, gem.launchX, gem.launchY, gem.launchAngle, flying / 260)
+                for (let back = 2; back >= 1; back--) {
+                    const ghost = at(flying - back * 35)
+                    ctx.globalAlpha = 0.25 / back
+                    drawGem(ctx, ghost.x, ghost.y, GEMS.RADIUS * (1 - back * 0.15))
+                }
+                ctx.globalAlpha = 1
+            } else if (!drawn || Math.hypot(gem.x - drawn.x, gem.y - drawn.y) > SNAP_DISTANCE) {
                 drawn = { x: gem.x, y: gem.y }
                 this.drawnGems.set(id, drawn)
             } else {
@@ -2031,7 +2303,7 @@ export class MultiplayerMode extends GameMode {
     ): void {
         const ranked: { id: string; name: string; gems: number; isBot: boolean }[] = []
         state.players.forEach((player: any, id: string) => {
-            ranked.push({ id, name: id === localId ? 'You' : String(player.name), gems: player.gems, isBot: player.isBot === true })
+            ranked.push({ id, name: String(player.name), gems: player.gems, isBot: player.isBot === true })
         })
         ranked.sort((a, b) => b.gems - a.gems)
         const rows = ranked.slice(0, 5).map((entry, index) => ({ ...entry, rank: index + 1 }))

@@ -6,14 +6,16 @@ import { GemSchema } from "./GemSchema.js";
 import { BallSchema } from "./BallSchema.js";
 import { CometSchema } from "./CometSchema.js";
 import { BombSchema } from "./BombSchema.js";
+import { TurbineFlightSchema, TurbineSchema } from "./TurbineSchema.js";
 import { BotBrain } from "../game/bots.js";
 import { closestFloorPoint, isFloor, jackpotSpot, layoutToString, pickLayout, randomFloorPoint } from "../game/layouts.js";
 import type { Layout } from "../game/layouts.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 import { moveSpeed } from "../game/movement.js";
+import { exhaustAngle } from "../game/turbine.js";
 import type { Direction } from "../game/movement.js";
 
-const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS, COMETS, INHALE, BOMBS } = GAME_CONSTANTS;
+const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS, COMETS, INHALE, BOMBS, TURBINE } = GAME_CONSTANTS;
 /** Which way each of a bot's decisions steers it */
 const STEER: Record<Direction, { x: number; y: number }> = {
   up: { x: 0, y: -1 },
@@ -46,6 +48,9 @@ class GameState extends Schema {
   comets: schema.ArraySchema<CometSchema>;
   bombs: schema.ArraySchema<BombSchema>;
   gems: schema.MapSchema<GemSchema>;
+  /** Turbines, and the gems on their way through them (see updateTurbines) */
+  turbines: schema.ArraySchema<TurbineSchema>;
+  flights: schema.MapSchema<TurbineFlightSchema>;
   worldWidth: number;
   worldHeight: number;
   /** The world's clock: ms since it started, as of the latest tick (browsers time traffic by it) */
@@ -92,6 +97,11 @@ class GameState extends Schema {
   /** Loose gems the field keeps topped up to, and how many are out there now */
   private fieldGemTarget: number;
   private fieldGems = 0;
+  /** Server-only: whether turbines come and go on their own (test worlds ask), when the next ones are due, and ids */
+  private turbinesAuto: boolean = TURBINE.ENABLED;
+  private turbineDue: number[] = [];
+  private nextTurbineId = 1;
+  private nextFlightId = 1;
 
   constructor(fieldGemTarget: number = GEMS.FIELD_COUNT) {
     super();
@@ -101,6 +111,8 @@ class GameState extends Schema {
     this.comets = new ArraySchema<CometSchema>();
     this.bombs = new ArraySchema<BombSchema>();
     this.gems = new MapSchema<GemSchema>();
+    this.turbines = new ArraySchema<TurbineSchema>();
+    this.flights = new MapSchema<TurbineFlightSchema>();
     this.worldWidth = WORLD.WIDTH;
     this.worldHeight = WORLD.HEIGHT;
     this.time = 0;
@@ -165,6 +177,7 @@ class GameState extends Schema {
     this.updateTraffic();
     this.updateInhales(now, deltaTime);
     this.updateBombs(now, deltaTime);
+    this.updateTurbines(now, deltaTime);
     this.obstacles.forEach((obstacle) => {
       if (!obstacle.update(deltaTime, this.worldWidth, this.worldHeight)) {
         // Between waves, traffic that leaves stays out of the world
@@ -852,6 +865,7 @@ class GameState extends Schema {
     this.shiftPhase = "grace";
     this.phaseEndsAt = this.time + SHIFT.GRACE_MS;
     this.dropGems(SHIFT.GRACE_GEMS, 1, now);
+    this.moveTurbinesOntoFloor();
   }
 
   /** The rest of the arena drops away; gems lying out there move onto the floor */
@@ -1091,6 +1105,258 @@ class GameState extends Schema {
     }
   }
 
+  /** Test worlds: "auto" runs turbines as usual, "manual" only has the ones placed by hand, "off" has none */
+  setTurbines(mode: string): void {
+    this.turbinesAuto = mode === "auto";
+    this.turbineDue = [];
+    if (mode === "off") {
+      this.turbines.clear();
+      this.flights.clear();
+    }
+  }
+
+  /** Test worlds: a turbine switched on right away at (x, y), its intake along `intake` (and its exhaust held straight back if `still`) */
+  placeTurbine(x: number, y: number, intake: number, still: boolean): void {
+    const turbine = new TurbineSchema(`t${this.nextTurbineId++}`, x, y, intake, this.time);
+    turbine.phase = "active";
+    turbine.phaseEndsAt = this.time + TURBINE.LIFE_MAX_MS;
+    turbine.sweepFrom = this.time;
+    turbine.still = still;
+    this.turbines.push(turbine);
+  }
+
+  /** Test worlds: every turbine moves on to its next stage now */
+  endTurbinesNow(): void {
+    this.turbines.forEach((turbine) => {
+      turbine.phaseEndsAt = this.time;
+    });
+  }
+
+  /**
+   * Turbines appear (after a warning) in open spots, run for a minute or so, power down and come
+   * back somewhere else. While on, each pulls in loose gems and nearby players, rips gems out of
+   * anyone in its inner zone, fires every gem it takes in out of its exhaust, and blows players
+   * around with the exhaust's wind.
+   */
+  private updateTurbines(now: number, deltaTime: number): void {
+    const t = this.time;
+    for (let i = this.turbines.length - 1; i >= 0; i--) {
+      const turbine = this.turbines[i];
+      if (!turbine) continue;
+      if (t < turbine.phaseEndsAt) continue;
+      if (turbine.phase === "warning") {
+        turbine.phase = "active";
+        turbine.phaseEndsAt = t + TURBINE.LIFE_MIN_MS + Math.random() * (TURBINE.LIFE_MAX_MS - TURBINE.LIFE_MIN_MS);
+      } else if (turbine.phase === "active") {
+        turbine.phase = "ending";
+        turbine.phaseEndsAt = t + TURBINE.POWER_DOWN_MS;
+      } else if (!this.turbineBusy(turbine.id)) {
+        // Every gem inside has been fired: it's gone, and another comes somewhere else
+        this.turbines.splice(i, 1);
+        if (this.turbinesAuto) this.turbineDue.push(t + TURBINE.RESPAWN_MIN_MS + Math.random() * (TURBINE.RESPAWN_MAX_MS - TURBINE.RESPAWN_MIN_MS));
+      }
+    }
+    if (this.turbinesAuto) {
+      // The first ones arrive one at a time over the first few seconds
+      while (this.turbines.length + this.turbineDue.length < TURBINE.COUNT) this.turbineDue.push(t + Math.random() * 4000);
+      for (let i = this.turbineDue.length - 1; i >= 0; i--) {
+        if (t < this.turbineDue[i]) continue;
+        const spot = this.turbineSpot();
+        if (!spot) {
+          this.turbineDue[i] = t + 1000;
+          continue;
+        }
+        this.turbineDue.splice(i, 1);
+        this.turbines.push(new TurbineSchema(`t${this.nextTurbineId++}`, spot.x, spot.y, spot.intake, t));
+      }
+    }
+    this.turbines.forEach((turbine) => {
+      if (turbine.phase === "active") this.runTurbine(turbine, deltaTime);
+    });
+    this.fireFlights(now);
+  }
+
+  /** Where a turbine's exhaust points at world time `time` */
+  private exhaustOf(turbine: TurbineSchema, time: number): number {
+    return turbine.still ? turbine.intake + Math.PI : exhaustAngle(turbine.intake, turbine.sweepFrom, time);
+  }
+
+  /** One tick of a running turbine: its solid body, the intake's pull and grip, and the exhaust's wind */
+  private runTurbine(turbine: TurbineSchema, deltaTime: number): void {
+    const r = TURBINE.BODY_RADIUS;
+    const ix = Math.cos(turbine.intake);
+    const iy = Math.sin(turbine.intake);
+    const mouthX = turbine.x + ix * r;
+    const mouthY = turbine.y + iy * r;
+    const intakeCos = Math.cos(TURBINE.INTAKE_ARC);
+    const out = this.exhaustOf(turbine, this.time);
+    const ex = Math.cos(out);
+    const ey = Math.sin(out);
+    const nozzleX = turbine.x + ex * r;
+    const nozzleY = turbine.y + ey * r;
+    const windCos = Math.cos(TURBINE.EXHAUST_ARC);
+    this.players.forEach((player) => {
+      if (player.state !== PLAYER_STATE.ALIVE) return;
+      const radius = player.width / 2;
+      const px = player.x + radius;
+      const py = player.y + radius;
+      // The turbine is solid
+      const bx = px - turbine.x;
+      const by = py - turbine.y;
+      const bd = Math.hypot(bx, by);
+      if (bd < r + radius && bd > 1e-6) player.nudge((bx / bd) * (r + radius - bd), (by / bd) * (r + radius - bd), this.worldWidth, this.worldHeight);
+      if (player.spawnProtected) return;
+      // In front of the intake: pulled in, and close up, gems ripped out of you one by one
+      const dx = px - mouthX;
+      const dy = py - mouthY;
+      const d = Math.hypot(dx, dy);
+      const gap = Math.max(0, d - radius);
+      if (d > 1e-6 && gap < TURBINE.INTAKE_REACH && (dx * ix + dy * iy) / d >= intakeCos) {
+        const closeness = 1 - gap / TURBINE.INTAKE_REACH;
+        const pull = Math.min(gap, TURBINE.PLAYER_PULL * closeness * closeness * deltaTime);
+        player.nudge((-dx / d) * pull, (-dy / d) * pull, this.worldWidth, this.worldHeight);
+        if (gap < TURBINE.DANGER_REACH && player.gems > 0) {
+          player.turbineStrip += deltaTime * (TURBINE.STRIP_RATE + TURBINE.STRIP_PER_ROOT * Math.sqrt(player.weight()));
+          while (player.turbineStrip >= 1 && player.gems > 0) {
+            player.turbineStrip -= 1;
+            player.setGems(player.gems - 1, this.worldWidth, this.worldHeight);
+            // Out of their body, on the side facing the intake
+            this.addFlight(turbine, player.sessionId, px - (dx / d) * radius, py - (dy / d) * radius, 1, false, mouthX, mouthY);
+          }
+        } else {
+          player.turbineStrip = 0;
+        }
+      }
+      // In the exhaust's wind: pushed along it, small creatures most
+      const wx = px - nozzleX;
+      const wy = py - nozzleY;
+      const wd = Math.hypot(wx, wy);
+      const wgap = Math.max(0, wd - radius);
+      if (wd > 1e-6 && wgap < TURBINE.EXHAUST_REACH && (wx * ex + wy * ey) / wd >= windCos) {
+        const push = (TURBINE.WIND * (1 - wgap / TURBINE.EXHAUST_REACH) * deltaTime) / Math.sqrt(player.weight());
+        player.nudge(ex * push, ey * push, this.worldWidth, this.worldHeight);
+      }
+    });
+    // Loose gems in front of the intake are pulled in; any that reach it (or lie under it) go inside
+    const taken: string[] = [];
+    this.gems.forEach((gem, id) => {
+      if (gem.falling || gem.inFlight()) return;
+      const dx = gem.x - mouthX;
+      const dy = gem.y - mouthY;
+      const d = Math.hypot(dx, dy);
+      if (d < 20 || Math.hypot(gem.x - turbine.x, gem.y - turbine.y) < r) {
+        taken.push(id);
+        return;
+      }
+      if (d > TURBINE.INTAKE_REACH || (dx * ix + dy * iy) / d < intakeCos) return;
+      const step = Math.min(d, TURBINE.GEM_PULL * (0.25 + 0.75 * (1 - d / TURBINE.INTAKE_REACH)) * deltaTime);
+      gem.moveTo(gem.x - (dx / d) * step, gem.y - (dy / d) * step);
+    });
+    for (const id of taken) {
+      const gem = this.gems.get(id);
+      if (!gem) continue;
+      this.gems.delete(id);
+      this.addFlight(turbine, "", gem.x, gem.y, gem.value, !gem.sprayed, mouthX, mouthY);
+    }
+  }
+
+  /** A gem on its way through a turbine: into the intake (from a player, or off the ground), across, and out of the exhaust */
+  private addFlight(turbine: TurbineSchema, victim: string, fromX: number, fromY: number, value: number, counted: boolean, mouthX: number, mouthY: number): void {
+    const t = this.time;
+    const travel = victim ? Math.max(TURBINE.MIN_TRAVEL_MS, (Math.hypot(mouthX - fromX, mouthY - fromY) / TURBINE.TRAVEL_SPEED) * 1000) : 0;
+    const flight = new TurbineFlightSchema(turbine.id, victim, fromX, fromY, value, t, t + travel, t + travel + TURBINE.INSIDE_MS);
+    flight.counted = counted;
+    this.flights.set(`f${this.nextFlightId++}`, flight);
+  }
+
+  /** Gems whose time has come fire out of their turbine's exhaust and fly 400-700 units, landing as ordinary gems */
+  private fireFlights(now: number): void {
+    const t = this.time;
+    const due: string[] = [];
+    this.flights.forEach((flight, id) => {
+      if (t >= flight.fireAt) due.push(id);
+    });
+    for (const id of due) {
+      const flight = this.flights.get(id);
+      if (!flight) continue;
+      this.flights.delete(id);
+      const turbine = this.turbineById(flight.turbine);
+      const gem = new GemSchema(flight.fromX, flight.fromY, flight.value);
+      if (turbine) {
+        const angle = this.exhaustOf(turbine, flight.fireAt) + (Math.random() * 2 - 1) * TURBINE.EXHAUST_SPREAD;
+        const speed = TURBINE.EXHAUST_SPEED_MIN + Math.random() * (TURBINE.EXHAUST_SPEED_MAX - TURBINE.EXHAUST_SPEED_MIN);
+        const nozzle = TURBINE.BODY_RADIUS + GEMS.RADIUS;
+        gem.launch(turbine.x + Math.cos(angle) * nozzle, turbine.y + Math.sin(angle) * nozzle, angle, speed, now, t, flight.counted);
+      } else {
+        gem.launch(flight.fromX, flight.fromY, 0, 0, now, t, flight.counted);
+      }
+      this.gems.set(`g${this.nextGemId++}`, gem);
+    }
+  }
+
+  private turbineById(id: string): TurbineSchema | null {
+    let found: TurbineSchema | null = null;
+    this.turbines.forEach((turbine) => {
+      if (turbine.id === id) found = turbine;
+    });
+    return found;
+  }
+
+  /** Whether gems are still on their way through a turbine */
+  private turbineBusy(id: string): boolean {
+    let busy = false;
+    this.flights.forEach((flight) => {
+      if (flight.turbine === id) busy = true;
+    });
+    return busy;
+  }
+
+  /** A spot for a new turbine: away from the edge, other turbines and players, and on the floor during a shift */
+  private turbineSpot(): { x: number; y: number; intake: number } | null {
+    const margin = TURBINE.EDGE_MARGIN;
+    for (let attempt = 0; attempt < 40; attempt++) {
+      const x = margin + Math.random() * (this.worldWidth - 2 * margin);
+      const y = margin + Math.random() * (this.worldHeight - 2 * margin);
+      let open = true;
+      this.turbines.forEach((other) => {
+        if (Math.hypot(other.x - x, other.y - y) < TURBINE.SPACING) open = false;
+      });
+      this.players.forEach((player) => {
+        const near = Math.hypot(player.x + player.width / 2 - x, player.y + player.height / 2 - y);
+        if (player.state === PLAYER_STATE.ALIVE && near < TURBINE.PLAYER_CLEARANCE + player.width / 2) open = false;
+      });
+      if (open && this.turbineFits(x, y)) return { x, y, intake: Math.random() * Math.PI * 2 };
+    }
+    return null;
+  }
+
+  /** Whether a turbine at (x, y) stands on floor (it always does, unless the arena is shifting) */
+  private turbineFits(x: number, y: number): boolean {
+    if (this.shiftPhase === "normal" || !this.layout) return true;
+    const reach = TURBINE.BODY_RADIUS + 60;
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      if (!this.isFloorAt(x + Math.cos(a) * reach, y + Math.sin(a) * reach)) return false;
+    }
+    return this.isFloorAt(x, y);
+  }
+
+  /** A new floor is coming: turbines that won't stand on it power down now, and come back on it */
+  private moveTurbinesOntoFloor(): void {
+    for (let i = this.turbines.length - 1; i >= 0; i--) {
+      const turbine = this.turbines[i];
+      if (!turbine) continue;
+      if (this.turbineFits(turbine.x, turbine.y)) continue;
+      if (turbine.phase === "warning") {
+        this.turbines.splice(i, 1);
+        if (this.turbinesAuto) this.turbineDue.push(this.time + 500);
+      } else if (turbine.phase === "active") {
+        turbine.phase = "ending";
+        turbine.phaseEndsAt = this.time + TURBINE.POWER_DOWN_MS;
+      }
+    }
+  }
+
   /** The player with the most gems, once anyone has one */
   leader(): PlayerSchema | null {
     let leader: PlayerSchema | null = null;
@@ -1165,6 +1431,8 @@ type([BallSchema])(GameState.prototype, "balls");
 type([CometSchema])(GameState.prototype, "comets");
 type([BombSchema])(GameState.prototype, "bombs");
 type({ map: GemSchema })(GameState.prototype, "gems");
+type([TurbineSchema])(GameState.prototype, "turbines");
+type({ map: TurbineFlightSchema })(GameState.prototype, "flights");
 type("number")(GameState.prototype, "worldWidth");
 type("number")(GameState.prototype, "worldHeight");
 type("number")(GameState.prototype, "time");

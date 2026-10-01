@@ -13,6 +13,12 @@ const DEAD_ZONE = 0.25
 const BUTTON_RADIUS = 38
 const FONT = 'Montserrat, system-ui, sans-serif'
 
+/** Whether a key went to a text box (the drawer's name box, say), so it shouldn't steer, inhale or toggle anything */
+function isTyping(e: KeyboardEvent): boolean {
+    const target = e.target as HTMLElement | null
+    return !!target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
+}
+
 /**
  * Touch and mouse controls for the online game, drawn on the canvas. On a touchscreen, a joystick
  * appears wherever your thumb lands on the left half, and the right half is the button: hold it to
@@ -256,6 +262,7 @@ export class OnlineControls {
     }
 
     private onKeyDown = (e: KeyboardEvent): void => {
+        if (isTyping(e)) return
         if (e.code === 'Escape') this.cancelPress()
         if (e.code !== 'Space') return
         e.preventDefault()
@@ -263,6 +270,7 @@ export class OnlineControls {
     }
 
     private onKeyUp = (e: KeyboardEvent): void => {
+        if (isTyping(e)) return
         if (e.code !== 'Space') return
         e.preventDefault()
         this.pressUp('key')

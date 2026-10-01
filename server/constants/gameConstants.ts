@@ -305,6 +305,47 @@ export const SHIFT = {
  * 30px player, ~39px hops, obstacles 22px thick moving 2.5-3.5px a frame); these are those at a
  * typical canvas scale of 0.65.
  */
+/**
+ * Turbines: machines that pop up around the arena for a minute or so, then move. The intake (it
+ * never turns) pulls in loose gems and nearby players, and rips gems out of anyone in its inner
+ * zone, one by one; each flies in, crosses the turbine and fires out of the exhaust, which sweeps
+ * slowly back and forth across the far side, landing 400-700 units away as an ordinary gem. The
+ * exhaust's wind pushes players too, small ones most. Gems are moved around, never lost.
+ */
+export const TURBINE = {
+  ENABLED: true,
+  COUNT: 3, // how many there are at once
+  BODY_RADIUS: 60, // the turbine itself is solid
+  INTAKE_REACH: 520, // how far in front of the intake its suction reaches...
+  INTAKE_ARC: 0.7, // ...within this angle (radians) either side of where it points
+  DANGER_REACH: 190, // anyone this close to the intake (edge to edge) has gems ripped out of them...
+  STRIP_RATE: 3, // ...this many a second...
+  STRIP_PER_ROOT: 1.5, // ...plus this times the square root of their weight (giants lose them fastest)
+  GEM_PULL: 480, // units a second loose gems are pulled at near the intake (a quarter of that at the edge)
+  PLAYER_PULL: 140, // units a second players are pulled at right by the intake, easing to nothing at the edge
+  TRAVEL_SPEED: 700, // units a second a stolen gem flies into the intake...
+  MIN_TRAVEL_MS: 200,
+  INSIDE_MS: 450, // ...then it crosses the turbine...
+  EXHAUST_SPEED_MIN: 1050, // ...and fires out of the exhaust this fast (it travels about 400-700 units)
+  EXHAUST_SPEED_MAX: 1780,
+  EXHAUST_SPREAD: 0.08, // radians either side of the exhaust's direction
+  LAUNCH_STOP_SPEED: 30, // a fired gem settles below this speed
+  EXHAUST_SWEEP: Math.PI, // the exhaust sweeps across this angle (centered opposite the intake)...
+  EXHAUST_CYCLE_MS: 10000, // ...left, right and back again this often
+  EXHAUST_REACH: 650, // its wind reaches this far...
+  EXHAUST_ARC: 0.38, // ...within this angle either side of where it points...
+  WIND: 360, // ...pushing a newborn this fast right at the nozzle (divided by the square root of weight), easing to nothing at the end
+  WARNING_MS: 3000, // a new turbine shows where it's coming for this long before it switches on...
+  LIFE_MIN_MS: 60000, // ...runs this long...
+  LIFE_MAX_MS: 90000,
+  POWER_DOWN_MS: 2000, // ...powers down (finishing the gems already inside)...
+  RESPAWN_MIN_MS: 3000, // ...and comes back somewhere else this much later
+  RESPAWN_MAX_MS: 7000,
+  EDGE_MARGIN: 600, // never this close to the world's edge,
+  SPACING: 1300, // another turbine,
+  PLAYER_CLEARANCE: 450, // or a player
+} as const;
+
 export const ARENA_RULES = {
   PLAYER_SIZE: 20, // a new player's size; gems make you bigger (GEMS.SIZE_PER_ROOT)
   HOP: 60, // one tap = one hop, while you're small...
@@ -410,6 +451,7 @@ export const GAME_CONSTANTS = {
   FACING,
   INHALE,
   BOMBS,
+  TURBINE,
   SHIFT,
   KEYS,
   DEVICE_SETTINGS
