@@ -1,7 +1,6 @@
-import { ARENA_RULES } from '../../server/constants/gameConstants'
 
-/** What the button (or space) asks for: a dash (a tap), or an inhale starting and stopping (a hold) */
-export type ControlEvent = 'dash' | 'inhale' | 'exhale'
+/** What the button (or space) asks for: an inhale starting (pressed) and stopping (let go) */
+export type ControlEvent = 'inhale' | 'exhale'
 
 /** Your breath, for the button and the ring around your creature: draining while you inhale, refilling while you catch it */
 export type Breath = { phase: 'ready' } | { phase: 'inhaling'; left: number } | { phase: 'recovering'; back: number }
@@ -16,22 +15,19 @@ const FONT = 'Montserrat, system-ui, sans-serif'
 
 /**
  * Touch and mouse controls for the online game, drawn on the canvas. On a touchscreen, a joystick
- * appears wherever your thumb lands on the left half, and the right half is the button: hold to
- * inhale, tap to dash (slide off to stop inhaling). With a mouse, hold the mouse button and your
+ * appears wherever your thumb lands on the left half, and the right half is the button: hold it to
+ * inhale (slide off to stop). With a mouse, hold the mouse button and your
  * player heads for the cursor; space works like the on-screen button (Esc stops an inhale). The
  * arrow keys and WASD stay with the InputManager.
  */
 export class OnlineControls {
-    /** Whether this device has a touchscreen (the joystick and DASH button are drawn only then) */
+    /** Whether this device has a touchscreen (the joystick and INHALE button are drawn only then) */
     readonly touchDevice: boolean
     private stick: { id: number; originX: number; originY: number; x: number; y: number } | null = null
     private mouse: { id: number; x: number; y: number } | null = null
-    /** The button held down: by which pointer (or the space bar), since when, and whether it became an inhale */
-    private press: { id: number | 'key'; at: number; inhaling: boolean } | null = null
+    /** The button held down: by which pointer (or the space bar) */
+    private press: { id: number | 'key' } | null = null
     private events: ControlEvent[] = []
-    private ready = true
-    private flashUntil = 0
-    private deniedAt = 0
     private touchedOnce = false
 
     constructor(private canvas: HTMLCanvasElement) {
@@ -57,17 +53,8 @@ export class OnlineControls {
         document.removeEventListener('keyup', this.onKeyUp)
     }
 
-    /** Whether the dash is ready (not recharging); a tap while it isn't just shakes the button */
-    setReady(ready: boolean): void {
-        this.ready = ready
-    }
-
-    /** What the button asked for since the last call; also notices when a hold becomes an inhale */
-    takeEvents(now: number): ControlEvent[] {
-        if (this.press && !this.press.inhaling && now - this.press.at >= ARENA_RULES.HOLD_MS) {
-            this.press.inhaling = true
-            this.events.push('inhale')
-        }
+    /** What the button asked for since the last call */
+    takeEvents(): ControlEvent[] {
         const events = this.events
         this.events = []
         return events
@@ -103,14 +90,12 @@ export class OnlineControls {
 
     /**
      * Draw the controls. On a touchscreen: the joystick (or, until you touch it, a faint pulsing one
-     * where thumbs usually land) and the button, which shows its state: INHALE, a
-     * ring running round as a hold becomes an inhale, your breath draining while you inhale and
-     * refilling while you catch it, a flash on a dash, and a darkened clock while the dash recharges.
-     * With a keyboard: a small label for space that also shows your breath.
+     * where thumbs usually land) and the INHALE button, whose rim shows your breath draining while
+     * you inhale and refilling while you catch it. With a keyboard: a small label for space that
+     * also shows your breath.
      */
-    draw(ctx: CanvasRenderingContext2D, timestamp: number, readyShare: number, breath: Breath): void {
+    draw(ctx: CanvasRenderingContext2D, timestamp: number, breath: Breath): void {
         const { width, height } = this.canvas
-        const now = performance.now()
         const inhaling = breath.phase === 'inhaling'
         const recovering = breath.phase === 'recovering'
         const share = breath.phase === 'inhaling' ? breath.left : breath.phase === 'recovering' ? breath.back : 1
@@ -129,7 +114,7 @@ export class OnlineControls {
             // The keyboard: a small label for space, which also shows your breath
             ctx.textAlign = 'left'
             ctx.font = `700 12px ${FONT}`
-            ctx.fillStyle = inhaling ? breathColor : `rgba(255, 255, 255, ${recovering || readyShare < 1 ? 0.35 : 0.65})`
+            ctx.fillStyle = inhaling ? breathColor : `rgba(255, 255, 255, ${recovering ? 0.35 : 0.65})`
             ctx.fillText(inhaling ? 'SPACE  inhaling' : recovering ? 'catching your breath…' : 'SPACE  hold to inhale', 14, height - 16)
             if (inhaling || recovering) {
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.12)'
@@ -142,42 +127,31 @@ export class OnlineControls {
         }
         this.drawStick(ctx, height, timestamp)
 
-        // The button, squashing briefly on a dash and shaking on a tap while the dash recharges
-        const shake = now - this.deniedAt < 250 ? Math.sin((now - this.deniedAt) / 25) * 4 : 0
-        const x = width - 70 + shake
+        // The button: lit while you inhale, dimmed while you catch your breath
+        const x = width - 70
         const y = height - 78
-        const squash = now < this.flashUntil ? 0.9 : 1
-        const r = BUTTON_RADIUS * squash
-        const dim = recovering || (readyShare < 1 && !inhaling)
-        ctx.fillStyle =
-            now < this.flashUntil
-                ? 'rgba(255, 255, 255, 0.45)'
-                : inhaling
-                  ? `rgba(160, 230, 255, ${0.16 + 0.1 * Math.sin(timestamp / 90)})`
-                  : dim
-                    ? 'rgba(20, 30, 40, 0.55)'
-                    : 'rgba(79, 209, 197, 0.16)'
+        const r = BUTTON_RADIUS
+        ctx.fillStyle = inhaling
+            ? `rgba(160, 230, 255, ${0.16 + 0.1 * Math.sin(timestamp / 90)})`
+            : recovering
+              ? 'rgba(20, 30, 40, 0.55)'
+              : 'rgba(79, 209, 197, 0.16)'
         ctx.beginPath()
         ctx.arc(x, y, r, 0, Math.PI * 2)
         ctx.fill()
         ctx.lineWidth = 2
-        ctx.strokeStyle = dim ? 'rgba(255, 255, 255, 0.15)' : 'rgba(79, 209, 197, 0.55)'
+        ctx.strokeStyle = recovering ? 'rgba(255, 255, 255, 0.15)' : 'rgba(79, 209, 197, 0.55)'
         ctx.stroke()
-        const arc = (portion: number, color: string, thickness: number) => {
-            ctx.strokeStyle = color
-            ctx.lineWidth = thickness
+        // Its rim: your breath while you inhale or catch it
+        if (inhaling || recovering) {
+            ctx.strokeStyle = breathColor
+            ctx.lineWidth = inhaling ? 5 : 3
             ctx.beginPath()
-            ctx.arc(x, y, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0.01, portion))
+            ctx.arc(x, y, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0.01, share))
             ctx.stroke()
         }
-        // Its rim: your breath while you inhale or catch it, a clock while the dash recharges, and
-        // running round as a hold becomes an inhale
-        if (inhaling || recovering) arc(share, breathColor, inhaling ? 5 : 3)
-        else if (readyShare < 1) arc(readyShare, 'rgba(255, 255, 255, 0.6)', 3)
-        else if (this.press) arc((now - this.press.at) / ARENA_RULES.HOLD_MS, 'rgba(79, 209, 197, 0.9)', 3)
-
-        // Just the word, centered on its letters (the rim shows your breath; it flashes red when low)
-        ctx.fillStyle = dim ? 'rgba(255, 255, 255, 0.4)' : low ? breathColor : '#ffffff'
+        // Just the word, centered on its letters (it flashes red when you're low on breath)
+        ctx.fillStyle = recovering ? 'rgba(255, 255, 255, 0.4)' : low ? breathColor : '#ffffff'
         ctx.font = `800 14px ${FONT}`
         ctx.textBaseline = 'alphabetic'
         const word = ctx.measureText('INHALE')
@@ -224,30 +198,24 @@ export class OnlineControls {
         }
     }
 
-    /** The button pressed (by a pointer on the right half, or the space bar). A hold always inhales, even while the dash recharges */
+    /** The button pressed (by a pointer on the right half, or the space bar): inhaling starts at once */
     private pressDown(id: number | 'key'): void {
         if (this.press) return
-        this.press = { id, at: performance.now(), inhaling: false }
+        this.press = { id }
+        this.events.push('inhale')
     }
 
-    /** The button let go: a hold stops inhaling; a tap dashes, or shakes the button while the dash recharges */
+    /** The button let go: inhaling stops */
     private pressUp(id: number | 'key'): void {
         if (this.press?.id !== id) return
-        if (this.press.inhaling) {
-            this.events.push('exhale')
-        } else if (this.ready) {
-            this.events.push('dash')
-            this.flashUntil = performance.now() + 150
-        } else {
-            this.deniedAt = performance.now()
-        }
+        this.events.push('exhale')
         this.press = null
     }
 
-    /** Slid off the button (or pressed Esc): a tap never happens, and an inhale stops */
+    /** Slid off the button (or pressed Esc): inhaling stops */
     private cancelPress(): void {
         if (!this.press) return
-        if (this.press.inhaling) this.events.push('exhale')
+        this.events.push('exhale')
         this.press = null
     }
 

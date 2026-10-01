@@ -71,8 +71,8 @@ export function moveSpeed(width: number): number {
 
 /**
  * One step of walking, the same on the server and in the browser: velocity eases toward where
- * you're steering (so you start and stop smoothly), or holds a dash's velocity, then the box moves,
- * staying inside the world. `steer` is no longer than 1; a light push walks slower.
+ * you're steering (so you start and stop smoothly), then the box moves, staying inside the world.
+ * `steer` is no longer than 1; a light push walks slower.
  */
 export function walk(
   box: Box,
@@ -80,26 +80,20 @@ export function walk(
   steer: { x: number; y: number },
   deltaTime: number,
   worldWidth: number,
-  worldHeight: number,
-  dash: { x: number; y: number } | null = null
+  worldHeight: number
 ): void {
   const speed = moveSpeed(box.width);
-  if (dash) {
-    velocity.x = dash.x;
-    velocity.y = dash.y;
-  } else {
-    // Coming out of a dash, drop straight back to walking speed
-    const current = Math.hypot(velocity.x, velocity.y);
-    if (current > speed) {
-      velocity.x *= speed / current;
-      velocity.y *= speed / current;
-    }
-    const blend = 1 - Math.exp(-ARENA_RULES.MOVE_RESPONSE * deltaTime);
-    velocity.x += (steer.x * speed - velocity.x) * blend;
-    velocity.y += (steer.y * speed - velocity.y) * blend;
-    if (steer.x === 0 && Math.abs(velocity.x) < 2) velocity.x = 0;
-    if (steer.y === 0 && Math.abs(velocity.y) < 2) velocity.y = 0;
+  // Never faster than your top speed (growing slows you at once)
+  const current = Math.hypot(velocity.x, velocity.y);
+  if (current > speed) {
+    velocity.x *= speed / current;
+    velocity.y *= speed / current;
   }
+  const blend = 1 - Math.exp(-ARENA_RULES.MOVE_RESPONSE * deltaTime);
+  velocity.x += (steer.x * speed - velocity.x) * blend;
+  velocity.y += (steer.y * speed - velocity.y) * blend;
+  if (steer.x === 0 && Math.abs(velocity.x) < 2) velocity.x = 0;
+  if (steer.y === 0 && Math.abs(velocity.y) < 2) velocity.y = 0;
   const margin = ARENA_RULES.EDGE_MARGIN;
   box.x = Math.max(margin, Math.min(box.x + velocity.x * deltaTime, worldWidth - box.width - margin));
   box.y = Math.max(margin, Math.min(box.y + velocity.y * deltaTime, worldHeight - box.height - margin));
@@ -149,7 +143,7 @@ export function stopAgainst(box: Box, direction: Direction, fromX: number, fromY
  */
 export function hop(player: Box, direction: Direction, worldWidth: number, worldHeight: number, scale = 1): void {
   const { EDGE_MARGIN } = ARENA_RULES;
-  // A dash is several hops' worth at once (scale)
+  // (scale: several hops' worth at once)
   const length = hopLength(player.width) * scale;
   if (direction === "up") player.y -= length;
   else if (direction === "down") player.y += length;

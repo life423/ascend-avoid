@@ -69,10 +69,6 @@ export class GameRoom extends Room<GameState> {
       if (player) this.state.spit(player, Number(data?.x) || 0, Number(data?.y) || 0, Date.now());
     });
 
-    this.onMessage("dash", (client, data: any) => {
-      this.state.players.get(client.sessionId)?.requestDash(Number(data?.x) || 0, Number(data?.y) || 0);
-    });
-
     // Browsers time their round trip to the server with this, to draw traffic in step with it
     this.onMessage("ping", (client, data: any) => {
       client.send("pong", { t: Number(data?.t) || 0 });

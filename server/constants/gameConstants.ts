@@ -126,7 +126,6 @@ export const GEMS = {
  * players shove harder and are harder to shove.
  */
 export const PUSH = {
-  BOUNCE: 110, // a plain dash bounces back off whoever it hits (lighter bounces farther)
   BUMP: 150, // running into someone at speed: each bounces about this far (split by weight)
   BUMP_SPEED: 0.5, // ...moving toward them at this share of top speed or more
   DISTANCE: 140, // how far a shove sends someone your own weight (about two hops)...
@@ -156,7 +155,6 @@ export const BOTS = {
   GEM_SIGHT: 1000, // bots go for gems within this distance...
   FLEE_RATIO: 1.5, // bots run from anyone this many times their size who comes within FLEE_RANGE
   FLEE_RANGE: 420, // (a giant's inhale reaches about 400)
-  DASH_REACH: 70, // bots dash into whoever they're hunting once this close (gap between them)
   CONTENT_AT: 30, // ...until they have this many; then they just wander, dodge and shove
   DECAY_START: 20, // bots shed gems above this, and faster (people: GEMS.DECAY_*), so people can outgrow them...
   DECAY_RATE: 0.02, // ...this share of what's above DECAY_START each second (1 a second at 70)
@@ -236,12 +234,10 @@ export const INHALE = {
   ARC: 35, // degrees either side of where you face
   PULL_GEMS: 520, // units a second
   PULL_BOMBS: 420,
-  PULL_PREY: 150, // at the edge of your reach, rising by PULL_PREY_CLOSE right at your mouth
-  PULL_PREY_CLOSE: 250,
+  PULL_PREY: 400, // units a second, right at your mouth, easing to nothing at the edge of your reach: anything smaller is faster, so it can outrun the pull unless it lets you get close
   EAT_RATIO: 1.25,
   MAX_MS: 3000, // how long one breath lasts...
   RECOVER_MS: 1000, // ...and how long you need to catch it before the next
-  DRAG: 140, // units a second someone you're stealing from is dragged toward your mouth (more if you're bigger)
   /**
    * Gravity theft: up close, inhaling steals gems from the nearest creature in front of your mouth
    * that's too big to swallow, STEAL_RATE a second times the square root of your weight (bigger
@@ -249,7 +245,7 @@ export const INHALE = {
    * the whole stream; within TUG_EDGE of each other, neither gains.
    */
   STEAL_REACH_PER_SIZE: 0.25, // plus this times the thief's width (bigger creatures reach farther)
-  STEAL_REACH: 100, // the gap between you and them: enough to latch onto someone running away (the drag then reels them in)
+  STEAL_REACH: 100, // the gap between you and them (anyone smaller than the thief is faster, and can run out of it)
   STEAL_ARC: 50, // degrees either side of where you face
   STEAL_RATE: 4,
   TUG_EDGE: 1.08,
@@ -261,7 +257,7 @@ export const INHALE = {
  * spit it: it slides, slows to a stop and bounces off walls, and its fuse starts. When it goes off,
  * everyone within BLAST_RADIUS is knocked outward (lighter creatures farther) and has gems knocked
  * loose (more near the middle); under GEMS.SURVIVE_AT gems it knocks you out. Other bombs in the
- * blast go off too. Anyone can nudge a bomb by walking into it, or kick it with a dash. A lit bomb
+ * blast go off too. Anyone can nudge a bomb by walking into it. A lit bomb
  * can still be inhaled, but its fuse keeps ticking. A bomb that has gone off turns up somewhere else.
  */
 export const BOMBS = {
@@ -270,7 +266,6 @@ export const BOMBS = {
   RADIUS: 15,
   SPIT_SPEED: 620,
   FRICTION: 2.3, // how fast a sliding bomb slows (it slides about SPIT_SPEED / FRICTION units)
-  KICK_SPEED: 700,
   FUSE_MS: 2200,
   CHAIN_MS: 150, // a bomb caught in a blast goes off this soon after
   BLAST_RADIUS: 150,
@@ -317,11 +312,6 @@ export const ARENA_RULES = {
   MOVE_SPEED: 320, // top speed (units a second) for a newborn...
   SPEED_FALLOFF: 0.35, // ...falling as MOVE_SPEED x (PLAYER_SIZE / width) ^ this: about 180 at 5x, 135 at 12x
   MOVE_RESPONSE: 14, // how quickly you reach the speed you're steering (and glide to a stop)
-  DASH_SPEED: 900, // a dash is a burst at this speed...
-  DASH_MS: 200, // ...for this long (about 180 units)...
-  HOLD_MS: 220, // holding the button this long makes it an inhale; a shorter press is a tap (a dash)
-  DASH_COOLDOWN_MS: 1000, // ...then needs this long to recharge...
-  DASH_COST: 1, // ...and costs this many gems (if you have any)
   HOP_REPEAT_DELAY: 0.2, // holding a direction: the first repeat hop comes after this many seconds,
   HOP_REPEAT: 1 / 6, // then one every this many seconds (six a second)
   EDGE_MARGIN: 8, // closest you can get to the edge of the world

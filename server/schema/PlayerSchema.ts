@@ -53,16 +53,7 @@ class PlayerSchema extends Schema {
   private steerY = 0;
   private walkX = 0;
   private walkY = 0;
-  /** The way the player last steered (a dash goes this way if they aren't steering) */
-  private facingX = 0;
-  private facingY = -1;
-  private queuedDash: { x: number; y: number } | null = null;
-  private dashX = 0;
-  private dashY = 0;
-  private dashUntil = 0;
-  /** Mid-dash (everyone draws the streak) */
-  bursting: boolean;
-  /** How the last shove came: "shove", "dash", "sling" or "crush" (for credits) */
+  /** How the last shove came (for credits): "bump", or "bomb" */
   lastShoveKind = "";
   /** Which way the creature faces (radians): its back is where it's vulnerable */
   facing: number;
@@ -83,11 +74,9 @@ class PlayerSchema extends Schema {
   /** Server-only: where an inhale is aimed (the creature turns to face it) */
   aimX = 0;
   aimY = 0;
-  private dashReadyAt = 0;
 
   constructor(sessionId: string, playerIndex: number) {
     super();
-    this.bursting = false;
     this.facing = -Math.PI / 2;
     this.inhaling = false;
     this.mouth = "";
@@ -115,8 +104,6 @@ class PlayerSchema extends Schema {
     this.recovering = false;
     this.stopSliding();
     this.protectFor(WORLD.SPAWN_PROTECTION_MS, now);
-    this.queuedDash = null;
-    this.dashUntil = 0;
     this.inhaling = false;
   }
 
@@ -143,8 +130,6 @@ class PlayerSchema extends Schema {
     this.spawnProtected = false;
     this.recovering = false;
     this.respawnAt = now + WORLD.RESPAWN_DELAY_MS;
-    this.queuedDash = null;
-    this.dashUntil = 0;
     this.inhaling = false;
     this.stopSliding();
   }
@@ -186,8 +171,6 @@ class PlayerSchema extends Schema {
     this.vx += (dx / length) * speed;
     this.vy += (dy / length) * speed;
     this.sliding = true;
-    this.queuedDash = null;
-    this.dashUntil = 0;
     this.inhaling = false;
     return true;
   }
@@ -205,8 +188,6 @@ class PlayerSchema extends Schema {
     this.vx += (dx / length) * speed;
     this.vy += (dy / length) * speed;
     this.sliding = true;
-    this.queuedDash = null;
-    this.dashUntil = 0;
     this.inhaling = false;
   }
 
@@ -261,13 +242,6 @@ class PlayerSchema extends Schema {
     this.setGems(this.gems - lost, worldWidth, worldHeight);
   }
 
-  /** Queue a dash the browser asked for: several hops' worth at once (see ARENA_RULES.DASH_*) */
-  requestDash(x: number, y: number): void {
-    if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering || this.inhaling) return;
-    const length = Math.hypot(x, y);
-    this.queuedDash = Number.isFinite(length) && length > 1e-6 ? { x: x / length, y: y / length } : { x: this.facingX, y: this.facingY };
-  }
-
   /** Where the browser is steering: a direction no longer than 1 (a light push walks slower) */
   steer(x: number, y: number): void {
     const length = Math.hypot(x, y);
@@ -281,7 +255,7 @@ class PlayerSchema extends Schema {
     this.steerY = y * scale;
   }
 
-  /** How fast the player is moving right now: walking, dashing and sliding together */
+  /** How fast the player is moving right now: walking and sliding together */
   velocity(): { x: number; y: number } {
     return { x: this.walkX + this.vx, y: this.walkY + this.vy };
   }
@@ -315,23 +289,6 @@ class PlayerSchema extends Schema {
     return { x: this.steerX, y: this.steerY };
   }
 
-  /** Whether a dash is under way (it shoves whoever it runs into) */
-  dashing(now: number): boolean {
-    return now < this.dashUntil;
-  }
-
-  /** The way the dash under way is going */
-  dashDirection(): { x: number; y: number } {
-    return { x: this.dashX, y: this.dashY };
-  }
-
-  /** The dash ran into someone: it stops there */
-  endDash(): void {
-    this.dashUntil = 0;
-    this.walkX = 0;
-    this.walkY = 0;
-  }
-
   /** Moved aside by someone walking into you, staying inside the world */
   nudge(dx: number, dy: number, worldWidth: number, worldHeight: number): void {
     const margin = ARENA_RULES.EDGE_MARGIN;
@@ -341,7 +298,7 @@ class PlayerSchema extends Schema {
 
   /**
    * Move for this tick: slide if shoved or skidding; otherwise walk where the player is steering
-   * (eased, so starts and stops are smooth), or burst along a dash. No steering while recovering.
+   * (eased, so starts and stops are smooth). No steering while recovering.
    * Protection and recovery wear off here too.
    */
   updateMovement(worldWidth: number, worldHeight: number, now: number, deltaTime: number): void {
@@ -352,41 +309,23 @@ class PlayerSchema extends Schema {
     if (this.sliding) {
       this.walkX = 0;
       this.walkY = 0;
-      this.queuedDash = null;
-      if (this.bursting) this.bursting = false;
       this.slide(deltaTime, worldWidth, worldHeight);
       return;
     }
-    if (this.queuedDash && now >= this.dashReadyAt && !this.recovering) {
-      this.dashX = this.queuedDash.x;
-      this.dashY = this.queuedDash.y;
-      this.dashUntil = now + ARENA_RULES.DASH_MS;
-      this.dashReadyAt = now + ARENA_RULES.DASH_COOLDOWN_MS;
-      if (this.gems > 0) this.setGems(this.gems - ARENA_RULES.DASH_COST, worldWidth, worldHeight);
-    }
-    this.queuedDash = null;
-    // Charging holds you still: the stick aims instead
     const steer = this.recovering ? { x: 0, y: 0 } : { x: this.steerX, y: this.steerY };
     const box = { x: this.x, y: this.y, width: this.width, height: this.height };
     const velocity = { x: this.walkX, y: this.walkY };
-    walk(box, velocity, steer, deltaTime, worldWidth, worldHeight, now < this.dashUntil ? { x: this.dashX * ARENA_RULES.DASH_SPEED, y: this.dashY * ARENA_RULES.DASH_SPEED } : null);
+    walk(box, velocity, steer, deltaTime, worldWidth, worldHeight);
     this.walkX = velocity.x;
     this.walkY = velocity.y;
-    // Facing: toward the aim while inhaling, along a dash, otherwise where you steer
-    const intent = this.inhaling ? { x: this.aimX, y: this.aimY } : now < this.dashUntil ? { x: this.dashX, y: this.dashY } : { x: this.steerX, y: this.steerY };
+    // Facing: toward the aim while inhaling, otherwise where you steer
+    const intent = this.inhaling ? { x: this.aimX, y: this.aimY } : { x: this.steerX, y: this.steerY };
     if (Math.hypot(intent.x, intent.y) > 0.25) {
       const facing = turnToward(this.facing, Math.atan2(intent.y, intent.x), turnRate(this.width) * deltaTime);
       if (facing !== this.facing) this.facing = facing;
     }
-    const bursting = now < this.dashUntil;
-    if (this.bursting !== bursting) this.bursting = bursting;
     if (box.x !== this.x) this.x = box.x;
     if (box.y !== this.y) this.y = box.y;
-    const steering = Math.hypot(steer.x, steer.y);
-    if (steering > 0.2) {
-      this.facingX = steer.x / steering;
-      this.facingY = steer.y / steering;
-    }
   }
 
   /** Slide after a shove, slowing to a stop; the world's walls stop you dead */
@@ -432,7 +371,6 @@ type("number")(PlayerSchema.prototype, "gems");
 type("boolean")(PlayerSchema.prototype, "spawnProtected");
 type("boolean")(PlayerSchema.prototype, "recovering");
 type("boolean")(PlayerSchema.prototype, "sliding");
-type("boolean")(PlayerSchema.prototype, "bursting");
 type("number")(PlayerSchema.prototype, "facing");
 type("boolean")(PlayerSchema.prototype, "inhaling");
 type("string")(PlayerSchema.prototype, "mouth");
