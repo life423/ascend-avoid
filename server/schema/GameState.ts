@@ -15,7 +15,7 @@ import { moveSpeed } from "../game/movement.js";
 import { exhaustAngle } from "../game/turbine.js";
 import type { Direction } from "../game/movement.js";
 
-const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS, COMETS, INHALE, BOMBS, TURBINE } = GAME_CONSTANTS;
+const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS, COMETS, INHALE, BOMBS, TURBINE, SUCTION } = GAME_CONSTANTS;
 /** Which way each of a bot's decisions steers it */
 const STEER: Record<Direction, { x: number; y: number }> = {
   up: { x: 0, y: -1 },
@@ -23,6 +23,11 @@ const STEER: Record<Direction, { x: number; y: number }> = {
   left: { x: -1, y: 0 },
   right: { x: 1, y: 0 },
 };
+
+/** How strongly suction moves a body: the puller's width over the target's, softened and kept in bounds (see SUCTION) */
+function suctionScale(pullerWidth: number, targetWidth: number): number {
+  return Math.min(SUCTION.MAX, Math.max(SUCTION.MIN, Math.pow(pullerWidth / Math.max(1, targetWidth), SUCTION.SOFTEN)));
+}
 
 /** How many random spots to try when looking for a safe place to (re)spawn */
 const SPAWN_TRIES = 24;
@@ -320,15 +325,17 @@ class GameState extends Schema {
   }
 
   /**
-   * Inhaling: everything in a cone in front of the creature's mouth is pulled in. Gems are
-   * swallowed (they reach the mouth and are collected); a bomb stays in the mouth (safe until it's spat); a creature
-   * INHALE.EAT_RATIO times smaller is dragged in (harder the closer it gets) and swallowed whole.
+   * Inhaling: everything in a cone in front of the creature's mouth. Gems are pulled in and
+   * swallowed; a bomb stays in the mouth (safe until it's spat). A creature too big to swallow isn't
+   * moved: it's robbed (steal). Only one INHALE.EAT_RATIO times narrower is pulled in bodily, and
+   * swallowed once held at the mouth for INHALE.GULP_MS.
    */
   private updateInhales(now: number, deltaTime: number): void {
     const cone = Math.cos((INHALE.ARC * Math.PI) / 180);
     this.players.forEach((eater) => {
       if (!eater.inhaling || eater.state !== PLAYER_STATE.ALIVE) {
         if (eater.stealingFrom) this.endTheft(eater, now);
+        if (eater.gulping) eater.gulping = "";
         return;
       }
       const fx = Math.cos(eater.facing);
@@ -366,64 +373,118 @@ class GameState extends Schema {
           bomb.placeAt(bomb.x + ((mouthX - bomb.x) / d) * step, bomb.y + ((mouthY - bomb.y) / d) * step);
         });
       }
+      // Only a creature small enough to swallow is pulled in bodily (size resists it), and once held
+      // right at the mouth for GULP_MS it goes down whole. Anyone bigger is robbed instead (steal).
+      let held: PlayerSchema | null = null;
+      let heldAt = Infinity;
       this.players.forEach((prey) => {
-        if (prey === eater || prey.state !== PLAYER_STATE.ALIVE || prey.spawnProtected) return;
-        if (prey.width * INHALE.EAT_RATIO > eater.width) return;
+        if (prey === eater || prey.state !== PLAYER_STATE.ALIVE || prey.spawnProtected || !this.canSwallow(eater, prey)) return;
         const px = prey.x + prey.width / 2;
         const py = prey.y + prey.height / 2;
         const d = inCone(px, py, prey.width / 2);
         if (d < 0) return;
-        if (d <= eater.width * 0.35 + prey.width / 2) {
-          this.swallow(eater, prey, now);
-          return;
+        if (d <= eater.width * INHALE.GULP_REACH + prey.width / 2 && d < heldAt) {
+          held = prey;
+          heldAt = d;
         }
-        const pull = INHALE.PULL_PREY * Math.pow(Math.max(0, 1 - d / reach), 2) * deltaTime;
+        if (d < 1) return;
+        const pull =
+          Math.min(
+            INHALE.PULL_PREY * suctionScale(eater.width, prey.width) * Math.pow(Math.max(0, 1 - d / reach), 2),
+            INHALE.PREY_PULL_CAP * moveSpeed(prey.width)
+          ) * deltaTime;
         prey.nudge(((mouthX - px) / d) * pull, ((mouthY - py) / d) * pull, this.worldWidth, this.worldHeight);
       });
+      const caught = held as PlayerSchema | null;
+      if (!caught) {
+        if (eater.gulping) eater.gulping = "";
+      } else if (eater.gulping !== caught.sessionId) {
+        eater.gulping = caught.sessionId;
+        eater.gulpEndsAt = this.time + INHALE.GULP_MS;
+      } else if (this.time >= eater.gulpEndsAt) {
+        eater.gulping = "";
+        this.swallow(eater, caught, now);
+      }
       this.steal(eater, now, deltaTime);
     });
   }
 
-  /** Whether `thief` is inhaling at `victim` up close: in front of its mouth, and too big to swallow */
+  /** Whether `eater` is big enough to swallow `prey` whole: INHALE.EAT_RATIO times as wide */
+  private canSwallow(eater: PlayerSchema, prey: PlayerSchema): boolean {
+    return prey.width * INHALE.EAT_RATIO <= eater.width;
+  }
+
+  /** Whether `thief` is inhaling at `victim`: any of it inside the inhale cone, and too big to swallow (so it's robbed instead) */
   private canSteal(thief: PlayerSchema, victim: PlayerSchema): boolean {
     if (!thief.inhaling || thief.state !== PLAYER_STATE.ALIVE || victim.state !== PLAYER_STATE.ALIVE || victim.spawnProtected) return false;
-    if (victim.width * INHALE.EAT_RATIO <= thief.width) return false;
-    const dx = victim.x + victim.width / 2 - (thief.x + thief.width / 2);
-    const dy = victim.y + victim.height / 2 - (thief.y + thief.height / 2);
+    if (this.canSwallow(thief, victim)) return false;
+    const fx = Math.cos(thief.facing);
+    const fy = Math.sin(thief.facing);
+    const dx = victim.x + victim.width / 2 - (thief.x + thief.width / 2 + fx * thief.width * 0.3);
+    const dy = victim.y + victim.height / 2 - (thief.y + thief.height / 2 + fy * thief.width * 0.3);
     const d = Math.hypot(dx, dy);
-    if (d - (thief.width + victim.width) / 2 > INHALE.STEAL_REACH + thief.width * INHALE.STEAL_REACH_PER_SIZE) return false;
-    return d < 1e-6 || (dx * Math.cos(thief.facing) + dy * Math.sin(thief.facing)) / d >= Math.cos((INHALE.STEAL_ARC * Math.PI) / 180);
+    const radius = victim.width / 2;
+    if (d - radius > INHALE.REACH + thief.width * INHALE.REACH_PER_SIZE) return false;
+    if (d <= radius) return true;
+    // In the cone if any of it is: its center's angle off the facing, less how wide it looks from here
+    const off = Math.acos(Math.max(-1, Math.min(1, (dx * fx + dy * fy) / d)));
+    return off <= (INHALE.ARC * Math.PI) / 180 + Math.asin(Math.min(1, radius / d));
   }
 
   /**
-   * Gravity theft: the nearest creature up close in front of the mouth has its gems streamed into the
-   * thief. Head-on, both inhaling each other, only the stronger pull gets the stream (nearly equal
-   * pulls stall).
+   * Gravity theft: the nearest creature in the inhale cone that's too big to swallow has its gems
+   * pulled out into the thief, INHALE.STEAL_RATE a second whatever size either one is (bodies resist
+   * suction, gems don't). Two creatures inhaling each other both steal at once. Take someone's last
+   * gem and they're drained: gone until they respawn.
    */
   private steal(thief: PlayerSchema, now: number, deltaTime: number): void {
     let victim: PlayerSchema | null = null;
     let nearest = Infinity;
+    const tx = thief.x + thief.width / 2;
+    const ty = thief.y + thief.height / 2;
     this.players.forEach((other) => {
       if (other === thief || other.gems <= 0 || !this.canSteal(thief, other)) return;
-      const d = Math.hypot(other.x - thief.x, other.y - thief.y);
+      const d = Math.hypot(other.x + other.width / 2 - tx, other.y + other.height / 2 - ty) - other.width / 2;
       if (d < nearest) {
         nearest = d;
         victim = other;
       }
     });
     const target = victim as PlayerSchema | null;
-    const pull = Math.sqrt(thief.weight());
-    const wins = !!target && (!this.canSteal(target, thief) || pull >= Math.sqrt(target.weight()) * INHALE.TUG_EDGE);
-    const from = target && wins ? target.sessionId : "";
+    const from = target ? target.sessionId : "";
     if (from !== thief.stealingFrom) this.endTheft(thief, now, from);
-    if (!target || !from) return;
-    thief.stealProgress += deltaTime * INHALE.STEAL_RATE * pull;
+    if (!target) return;
+    thief.stealProgress += deltaTime * INHALE.STEAL_RATE;
     while (thief.stealProgress >= 1 && target.gems > 0) {
       thief.stealProgress -= 1;
       target.setGems(target.gems - 1, this.worldWidth, this.worldHeight);
       thief.setGems(thief.gems + 1, this.worldWidth, this.worldHeight);
       thief.stolenRun += 1;
+      thief.stolenTotal += 1;
     }
+    if (target.gems <= 0) this.drain(target, now, thief);
+  }
+
+  /** Lost their last gem (robbed, or fed to a turbine): they shrink away to nothing and are out until they respawn */
+  private drain(victim: PlayerSchema, now: number, thief?: PlayerSchema): void {
+    this.onEvent?.("vanish", {
+      id: victim.sessionId,
+      x: Math.round(victim.x + victim.width / 2),
+      y: Math.round(victim.y + victim.height / 2),
+      size: Math.round(victim.width),
+      index: victim.playerIndex,
+      facing: Math.round(victim.facing * 100) / 100,
+    });
+    victim.knockOut(now);
+    if (!thief) {
+      // Whoever shoved them in gets the credit
+      this.credit(victim, "turbine", now);
+      return;
+    }
+    const gems = thief.stolenRun;
+    thief.stolenRun = 0;
+    this.endTheft(thief, now);
+    this.credit(victim, "drained", now, thief.sessionId, { gems });
   }
 
   /** A run of stealing ends (or switches to someone else): a big one gets a banner and a line in the feed */
@@ -618,7 +679,7 @@ class GameState extends Schema {
     });
     const robber = thief as PlayerSchema | null;
     if (robber) {
-      if (robber.width < bot.width || Math.random() < 0.5) {
+      if (Math.random() < 0.8) {
         bot.startInhale(now, 900 + Math.random() * 600);
         bot.aimAt(robber.x + robber.width / 2 - cx, robber.y + robber.height / 2 - cy);
       }
@@ -635,14 +696,13 @@ class GameState extends Schema {
         want = { x: other.x + other.width / 2, y: other.y + other.height / 2 };
       }
     });
-    // Nothing to swallow: steal from someone close who isn't facing this way
+    // Nothing to swallow: rob anyone in reach (they can rob back)
     this.players.forEach((other) => {
-      if (want || other === bot || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected || other.gems < 3) return;
+      if (want || other === bot || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected || other.gems < 1) return;
       const ox = other.x + other.width / 2;
       const oy = other.y + other.height / 2;
       const d = Math.hypot(ox - cx, oy - cy);
-      if (d - (bot.width + other.width) / 2 > INHALE.STEAL_REACH + bot.width * INHALE.STEAL_REACH_PER_SIZE + 20) return;
-      if (((cx - ox) * Math.cos(other.facing) + (cy - oy) * Math.sin(other.facing)) / Math.max(d, 1e-6) > 0.3) return;
+      if (d - other.width / 2 > reach + bot.width * 0.3) return;
       want = { x: ox, y: oy };
     });
     this.bombs.forEach((bomb) => {
@@ -655,7 +715,8 @@ class GameState extends Schema {
     });
     const goal = want as { x: number; y: number } | null;
     if (!goal) return;
-    bot.startInhale(now, 700 + Math.random() * 600);
+    // Long enough to hold someone at its mouth until they go down
+    bot.startInhale(now, 1300 + Math.random() * 700);
     bot.aimAt(goal.x - cx, goal.y - cy);
   }
 
@@ -1171,7 +1232,7 @@ class GameState extends Schema {
       }
     }
     this.turbines.forEach((turbine) => {
-      if (turbine.phase === "active") this.runTurbine(turbine, deltaTime);
+      if (turbine.phase === "active") this.runTurbine(turbine, now, deltaTime);
     });
     this.fireFlights(now);
   }
@@ -1182,7 +1243,7 @@ class GameState extends Schema {
   }
 
   /** One tick of a running turbine: its solid body, the intake's pull and grip, and the exhaust's wind */
-  private runTurbine(turbine: TurbineSchema, deltaTime: number): void {
+  private runTurbine(turbine: TurbineSchema, now: number, deltaTime: number): void {
     const r = TURBINE.BODY_RADIUS;
     const ix = Math.cos(turbine.intake);
     const iy = Math.sin(turbine.intake);
@@ -1213,7 +1274,7 @@ class GameState extends Schema {
       const gap = Math.max(0, d - radius);
       if (d > 1e-6 && gap < TURBINE.INTAKE_REACH && (dx * ix + dy * iy) / d >= intakeCos) {
         const closeness = 1 - gap / TURBINE.INTAKE_REACH;
-        const pull = Math.min(gap, TURBINE.PLAYER_PULL * closeness * closeness * deltaTime);
+        const pull = Math.min(gap, TURBINE.PLAYER_PULL * suctionScale(TURBINE.SUCTION_SIZE, player.width) * closeness * closeness * deltaTime);
         player.nudge((-dx / d) * pull, (-dy / d) * pull, this.worldWidth, this.worldHeight);
         if (gap < TURBINE.DANGER_REACH && player.gems > 0) {
           player.turbineStrip += deltaTime * (TURBINE.STRIP_RATE + TURBINE.STRIP_PER_ROOT * Math.sqrt(player.weight()));
@@ -1222,6 +1283,12 @@ class GameState extends Schema {
             player.setGems(player.gems - 1, this.worldWidth, this.worldHeight);
             // Out of their body, on the side facing the intake
             this.addFlight(turbine, player.sessionId, px - (dx / d) * radius, py - (dy / d) * radius, 1, false, mouthX, mouthY);
+          }
+          if (player.gems <= 0) {
+            // Its last gem: gone
+            player.turbineStrip = 0;
+            this.drain(player, now);
+            return;
           }
         } else {
           player.turbineStrip = 0;

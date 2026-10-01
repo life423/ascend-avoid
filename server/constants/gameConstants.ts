@@ -216,17 +216,28 @@ export const COMETS = {
   CURVE_MAX: 30,
 } as const;
 
-/** Which way creatures face: small ones turn fast, big ones slower but still fast enough to defend */
+/** Which way creatures face: every creature turns at the same rate, whatever its size (only top speed changes with size) */
 export const FACING = {
-  TURN_SMALL: 14, // radians a second for a newborn...
-  TURN_FALLOFF: 0.55, // ...falling as TURN_SMALL x (PLAYER_SIZE / width) ^ this: about 5.8 at 5x, 3.6 at 12x (a second to turn around)
+  TURN_RATE: 14, // radians a second
 } as const;
 
 /**
- * Inhale (hold the button): you keep moving at full speed, aiming your mouth, and pull in everything in a
- * cone in front of you. Gems are swallowed; creatures EAT_RATIO times smaller are swallowed whole
- * (all their gems become yours; they can escape if they run early); a bomb stays in your mouth,
- * safe until you spit it. Bigger creatures reach farther.
+ * How hard suction moves a body (a creature's inhale, or a turbine's intake): the puller's width
+ * over the target's, softened by SOFTEN and kept between MIN and MAX. Small creatures are moved
+ * strongly, giants barely. Bodies only: gems come out of a giant just as fast as out of anyone.
+ */
+export const SUCTION = {
+  SOFTEN: 0.75,
+  MIN: 0.3,
+  MAX: 2,
+} as const;
+
+/**
+ * Inhaling: everything in a cone in front of your mouth (it reaches farther the bigger you are).
+ * Gems are pulled in and swallowed. A creature too big to swallow isn't moved at all: its gems are
+ * pulled out of it into you (STEAL_RATE), and taking its last one knocks it out. Only a creature
+ * EAT_RATIO times narrower is pulled in bodily (harder the smaller it is, see SUCTION), and it's
+ * swallowed whole once you've held it at your mouth for GULP_MS. The same button for everyone.
  */
 export const INHALE = {
   REACH: 110, // plus REACH_PER_SIZE times your size
@@ -234,21 +245,14 @@ export const INHALE = {
   ARC: 35, // degrees either side of where you face
   PULL_GEMS: 520, // units a second
   PULL_BOMBS: 420,
-  PULL_PREY: 400, // units a second, right at your mouth, easing to nothing at the edge of your reach: anything smaller is faster, so it can outrun the pull unless it lets you get close
-  EAT_RATIO: 1.25,
+  PULL_PREY: 320, // units a second right at your mouth (times SUCTION), easing to nothing at the edge of your reach...
+  PREY_PULL_CAP: 0.85, // ...but never more than this share of the prey's own top speed: running straight away always gets you out
+  EAT_RATIO: 1.5, // you can only swallow a creature this many times narrower (about 2.25 times smaller)...
+  GULP_REACH: 0.35, // ...held this close to your mouth (times your width, plus its radius)...
+  GULP_MS: 750, // ...for this long (if it gets away first, it starts over)
   MAX_MS: 3000, // how long one breath lasts...
   RECOVER_MS: 1000, // ...and how long you need to catch it before the next
-  /**
-   * Gravity theft: up close, inhaling steals gems from the nearest creature in front of your mouth
-   * that's too big to swallow, STEAL_RATE a second times the square root of your weight (bigger
-   * pulls harder, but not in proportion). Head-on, both inhaling each other, the stronger pull takes
-   * the whole stream; within TUG_EDGE of each other, neither gains.
-   */
-  STEAL_REACH_PER_SIZE: 0.25, // plus this times the thief's width (bigger creatures reach farther)
-  STEAL_REACH: 100, // the gap between you and them (anyone smaller than the thief is faster, and can run out of it)
-  STEAL_ARC: 50, // degrees either side of where you face
-  STEAL_RATE: 4,
-  TUG_EDGE: 1.08,
+  STEAL_RATE: 6, // gems a second pulled out of a creature too big to swallow, whatever size either of you is
   STOLE_NOTICE: 5, // a theft this big gets a banner and a line in the feed
 } as const;
 
@@ -322,7 +326,8 @@ export const TURBINE = {
   STRIP_RATE: 3, // ...this many a second...
   STRIP_PER_ROOT: 1.5, // ...plus this times the square root of their weight (giants lose them fastest)
   GEM_PULL: 480, // units a second loose gems are pulled at near the intake (a quarter of that at the edge)
-  PLAYER_PULL: 140, // units a second players are pulled at right by the intake, easing to nothing at the edge
+  PLAYER_PULL: 120, // units a second players are pulled at right by the intake (times SUCTION), easing to nothing at the edge...
+  SUCTION_SIZE: 60, // ...as if by a creature this wide (newborns are dragged hard, giants can walk away)
   TRAVEL_SPEED: 700, // units a second a stolen gem flies into the intake...
   MIN_TRAVEL_MS: 200,
   INSIDE_MS: 450, // ...then it crosses the turbine...
@@ -452,6 +457,7 @@ export const GAME_CONSTANTS = {
   INHALE,
   BOMBS,
   TURBINE,
+  SUCTION,
   SHIFT,
   KEYS,
   DEVICE_SETTINGS

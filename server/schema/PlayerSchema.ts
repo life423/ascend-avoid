@@ -63,6 +63,11 @@ class PlayerSchema extends Schema {
   mouth: string;
   /** Whose gems are streaming into your mouth right now ("" when nobody's) */
   stealingFrom: string;
+  /** Who this creature is holding at its mouth to swallow, and when (world time) they go down unless they get away; "" when nobody */
+  gulping: string;
+  gulpEndsAt: number;
+  /** Every gem it has ever stolen (browsers draw each one flying over, even when gems go both ways at once) */
+  stolenTotal: number;
   /** Server-only: gems part-stolen, and how many this run of stealing has taken */
   stealProgress = 0;
   stolenRun = 0;
@@ -83,6 +88,9 @@ class PlayerSchema extends Schema {
     this.inhaling = false;
     this.mouth = "";
     this.stealingFrom = "";
+    this.gulping = "";
+    this.gulpEndsAt = 0;
+    this.stolenTotal = 0;
     this.sessionId = sessionId;
     this.playerIndex = playerIndex;
     this.name = `Player ${playerIndex + 1}`;
@@ -377,6 +385,9 @@ type("number")(PlayerSchema.prototype, "facing");
 type("boolean")(PlayerSchema.prototype, "inhaling");
 type("string")(PlayerSchema.prototype, "mouth");
 type("string")(PlayerSchema.prototype, "stealingFrom");
+type("string")(PlayerSchema.prototype, "gulping");
+type("number")(PlayerSchema.prototype, "gulpEndsAt");
+type("number")(PlayerSchema.prototype, "stolenTotal");
 type("boolean")(PlayerSchema.prototype, "isBot");
 
 export { PlayerSchema };

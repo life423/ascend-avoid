@@ -1064,6 +1064,8 @@ export class MultiplayerMode extends GameMode {
     private blasts: { x: number; y: number; radius: number; at: number }[] = []
     /** Gravity theft on screen: each victim's gems last frame, and the stolen gems in flight */
     private theftGems = new Map<string, number>()
+    /** Drained creatures shrinking away to nothing */
+    private vanishes: { x: number; y: number; size: number; color: string; facing: number; at: number }[] = []
     private theftParticles: { from: string; to: string; at: number; angle: number }[] = []
     private pickups: { amount: number; at: number }[] = []
     private shakeUntil = 0
@@ -1107,6 +1109,17 @@ export class MultiplayerMode extends GameMode {
         })
         eventBus.on('multiplayer:credit', (data: any) => this.noteCredit(data))
         eventBus.on('multiplayer:burst', (data: any) => this.noteBurst(data))
+        eventBus.on('multiplayer:vanish', (data: any) => {
+            const local = data?.id === this.multiplayerManager?.localSessionId
+            this.vanishes.push({
+                x: Number(data?.x) || 0,
+                y: Number(data?.y) || 0,
+                size: Number(data?.size) || 20,
+                color: local ? '#ffffff' : PLAYER_COLORS[(Number(data?.index) || 0) % PLAYER_COLORS.length],
+                facing: Number(data?.facing) || 0,
+                at: performance.now(),
+            })
+        })
         eventBus.on('multiplayer:impact', (data: any) => this.noteImpact(data))
         eventBus.on('multiplayer:blast', (data: any) => this.blasts.push({ x: Number(data?.x) || 0, y: Number(data?.y) || 0, radius: Number(data?.radius) || BOMBS.BLAST_RADIUS, at: performance.now() }))
         eventBus.on('multiplayer:jackpot', (data: any) => {
@@ -1398,6 +1411,8 @@ export class MultiplayerMode extends GameMode {
 
         this.drawTheft(ctx, state, timestamp)
         this.drawTurbineFlights(ctx, state, timestamp)
+        this.drawGulps(ctx, state, timestamp)
+        this.drawVanishes(ctx, timestamp)
         this.drawBlasts(ctx, timestamp)
         this.drawBursts(ctx, timestamp)
         this.drawPickups(ctx, me, timestamp)
@@ -1725,20 +1740,20 @@ export class MultiplayerMode extends GameMode {
         if (targetIsYou && how !== 'stole') {
             this.knockoutCause = { how, by: String(data?.by ?? 'Someone'), at: performance.now() }
         }
-        const verb = how === 'stole' ? 'robbed' : how === 'ate' ? 'swallowed' : how === 'bomb' ? 'blew up' : 'shoved'
-        const where = how === 'stole' ? `of ${Number(data?.gems) || 0} gems` : how === 'edge' ? 'off the edge' : how === 'traffic' ? 'into traffic' : ''
+        const verb = how === 'stole' ? 'robbed' : how === 'ate' ? 'swallowed' : how === 'drained' ? 'drained' : how === 'turbine' ? 'fed' : how === 'bomb' ? 'blew up' : 'shoved'
+        const where = how === 'stole' ? `of ${Number(data?.gems) || 0} gems` : how === 'turbine' ? 'to a turbine' : how === 'edge' ? 'off the edge' : how === 'traffic' ? 'into traffic' : ''
         if (data?.byId === localId) {
             const name = String(data?.target ?? 'someone')
-            const title = how === 'stole' ? `You stole ${Number(data?.gems) || 0} gems from ${name}!` : how === 'ate' ? `You swallowed ${name}!` : how === 'bomb' ? `You blew up ${name}!` : `You wrecked ${name}!`
+            const title = how === 'stole' ? `You stole ${Number(data?.gems) || 0} gems from ${name}!` : how === 'ate' ? `You swallowed ${name}!` : how === 'drained' ? `You drained ${name}!` : how === 'turbine' ? `You fed ${name} to a turbine!` : how === 'bomb' ? `You blew up ${name}!` : `You wrecked ${name}!`
             const parts =
                 how === 'stole' ? []
-                : how === 'ate' ? [`+${Number(data?.gems) || 0} gems`]
+                : how === 'ate' || how === 'drained' ? [`+${Number(data?.gems) || 0} gems`]
                 : how === 'bomb' ? [data?.out ? 'knocked out' : `${Number(data?.gems) || 0} gems knocked loose`]
                 : [where, data?.out ? 'knocked out' : '']
             this.banner = { title, sub: parts.filter(Boolean).join(' · ').toUpperCase(), at: performance.now() }
             return
         }
-        const out = how !== 'ate' && data?.out ? (targetIsYou ? ' and knocked you out' : ' and knocked them out') : ''
+        const out = how !== 'ate' && how !== 'drained' && how !== 'turbine' && data?.out ? (targetIsYou ? ' and knocked you out' : ' and knocked them out') : ''
         this.addNotice(`${this.nameOf(data?.byId, data?.by)} ${verb} ${target}${where ? ' ' + where : ''}${out}!`, data?.out === true)
     }
 
@@ -1988,20 +2003,60 @@ export class MultiplayerMode extends GameMode {
      * Gravity theft: every gem stolen pops out of the victim and arcs into the thief's mouth, so you
      * can watch them shrink, with a faint gold tether between the two while the stream runs
      */
+    /** Someone held at a mouth, about to be swallowed: a red ring closes in on them (they're still free if they get away first) */
+    private drawGulps(ctx: CanvasRenderingContext2D, state: any, timestamp: number): void {
+        const now = this.worldNow(state, timestamp)
+        state.players?.forEach((eater: any) => {
+            if (!eater.gulping) return
+            const prey = state.players.get(eater.gulping)
+            if (!prey || prey.state !== 'alive') return
+            const left = Math.max(0, Math.min(1, (eater.gulpEndsAt - now) / INHALE.GULP_MS))
+            const at = this.centerOf(eater.gulping, prey)
+            ctx.save()
+            ctx.strokeStyle = `rgba(255, 107, 107, ${0.55 + 0.45 * (1 - left)})`
+            ctx.lineWidth = 3
+            ctx.beginPath()
+            ctx.arc(at.x, at.y, prey.width / 2 + 4 + 24 * left, 0, Math.PI * 2)
+            ctx.stroke()
+            ctx.restore()
+        })
+    }
+
+    /** Drained creatures: each shrinks away to nothing where it was, with a last ring of gold */
+    private drawVanishes(ctx: CanvasRenderingContext2D, timestamp: number): void {
+        const now = performance.now()
+        const VANISH_MS = 550
+        this.vanishes = this.vanishes.filter((v) => now - v.at < VANISH_MS)
+        for (const v of this.vanishes) {
+            const k = (now - v.at) / VANISH_MS
+            ctx.save()
+            ctx.globalAlpha = 1 - k * 0.6
+            drawCreature(ctx, v.x, v.y, Math.max(1, v.size * Math.pow(1 - k, 1.6)), v.color, v.facing, timestamp)
+            ctx.globalAlpha = (1 - k) * 0.8
+            ctx.strokeStyle = '#ffd166'
+            ctx.lineWidth = 2
+            ctx.beginPath()
+            ctx.arc(v.x, v.y, v.size * 0.5 + 30 * k, 0, Math.PI * 2)
+            ctx.stroke()
+            ctx.restore()
+        }
+    }
+
     private drawTheft(ctx: CanvasRenderingContext2D, state: any, timestamp: number): void {
         const now = performance.now()
-        const robbed = new Set<string>()
+        const thieves = new Set<string>()
         state.players.forEach((thief: any, id: string) => {
             if (!thief.stealingFrom) return
             const victim = state.players.get(thief.stealingFrom)
             if (!victim) return
-            robbed.add(thief.stealingFrom)
-            // Each gem the victim just lost pops out and heads for the thief
-            const had = this.theftGems.get(thief.stealingFrom) ?? victim.gems
-            for (let i = 0; i < Math.min(8, had - victim.gems); i++) {
+            thieves.add(id)
+            // Each gem the thief just took pops out of the victim and heads for the thief (counted per thief, so it works both ways at once)
+            const total = Number(thief.stolenTotal) || 0
+            const had = this.theftGems.get(id) ?? total
+            for (let i = 0; i < Math.min(8, total - had); i++) {
                 this.theftParticles.push({ from: thief.stealingFrom, to: id, at: now + i * 45, angle: Math.random() * Math.PI * 2 })
             }
-            this.theftGems.set(thief.stealingFrom, victim.gems)
+            this.theftGems.set(id, total)
             const a = this.centerOf(thief.stealingFrom, victim)
             const b = this.centerOf(id, thief)
             ctx.save()
@@ -2015,7 +2070,7 @@ export class MultiplayerMode extends GameMode {
             ctx.stroke()
             ctx.restore()
         })
-        for (const id of [...this.theftGems.keys()]) if (!robbed.has(id)) this.theftGems.delete(id)
+        for (const id of [...this.theftGems.keys()]) if (!thieves.has(id)) this.theftGems.delete(id)
         // The stolen gems in flight: out of the victim's body, a little arc, then sucked into the mouth
         this.theftParticles = this.theftParticles.filter((p) => now - p.at < 450)
         for (const p of this.theftParticles) {
@@ -2389,6 +2444,8 @@ export class MultiplayerMode extends GameMode {
         const credited = cause !== null && this.knockedOutAt !== null && Math.abs(cause.at - this.knockedOutAt) < 1500
         const verb =
             cause?.how === 'ate' ? 'Swallowed'
+            : cause?.how === 'drained' ? 'Drained'
+            : cause?.how === 'turbine' ? 'Fed to a turbine'
             : cause?.how === 'bomb' ? 'Blown up'
             : cause?.how === 'edge' ? 'Shoved off'
             : cause?.how === 'traffic' ? 'Wrecked'

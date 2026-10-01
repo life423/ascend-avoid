@@ -153,9 +153,9 @@ export function hop(player: Box, direction: Direction, worldWidth: number, world
   player.y = Math.max(EDGE_MARGIN, Math.min(player.y, worldHeight - player.height - EDGE_MARGIN));
 }
 
-/** How fast a creature turns (radians a second): small ones whip around, big ones still quickly enough to defend */
-export function turnRate(width: number): number {
-  return FACING.TURN_SMALL * Math.pow(ARENA_RULES.PLAYER_SIZE / Math.max(ARENA_RULES.PLAYER_SIZE, width), FACING.TURN_FALLOFF);
+/** How fast a creature turns (radians a second): the same for everyone, whatever its size */
+export function turnRate(_width?: number): number {
+  return FACING.TURN_RATE;
 }
 
 /** Turn from one heading toward another (radians), by at most `step` the short way round */
