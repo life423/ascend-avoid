@@ -227,7 +227,7 @@ export const FACING = {
 /**
  * How hard suction moves a body (a creature's inhale, or a turbine's intake): the puller's width
  * over the target's, softened by SOFTEN and kept between MIN and MAX. Small creatures are moved
- * strongly, giants barely. Bodies only: gems come out of a giant just as fast as out of anyone.
+ * strongly, giants barely. Bodies only: gems have their own rule (see INHALE.STEAL_RATE).
  */
 export const SUCTION = {
   SOFTEN: 0.75,
@@ -256,7 +256,9 @@ export const INHALE = {
   GULP_MS: 750, // ...for this long (if it gets away first, it starts over)
   MAX_MS: 3000, // how long one breath lasts...
   RECOVER_MS: 1000, // ...and how long you need to catch it before the next
-  STEAL_RATE: 6, // gems a second pulled out of a creature too big to swallow, whatever size either of you is
+  STEAL_RATE: 6, // gems a second pulled out of a creature too big to swallow when you're the same size...
+  STEAL_MIN: 0.3, // ...times your width over theirs, kept between these: small creatures hold on to their gems
+  STEAL_MAX: 2, // weakly and big ones well, so a giant drains you fast and you can only pick at a giant
   STOLE_NOTICE: 5, // a theft this big gets a banner and a line in the feed
 } as const;
 

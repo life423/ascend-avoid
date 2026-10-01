@@ -434,8 +434,8 @@ class GameState extends Schema {
 
   /**
    * Gravity theft: the nearest creature in the inhale cone that's too big to swallow has its gems
-   * pulled out into the thief, INHALE.STEAL_RATE a second whatever size either one is (bodies resist
-   * suction, gems don't). Two creatures inhaling each other both steal at once. Take someone's last
+   * pulled out into the thief, INHALE.STEAL_RATE a second times the thief's width over the victim's
+   * (small creatures hold on to their gems weakly, big ones well). Two creatures inhaling each other both steal at once. Take someone's last
    * gem and they're drained: gone until they respawn.
    */
   private steal(thief: PlayerSchema, now: number, deltaTime: number): void {
@@ -455,7 +455,9 @@ class GameState extends Schema {
     const from = target ? target.sessionId : "";
     if (from !== thief.stealingFrom) this.endTheft(thief, now, from);
     if (!target) return;
-    thief.stealProgress += deltaTime * INHALE.STEAL_RATE;
+    // Small creatures hold on to their gems weakly, big ones well
+    const grip = Math.min(INHALE.STEAL_MAX, Math.max(INHALE.STEAL_MIN, thief.width / target.width));
+    thief.stealProgress += deltaTime * INHALE.STEAL_RATE * grip;
     while (thief.stealProgress >= 1 && target.gems > 0) {
       thief.stealProgress -= 1;
       target.setGems(target.gems - 1, this.worldWidth, this.worldHeight);

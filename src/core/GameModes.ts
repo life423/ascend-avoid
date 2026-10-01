@@ -847,11 +847,12 @@ function suctionPower(width: number): number {
 }
 
 /** Air rushing into an inhaling creature's mouth: a fading cone, its streaks denser, longer and faster the stronger its suction */
-function drawInhaleCone(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, facing: number, timestamp: number): void {
+function drawInhaleCone(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, facing: number, timestamp: number, intensity = 1): void {
     const r = size / 2
     const reach = INHALE.REACH + size * INHALE.REACH_PER_SIZE
     const spread = (INHALE.ARC * Math.PI) / 180
-    const power = suctionPower(size)
+    // Bigger creatures pull harder, and draining or swallowing someone pulls harder still
+    const power = Math.min(6, suctionPower(size) * intensity)
     ctx.save()
     const glow = ctx.createRadialGradient(x, y, r, x, y, r + reach)
     glow.addColorStop(0, `rgba(180, 230, 255, ${Math.min(0.5, INHALE_LOOK.GLOW + 0.06 * power)})`)
@@ -872,11 +873,36 @@ function drawInhaleCone(ctx: CanvasRenderingContext2D, x: number, y: number, siz
         const t = (timestamp / period + i / streaks) % 1
         // Faster and faster as it nears the mouth
         const along = r + reach * (1 - t) * (1 - t * 0.35)
-        const angle = facing + spread * 0.85 * Math.sin(i * 2.3)
+        // Lanes close in on the mouth as the air rushes in
+        const angle = facing + spread * 0.85 * Math.sin(i * 2.3) * (1 - 0.55 * t)
         ctx.globalAlpha = Math.min(1, t * 4)
         ctx.beginPath()
         ctx.moveTo(x + Math.cos(angle) * along, y + Math.sin(angle) * along)
         ctx.lineTo(x + Math.cos(angle) * Math.max(r, along - length), y + Math.sin(angle) * Math.max(r, along - length))
+        ctx.stroke()
+    }
+    // The mouth glows and throbs, harder and faster the stronger the pull
+    ctx.globalAlpha = 1
+    const throb = 0.5 + 0.5 * Math.sin((timestamp / 1000) * Math.PI * 2 * (2 + power))
+    const mouthX = x + Math.cos(facing) * r
+    const mouthY = y + Math.sin(facing) * r
+    const core = r * (0.35 + 0.1 * power) * (0.85 + 0.15 * throb) * 2.2
+    const rush = ctx.createRadialGradient(mouthX, mouthY, 0, mouthX, mouthY, core)
+    rush.addColorStop(0, `rgba(235, 250, 255, ${Math.min(0.75, 0.25 + 0.12 * power)})`)
+    rush.addColorStop(1, 'rgba(235, 250, 255, 0)')
+    ctx.fillStyle = rush
+    ctx.beginPath()
+    ctx.arc(mouthX, mouthY, core, 0, Math.PI * 2)
+    ctx.fill()
+    // Once the pull is strong, the cone's edges shimmer
+    if (power > 1.4) {
+        ctx.strokeStyle = `rgba(220, 245, 255, ${Math.min(0.45, 0.1 * (power - 1) * (0.6 + 0.4 * throb))})`
+        ctx.lineWidth = 1 + 0.5 * power
+        ctx.beginPath()
+        ctx.moveTo(x + Math.cos(facing - spread) * r, y + Math.sin(facing - spread) * r)
+        ctx.lineTo(x + Math.cos(facing - spread) * (r + reach), y + Math.sin(facing - spread) * (r + reach))
+        ctx.moveTo(x + Math.cos(facing + spread) * r, y + Math.sin(facing + spread) * r)
+        ctx.lineTo(x + Math.cos(facing + spread) * (r + reach), y + Math.sin(facing + spread) * (r + reach))
         ctx.stroke()
     }
     ctx.restore()
@@ -1624,7 +1650,14 @@ export class MultiplayerMode extends GameMode {
         const top = drawn.y + (player.height - size) / 2
         const centerX = drawn.x + player.width / 2
         const centerY = drawn.y + player.height / 2
-        if (player.inhaling) drawInhaleCone(ctx, centerX, centerY, size, isLocal ? this.localFacing : (player.facing ?? -Math.PI / 2), timestamp)
+        if (player.inhaling) {
+            // Draining someone (harder the bigger it is next to them) or holding someone to swallow: the inhale looks stronger
+            const world = this.multiplayerManager?.getState()
+            const victim = player.stealingFrom ? world?.players?.get(player.stealingFrom) : null
+            const grip = victim ? Math.min(INHALE.STEAL_MAX, Math.max(INHALE.STEAL_MIN, player.width / victim.width)) : 0
+            const intensity = player.gulping ? 1.8 : victim ? 1 + 0.5 * grip : 1
+            drawInhaleCone(ctx, centerX, centerY, size, isLocal ? this.localFacing : (player.facing ?? -Math.PI / 2), timestamp, intensity)
+        }
         if (isLocal) {
             // Your breath: draining around you while you inhale, refilling while you catch it
             this.breath = this.breathOf(Boolean(player.inhaling), performance.now())
@@ -2209,7 +2242,13 @@ export class MultiplayerMode extends GameMode {
                     this.bursts.push({ x: before.cx, y: before.cy, size: player.width, color, at: timestamp })
                     if (id === localId) this.shakeUntil = timestamp + SHAKE_MS
                 } else if (id === localId && player.gems > before.gems) {
-                    this.pickups.push({ amount: player.gems - before.gems, at: timestamp })
+                    // Stealing: a "+1" for each gem coming in (head-on, whoever is winning the exchange); otherwise what you grabbed
+                    const gained = player.gems - before.gems
+                    if (player.stealingFrom) for (let i = 0; i < gained; i++) this.pickups.push({ amount: 1, at: timestamp + i * 70 })
+                    else this.pickups.push({ amount: gained, at: timestamp })
+                } else if (id === localId && player.gems < before.gems && this.beingRobbed(state, id)) {
+                    // Gems pulled out of you: a "-1" for each one, one after another
+                    for (let i = 0; i < before.gems - player.gems; i++) this.pickups.push({ amount: -1, at: timestamp + i * 70 })
                 }
                 if (player.sliding && !before.sliding) {
                     // Shoved: a small white ring, and a nudge of your screen if it's you
@@ -2383,7 +2422,16 @@ export class MultiplayerMode extends GameMode {
         }
     }
 
-    /** "+1" rising above you when you grab gems */
+    /** Whether anyone is stealing gems from this player right now */
+    private beingRobbed(state: any, id: string): boolean {
+        let robbed = false
+        state.players.forEach((other: any) => {
+            if (other.stealingFrom === id) robbed = true
+        })
+        return robbed
+    }
+
+    /** "+1" rising above you when you grab gems, and a red "-1" for each one someone steals */
     private drawPickups(ctx: CanvasRenderingContext2D, me: any, timestamp: number): void {
         this.pickups = this.pickups.filter((pickup) => timestamp - pickup.at < PICKUP_TEXT_MS)
         if (!me || this.pickups.length === 0) return
@@ -2395,8 +2443,10 @@ export class MultiplayerMode extends GameMode {
         ctx.fillStyle = GOLD
         for (const pickup of this.pickups) {
             const t = (timestamp - pickup.at) / PICKUP_TEXT_MS
+            if (t < 0) continue
             ctx.globalAlpha = 1 - t
-            ctx.fillText(`+${pickup.amount}`, position.x + me.width / 2, position.y - 30 - t * 34)
+            ctx.fillStyle = pickup.amount > 0 ? GOLD : '#ff6b6b'
+            ctx.fillText(pickup.amount > 0 ? `+${pickup.amount}` : `${pickup.amount}`, position.x + me.width / 2, position.y - 30 - t * 34)
         }
         ctx.restore()
     }

@@ -475,6 +475,7 @@ try {
     const aliceTook = me().stolenTotal - aliceStoleBefore;
     const bobTook = bobState().stolenTotal - bobStoleBefore;
     check(bothStreaming && aliceTook >= 4 && bobTook >= 4, `head-on, both steal from each other at once (Alice took ${aliceTook}, Bob took ${bobTook})`);
+    check(aliceTook > bobTook, `the bigger thief drains faster: small creatures hold on to gems weakly (Alice ${me().width.toFixed(0)} wide took ${aliceTook}, Bob ${bobState().width.toFixed(0)} wide took ${bobTook})`);
     check(Math.abs(me().x - aliceAt) < 6 && Math.abs(bobState().x - bobAt) < 6 && bobState().state === 'alive', 'and neither body is pulled: no tug-of-war');
     // A small creature can rob a giant: gems stream out, and the giant's body doesn't budge
     await sleep(1100);
@@ -492,7 +493,7 @@ try {
     await sleep(1500);
     alice.send('exhale');
     await sleep(150);
-    check(giantHad - bobState().gems >= 4 && Math.abs(bobState().x - giantFrom) < 6, `a small creature can rob a giant, whose body doesn't budge (${giantHad - bobState().gems} stolen)`);
+    check(giantHad - bobState().gems >= 2 && Math.abs(bobState().x - giantFrom) < 6, `a small creature can still rob a giant, slowly, and its body doesn't budge (${giantHad - bobState().gems} stolen)`);
     // Take someone's last gem and they're drained: gone until they come back (close enough in size that it
     // never turns into a swallow: drained small enough, it would)
     await sleep(1100);
