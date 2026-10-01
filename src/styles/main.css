@@ -647,7 +647,7 @@ body.online-mode .touch-controls-area {
    DESKTOP: THE ARENA GETS THE SPACE
    The header is one slim bar that can slide up out of sight (F, or its button; a tab in the
    top-right corner brings it back). Your name is typed right into it, and How to Play slides in
-   from the right, next to the ? (or H) that opens it. See DesktopChrome.ts.
+   from the right, next to the menu button (or H) that opens it. See DesktopChrome.ts.
    ============================================ */
 .bar-actions,
 .bar-tab,
@@ -771,7 +771,7 @@ body.online-mode .touch-controls-area {
         box-shadow: 0 0 0 4px rgba(79, 209, 197, 0.4);
     }
 
-    /* How to Play slides in from the right, next to the ? that opened it (body: these beat the drawer's own styles) */
+    /* How to Play slides in from the right, next to the menu button that opened it (body: these beat the drawer's own styles) */
     body .drawer {
         left: auto;
         right: 0;

@@ -3,13 +3,14 @@ import { NAME_EVENT, playerName, setPlayerName } from '../core/PlayerName'
 const STORAGE_KEY = 'ascend.barHidden'
 const DESKTOP = '(min-width: 1200px)'
 
+const MENU = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>'
 const CHEVRON_UP = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M6 15l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
 const CHEVRON_DOWN = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
 
 /**
  * Desktop page chrome that stays out of the arena's way. The header is one slim bar that can
  * slide up out of sight (its button or F; a small tab in the top-right corner brings it back).
- * Your name is typed right into it, and How to Play slides in from the right, next to the ? that
+ * Your name is typed right into it, and How to Play slides in from the right, next to the menu button that
  * opens it (or H; Esc or its x closes it). Whether the bar is hidden is remembered. Phones are
  * untouched.
  */
@@ -21,7 +22,7 @@ export class DesktopChrome {
         const actions = document.createElement('div')
         actions.className = 'bar-actions'
         actions.innerHTML = `
-            <button type="button" class="bar-button" data-action="help" aria-label="How to play" title="How to play (H)">?</button>
+            <button type="button" class="bar-button" data-action="help" aria-label="Menu" title="Menu: how to play (H)">${MENU}</button>
             <button type="button" class="bar-button" data-action="hide" aria-label="Hide the bar" title="Hide the bar (F)">${CHEVRON_UP}</button>
         `
         const nameField = document.createElement('label')
@@ -35,7 +36,7 @@ export class DesktopChrome {
         const tab = document.createElement('div')
         tab.className = 'bar-tab'
         tab.innerHTML = `
-            <button type="button" class="bar-button" data-action="help" aria-label="How to play" title="How to play (H)">?</button>
+            <button type="button" class="bar-button" data-action="help" aria-label="Menu" title="Menu: how to play (H)">${MENU}</button>
             <button type="button" class="bar-button" data-action="show" aria-label="Show the bar" title="Show the bar (F)">${CHEVRON_DOWN}</button>
         `
         document.body.appendChild(tab)
