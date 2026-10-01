@@ -214,9 +214,13 @@ export const COMETS = {
   CURVE_MAX: 30,
 } as const;
 
-/** Which way creatures face: every creature turns at the same rate, whatever its size (only top speed changes with size) */
+/**
+ * Which way creatures face (where the mouth points; you still walk wherever you steer): every
+ * creature turns at the same rate, whatever its size, and not instantly, so a thief behind you
+ * gets a few gems before you can face it.
+ */
 export const FACING = {
-  TURN_RATE: 14, // radians a second
+  TURN_RATE: 4.5, // radians a second: about 0.7s to turn right around
 } as const;
 
 /**

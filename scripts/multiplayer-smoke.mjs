@@ -510,23 +510,25 @@ try {
     check(bobState().state !== 'alive' && !!drainedNote && vanished, `steal someone's last gem and they shrink away, out until they come back (${bobState().state})`);
     await waitFor(() => bobState().state === 'alive' && !bobState().spawnProtected, 6000, 'Bob is back');
     await sleep(300);
-    // Every creature turns at the same rate, whatever its size (only top speed changes with size)
-    const turnAround = async (gems) => {
+    // Every creature turns at the same rate, whatever its size (only top speed changes with size), and turning right around takes a moment
+    const turnAround = async (gems, ms) => {
         alice.send('test:setGems', { count: gems });
         await sleep(200);
         alice.send('test:moveTo', { x: 1500, y: 1200 });
         alice.send('test:face', { angle: 0 });
         await sleep(200);
         alice.send('steer', { x: -1, y: 0 });
-        await sleep(300);
+        await sleep(ms);
         const facing = me().facing;
         alice.send('steer', { x: 0, y: 0 });
         await sleep(150);
         return Math.abs(Math.atan2(Math.sin(facing - Math.PI), Math.cos(facing - Math.PI)));
     };
-    const newbornOff = await turnAround(0);
-    const giantOff = await turnAround(300);
-    check(newbornOff < 0.2 && giantOff < 0.2, `a giant turns around as fast as a newborn (${giantOff.toFixed(2)} vs ${newbornOff.toFixed(2)} radians off after 0.3s)`);
+    const halfway = await turnAround(0, 300);
+    check(halfway > 1, `turning right around takes a moment (${halfway.toFixed(2)} radians still to go after 0.3s)`);
+    const newbornOff = await turnAround(0, 900);
+    const giantOff = await turnAround(300, 900);
+    check(newbornOff < 0.2 && giantOff < 0.2, `a giant turns around as fast as a newborn (${giantOff.toFixed(2)} vs ${newbornOff.toFixed(2)} radians off after 0.9s)`);
     // Inhaling never slows you down
     const stroll = async (inhaling) => {
         alice.send('test:moveTo', { x: 300, y: 1200 });
