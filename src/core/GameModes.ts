@@ -842,15 +842,10 @@ export class MultiplayerMode extends GameMode {
     private fallingSince = new Map<string, number>()
     /** Whether everyone is protected right now (a shift's grace period) */
     private inGrace = false
-    /** The joystick, DASH button and mouse steering (drawn on the canvas) */
+    /** The joystick, INHALE button and mouse steering (drawn on the canvas) */
     private controls: OnlineControls | null = null
-    private dashReadyAt = 0
-    /** Your walking velocity, the dash under way, and the way you last steered */
+    /** Your walking velocity */
     private velocity = { x: 0, y: 0 }
-    private dashUntil = 0
-    private dashDir = { x: 0, y: -1 }
-    /** How long the dash's recharge takes */
-    private cooldownMs: number = ARENA_RULES.DASH_COOLDOWN_MS
     /** Holding the button: inhaling (it never changes how you move) */
     private inhaleHeld = false
     private aim = { x: 0, y: -1 }
@@ -867,8 +862,6 @@ export class MultiplayerMode extends GameMode {
     private impacts: { x: number; y: number; size: number; at: number }[] = []
     private banner: { title: string; sub: string; at: number } | null = null
     private hitShake = { until: 0, strength: 0 }
-    /** Where each player was drawn last frame (a dash's streak trails behind that way) */
-    private lastCenters = new Map<string, { x: number; y: number }>()
     private facing = { x: 0, y: -1 }
     /** The steering last sent to the server */
     private sentSteer = { x: 0, y: 0 }
@@ -1008,7 +1001,6 @@ export class MultiplayerMode extends GameMode {
 
     private resetMotion(): void {
         this.velocity = { x: 0, y: 0 }
-        this.dashUntil = 0
         this.inhaleHeld = false
         this.history = []
     }
@@ -1032,9 +1024,8 @@ export class MultiplayerMode extends GameMode {
      */
     private moveLocalPlayer(input: InputState): void {
         const now = performance.now()
-        // The button: tap to dash, hold to inhale (taken every frame, so nothing waits for later)
-        this.controls?.setReady(now >= this.dashReadyAt)
-        const events = this.controls?.takeEvents(now) ?? []
+        // The button: hold to inhale (taken every frame, so nothing waits for later)
+        const events = this.controls?.takeEvents() ?? []
         const deltaTime = this.lastMoveAt ? Math.min(0.1, (now - this.lastMoveAt) / 1000) : 0
         this.lastMoveAt = now
 
@@ -1074,14 +1065,7 @@ export class MultiplayerMode extends GameMode {
             this.multiplayerManager?.sendMessage('aim', { x: this.aim.x, y: this.aim.y })
         }
         for (const event of events) {
-            if (event === 'dash' && now >= this.dashReadyAt && !this.inhaleHeld) {
-                // A burst the way you're steering (or last went)
-                this.dashDir = steering > 0.05 ? { x: steer.x / steering, y: steer.y / steering } : { ...this.facing }
-                this.dashUntil = now + ARENA_RULES.DASH_MS
-                this.cooldownMs = ARENA_RULES.DASH_COOLDOWN_MS
-                this.dashReadyAt = now + this.cooldownMs
-                this.multiplayerManager?.sendMessage('dash', { x: this.dashDir.x, y: this.dashDir.y })
-            } else if (event === 'inhale') {
+            if (event === 'inhale') {
                 this.inhaleHeld = true
                 this.sentAim = { x: 0, y: 0 }
                 this.multiplayerManager?.sendMessage('inhale', {})
@@ -1094,13 +1078,12 @@ export class MultiplayerMode extends GameMode {
 
         // Move exactly the way the server does
         const box = { x: this.predicted.x, y: this.predicted.y, width: me.width, height: me.height }
-        const dashing = now < this.dashUntil ? { x: this.dashDir.x * ARENA_RULES.DASH_SPEED, y: this.dashDir.y * ARENA_RULES.DASH_SPEED } : null
-        // Facing, worked out like the server does: the aim while inhaling, along a dash, else where you steer
-        const intent = this.inhaleHeld ? this.aim : dashing ?? steer
+        // Facing, worked out like the server does: the aim while inhaling, else where you steer
+        const intent = this.inhaleHeld ? this.aim : steer
         if (Math.hypot(intent.x, intent.y) > 0.25) {
             this.localFacing = turnToward(this.localFacing, Math.atan2(intent.y, intent.x), turnRate(me.width) * deltaTime)
         }
-        walk(box, this.velocity, steer, deltaTime, state.worldWidth, state.worldHeight, dashing)
+        walk(box, this.velocity, steer, deltaTime, state.worldWidth, state.worldHeight)
 
         // The server shows where you were about a round trip ago: quietly correct any drift from that
         this.history.push({ at: now, x: box.x, y: box.y })
@@ -1232,9 +1215,6 @@ export class MultiplayerMode extends GameMode {
         for (const id of this.drawnSizes.keys()) {
             if (!present.has(id)) this.drawnSizes.delete(id)
         }
-        for (const id of this.lastCenters.keys()) {
-            if (!present.has(id)) this.lastCenters.delete(id)
-        }
 
         this.drawTheft(ctx, state, timestamp)
         this.drawBlasts(ctx, timestamp)
@@ -1249,7 +1229,7 @@ export class MultiplayerMode extends GameMode {
         this.drawShiftChip(ctx, canvas, state, timestamp)
         this.drawTrafficChip(ctx, canvas, state, timestamp)
         this.drawBanner(ctx, canvas)
-        this.controls?.draw(ctx, timestamp, Math.max(0, Math.min(1, 1 - (this.dashReadyAt - performance.now()) / this.cooldownMs)), this.breath)
+        this.controls?.draw(ctx, timestamp, this.breath)
         if (me && me.state !== 'alive') this.drawKnockedOut(ctx, canvas)
         ctx.restore()
     }
@@ -1396,28 +1376,10 @@ export class MultiplayerMode extends GameMode {
         grow.speed = (grow.speed + (player.width - grow.size) * 0.3) * 0.6
         grow.size += grow.speed
         const size = Math.max(4, grow.size)
-        const clock = performance.now()
         const left = drawn.x + (player.width - size) / 2
         const top = drawn.y + (player.height - size) / 2
         const centerX = drawn.x + player.width / 2
         const centerY = drawn.y + player.height / 2
-        // A dash leaves a streak behind it, bigger for bigger players
-        const last = this.lastCenters.get(sessionId)
-        this.lastCenters.set(sessionId, { x: centerX, y: centerY })
-        const dashingNow = isLocal ? clock < this.dashUntil : Boolean(player.bursting)
-        if (dashingNow && last) {
-            const moved = Math.hypot(centerX - last.x, centerY - last.y)
-            if (moved > 0.5) {
-                const ux = (centerX - last.x) / moved
-                const uy = (centerY - last.y) / moved
-                for (let i = 1; i <= 4; i++) {
-                    ctx.fillStyle = `rgba(255, 255, 255, ${0.28 - i * 0.06})`
-                    ctx.beginPath()
-                    ctx.arc(centerX - ux * size * 0.45 * i, centerY - uy * size * 0.45 * i, size * (0.42 - i * 0.07), 0, Math.PI * 2)
-                    ctx.fill()
-                }
-            }
-        }
         if (player.inhaling) drawInhaleCone(ctx, centerX, centerY, size, isLocal ? this.localFacing : (player.facing ?? -Math.PI / 2), timestamp)
         if (isLocal) {
             // Your breath: draining around you while you inhale, refilling while you catch it
@@ -1480,7 +1442,7 @@ export class MultiplayerMode extends GameMode {
         const width = state.worldWidth * scale
         const height = state.worldHeight * scale
         const x = canvas.width - width - 12
-        // On a touchscreen the DASH button has the bottom right, so the minimap moves to the top
+        // On a touchscreen the INHALE button has the bottom right, so the minimap moves to the top
         const y = this.controls?.touchDevice ? 34 : canvas.height - height - 12
         this.minimapBottom = y + height
         ctx.save()
@@ -1596,7 +1558,7 @@ export class MultiplayerMode extends GameMode {
         if (me && count >= 6 && Math.hypot(me.x - x, me.y - y) < 700) this.addShake(Math.min(10, 2 + count * 0.3))
     }
 
-    /** A dash or body-check connected: a shockwave, and a jolt for the two players involved */
+    /** A bump connected: a shockwave, and a jolt for the two players involved */
     private noteImpact(data: any): void {
         const x = Number(data?.x)
         const y = Number(data?.y)

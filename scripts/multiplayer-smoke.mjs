@@ -216,22 +216,6 @@ try {
     alice.send('steer', { x: 0, y: 0 });
     await sleep(400);
     check(state().gems.size === 0, 'and it leaves the world');
-    const dashX = me().x;
-    alice.send('dash', { x: way === 'right' ? 1 : -1, y: 0 });
-    await sleep(450);
-    const dashed = Math.abs(me().x - dashX);
-    check(dashed > 150 && dashed < 240, `a dash is a quick burst (${Math.round(dashed)} units)`);
-    check(me().gems === 0, 'and costs a gem');
-    const afterDash = me().x;
-    alice.send('dash', { x: way === 'right' ? 1 : -1, y: 0 });
-    await sleep(200);
-    check(Math.abs(me().x - afterDash) < 3, 'and needs a moment to recharge');
-    await sleep(900);
-    alice.send('test:placeGem', { dx: way === 'right' ? 70 : -70, dy: 0 });
-    await waitFor(() => state().gems.size === 1, 1000, 'another gem appears ahead');
-    const beforeSweep = me().gems;
-    alice.send('dash', { x: way === 'right' ? 1 : -1, y: 0 });
-    await waitFor(() => me().gems > beforeSweep, 1000, 'a dash picks up gems it passes over');
 
     alice.send('test:setGems', { count: 100 });
     await waitFor(() => me().gems >= 99, 1000, 'Alice now holds 100 gems');
@@ -330,7 +314,7 @@ try {
 
     // Shoving
     await waitFor(() => !me().spawnProtected && !bobState().spawnProtected, 3000, 'neither player is protected');
-    /** Line `left` up just left of `right`, have `left` hop into `right`, and return how far `right` slides */
+    /** Line `left` up just left of `right`, have `left` run into `right`, and return how far `right` slides */
     async function shove(left, right, leftGems, rightGems) {
         const leftState = () => state().players.get(left.sessionId);
         const rightState = () => state().players.get(right.sessionId);
@@ -339,23 +323,25 @@ try {
         await sleep(150);
         left.send('test:moveTo', { x: 700, y: 1000 });
         right.send('test:moveTo', { x: 700 + leftState().width + 20, y: 1000 });
-        right.send('test:face', { angle: Math.PI }); // facing the dasher: a front hit
+        right.send('test:face', { angle: Math.PI });
         await sleep(250);
         const startX = rightState().x;
-        left.send('dash', { x: 1, y: 0 });
+        left.send('steer', { x: 1, y: 0 });
+        await sleep(250);
+        left.send('steer', { x: 0, y: 0 });
         await sleep(900);
         return rightState().x - startX;
     }
     const even = await shove(alice, bob, 0, 0);
-    check(even > 100 && even < 180, `dashing into someone shoves them (${Math.round(even)} units)`);
+    check(even > 100 && even < 200, `running into someone shoves them (${Math.round(even)} units)`);
     check(bobState().sliding === false, 'and they slide to a stop');
-    const heavy = await shove(alice, bob, 100, 5); // 5 gems: a giant dashing into someone under 3 knocks them out instead
-    check(heavy > even * 1.6, `heavier players shove harder (${Math.round(heavy)} units)`);
+    const heavy = await shove(alice, bob, 100, 5);
+    check(heavy > even * 1.15, `heavier players shove harder (${Math.round(heavy)} units)`);
     const light = await shove(bob, alice, 0, 100);
     check(light < even * 0.6, `and are harder to shove (${Math.round(light)} units)`);
 
     const knockedLoose = 100 - me().gems;
-    check(knockedLoose <= 2, `a dash from the front just shoves: even the leader keeps their gems (${knockedLoose} lost, only the usual shedding)`);
+    check(knockedLoose <= 2, `bumping someone just shoves: even the leader keeps their gems (${knockedLoose} lost, only the usual shedding)`);
 
     // Bombs: safe in your mouth, lit when spat, and the blast knocks everyone flying and gems loose
     await sleep(2700);
@@ -392,6 +378,10 @@ try {
     await sleep(1500);
     bob.send('test:setGems', { count: 5 });
     await sleep(200);
+    // (The blast knocked Alice back: put her where Bob will be in front of her mouth)
+    alice.send('test:moveTo', { x: 700, y: 1750 });
+    alice.send('test:face', { angle: 0 });
+    await sleep(150);
     bob.send('test:moveTo', { x: 700 + me().width + 40, y: 1750 + (me().height - bobState().height) / 2 });
     await sleep(250);
     const aliceBeforeGulp = me().gems;
@@ -410,8 +400,8 @@ try {
     bob.send('test:moveTo', { x: 700 + me().width + 20, y: 1750 });
     bob.send('test:face', { angle: 0 });
     await sleep(250);
+    await sleep(1100); // a breath taken just before needs a moment to come back
     const bobBeforeTheft = bobState().gems;
-    const bobTheftX = bobState().x;
     const aliceBeforeTheft = me().gems;
     alice.send('inhale');
     await sleep(700);
@@ -421,7 +411,6 @@ try {
     await sleep(150);
     const stolen = bobBeforeTheft - bobState().gems;
     check(streaming && stolen >= 4 && me().gems - aliceBeforeTheft >= 4, `inhaling up close steals gems from anyone in front of your mouth (${stolen} stolen)`);
-    check(bobState().x < bobTheftX - 5, `and they're dragged toward your mouth (${Math.round(bobTheftX - bobState().x)} units)`);
     // A breath lasts a moment, and you need a moment to catch it
     alice.send('inhale');
     await sleep(200);
@@ -512,10 +501,31 @@ try {
     alice.send('steer', { x: 0, y: 0 });
     bob.send('steer', { x: 0, y: 0 });
     alice.send('exhale');
-    check(bobBeforeChase - bobState().gems >= 4, `chasing someone who runs keeps stealing: the pull drags them back (${bobBeforeChase - bobState().gems} stolen)`);
+    check(bobBeforeChase - bobState().gems >= 4, `chasing someone your size keeps stealing while you keep up (${bobBeforeChase - bobState().gems} stolen)`);
     // (Drained small enough, he may have been swallowed: wait for him)
     await waitFor(() => bobState().state === 'alive' && !bobState().spawnProtected, 6000, 'Bob is back');
     bob.send('steer', { x: 0, y: 0 }); // his stop may have arrived while he was swallowed
+    await sleep(1300);
+    // Getting away is about speed: a newborn caught at the far end of a big creature's inhale outruns it
+    alice.send('test:setGems', { count: 100 });
+    bob.send('test:setGems', { count: 0 });
+    await sleep(200);
+    alice.send('test:moveTo', { x: 300, y: 1700 });
+    alice.send('test:face', { angle: 0 });
+    await sleep(100);
+    bob.send('test:moveTo', { x: 300 + me().width + 130, y: 1700 + (me().height - bobState().height) / 2 });
+    await sleep(1300);
+    const gapToBob = () => bobState().x - (me().x + me().width);
+    const escapeFrom = gapToBob();
+    alice.send('inhale');
+    alice.send('steer', { x: 1, y: 0 });
+    bob.send('steer', { x: 1, y: 0 });
+    await sleep(2000);
+    const escapeTo = gapToBob();
+    alice.send('steer', { x: 0, y: 0 });
+    bob.send('steer', { x: 0, y: 0 });
+    alice.send('exhale');
+    check(bobState().state === 'alive' && escapeTo > escapeFrom + 50, `smaller is faster: a newborn caught in a big creature's inhale outruns it (gap ${Math.round(escapeFrom)} to ${Math.round(escapeTo)})`);
     await sleep(1300);
 
     // Bumper cars: running into someone at speed bounces you both apart, the lighter one farther, and costs no gems
@@ -580,11 +590,12 @@ try {
     await waitFor(() => !me().recovering && !me().spawnProtected, 3000, 'traffic is parked and Alice is ready');
     /** Stand the block where `place(half)` says (from Alice's center; half = half her width), maybe hop, and report a hit */
     async function struck(place, hopDirection) {
-        alice.send('test:setGems', { count: hopDirection ? 4 : 3 });
+        alice.send('test:setGems', { count: 3 });
         await sleep(120);
         alice.send('test:placeObstacle', place(me().width / 2));
-        if (hopDirection) alice.send('dash', { x: hopDirection === 'right' ? 1 : -1, y: 0 });
+        if (hopDirection) alice.send('steer', { x: hopDirection === 'right' ? 1 : -1, y: 0 });
         await sleep(250);
+        if (hopDirection) alice.send('steer', { x: 0, y: 0 });
         const hit = me().recovering || me().state !== 'alive';
         alice.send('test:placeObstacle', { dx: 0, dy: 700, width: 20, height: 20 });
         const until = Date.now() + 2500;
@@ -597,7 +608,7 @@ try {
     check(await struck((h) => ({ dx: h - 10, dy: -17, width: 60, height: 34, variant: 0 })), 'a block 10 units into your edge is a hit');
     check(await struck((h) => ({ dx: h - 10, dy: -17, width: 60, height: 34, variant: 1 })), "a diamond's point 10 units into you is a hit");
     check(!(await struck((h) => ({ dx: h - 12, dy: h - 12, width: 60, height: 34, variant: 1 }))), "a diamond's empty corner over yours is a miss");
-    check(await struck((h) => ({ dx: h + 3, dy: -30, width: 11, height: 60, variant: 0 }), 'right'), 'dashing through a thin block is a hit');
+    check(await struck((h) => ({ dx: h + 3, dy: -30, width: 11, height: 60, variant: 0 }), 'right'), 'walking into a thin block is a hit');
     /** Stand a ball where `place(half)` says (from Alice's center), and report whether it hits her */
     async function ballStruck(place) {
         alice.send('test:setGems', { count: 3 });
@@ -712,8 +723,10 @@ try {
     bob.send('test:moveTo', { x: tileRight - me().width - 4 - bobState().width - 20, y: rowMiddle - bobState().height / 2 });
     await sleep(250);
     bob.messages.length = 0;
-    bob.send('dash', { x: 1, y: 0 });
-    await waitFor(() => bob.messages.some((m) => m.type === 'credit' && m.message.how === 'edge'), 2000, 'shoving someone off the edge is credited');
+    bob.send('steer', { x: 1, y: 0 });
+    await sleep(300);
+    bob.send('steer', { x: 0, y: 0 });
+    await waitFor(() => bob.messages.some((m) => m.type === 'credit' && m.message.how === 'edge'), 2000, 'bumping someone off the edge is credited');
     const credit = bob.messages.find((m) => m.type === 'credit')?.message;
     check(credit?.by === 'Bob' && credit?.target === 'Alice', `everyone sees who did it (${credit?.by} shoved ${credit?.target})`);
 

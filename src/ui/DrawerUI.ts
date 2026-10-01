@@ -47,16 +47,15 @@ export class DrawerUI {
                         <h4>Gems</h4>
                         <p>Gems are your score. Every one you grab makes you a little bigger and heavier. Big players shove harder and see more of the arena, but they're also bigger targets, so growth is power and risk at once. Bigger creatures can swallow smaller ones, but anyone can steal gems from anyone by inhaling up close from where their mouth isn't pointing. There's no size limit, but big creatures slowly shed gems, faster the bigger they get, so becoming a giant takes real effort.</p>
 
-                        <h4>Dash and shove</h4>
-                        <p>Tap the <span class="highlight">right side</span> of the screen (<span class="highlight">space</span> on a computer) to dash: a quick burst that costs a gem. Dash into another player to shove them. The heavier you are, the farther they go.</p>
-                        <p>The leader wears a crown. A dash just shoves, but shoving someone off an island during an arena shift costs them plenty.</p>
+                        <h4>Shoving</h4>
+                        <p>Run into another player to <span class="highlight">bump</span> them: you both bounce apart, and the heavier you are, the farther they go. Bumps don't cost gems, but bumping someone off an island during an arena shift costs them plenty. The leader wears a crown.</p>
 
                         <h4>Inhale</h4>
                         <p>Hold the button to <span class="highlight">inhale</span> and pull in everything in front of your mouth, for up to 3 seconds before you need a breath (the ring around you shows how much is left, then refills). Gems are swallowed, and so are creatures clearly smaller than you, along with all their gems.</p>
-                        <p>Get right up close to anyone too big to swallow and inhale to <span class="highlight">steal</span> their gems: they stream straight into your mouth, and they're dragged toward you. To escape a thief, dash to break free, or turn and inhale back. Bigger creatures pull harder, so head-on, the stronger pull wins the tug-of-war. Small creatures turn faster, so steal from the side, where their mouth isn't pointing, and get away before they turn around. Tap to dash.</p>
+                        <p>Get right up close to anyone too big to swallow and inhale to <span class="highlight">steal</span> their gems: they stream straight into your mouth. To escape a thief, run (anyone smaller than the thief is faster) or turn and inhale back. Bigger creatures pull harder, so head-on, the stronger pull wins the tug-of-war. Small creatures turn faster, so steal from the side, where their mouth isn't pointing, and get away before they turn around.</p>
 
                         <h4>Getting hit</h4>
-                        <p>Bumps and dashes just knock you around, but anyone inhaling right up against you can steal your gems, and being swallowed costs you everything. Falling off the edge of the floor during an arena shift is a real hit: you skid, drop half your gems, and blink for a moment while nothing can touch you.</p>
+                        <p>Bumps just knock you around, but anyone inhaling right up against you can steal your gems, and being swallowed costs you everything. Falling off the edge of the floor during an arena shift is a real hit: you skid, drop half your gems, and blink for a moment while nothing can touch you.</p>
                         <p>Your dropped gems take a second before you can grab them back, but anyone else can grab them right away. With fewer than 3 gems, a hit knocks you out (a dashed red outline warns you), and you're back in two seconds.</p>
 
                         <h4>Arena shifts</h4>

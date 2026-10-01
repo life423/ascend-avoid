@@ -202,7 +202,7 @@ class GameState extends Schema {
       const deciding = bot ? now >= brain.nextThinkAt : false;
       const move = bot ? brain.think(bot, this, now) : null;
       if (bot && deciding) {
-        // Bots steer the way they decided (or stop), and dash into whoever they're hunting once close
+        // Bots steer the way they decided (or stop)
         const way = move ? STEER[move] : { x: 0, y: 0 };
         bot.steer(way.x, way.y);
         // Clear out of a lit bomb's blast
@@ -210,12 +210,6 @@ class GameState extends Schema {
         if (escape) {
           if (bot.inhaling) bot.stopInhale();
           bot.steer(escape.x, escape.y);
-        }
-        const victim = brain.victim;
-        if (move && victim && victim.state === PLAYER_STATE.ALIVE && !victim.spawnProtected) {
-          const dx = victim.x + victim.width / 2 - (bot.x + bot.width / 2);
-          const dy = victim.y + victim.height / 2 - (bot.y + bot.height / 2);
-          if (Math.hypot(dx, dy) < (bot.width + victim.width) / 2 + BOTS.DASH_REACH) bot.requestDash(dx, dy);
         }
       }
       if (bot) this.botMouth(bot, now);
@@ -235,7 +229,6 @@ class GameState extends Schema {
       const fromX = player.x;
       const fromY = player.y;
       player.updateMovement(this.worldWidth, this.worldHeight, now, deltaTime);
-      if (player.dashing(now)) this.checkDash(player, fromX, fromY, now);
       this.nudgeApart(player, now);
       this.collectGems(player, now, fromX, fromY);
       player.decay(deltaTime, this.worldWidth, this.worldHeight);
@@ -371,7 +364,7 @@ class GameState extends Schema {
           this.swallow(eater, prey, now);
           return;
         }
-        const pull = (INHALE.PULL_PREY + INHALE.PULL_PREY_CLOSE * Math.max(0, 1 - d / reach)) * deltaTime;
+        const pull = INHALE.PULL_PREY * Math.pow(Math.max(0, 1 - d / reach), 2) * deltaTime;
         prey.nudge(((mouthX - px) / d) * pull, ((mouthY - py) / d) * pull, this.worldWidth, this.worldHeight);
       });
       this.steal(eater, now, deltaTime);
@@ -418,19 +411,6 @@ class GameState extends Schema {
       thief.setGems(thief.gems + 1, this.worldWidth, this.worldHeight);
       thief.stolenRun += 1;
     }
-    // Being inhaled drags you toward the thief's mouth, harder the bigger the thief: walking away
-    // isn't enough, so a victim dashes free or turns and inhales back
-    if (target.sliding) return;
-    const tx = target.x + target.width / 2;
-    const ty = target.y + target.height / 2;
-    const mx = thief.x + thief.width / 2 + Math.cos(thief.facing) * thief.width * 0.5;
-    const my = thief.y + thief.height / 2 + Math.sin(thief.facing) * thief.width * 0.5;
-    const d = Math.hypot(mx - tx, my - ty);
-    const snug = target.width / 2 + 4;
-    if (d <= snug) return;
-    const drag = INHALE.DRAG * Math.min(2, Math.max(0.5, Math.sqrt(thief.weight() / target.weight()))) * deltaTime;
-    const step = Math.min(drag, d - snug);
-    target.nudge(((mx - tx) / d) * step, ((my - ty) / d) * step, this.worldWidth, this.worldHeight);
   }
 
   /** A run of stealing ends (or switches to someone else): a big one gets a banner and a line in the feed */
@@ -482,7 +462,7 @@ class GameState extends Schema {
 
   /**
    * Bombs: back after going off; safe in a mouth unless lit (then it goes off right there); dropped
-   * where a holder was if they're gone; sliding, nudged by anyone walking into it, kicked by a dash;
+   * where a holder was if they're gone; sliding, nudged by anyone walking into it;
    * and going off when the fuse runs down
    */
   private updateBombs(now: number, deltaTime: number): void {
@@ -525,12 +505,6 @@ class GameState extends Schema {
         if (d >= reach || d < 1e-6) return;
         const nx = dx / d;
         const ny = dy / d;
-        if (player.dashing(now)) {
-          // Kicked
-          const along = player.dashDirection();
-          bomb.launch(bomb.x, bomb.y, along.x, along.y, BOMBS.KICK_SPEED, player.sessionId);
-          return;
-        }
         // Nudged out of the way, rolling off a little
         const moving = player.velocity();
         const push = Math.max(60, moving.x * nx + moving.y * ny) * 1.1;
@@ -623,20 +597,17 @@ class GameState extends Schema {
       return;
     }
     if (Math.random() > 0.12) return;
-    // Someone stealing from this bot: it turns and fights back, or dashes free
+    // Someone stealing from this bot: it runs from a robber its size or bigger (its brain sees to that)
+    // and often inhales back as it goes; a smaller robber is faster, so it turns and fights
     let thief: PlayerSchema | null = null;
     this.players.forEach((other) => {
       if (other.stealingFrom === bot.sessionId) thief = other;
     });
     const robber = thief as PlayerSchema | null;
     if (robber) {
-      const toX = robber.x + robber.width / 2 - cx;
-      const toY = robber.y + robber.height / 2 - cy;
-      if (Math.random() < 0.55) {
+      if (robber.width < bot.width || Math.random() < 0.5) {
         bot.startInhale(now, 900 + Math.random() * 600);
-        bot.aimAt(toX, toY);
-      } else {
-        bot.requestDash(-toX, -toY);
+        bot.aimAt(robber.x + robber.width / 2 - cx, robber.y + robber.height / 2 - cy);
       }
       return;
     }
@@ -690,60 +661,13 @@ class GameState extends Schema {
   }
 
   /**
-   * A dash that runs into another creature stops at the moment of contact and shoves them along it,
-   * farther if the dasher is heavier, and bounces back off them, bumper-car style (the lighter one
-   * farther). No gems change hands. Players who just arrived are passed straight through.
-   */
-  private checkDash(dasher: PlayerSchema, fromX: number, fromY: number, now: number): void {
-    // Swept along everything the dash crossed this tick (as circles), so it can't skip past anyone
-    const radius = dasher.width / 2;
-    const startX = fromX + radius;
-    const startY = fromY + radius;
-    const moveX = dasher.x - fromX;
-    const moveY = dasher.y - fromY;
-    const hit: { target: PlayerSchema | null; t: number } = { target: null, t: Infinity };
-    this.players.forEach((other) => {
-      if (other === dasher || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected) return;
-      const reach = radius + other.width / 2;
-      const fx = startX - (other.x + other.width / 2);
-      const fy = startY - (other.y + other.height / 2);
-      const a = moveX * moveX + moveY * moveY;
-      const b = 2 * (fx * moveX + fy * moveY);
-      const c = fx * fx + fy * fy - reach * reach;
-      let t = 0;
-      if (c > 0) {
-        const disc = b * b - 4 * a * c;
-        if (a < 1e-9 || disc < 0) return;
-        t = (-b - Math.sqrt(disc)) / (2 * a);
-        if (t < 0 || t > 1) return;
-      }
-      if (t < hit.t) {
-        hit.target = other;
-        hit.t = t;
-      }
-    });
-    const target = hit.target;
-    if (!target) return;
-    const along = dasher.dashDirection();
-    dasher.x = fromX + moveX * hit.t;
-    dasher.y = fromY + moveY * hit.t;
-    dasher.endDash();
-    const weightRatio = dasher.weight() / target.weight();
-    const distance = PUSH.DISTANCE * Math.min(PUSH.MAX_RATIO, Math.max(PUSH.MIN_RATIO, weightRatio));
-    if (!target.shoveAlong(along.x, along.y, distance, dasher.sessionId, now, "dash")) return;
-    this.impact(dasher, target);
-    dasher.dropProtection();
-    // Bumper cars: the dash bounces back off whoever it hits, the lighter one farther
-    dasher.shoveAlong(-along.x, -along.y, PUSH.BOUNCE * Math.min(PUSH.MAX_RATIO, Math.max(PUSH.MIN_RATIO, 1 / weightRatio)), target.sessionId, now, "bump");
-  }
-
-  /**
    * Creatures that touch are pushed apart (as circles), the lighter one more. Running into someone
    * at speed is a bumper-car bump: both bounce apart, the lighter one farther. No gems change hands,
    * and an inhaling creature presses up against whoever it runs into instead of bouncing off.
    */
   private nudgeApart(player: PlayerSchema, now: number): void {
-    if (player.state !== PLAYER_STATE.ALIVE || player.spawnProtected) return;
+    // (Someone just arrived can bump others, which ends their protection, but can't be bumped)
+    if (player.state !== PLAYER_STATE.ALIVE) return;
     this.players.forEach((other) => {
       if (other === player || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected) return;
       const dx = other.x + other.width / 2 - (player.x + player.width / 2);
@@ -760,8 +684,11 @@ class GameState extends Schema {
         other.shoveAlong(nx, ny, PUSH.BUMP * 2 * (1 - share), player.sessionId, now, "bump");
         player.shoveAlong(-nx, -ny, PUSH.BUMP * 2 * share, other.sessionId, now, "bump");
         this.impact(player, other);
+        player.dropProtection();
         return;
       }
+      // Someone just arrived passes through, unless they run into you
+      if (player.spawnProtected) return;
       player.nudge(-nx * overlap * share, -ny * overlap * share, this.worldWidth, this.worldHeight);
       other.nudge(nx * overlap * (1 - share), ny * overlap * (1 - share), this.worldWidth, this.worldHeight);
     });
@@ -1054,7 +981,7 @@ class GameState extends Schema {
     });
   }
 
-  /** A dash or body-check connected: browsers draw a shockwave (and jolt the two players involved) */
+  /** A bump connected: browsers draw a shockwave (and jolt the two players involved) */
   private impact(attacker: PlayerSchema, victim: PlayerSchema): void {
     this.onEvent?.("impact", {
       x: Math.round((attacker.x + attacker.width / 2 + victim.x + victim.width / 2) / 2),
@@ -1123,7 +1050,7 @@ class GameState extends Schema {
 
   /** Pick up every gem the player is touching */
   private collectGems(player: PlayerSchema, now: number, fromX = player.x, fromY = player.y): void {
-    // Everything the player passed over this tick counts, so a dash or a skid can't skip a gem
+    // Everything the player passed over this tick counts, so a skid can't skip a gem
     // (unless they were moved somewhere else entirely, like a respawn)
     const moved = Math.hypot(player.x - fromX, player.y - fromY);
     const path = moved > 300

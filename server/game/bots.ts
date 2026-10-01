@@ -70,7 +70,7 @@ function timeToImpact(box: Box, world: GameState): number {
 export class BotBrain {
   /** When the bot next decides (it keeps steering the same way until then) */
   nextThinkAt = 0;
-  /** Who the bot is hunting, if anyone (it dashes into them once close) */
+  /** Who the bot is hunting, if anyone (it runs into them to shove them) */
   victim: PlayerSchema | null = null;
   private goal: Goal | null = null;
   private readonly thinkMs: number;
@@ -135,10 +135,11 @@ export class BotBrain {
     const cy = bot.y + bot.height / 2;
     // A new floor is coming: get onto it
     if (world.shiftPhase !== "normal" && !world.isFloorAt(cx, cy)) return world.nearestFloorPoint(cx, cy);
-    // Something much bigger close by: get away from it
+    // Something much bigger close by, or a robber its size or bigger: get away (smaller, it's faster)
     const threat = { x: 0, y: 0, distance: BOTS.FLEE_RANGE };
     world.players.forEach((other) => {
-      if (other === bot || other.state !== PLAYER_STATE.ALIVE || other.width < bot.width * BOTS.FLEE_RATIO) return;
+      const robbing = other.stealingFrom === bot.sessionId && other.width >= bot.width;
+      if (other === bot || other.state !== PLAYER_STATE.ALIVE || (other.width < bot.width * BOTS.FLEE_RATIO && !robbing)) return;
       const ox = other.x + other.width / 2;
       const oy = other.y + other.height / 2;
       const distance = Math.hypot(ox - cx, oy - cy) - other.width / 2;
