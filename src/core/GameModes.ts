@@ -1013,6 +1013,8 @@ export class MultiplayerMode extends GameMode {
     private drawnSizes = new Map<string, { size: number; speed: number }>()
     /** When your player was knocked out, for the "back in" countdown */
     private knockedOutAt: number | null = null
+    /** The last time someone got you (and how), for the knocked-out screen: "Swallowed by Drew" */
+    private knockoutCause: { how: string; by: string; at: number } | null = null
     /** Messages at the top right: who joined, who shoved whom off the edge, who took the jackpot */
     private notices: { text: string; at: number; strong: boolean }[] = []
     /** When each dropping gem was first seen, to draw its fall */
@@ -1720,6 +1722,9 @@ export class MultiplayerMode extends GameMode {
         const targetIsYou = data?.targetId === localId
         const target = targetIsYou ? 'you' : String(data?.target ?? 'someone')
         const how = String(data?.how ?? '')
+        if (targetIsYou && how !== 'stole') {
+            this.knockoutCause = { how, by: String(data?.by ?? 'Someone'), at: performance.now() }
+        }
         const verb = how === 'stole' ? 'robbed' : how === 'ate' ? 'swallowed' : how === 'bomb' ? 'blew up' : 'shoved'
         const where = how === 'stole' ? `of ${Number(data?.gems) || 0} gems` : how === 'edge' ? 'off the edge' : how === 'traffic' ? 'into traffic' : ''
         if (data?.byId === localId) {
@@ -2379,7 +2384,17 @@ export class MultiplayerMode extends GameMode {
     private drawKnockedOut(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement): void {
         const elapsed = this.knockedOutAt === null ? 0 : performance.now() - this.knockedOutAt
         const seconds = Math.ceil((WORLD.RESPAWN_DELAY_MS - elapsed) / 1000)
-        this.drawMessage(ctx, canvas, 'Hit!', seconds > 0 ? `Back in ${seconds}` : 'Back in a moment')
+        // The credit and the knockout can land a frame or two apart, in either order
+        const cause = this.knockoutCause
+        const credited = cause !== null && this.knockedOutAt !== null && Math.abs(cause.at - this.knockedOutAt) < 1500
+        const verb =
+            cause?.how === 'ate' ? 'Swallowed'
+            : cause?.how === 'bomb' ? 'Blown up'
+            : cause?.how === 'edge' ? 'Shoved off'
+            : cause?.how === 'traffic' ? 'Wrecked'
+            : 'Knocked out'
+        const title = credited && cause ? `${verb} by ${cause.by}` : 'Hit!'
+        this.drawMessage(ctx, canvas, title, seconds > 0 ? `Back in ${seconds}` : 'Back in a moment')
     }
 
     /** Dim the screen and show a centered title and subtitle */
@@ -2391,7 +2406,14 @@ export class MultiplayerMode extends GameMode {
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
         ctx.fillStyle = '#4fd1c5'
-        ctx.font = `700 ${Math.round(Math.min(canvas.height * 0.09, canvas.width * 0.1))}px ${FONT}`
+        // Shrink a long title (like one with a long player name) to fit, rather than squashing it
+        let titleSize = Math.round(Math.min(canvas.height * 0.09, canvas.width * 0.1))
+        ctx.font = `700 ${titleSize}px ${FONT}`
+        const titleWidth = ctx.measureText(title).width
+        if (titleWidth > canvas.width * 0.9) {
+            titleSize = Math.floor((titleSize * canvas.width * 0.9) / titleWidth)
+            ctx.font = `700 ${titleSize}px ${FONT}`
+        }
         ctx.fillText(title, canvas.width / 2, canvas.height * 0.45, canvas.width * 0.9)
         ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
         ctx.font = `500 ${Math.max(13, Math.round(canvas.height * 0.03))}px ${FONT}`
