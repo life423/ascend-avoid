@@ -3,6 +3,7 @@ import { EventBus } from '../core/EventBus';
 import AssetManager from './AssetManager';
 import { GameEvents } from '../constants/client-constants';
 import { GAME } from '../../server/constants/gameConstants';
+import { NAME_EVENT, playerName, setPlayerName } from '../core/PlayerName';
 
 export class MultiplayerManager {
     private client: Client | null = null;
@@ -150,6 +151,8 @@ export class MultiplayerManager {
      * Set up room event handlers
      */
     private setupRoomHandlers(): void {
+        window.removeEventListener(NAME_EVENT, this.onNameChange);
+        window.addEventListener(NAME_EVENT, this.onNameChange);
         if (!this.room) {
             console.error('❌ Cannot setup room handlers - no room instance');
             return;
@@ -289,6 +292,7 @@ export class MultiplayerManager {
     }
 
     disconnect(): void {
+        window.removeEventListener(NAME_EVENT, this.onNameChange);
         this.stopPinging();
         if (this.room) {
             this.room.leave();
@@ -317,25 +321,11 @@ export class MultiplayerManager {
         return this.room;
     }
 
-    /**
-     * Get player name from storage or generate
-     */
+    /** The name you play under (kept on this device; see PlayerName) */
     private getPlayerName(): string {
-        // Try to get from sessionStorage first (persists during session)
-        let playerName = sessionStorage.getItem('playerName');
-        
-        if (!playerName) {
-            // Generate a random name
-            playerName = `Player${Math.floor(Math.random() * 10000)}`;
-            sessionStorage.setItem('playerName', playerName);
-        }
-        
-        return playerName;
+        return playerName();
     }
 
-    /**
-     * Update player name
-     */
     /** The synchronized game state from the server, or null when not connected */
     getState(): any {
         return this.room ? this.room.state : null;
@@ -346,11 +336,14 @@ export class MultiplayerManager {
         return this.room ? this.room.sessionId : null;
     }
 
+    /** Rename yourself: saved on this device, and the server tells everyone (see onNameChange) */
     updatePlayerName(name: string): void {
-        sessionStorage.setItem('playerName', name);
-        
-        if (this.room) {
-            this.room.send('updateName', { name });
-        }
+        setPlayerName(name);
     }
+
+    /** You picked a new name (in the drawer, say): everyone sees it right away */
+    private onNameChange = (event: Event): void => {
+        const name = (event as CustomEvent<string>).detail;
+        if (this.room && name) this.room.send('updateName', { name });
+    };
 }

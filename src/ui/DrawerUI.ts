@@ -1,3 +1,4 @@
+import { playerName, setPlayerName } from '../core/PlayerName';
 export class DrawerUI {
     private container: HTMLElement;
     private hamburgerBtn!: HTMLButtonElement;
@@ -35,6 +36,14 @@ export class DrawerUI {
                 <h2>Game Menu</h2>
             </div>
             <div class="drawer-content">
+                <div class="menu-section name-section">
+                    <h3>Your name</h3>
+                    <form class="name-form" autocomplete="off">
+                        <input class="name-input" type="text" maxlength="20" placeholder="Pick a name" aria-label="Your name" autocapitalize="words" spellcheck="false" enterkeyhint="done">
+                        <button class="name-save" type="submit">Save</button>
+                    </form>
+                    <p class="name-note">Everyone sees it above your creature and on the leaderboard.</p>
+                </div>
                 <div class="menu-section">
                     <h3>How to Play</h3>
                     <div class="instructions">
@@ -58,6 +67,8 @@ export class DrawerUI {
                         <p>Bumps just knock you around, but anyone inhaling right up against you can steal your gems, and being swallowed costs you everything. Falling off the edge of the floor during an arena shift is a real hit: you skid, drop half your gems, and blink for a moment while nothing can touch you.</p>
                         <p>Your dropped gems take a second before you can grab them back, but anyone else can grab them right away. With fewer than 3 gems, a hit knocks you out (a dashed red outline warns you), and you're back in two seconds.</p>
 
+                        <h4>Turbines</h4>
+                        <p>Turbines pop up around the arena for a minute or so, then move on. The <span class="highlight">intake</span> sucks in loose gems, and rips gems right out of anyone who gets too close (giants lose them fastest). Every one shoots out of the sweeping <span class="highlight">exhaust</span> and lands across the arena for anyone to grab. The exhaust's wind blows small creatures around. Bump someone into an intake and watch their gems fly.</p>
                         <h4>Arena shifts</h4>
                         <p>Every few minutes the floor changes shape. You'll see the new floor first, and nobody can be hurt while everyone gets onto it. Then the rest falls away into the void.</p>
                         <p>While the arena is small, gems rain down. Near the end a jackpot crystal drops: stand on it alone to claim 20 gems. If anyone else is touching it, nobody's claim moves.</p>
@@ -104,8 +115,48 @@ export class DrawerUI {
             e.stopPropagation();
         });
 
+        // Your name: saved on this device, and everyone sees the change right away
+        this.injectNameStyles();
+        const form = this.drawer.querySelector<HTMLFormElement>('.name-form');
+        const input = this.drawer.querySelector<HTMLInputElement>('.name-input');
+        const note = this.drawer.querySelector<HTMLElement>('.name-note');
+        form?.addEventListener('submit', (e: Event) => {
+            e.preventDefault();
+            if (!input) return;
+            const name = setPlayerName(input.value);
+            input.value = name ?? playerName();
+            if (!name) return;
+            input.blur();
+            if (note) note.textContent = `Saved! You're ${name} now.`;
+        });
+
     }
 
+
+    /** The name box shows the name you play under each time the drawer opens */
+    private showName(): void {
+        const input = this.drawer.querySelector<HTMLInputElement>('.name-input');
+        const note = this.drawer.querySelector<HTMLElement>('.name-note');
+        if (input && document.activeElement !== input) input.value = playerName();
+        if (note) note.textContent = 'Everyone sees it above your creature and on the leaderboard.';
+    }
+
+    private injectNameStyles(): void {
+        if (document.getElementById('drawer-name-styles')) return;
+        const style = document.createElement('style');
+        style.id = 'drawer-name-styles';
+        style.textContent = `
+            .name-form { display: flex; gap: 8px; margin: 8px 0 6px; }
+            .name-input { flex: 1; min-width: 0; font-family: inherit; font-size: 16px; font-weight: 600; padding: 10px 12px;
+                color: #fff; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(79, 209, 197, 0.45); border-radius: 10px; outline: none; }
+            .name-input:focus { border-color: #4fd1c5; box-shadow: 0 0 0 3px rgba(79, 209, 197, 0.25); }
+            .name-save { font-family: inherit; font-size: 15px; font-weight: 700; padding: 0 16px; color: #0b1422;
+                background: #4fd1c5; border: 0; border-radius: 10px; cursor: pointer; }
+            .name-save:active { transform: scale(0.97); }
+            .name-note { font-size: 13px; opacity: 0.7; margin: 0; }
+        `;
+        document.head.appendChild(style);
+    }
 
     private injectStyles(): void {
         if (document.getElementById('drawer-styles')) return;
@@ -397,6 +448,7 @@ export class DrawerUI {
         this.hamburgerBtn.classList.add('active');
         this.drawer.classList.add('active');
         this.overlay.classList.add('active');
+        this.showName();
         document.body.style.overflow = 'hidden';
     }
 

@@ -66,6 +66,8 @@ class PlayerSchema extends Schema {
   /** Server-only: gems part-stolen, and how many this run of stealing has taken */
   stealProgress = 0;
   stolenRun = 0;
+  /** Server-only: how far along the next gem a turbine is ripping out of this player is (0-1) */
+  turbineStrip = 0;
   /** Server-only: when this breath runs out, and when you can spit again */
   inhaleStopAt = 0;
   /** Server-only: when you've caught your breath for the next inhale */

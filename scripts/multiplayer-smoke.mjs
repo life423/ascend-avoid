@@ -753,6 +753,9 @@ try {
     // Leaving and joining
     await bob.leave();
     await waitFor(() => state().players.size === 1, 2000, 'a player who leaves disappears for everyone');
+    // Renaming yourself (from the drawer) shows up for everyone, cleaned up
+    alice.send('updateName', { name: '  Alicia <3  ' });
+    await waitFor(() => me()?.name === 'Alicia 3', 1500, 'renaming yourself shows up for everyone');
     const carol = await join('Carol');
     check(carol.roomId === alice.roomId, 'the world keeps running: a new visitor joins it');
     await alice.leave();
@@ -782,6 +785,97 @@ try {
     await erin.leave();
     await waitFor(() => botsIn(dave).length === 10, 2000, 'and another fills in when they leave');
     await dave.leave();
+
+    // Turbines, in a world of their own (placed by hand)
+    const tia = await new Client(URL).create('game_room', { name: 'Tia', testBots: 0, testFieldGems: 0, testCalm: true, testTurbines: 'manual' });
+    const tom = await new Client(URL).joinById(tia.roomId, { name: 'Tom' });
+    for (const turbineRoom of [tia, tom]) turbineRoom.onMessage('*', () => {});
+    await sleep(1800);
+    const ts = () => tia.state;
+    const tiaState = () => ts().players.get(tia.sessionId);
+    const tomState = () => ts().players.get(tom.sessionId);
+    const placeAt = (turbineRoom, who, cx, cy) => turbineRoom.send('test:moveTo', { x: cx - who().width / 2, y: cy - who().height / 2 });
+    // At (2000, 2000), the intake facing right (its mouth at 2060); for these checks the exhaust holds straight back (left)
+    tia.send('test:placeTurbine', { x: 2000, y: 2000, intake: 0, still: true });
+    placeAt(tom, tomState, 3400, 3400);
+    tia.send('test:setGems', { count: 40 });
+    await sleep(250);
+    check(ts().turbines.length === 1 && ts().turbines[0].phase === 'active', 'a turbine stands in the world');
+    const intakeWas = ts().turbines[0].intake;
+    const seenFlights = new Set();
+    let fromTia = 0;
+    const watching = setInterval(() => {
+        ts().flights.forEach((flight, id) => {
+            if (seenFlights.has(id)) return;
+            seenFlights.add(id);
+            if (flight.victim === tia.sessionId) fromTia++;
+        });
+    }, 30);
+    placeAt(tia, tiaState, 2060 + 40 + tiaState().width / 2, 2000);
+    await sleep(1500);
+    placeAt(tia, tiaState, 600, 600);
+    await sleep(150);
+    const ripped = 40 - tiaState().gems;
+    check(ripped >= 4, `its intake rips gems out of anyone up close (${ripped} in 1.5s)`);
+    check(fromTia >= ripped - 1, `each one visibly flies from that player into the turbine, the same for everyone (${fromTia} flights from Tia)`);
+    await sleep(2600);
+    clearInterval(watching);
+    const fired = [];
+    ts().gems.forEach((gem) => {
+        if (gem.launchAt > 0) fired.push(gem);
+    });
+    const reach = fired.map((gem) => Math.round(Math.hypot(gem.x - 2000, gem.y - 2000)));
+    check(fired.length >= ripped - 1 && fired.every((gem) => gem.x < 2000), `every one fires out of the exhaust, on the far side (${fired.length} fired)`);
+    check(reach.length > 0 && reach.every((d) => d > 420 && d < 820), `and lands 400-700 units away (${reach.join(', ')} from the middle)`);
+    check(ts().turbines[0].intake === intakeWas, 'the intake never turns');
+    const prize = fired[0];
+    if (prize) placeAt(tom, tomState, prize.x, prize.y);
+    await sleep(400);
+    check(tomState().gems >= 1, "the gems it fires are ordinary gems anyone can grab");
+    const gemsBefore = new Set([...ts().gems.keys()]);
+    tia.send('test:placeGem', { dx: 2400 - (tiaState().x + tiaState().width / 2), dy: 2000 - (tiaState().y + tiaState().height / 2) });
+    await sleep(300);
+    const loose = [...ts().gems.keys()].find((id) => !gemsBefore.has(id));
+    await waitFor(() => loose && !ts().gems.has(loose), 3000, 'loose gems in front of the intake get sucked in');
+    const windPush = async (gems) => {
+        tom.send('test:setGems', { count: gems });
+        await sleep(200);
+        placeAt(tom, tomState, 1940 - 90 - tomState().width / 2, 2000);
+        await sleep(150);
+        const turbineFrom = tomState().x;
+        await sleep(400);
+        return turbineFrom - tomState().x;
+    };
+    const smallPush = await windPush(0);
+    const bigPush = await windPush(400);
+    check(smallPush > 40 && smallPush > bigPush * 1.8, `the exhaust's wind pushes small creatures much harder than giants (${Math.round(smallPush)} vs ${Math.round(bigPush)} units)`);
+    await tia.leave();
+    await tom.leave();
+
+    // On their own: three turbines appear (with a warning first), spread out and away from the edge, and move on
+    const ann = await new Client(URL).create('game_room', { name: 'Ann', testBots: 0, testFieldGems: 0, testCalm: true, testTurbines: true });
+    ann.onMessage('*', () => {});
+    let warned = false;
+    const phases = setInterval(() => ann.state.turbines?.forEach((turbine) => {
+        if (turbine.phase === 'warning') warned = true;
+    }), 50);
+    await waitFor(() => ann.state.turbines?.length === 3, 8000, 'three turbines appear around the world');
+    const spots = () => ann.state.turbines.map((turbine) => ({ x: turbine.x, y: turbine.y }));
+    const first = spots();
+    const turbineApart = first.every((a, turbineI) => first.every((b, j) => turbineI === j || Math.hypot(a.x - b.x, a.y - b.y) >= 1300));
+    const turbineInside = first.every((t) => t.x >= 600 && t.y >= 600 && t.x <= ann.state.worldWidth - 600 && t.y <= ann.state.worldHeight - 600);
+    check(warned, 'a new turbine warns before it switches on');
+    check(turbineApart && turbineInside, `they're spread out and away from the edge (${first.map((t) => `${t.x},${t.y}`).join('  ')})`);
+    for (let turbineI = 0; turbineI < 3; turbineI++) {
+        ann.send('test:endTurbines');
+        await sleep(200);
+    }
+    await waitFor(() => ann.state.turbines.length === 0, 3000, 'turbines power down and go');
+    await waitFor(() => ann.state.turbines.length === 3, 9000, 'and come back');
+    const second = spots();
+    check(second.every((s) => first.every((f) => Math.hypot(s.x - f.x, s.y - f.y) > 50)), 'somewhere else');
+    clearInterval(phases);
+    await ann.leave();
 } catch (error) {
     check(false, `unexpected error: ${error.message}`);
 } finally {

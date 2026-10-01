@@ -41,7 +41,7 @@ export class DesktopChrome {
         }
 
         document.addEventListener('keydown', (e: KeyboardEvent) => {
-            if (e.repeat || e.metaKey || e.ctrlKey || e.altKey || !window.matchMedia(DESKTOP).matches) return
+            if (e.repeat || e.metaKey || e.ctrlKey || e.altKey || (e.target as HTMLElement | null)?.tagName === 'INPUT' || !window.matchMedia(DESKTOP).matches) return
             if (e.code === 'KeyF') this.setBarHidden(!document.body.classList.contains('bar-hidden'))
             else if (e.code === 'KeyH') this.toggleHelp()
         })

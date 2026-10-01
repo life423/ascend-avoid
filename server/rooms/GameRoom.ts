@@ -39,6 +39,10 @@ export class GameRoom extends Room<GameState> {
     if (!IS_PRODUCTION && options.testBombs === true) this.state.enableBombs();
     // ...and one with no bots
     if (!IS_PRODUCTION && Number.isInteger(options.testBots)) this.state.botFill = options.testBots;
+    // Test worlds have no turbines unless they ask: testTurbines true runs them as usual, "manual" places them by hand
+    if (!IS_PRODUCTION && Object.keys(options).some((key) => key.startsWith("test"))) {
+      this.state.setTurbines(options.testTurbines === true ? "auto" : options.testTurbines === "manual" ? "manual" : "off");
+    }
     // Moments worth telling everyone about (who shoved whom off the edge, who took the jackpot)
     this.state.onEvent = (type, data) => this.broadcast(type, data);
 
@@ -131,6 +135,10 @@ export class GameRoom extends Room<GameState> {
         const player = playerOf(client);
         if (player) player.facing = Number(data?.angle) || 0;
       });
+      this.onMessage("test:placeTurbine", (_client, data: any) => {
+        this.state.placeTurbine(Number(data?.x) || 0, Number(data?.y) || 0, Number(data?.intake) || 0, data?.still === true);
+      });
+      this.onMessage("test:endTurbines", () => this.state.endTurbinesNow());
       this.onMessage("test:placeBomb", (_client, data: any) => {
         // The first bomb, at (x, y), lit with fuseMs left if given
         this.state.bombs.forEach((bomb, index) => {
