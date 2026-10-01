@@ -85,7 +85,8 @@ export const WORLD = {
    * the width VIEW_AREA gives, widening with (width / newborn width) ^ VIEW_GROWTH, less than you
    * grow, so a giant still fills a good part of the screen (about a sixth of its height at 12x) */
   VIEW_ZOOM_SMALL: 0.8,
-  VIEW_GROWTH: 0.3,
+  VIEW_GROWTH: 0.15, // (much less than you grow: a giant fills its own screen)
+  VIEW_ZOOM_MAX: 1.5, // and never zoomed out past this, so a huge creature looms like a boss on everyone's screen
   OBSTACLE_COUNT: 6, // lane traffic (comets and balls cross it at other angles); open space to fight and charge in
   RESPAWN_DELAY_MS: 2000,
   SPAWN_PROTECTION_MS: 1500,

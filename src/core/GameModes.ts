@@ -824,14 +824,37 @@ function drawBreath(ctx: CanvasRenderingContext2D, x: number, y: number, size: n
     ctx.restore()
 }
 
-/** Air rushing into an inhaling creature's mouth: a fading cone with streaks flowing in */
+/**
+ * How suction looks (browsers only). A creature's suction power grows with its size,
+ * (width / newborn width) ^ POWER_GROWTH up to POWER_MAX, and everything about its inhale scales
+ * with it: more, longer, thicker, faster streaks and a brighter cone; gems it steals fly faster
+ * and glow more. Mouth and cone size already grow with the creature itself.
+ */
+const INHALE_LOOK = {
+    POWER_GROWTH: 0.5,
+    POWER_MAX: 4,
+    STREAKS: 6, // streaks in a newborn's cone...
+    STREAKS_PER_POWER: 4, // ...plus this many per point of power (about 20 for a 12x giant)
+    STREAK_SPEED: 260, // units a second a newborn's streaks rush in, times power
+    STREAK_LENGTH: 14, // plus 10 per point of power
+    GLOW: 0.22, // cone brightness, plus 0.06 per point of power
+    THEFT_FLIGHT_MS: 450, // how long a stolen gem takes to fly over, divided by the square root of the thief's power
+} as const
+
+/** How strong a creature's suction looks: 1 for a newborn, growing with size (see INHALE_LOOK) */
+function suctionPower(width: number): number {
+    return Math.min(INHALE_LOOK.POWER_MAX, Math.pow(Math.max(1, width / ARENA_RULES.PLAYER_SIZE), INHALE_LOOK.POWER_GROWTH))
+}
+
+/** Air rushing into an inhaling creature's mouth: a fading cone, its streaks denser, longer and faster the stronger its suction */
 function drawInhaleCone(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, facing: number, timestamp: number): void {
     const r = size / 2
     const reach = INHALE.REACH + size * INHALE.REACH_PER_SIZE
     const spread = (INHALE.ARC * Math.PI) / 180
+    const power = suctionPower(size)
     ctx.save()
     const glow = ctx.createRadialGradient(x, y, r, x, y, r + reach)
-    glow.addColorStop(0, 'rgba(180, 230, 255, 0.3)')
+    glow.addColorStop(0, `rgba(180, 230, 255, ${Math.min(0.5, INHALE_LOOK.GLOW + 0.06 * power)})`)
     glow.addColorStop(1, 'rgba(180, 230, 255, 0)')
     ctx.fillStyle = glow
     ctx.beginPath()
@@ -839,16 +862,21 @@ function drawInhaleCone(ctx: CanvasRenderingContext2D, x: number, y: number, siz
     ctx.arc(x, y, r, facing + spread, facing - spread, true)
     ctx.closePath()
     ctx.fill()
-    ctx.strokeStyle = 'rgba(220, 245, 255, 0.6)'
-    ctx.lineWidth = 2
+    ctx.strokeStyle = `rgba(220, 245, 255, ${Math.min(0.85, 0.5 + 0.08 * power)})`
+    ctx.lineWidth = 1.5 + 0.6 * power
     ctx.lineCap = 'round'
-    for (let i = 0; i < 7; i++) {
-        const t = (timestamp / 450 + i / 7) % 1
-        const along = r + reach * (1 - t)
+    const streaks = Math.round(INHALE_LOOK.STREAKS + INHALE_LOOK.STREAKS_PER_POWER * power)
+    const period = (reach / (INHALE_LOOK.STREAK_SPEED * power)) * 1000
+    const length = INHALE_LOOK.STREAK_LENGTH + 10 * power
+    for (let i = 0; i < streaks; i++) {
+        const t = (timestamp / period + i / streaks) % 1
+        // Faster and faster as it nears the mouth
+        const along = r + reach * (1 - t) * (1 - t * 0.35)
         const angle = facing + spread * 0.85 * Math.sin(i * 2.3)
+        ctx.globalAlpha = Math.min(1, t * 4)
         ctx.beginPath()
         ctx.moveTo(x + Math.cos(angle) * along, y + Math.sin(angle) * along)
-        ctx.lineTo(x + Math.cos(angle) * Math.max(r, along - 20), y + Math.sin(angle) * Math.max(r, along - 20))
+        ctx.lineTo(x + Math.cos(angle) * Math.max(r, along - length), y + Math.sin(angle) * Math.max(r, along - length))
         ctx.stroke()
     }
     ctx.restore()
@@ -1066,7 +1094,7 @@ export class MultiplayerMode extends GameMode {
     private theftGems = new Map<string, number>()
     /** Drained creatures shrinking away to nothing */
     private vanishes: { x: number; y: number; size: number; color: string; facing: number; at: number }[] = []
-    private theftParticles: { from: string; to: string; at: number; angle: number }[] = []
+    private theftParticles: { from: string; to: string; at: number; angle: number; flight: number; power: number }[] = []
     private pickups: { amount: number; at: number }[] = []
     private shakeUntil = 0
     /** Gems shown in the header (as Score), and the most you've held this visit (as High Score) */
@@ -1456,9 +1484,9 @@ export class MultiplayerMode extends GameMode {
      */
     private updateCamera(canvas: HTMLCanvasElement, state: any, me: any, timestamp: number): View {
         const aspect = Math.min(WORLD.MAX_VIEW_ASPECT, Math.max(WORLD.MIN_VIEW_ASPECT, canvas.width / canvas.height))
-        // The view widens as you grow, but less than you do, so a giant still fills a good part of the screen
+        // The view widens as you grow, but much less than you do and only so far, so a giant fills its own screen and looms on everyone else's
         const grown = me ? Math.max(1, me.width / ARENA_RULES.PLAYER_SIZE) : 1
-        this.zoom += (WORLD.VIEW_ZOOM_SMALL * Math.pow(grown, WORLD.VIEW_GROWTH) - this.zoom) * 0.05
+        this.zoom += (Math.min(WORLD.VIEW_ZOOM_MAX, WORLD.VIEW_ZOOM_SMALL * Math.pow(grown, WORLD.VIEW_GROWTH)) - this.zoom) * 0.05
         const area = WORLD.VIEW_AREA * this.zoom * this.zoom
         const scale = Math.max(
             canvas.width / Math.sqrt(area * aspect),
@@ -2074,7 +2102,7 @@ export class MultiplayerMode extends GameMode {
             const total = Number(thief.stolenTotal) || 0
             const had = this.theftGems.get(id) ?? total
             for (let i = 0; i < Math.min(8, total - had); i++) {
-                this.theftParticles.push({ from: thief.stealingFrom, to: id, at: now + i * 45, angle: Math.random() * Math.PI * 2 })
+                this.theftParticles.push({ from: thief.stealingFrom, to: id, at: now + i * 45, angle: Math.random() * Math.PI * 2, flight: INHALE_LOOK.THEFT_FLIGHT_MS / Math.sqrt(suctionPower(thief.width)), power: suctionPower(thief.width) })
             }
             this.theftGems.set(id, total)
             const a = this.centerOf(thief.stealingFrom, victim)
@@ -2092,9 +2120,9 @@ export class MultiplayerMode extends GameMode {
         })
         for (const id of [...this.theftGems.keys()]) if (!thieves.has(id)) this.theftGems.delete(id)
         // The stolen gems in flight: out of the victim's body, a little arc, then sucked into the mouth
-        this.theftParticles = this.theftParticles.filter((p) => now - p.at < 450)
+        this.theftParticles = this.theftParticles.filter((p) => now - p.at < p.flight)
         for (const p of this.theftParticles) {
-            const t = (now - p.at) / 450
+            const t = (now - p.at) / p.flight
             if (t < 0) continue
             const victim = state.players.get(p.from)
             const thief = state.players.get(p.to)
@@ -2110,10 +2138,10 @@ export class MultiplayerMode extends GameMode {
             const lift = Math.sin(t * Math.PI) * 18
             const x = startX + (mouthX - startX) * ease
             const y = startY + (mouthY - startY) * ease - lift
-            const g = 6.5 * (1 - t * 0.5)
+            const g = 6.5 * (0.9 + 0.1 * p.power) * (1 - t * 0.5)
             ctx.save()
             ctx.shadowColor = 'rgba(255, 209, 102, 0.9)'
-            ctx.shadowBlur = 8
+            ctx.shadowBlur = 6 + 4 * p.power
             ctx.fillStyle = '#ffd166'
             ctx.beginPath()
             ctx.moveTo(x, y - g)
