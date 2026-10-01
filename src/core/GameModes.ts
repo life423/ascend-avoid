@@ -1595,7 +1595,7 @@ export class MultiplayerMode extends GameMode {
         ctx.textAlign = 'center'
         ctx.textBaseline = 'bottom'
         ctx.fillStyle = isLocal ? '#ffffff' : '#cfd8dc'
-        const label = isLocal ? 'You' : player.name
+        const label = String(player.name ?? '')
         const labelX = drawn.x + player.width / 2
         ctx.fillText(label, labelX, drawn.y - 6)
         if (player.isBot) drawRobot(ctx, labelX - ctx.measureText(label).width / 2 - 11, drawn.y - 14, 12)
