@@ -1,4 +1,12 @@
 import { playerName, setPlayerName } from '../core/PlayerName';
+
+/** Large screens: the drawer sizes itself to its content (see fitToScreen) */
+const DESKTOP = '(min-width: 1200px)';
+const COLUMN_WIDTH = 320;
+const COLUMN_GAP = 32;
+const CONTENT_PADDING = 25;
+/** Text sizes to try, largest first */
+const TEXT_STEPS = [1, 0.94, 0.88, 0.82, 0.76, 0.7, 0.66, 0.62];
 export class DrawerUI {
     private container: HTMLElement;
     private hamburgerBtn!: HTMLButtonElement;
@@ -48,44 +56,25 @@ export class DrawerUI {
                 <div class="menu-section">
                     <h3>How to Play</h3>
                     <div class="instructions">
-                        <p>Everyone on the site shares one big arena. Grab <span class="highlight">gems</span> to grow, shove other players around, and steal their gems.</p>
+                        <p>Grab <span class="highlight">gems</span> to grow. Bigger is stronger, smaller is faster.</p>
 
-                        <h4>Moving</h4>
-                        <p>Use the <span class="highlight">joystick</span> on the left side of the screen. Put your thumb down anywhere on the left and the joystick appears right under it. Push it the way you want to go, and let go to stop. The faint joystick in the bottom-left corner shows you where to start.</p>
-                        <p>On a computer, use the <span class="highlight">arrow keys</span> or <span class="highlight">WASD</span>, or hold the mouse button and your player heads for the cursor.</p>
-
-                        <h4>Gems</h4>
-                        <p>Gems are your score. Every one you grab makes you a little bigger and heavier. Big players shove harder and see more of the arena, but they're also bigger targets, so growth is power and risk at once. Bigger creatures can swallow smaller ones, but anyone can steal gems from anyone by inhaling up close from where their mouth isn't pointing. There's no size limit, but big creatures slowly shed gems, faster the bigger they get, so becoming a giant takes real effort.</p>
-
-                        <h4>Shoving</h4>
-                        <p>Run into another player to <span class="highlight">bump</span> them: you both bounce apart, and the heavier you are, the farther they go. Bumps don't cost gems, but bumping someone off an island during an arena shift costs them plenty. The leader wears a crown.</p>
+                        <h4>Move</h4>
+                        <p><span class="highlight">Joystick</span> on phones; <span class="highlight">arrow keys</span>, WASD or the mouse on computers.</p>
 
                         <h4>Inhale</h4>
-                        <p>Hold the button to <span class="highlight">inhale</span> and pull in everything in front of your mouth, for up to 3 seconds before you need a breath (the ring around you shows how much is left, then refills). Gems are swallowed, and so are creatures clearly smaller than you, along with all their gems.</p>
-                        <p>Get right up close to anyone too big to swallow and inhale to <span class="highlight">steal</span> their gems: they stream straight into your mouth. To escape a thief, run (anyone smaller than the thief is faster) or turn and inhale back. Bigger creatures pull harder, so head-on, the stronger pull wins the tug-of-war. Small creatures turn faster, so steal from the side, where their mouth isn't pointing, and get away before they turn around.</p>
+                        <p>Hold <span class="highlight">Space</span> or the inhale button to swallow gems and smaller creatures, or steal from bigger ones up close.</p>
 
-                        <h4>Getting hit</h4>
-                        <p>Bumps just knock you around, but anyone inhaling right up against you can steal your gems, and being swallowed costs you everything. Falling off the edge of the floor during an arena shift is a real hit: you skid, drop half your gems, and blink for a moment while nothing can touch you.</p>
-                        <p>Your dropped gems take a second before you can grab them back, but anyone else can grab them right away. With fewer than 3 gems, a hit knocks you out (a dashed red outline warns you), and you're back in two seconds.</p>
+                        <h4>Shove</h4>
+                        <p>Bump players around. Knock them off the floor when the arena shifts.</p>
 
                         <h4>Turbines</h4>
-                        <p>Turbines pop up around the arena for a minute or so, then move on. The <span class="highlight">intake</span> sucks in loose gems, and rips gems right out of anyone who gets too close (giants lose them fastest). Every one shoots out of the sweeping <span class="highlight">exhaust</span> and lands across the arena for anyone to grab. The exhaust's wind blows small creatures around. Bump someone into an intake and watch their gems fly.</p>
+                        <p>The <span class="highlight">intake</span> rips gems out of anyone close; the <span class="highlight">exhaust</span> fires them across the arena.</p>
+
                         <h4>Arena shifts</h4>
-                        <p>Every few minutes the floor changes shape. You'll see the new floor first, and nobody can be hurt while everyone gets onto it. Then the rest falls away into the void.</p>
-                        <p>While the arena is small, gems rain down. Near the end a jackpot crystal drops: stand on it alone to claim 20 gems. If anyone else is touching it, nobody's claim moves.</p>
-
-                        <h4>Bots</h4>
-                        <p>Players with a robot next to their name are bots. They fill in when the arena is quiet and leave as people arrive.</p>
-
-                        <h4>Tips</h4>
-                        <ul>
-                            <li>Watch the eyes: an inhaling creature is aiming its mouth. Stay out of the way of anything bigger than you.</li>
-                            <li>When someone drops their gems, move fast, because they can't grab them back right away.</li>
-                            <li>Shoving someone off the edge during a shift is the biggest swing in the game.</li>
-                        </ul>
+                        <p>Every few minutes the floor changes shape. Get onto it before the rest drops away.</p>
 
                         <h4>Solo</h4>
-                        <p>Solo is the classic game: reach the top without getting hit, and press <span class="highlight">R</span> to restart.</p>
+                        <p>Reach the top without getting hit. <span class="highlight">R</span> restarts.</p>
                     </div>
                 </div>
             </div>
@@ -114,6 +103,11 @@ export class DrawerUI {
         // Prevent drawer from closing when clicking inside it
         this.drawer.addEventListener('click', (e: Event) => {
             e.stopPropagation();
+        });
+
+        // Resizing the window resizes an open drawer to match
+        window.addEventListener('resize', () => {
+            if (this.isOpen) this.fitToScreen();
         });
 
         // Desktop has no menu button to close it with, so the drawer has its own x
@@ -443,6 +437,41 @@ export class DrawerUI {
         document.head.appendChild(style);
     }
 
+    /**
+     * On large screens the drawer opens just wide enough to show everything without scrolling:
+     * How to Play flows into columns, one more at a time, and the text only shrinks (a step at a
+     * time) if even nearly the screen's whole width isn't enough. Phones keep the narrow drawer.
+     */
+    private fitToScreen(): void {
+        const content = this.drawer.querySelector<HTMLElement>('.drawer-content');
+        if (!content) return;
+        if (!window.matchMedia(DESKTOP).matches) {
+            this.drawer.style.width = '';
+            content.style.columnCount = '';
+            content.style.zoom = '';
+            return;
+        }
+        // Leaves a sliver of the game showing
+        const maxWidth = window.innerWidth - 48;
+        const layOut = (zoom: number, columns: number, width: number): boolean => {
+            this.drawer.style.width = `${width}px`;
+            content.style.zoom = String(zoom);
+            content.style.columnCount = String(columns);
+            return this.drawer.scrollHeight <= this.drawer.clientHeight + 1;
+        };
+        for (const zoom of TEXT_STEPS) {
+            for (let columns = 1; ; columns++) {
+                const width = Math.ceil(zoom * (columns * COLUMN_WIDTH + (columns - 1) * COLUMN_GAP + 2 * CONTENT_PADDING));
+                if (width > maxWidth) break;
+                if (layOut(zoom, columns, width)) return;
+            }
+        }
+        // A very short screen: as wide as allowed with the smallest text, and it scrolls after all
+        const zoom = TEXT_STEPS[TEXT_STEPS.length - 1] ?? 1;
+        const columns = Math.max(1, Math.floor((maxWidth / zoom - 2 * CONTENT_PADDING + COLUMN_GAP) / (COLUMN_WIDTH + COLUMN_GAP)));
+        layOut(zoom, columns, maxWidth);
+    }
+
     public toggle(): void {
         this.isOpen ? this.close() : this.open();
     }
@@ -453,6 +482,7 @@ export class DrawerUI {
         this.drawer.classList.add('active');
         this.overlay.classList.add('active');
         this.showName();
+        this.fitToScreen();
         document.body.style.overflow = 'hidden';
     }
 

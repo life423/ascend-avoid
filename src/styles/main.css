@@ -792,6 +792,23 @@ body.online-mode .touch-controls-area {
         gap: 12px;
     }
 
+    /* How to Play flows into columns (DrawerUI.fitToScreen picks how many, and how wide the drawer is) */
+    body .drawer-content {
+        column-gap: 32px;
+        column-fill: balance;
+        column-rule: 1px solid rgba(12, 199, 199, 0.12);
+    }
+
+    body .drawer-content h3,
+    body .drawer-content h4 {
+        break-after: avoid;
+    }
+
+    body .drawer-content p,
+    body .drawer-content li {
+        break-inside: avoid;
+    }
+
     /* Your name is in the bar here, so the drawer doesn't repeat it */
     body .drawer .name-section {
         display: none;
