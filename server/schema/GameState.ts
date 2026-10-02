@@ -68,6 +68,8 @@ class GameState extends Schema {
   /** The world's clock: ms since it started, as of the latest tick (browsers time traffic by it) */
   time: number;
   /** The arena shift: "normal", "grace" (the new shape is shown; nobody can be hurt) or "shift" (the rest has dropped away) */
+  /** Whether arena shifts run in this world (SHIFT.ENABLED; tests can switch them on). Off, the arena stays whole and nothing about shifts shows */
+  shiftsOn: boolean;
   shiftPhase: string;
   /** World time (ms) when this phase ends: the next shift begins, the grace period ends, or the arena returns */
   phaseEndsAt: number;
@@ -130,6 +132,7 @@ class GameState extends Schema {
     this.time = 0;
     this.shiftPhase = "normal";
     this.phaseEndsAt = SHIFT.FIRST_AFTER_MS;
+    this.shiftsOn = SHIFT.ENABLED;
     this.floor = "";
     this.jackpotOn = false;
     this.jackpotX = 0;
@@ -1011,6 +1014,8 @@ class GameState extends Schema {
 
   /** Run the arena shift: start it when it's due, move through its phases, and bring the arena back */
   private updateShift(deltaTime: number, now: number): void {
+    // Switched off: the arena stays whole, so no warnings, grace, drop, showers or jackpot
+    if (!this.shiftsOn) return;
     if (this.time >= this.phaseEndsAt) {
       if (this.shiftPhase === "normal") this.startGrace(now);
       else if (this.shiftPhase === "grace") this.startShift();
@@ -1077,6 +1082,13 @@ class GameState extends Schema {
   }
 
   /** Jump straight to a phase of the shift, ending after `msLeft` (used by the automated test) */
+  /** Switch arena shifts on in this world (tests), the first coming SHIFT.FIRST_AFTER_MS from now */
+  enableShifts(): void {
+    this.shiftsOn = true;
+    this.shiftPhase = "normal";
+    this.phaseEndsAt = this.time + SHIFT.FIRST_AFTER_MS;
+  }
+
   forcePhase(phase: string, msLeft: number, now: number): void {
     if (phase === "normal") {
       this.endShift();
@@ -1613,6 +1625,7 @@ type({ map: TurbineFlightSchema })(GameState.prototype, "flights");
 type("number")(GameState.prototype, "worldWidth");
 type("number")(GameState.prototype, "worldHeight");
 type("number")(GameState.prototype, "time");
+type("boolean")(GameState.prototype, "shiftsOn");
 type("string")(GameState.prototype, "shiftPhase");
 type("number")(GameState.prototype, "phaseEndsAt");
 type("string")(GameState.prototype, "floor");

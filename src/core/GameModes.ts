@@ -2206,6 +2206,8 @@ export class MultiplayerMode extends GameMode {
 
     /** A chip at the top: a shift coming up, its grace period, or how long until the arena returns */
     private drawShiftChip(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, state: any, timestamp: number): void {
+        // Arena shifts switched off: no countdown, no warnings
+        if (!state.shiftsOn) return
         const left = Math.max(0, Math.ceil((state.phaseEndsAt - this.worldNow(state, timestamp)) / 1000))
         let text = ''
         if (state.shiftPhase === 'grace') text = `New floor! Get on it · ${left}`
