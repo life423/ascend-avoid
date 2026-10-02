@@ -336,6 +336,8 @@ class GameState extends Schema {
     this.players.forEach((eater) => {
       if (!eater.inhaling || eater.state !== PLAYER_STATE.ALIVE) {
         if (eater.stealingFrom) this.endTheft(eater, now);
+        if (eater.robbing) eater.robbing = "";
+        eater.stealShares.clear();
         if (eater.gulping) eater.gulping = "";
         return;
       }
@@ -415,57 +417,66 @@ class GameState extends Schema {
     return prey.width * INHALE.EAT_RATIO <= eater.width;
   }
 
-  /** Whether `thief` is inhaling at `victim`: any of it inside the inhale cone, and too big to swallow (so it's robbed instead) */
-  private canSteal(thief: PlayerSchema, victim: PlayerSchema): boolean {
-    if (!thief.inhaling || thief.state !== PLAYER_STATE.ALIVE || victim.state !== PLAYER_STATE.ALIVE || victim.spawnProtected) return false;
-    if (this.canSwallow(thief, victim)) return false;
+  /**
+   * How squarely `victim` sits in `thief`'s inhale: 0 when no part of it is in the cone, up to 1
+   * dead center (or right against the mouth). The drain is shared out by this.
+   */
+  private stealWeight(thief: PlayerSchema, victim: PlayerSchema): number {
+    if (!thief.inhaling || thief.state !== PLAYER_STATE.ALIVE || victim.state !== PLAYER_STATE.ALIVE || victim.spawnProtected) return 0;
     const fx = Math.cos(thief.facing);
     const fy = Math.sin(thief.facing);
     const dx = victim.x + victim.width / 2 - (thief.x + thief.width / 2 + fx * thief.width * 0.3);
     const dy = victim.y + victim.height / 2 - (thief.y + thief.height / 2 + fy * thief.width * 0.3);
     const d = Math.hypot(dx, dy);
     const radius = victim.width / 2;
-    if (d - radius > INHALE.REACH + thief.width * INHALE.REACH_PER_SIZE) return false;
-    if (d <= radius) return true;
-    // In the cone if any of it is: its center's angle off the facing, less how wide it looks from here
+    if (d - radius > INHALE.REACH + thief.width * INHALE.REACH_PER_SIZE) return 0;
+    if (d <= radius) return 1;
+    // In the cone if any of it is: its center's angle off the facing, against how wide it looks from here
     const off = Math.acos(Math.max(-1, Math.min(1, (dx * fx + dy * fy) / d)));
-    return off <= (INHALE.ARC * Math.PI) / 180 + Math.asin(Math.min(1, radius / d));
+    const allowed = (INHALE.ARC * Math.PI) / 180 + Math.asin(Math.min(1, radius / d));
+    if (off > allowed) return 0;
+    return INHALE.STEAL_EDGE_SHARE + (1 - INHALE.STEAL_EDGE_SHARE) * (1 - off / allowed);
   }
 
   /**
-   * Gravity theft: the nearest creature in the inhale cone that's too big to swallow has its gems
-   * pulled out into the thief, INHALE.STEAL_RATE a second times the thief's width over the victim's
-   * (small creatures hold on to their gems weakly, big ones well). Two creatures inhaling each other both steal at once. Take someone's last
-   * gem and they're drained: gone until they respawn.
+   * Gravity theft: everyone in the inhale cone has gems pulled out into the thief (one small enough
+   * to swallow is pulled in bodily too). An inhale has one drain budget, shared out by how squarely
+   * each victim sits in the cone, so a big cone covers more creatures without draining each one
+   * any faster. A victim's share drains at INHALE.STEAL_RATE a second times the thief's width over
+   * theirs (small creatures hold on to their gems weakly, big ones well). Two creatures inhaling
+   * each other both steal at once. Take someone's last gem and they're drained: gone until they respawn.
    */
   private steal(thief: PlayerSchema, now: number, deltaTime: number): void {
-    let victim: PlayerSchema | null = null;
-    let nearest = Infinity;
-    const tx = thief.x + thief.width / 2;
-    const ty = thief.y + thief.height / 2;
+    const victims: { victim: PlayerSchema; weight: number }[] = [];
     this.players.forEach((other) => {
-      if (other === thief || other.gems <= 0 || !this.canSteal(thief, other)) return;
-      const d = Math.hypot(other.x + other.width / 2 - tx, other.y + other.height / 2 - ty) - other.width / 2;
-      if (d < nearest) {
-        nearest = d;
-        victim = other;
-      }
+      if (other === thief || other.gems <= 0) return;
+      const weight = this.stealWeight(thief, other);
+      if (weight > 0) victims.push({ victim: other, weight });
     });
-    const target = victim as PlayerSchema | null;
-    const from = target ? target.sessionId : "";
-    if (from !== thief.stealingFrom) this.endTheft(thief, now, from);
-    if (!target) return;
-    // Small creatures hold on to their gems weakly, big ones well
-    const grip = Math.min(INHALE.STEAL_MAX, Math.max(INHALE.STEAL_MIN, thief.width / target.width));
-    thief.stealProgress += deltaTime * INHALE.STEAL_RATE * grip;
-    while (thief.stealProgress >= 1 && target.gems > 0) {
-      thief.stealProgress -= 1;
-      target.setGems(target.gems - 1, this.worldWidth, this.worldHeight);
-      thief.setGems(thief.gems + 1, this.worldWidth, this.worldHeight);
-      thief.stolenRun += 1;
-      thief.stolenTotal += 1;
+    victims.sort((a, b) => b.weight - a.weight);
+    const primary = victims[0]?.victim.sessionId ?? "";
+    if (primary !== thief.stealingFrom) this.endTheft(thief, now, primary);
+    const list = victims.map((entry) => entry.victim.sessionId).join(",");
+    if (list !== thief.robbing) thief.robbing = list;
+    for (const id of [...thief.stealShares.keys()]) {
+      if (!victims.some((entry) => entry.victim.sessionId === id)) thief.stealShares.delete(id);
     }
-    if (target.gems <= 0) this.drain(target, now, thief);
+    const total = victims.reduce((sum, entry) => sum + entry.weight, 0);
+    for (const { victim, weight } of victims) {
+      // Small creatures hold on to their gems weakly, big ones well
+      const grip = Math.min(INHALE.STEAL_MAX, Math.max(INHALE.STEAL_MIN, thief.width / victim.width));
+      let progress = (thief.stealShares.get(victim.sessionId) ?? 0) + deltaTime * INHALE.STEAL_RATE * grip * (weight / total);
+      while (progress >= 1 && victim.gems > 0) {
+        progress -= 1;
+        victim.setGems(victim.gems - 1, this.worldWidth, this.worldHeight);
+        thief.setGems(thief.gems + 1, this.worldWidth, this.worldHeight);
+        thief.stolenTotal += 1;
+        victim.robbedTotal += 1;
+        if (victim.sessionId === thief.stealingFrom) thief.stolenRun += 1;
+      }
+      thief.stealShares.set(victim.sessionId, progress);
+      if (victim.gems <= 0 && victim.state === PLAYER_STATE.ALIVE) this.drain(victim, now, thief);
+    }
   }
 
   /** Lost their last gem (robbed, or fed to a turbine): they shrink away to nothing and are out until they respawn */
@@ -484,9 +495,12 @@ class GameState extends Schema {
       this.credit(victim, "turbine", now);
       return;
     }
-    const gems = thief.stolenRun;
-    thief.stolenRun = 0;
-    this.endTheft(thief, now);
+    const primary = thief.stealingFrom === victim.sessionId;
+    const gems = primary ? thief.stolenRun : 0;
+    if (primary) {
+      thief.stolenRun = 0;
+      this.endTheft(thief, now);
+    }
     this.credit(victim, "drained", now, thief.sessionId, { gems });
   }
 
@@ -678,7 +692,7 @@ class GameState extends Schema {
     // and often inhales back as it goes; a smaller robber is faster, so it turns and fights
     let thief: PlayerSchema | null = null;
     this.players.forEach((other) => {
-      if (other.stealingFrom === bot.sessionId) thief = other;
+      if (other.robbing.split(",").includes(bot.sessionId)) thief = other;
     });
     const robber = thief as PlayerSchema | null;
     if (robber) {

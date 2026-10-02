@@ -219,10 +219,10 @@ try {
 
     alice.send('test:setGems', { count: 100 });
     await waitFor(() => me().gems >= 99, 1000, 'Alice now holds 100 gems');
-    check(me().width >= 139 && me().width <= 140.5, `gems make you much bigger (${me().width} units wide at 100 gems, 7x a newborn)`);
+    check(me().width >= 142 && me().width <= 143.5, `gems make you much bigger (${me().width.toFixed(1)} units wide at 100 gems, 7x a newborn)`);
     alice.send('test:setGems', { count: 750 });
     await sleep(200);
-    check(me().gems >= 745 && me().width >= 340, `there's no size cap: 750 gems makes a giant 17x a newborn's width (${me().width} units)`);
+    check(me().gems >= 745 && me().width >= 380, `there's no size cap: 750 gems makes a giant 19x a newborn's width (${me().width.toFixed(1)} units)`);
     alice.send('test:setGems', { count: 100 });
     await sleep(200);
     alice.send('steer', { x: sideways() === 'right' ? 1 : -1, y: 0 });
@@ -406,8 +406,8 @@ try {
     check(heldNotEaten, 'a much smaller creature is pulled to your mouth and held there, not eaten at once');
     check(bobState().state !== 'alive' && me().gems >= aliceBeforeGulp + 4, `held there a moment, it's swallowed whole (Alice ${aliceBeforeGulp} then ${me().gems}, Bob ${bobState().state})`);
     await waitFor(() => bobState().state === 'alive' && !bobState().spawnProtected, 6000, 'Bob is back');
-    // ...but running straight away breaks free
-    bob.send('test:setGems', { count: 5 });
+    // ...but running straight away breaks free (robbed on the way out, but not swallowed)
+    bob.send('test:setGems', { count: 30 });
     await sleep(200);
     alice.send('test:moveTo', { x: 700, y: 1750 });
     alice.send('test:face', { angle: 0 });
@@ -420,6 +420,47 @@ try {
     alice.send('exhale');
     bob.send('steer', { x: 0, y: 0 });
     check(bobState().state === 'alive', 'but running straight away breaks free before it goes down');
+    await sleep(1300);
+    // A creature small enough to swallow is still robbed anywhere in your inhale, not only once it's at your mouth
+    alice.send('test:setGems', { count: 100 });
+    bob.send('test:setGems', { count: 20 });
+    await sleep(200);
+    alice.send('test:moveTo', { x: 700, y: 1750 });
+    alice.send('test:face', { angle: 0 });
+    await sleep(150);
+    bob.send('test:moveTo', { x: 700 + me().width + 200, y: 1750 + (me().height - bobState().height) / 2 });
+    await sleep(1300);
+    const smallHad = bobState().gems;
+    alice.send('inhale');
+    await sleep(1000);
+    alice.send('exhale');
+    await sleep(150);
+    check(smallHad - bobState().gems >= 4 && bobState().state === 'alive', `a smaller creature anywhere in your inhale is robbed, not just one at your mouth (${smallHad - bobState().gems} stolen)`);
+    await sleep(1300);
+    // An inhale's drain is shared: two creatures in it lose about one creature's worth between them
+    const cara = await join('Cara');
+    const caraState = () => state().players.get(cara.sessionId);
+    await sleep(1800); // (newcomers are protected for a moment)
+    alice.send('test:setGems', { count: 40 });
+    bob.send('test:setGems', { count: 40 });
+    cara.send('test:setGems', { count: 40 });
+    await sleep(250);
+    alice.send('test:moveTo', { x: 700, y: 1750 });
+    alice.send('test:face', { angle: 0 });
+    await sleep(150);
+    bob.send('test:moveTo', { x: 700 + me().width + 30, y: 1750 - 60 });
+    cara.send('test:moveTo', { x: 700 + me().width + 30, y: 1750 + me().height - caraState().height + 60 });
+    await sleep(300);
+    const bobShareFrom = bobState().gems;
+    const caraShareFrom = caraState().gems;
+    alice.send('inhale');
+    await sleep(1500);
+    alice.send('exhale');
+    await sleep(150);
+    const bobLost = bobShareFrom - bobState().gems;
+    const caraLost = caraShareFrom - caraState().gems;
+    check(bobLost >= 2 && caraLost >= 2 && bobLost + caraLost <= 12, `an inhale robs everyone in it, sharing one drain between them (Bob lost ${bobLost}, Cara ${caraLost})`);
+    await cara.leave();
     await sleep(1300);
 
     // Gravity theft: inhale up close at anyone too big to swallow and their gems stream into you

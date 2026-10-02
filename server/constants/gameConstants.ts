@@ -106,7 +106,7 @@ export const GEMS = {
    * like Agar.io. 45 wide at 10 gems, 100 at 100 (5x a newborn), 240 at 750 (12x), 300 at 1,200 (15x).
    * Shedding (DECAY_*) slows growth down instead of stopping it.
    */
-  SIZE_PER_ROOT: 12, // width = PLAYER_SIZE + this x the square root of your gems: 7x a newborn at 100 gems, 12x at 400
+  BASE_MASS: 2, // width = PLAYER_SIZE x sqrt(1 + gems / this) (a newborn's body counts as this many gems): every gem grows you, gently at first (24.5 wide with 1 gem), 7x a newborn at 100, 14x at 400
   SPRAY_SHARE: 0.5, // a hit sprays out this share of your gems...
   SURVIVE_AT: 3, // ...but with fewer than this, a hit knocks you out (your last gems burst out)
   SPRAY_PIECES: 24, // at most this many gems fly out; big piles make bigger gems
@@ -260,6 +260,7 @@ export const INHALE = {
   STEAL_RATE: 6, // gems a second pulled out of a creature too big to swallow when you're the same size...
   STEAL_MIN: 0.3, // ...times your width over theirs, kept between these: small creatures hold on to their gems
   STEAL_MAX: 2, // weakly and big ones well, so a giant drains you fast and you can only pick at a giant
+  STEAL_EDGE_SHARE: 0.25, // everyone in an inhale is robbed, sharing its drain by how squarely they sit in the cone: dead center counts 1, the very edge this
   STOLE_NOTICE: 5, // a theft this big gets a banner and a line in the feed
 } as const;
 
@@ -359,7 +360,7 @@ export const TURBINE = {
 } as const;
 
 export const ARENA_RULES = {
-  PLAYER_SIZE: 20, // a new player's size; gems make you bigger (GEMS.SIZE_PER_ROOT)
+  PLAYER_SIZE: 20, // a new player's size; gems make you bigger (GEMS.BASE_MASS)
   HOP: 60, // one tap = one hop, while you're small...
   HOP_BEYOND_SIZE: 12, // ...and once you're big, your size plus this, so a hop always clears you
   MOVE_SPEED: 320, // top speed (units a second) for a newborn...

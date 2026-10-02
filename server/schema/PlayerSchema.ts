@@ -9,7 +9,7 @@ const { ARENA_RULES, BOTS, GEMS, INHALE, PLAYER_STATE, PUSH, WORLD } = GAME_CONS
 
 /** A creature's size: small to start, growing with the square root of its gems, with no ceiling */
 function sizeFor(gems: number): number {
-  const size = ARENA_RULES.PLAYER_SIZE + GEMS.SIZE_PER_ROOT * Math.sqrt(gems);
+  const size = ARENA_RULES.PLAYER_SIZE * Math.sqrt(1 + gems / GEMS.BASE_MASS);
   return Math.round(size * 2) / 2;
 }
 
@@ -72,6 +72,12 @@ class PlayerSchema extends Schema {
   gulpEndsAt: number;
   /** Every gem it has ever stolen (browsers draw each one flying over, even when gems go both ways at once) */
   stolenTotal: number;
+  /** Everyone this creature is robbing right now, comma-separated (the one squarest in its inhale first, which is also stealingFrom) */
+  robbing: string;
+  /** Every gem ever stolen from this creature (browsers draw each one flying out of it to whoever took it) */
+  robbedTotal: number;
+  /** Server-only: how far along the next gem from each victim is (see GameState.steal) */
+  stealShares = new Map<string, number>();
   /** Server-only: gems part-stolen, and how many this run of stealing has taken */
   stealProgress = 0;
   stolenRun = 0;
@@ -95,6 +101,8 @@ class PlayerSchema extends Schema {
     this.gulping = "";
     this.gulpEndsAt = 0;
     this.stolenTotal = 0;
+    this.robbing = "";
+    this.robbedTotal = 0;
     this.sessionId = sessionId;
     this.playerIndex = playerIndex;
     this.name = `Player ${playerIndex + 1}`;
@@ -413,6 +421,8 @@ type("string")(PlayerSchema.prototype, "stealingFrom");
 type("string")(PlayerSchema.prototype, "gulping");
 type("number")(PlayerSchema.prototype, "gulpEndsAt");
 type("number")(PlayerSchema.prototype, "stolenTotal");
+type("string")(PlayerSchema.prototype, "robbing");
+type("number")(PlayerSchema.prototype, "robbedTotal");
 type("boolean")(PlayerSchema.prototype, "isBot");
 
 export { PlayerSchema };

@@ -1065,6 +1065,8 @@ export class MultiplayerMode extends GameMode {
     private zoom: number = WORLD.VIEW_ZOOM_SMALL
     /** Each player's drawn size, springing toward their real size so growing and shrinking pop */
     private drawnSizes = new Map<string, { size: number; speed: number }>()
+    /** Each creature's growth pop: when it last gained a gem and how big the pop was (see drawPlayer) */
+    private gemPops = new Map<string, { at: number; amount: number }>()
     /** When your player was knocked out, for the "back in" countdown */
     private knockedOutAt: number | null = null
     /** The last time someone got you (and how), for the knocked-out screen: "Swallowed by Drew" */
@@ -1482,6 +1484,9 @@ export class MultiplayerMode extends GameMode {
         for (const id of this.drawnSizes.keys()) {
             if (!present.has(id)) this.drawnSizes.delete(id)
         }
+        for (const id of this.gemPops.keys()) {
+            if (!present.has(id)) this.gemPops.delete(id)
+        }
 
         this.drawTheft(ctx, state, timestamp)
         this.drawTurbineFlights(ctx, state, timestamp)
@@ -1645,7 +1650,10 @@ export class MultiplayerMode extends GameMode {
         }
         grow.speed = (grow.speed + (player.width - grow.size) * 0.3) * 0.6
         grow.size += grow.speed
-        const size = Math.max(4, grow.size)
+        // ...plus a little pop for every gem it gains (settling over 130ms), however big it already is
+        const gemPop = this.gemPops.get(sessionId)
+        const pop = gemPop ? 1 + gemPop.amount * Math.max(0, 1 - (timestamp - gemPop.at) / 130) : 1
+        const size = Math.max(4, grow.size) * pop
         const left = drawn.x + (player.width - size) / 2
         const top = drawn.y + (player.height - size) / 2
         const centerX = drawn.x + player.width / 2
@@ -1828,7 +1836,7 @@ export class MultiplayerMode extends GameMode {
             const title = how === 'stole' ? `You stole ${Number(data?.gems) || 0} gems from ${name}!` : how === 'ate' ? `You swallowed ${name}!` : how === 'drained' ? `You drained ${name}!` : how === 'turbine' ? `You fed ${name} to a turbine!` : how === 'bomb' ? `You blew up ${name}!` : `You wrecked ${name}!`
             const parts =
                 how === 'stole' ? []
-                : how === 'ate' || how === 'drained' ? [`+${Number(data?.gems) || 0} gems`]
+                : how === 'ate' || how === 'drained' ? (Number(data?.gems) > 0 ? [`+${Number(data?.gems)} gems`] : [])
                 : how === 'bomb' ? [data?.out ? 'knocked out' : `${Number(data?.gems) || 0} gems knocked loose`]
                 : [where, data?.out ? 'knocked out' : '']
             this.banner = { title, sub: parts.filter(Boolean).join(' · ').toUpperCase(), at: performance.now() }
@@ -2125,33 +2133,43 @@ export class MultiplayerMode extends GameMode {
 
     private drawTheft(ctx: CanvasRenderingContext2D, state: any, timestamp: number): void {
         const now = performance.now()
-        const thieves = new Set<string>()
+        // Who is robbing whom (a thief can rob several at once): a faint dashed tether from each victim to each thief
+        const robbers = new Map<string, string[]>()
         state.players.forEach((thief: any, id: string) => {
-            if (!thief.stealingFrom) return
-            const victim = state.players.get(thief.stealingFrom)
-            if (!victim) return
-            thieves.add(id)
-            // Each gem the thief just took pops out of the victim and heads for the thief (counted per thief, so it works both ways at once)
-            const total = Number(thief.stolenTotal) || 0
-            const had = this.theftGems.get(id) ?? total
-            for (let i = 0; i < Math.min(8, total - had); i++) {
-                this.theftParticles.push({ from: thief.stealingFrom, to: id, at: now + i * 45, angle: Math.random() * Math.PI * 2, flight: INHALE_LOOK.THEFT_FLIGHT_MS / Math.sqrt(suctionPower(thief.width)), power: suctionPower(thief.width) })
+            for (const victimId of String(thief.robbing ?? '').split(',')) {
+                const victim = victimId ? state.players.get(victimId) : null
+                if (!victim) continue
+                const list = robbers.get(victimId) ?? []
+                list.push(id)
+                robbers.set(victimId, list)
+                const a = this.centerOf(victimId, victim)
+                const b = this.centerOf(id, thief)
+                ctx.save()
+                ctx.strokeStyle = 'rgba(255, 209, 102, 0.25)'
+                ctx.lineWidth = 2
+                ctx.setLineDash([4, 8])
+                ctx.lineDashOffset = -timestamp / 20
+                ctx.beginPath()
+                ctx.moveTo(a.x, a.y)
+                ctx.lineTo(b.x, b.y)
+                ctx.stroke()
+                ctx.restore()
             }
-            this.theftGems.set(id, total)
-            const a = this.centerOf(thief.stealingFrom, victim)
-            const b = this.centerOf(id, thief)
-            ctx.save()
-            ctx.strokeStyle = 'rgba(255, 209, 102, 0.25)'
-            ctx.lineWidth = 2
-            ctx.setLineDash([4, 8])
-            ctx.lineDashOffset = -timestamp / 20
-            ctx.beginPath()
-            ctx.moveTo(a.x, a.y)
-            ctx.lineTo(b.x, b.y)
-            ctx.stroke()
-            ctx.restore()
         })
-        for (const id of [...this.theftGems.keys()]) if (!thieves.has(id)) this.theftGems.delete(id)
+        // Each gem a victim just lost pops out of it and heads for one of the thieves robbing it
+        state.players.forEach((victim: any, victimId: string) => {
+            const total = Number(victim.robbedTotal) || 0
+            const had = this.theftGems.get(victimId) ?? total
+            this.theftGems.set(victimId, total)
+            const thieves = robbers.get(victimId)
+            if (!thieves || total <= had) return
+            for (let i = 0; i < Math.min(8, total - had); i++) {
+                const to = thieves[i % thieves.length] as string
+                const power = suctionPower(state.players.get(to)?.width ?? ARENA_RULES.PLAYER_SIZE)
+                this.theftParticles.push({ from: victimId, to, at: now + i * 45, angle: Math.random() * Math.PI * 2, flight: INHALE_LOOK.THEFT_FLIGHT_MS / Math.sqrt(power), power })
+            }
+        })
+        for (const id of [...this.theftGems.keys()]) if (!state.players.has(id)) this.theftGems.delete(id)
         // The stolen gems in flight: out of the victim's body, a little arc, then sucked into the mouth
         this.theftParticles = this.theftParticles.filter((p) => now - p.at < p.flight)
         for (const p of this.theftParticles) {
@@ -2249,6 +2267,13 @@ export class MultiplayerMode extends GameMode {
                 } else if (id === localId && player.gems < before.gems && this.beingRobbed(state, id)) {
                     // Gems pulled out of you: a "-1" for each one, one after another
                     for (let i = 0; i < before.gems - player.gems; i++) this.pickups.push({ amount: -1, at: timestamp + i * 70 })
+                }
+                // Every gem shows: the creature pops a little as each one comes in
+                if (alive && player.gems > before.gems) {
+                    // 2.5% a gem, adding to whatever pop is still settling, up to 5% (so a fast drain swells rather than vibrates)
+                    const last = this.gemPops.get(id)
+                    const left = last ? last.amount * Math.max(0, 1 - (timestamp - last.at) / 130) : 0
+                    this.gemPops.set(id, { at: timestamp, amount: Math.min(0.05, left + 0.025 * (player.gems - before.gems)) })
                 }
                 if (player.sliding && !before.sliding) {
                     // Shoved: a small white ring, and a nudge of your screen if it's you
@@ -2426,7 +2451,7 @@ export class MultiplayerMode extends GameMode {
     private beingRobbed(state: any, id: string): boolean {
         let robbed = false
         state.players.forEach((other: any) => {
-            if (other.stealingFrom === id) robbed = true
+            if (String(other.robbing ?? '').split(',').includes(id)) robbed = true
         })
         return robbed
     }
