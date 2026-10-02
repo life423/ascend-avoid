@@ -1090,9 +1090,9 @@ export class MultiplayerMode extends GameMode {
     /** How fast your creature is turning (radians a second; see turnStep) */
     private localSpin = 0
     /** Your breath, tracked from when the server starts and stops your inhale (see breathOf) */
-    private breathStartedAt = 0
-    private breathEndedAt = -Infinity
-    private wasInhaling = false
+    /** Your breath (0-1), worked out like the server does: drains while you inhale, refills from wherever it is */
+    private stamina = 1
+    private staminaAt = 0
     private breath: Breath = { phase: 'ready' }
     /** Gem bursts and hard hits to draw, the banner for hits you cause, and the shake they bring */
     private gemBursts: { x: number; y: number; count: number; at: number }[] = []
@@ -1380,13 +1380,13 @@ export class MultiplayerMode extends GameMode {
         this.predicted = { x: box.x, y: box.y }
     }
 
-    /** Where your breath is: draining for INHALE.MAX_MS while you inhale, then refilling for INHALE.RECOVER_MS */
+    /** Where your breath is: draining over INHALE.MAX_MS while you inhale, refilling over INHALE.REFILL_MS from wherever it is */
     private breathOf(inhaling: boolean, now: number): Breath {
-        if (inhaling && !this.wasInhaling) this.breathStartedAt = now
-        if (!inhaling && this.wasInhaling) this.breathEndedAt = now
-        this.wasInhaling = inhaling
-        if (inhaling) return { phase: 'inhaling', left: Math.max(0, 1 - (now - this.breathStartedAt) / INHALE.MAX_MS) }
-        if (now - this.breathEndedAt < INHALE.RECOVER_MS) return { phase: 'recovering', back: (now - this.breathEndedAt) / INHALE.RECOVER_MS }
+        const elapsed = Math.max(0, now - this.staminaAt)
+        this.staminaAt = now
+        this.stamina = Math.min(1, Math.max(0, this.stamina + (inhaling ? -elapsed / INHALE.MAX_MS : elapsed / INHALE.REFILL_MS)))
+        if (inhaling) return { phase: 'inhaling', left: this.stamina }
+        if (this.stamina < 1) return { phase: 'recovering', back: this.stamina }
         return { phase: 'ready' }
     }
 

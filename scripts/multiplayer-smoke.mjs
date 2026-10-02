@@ -459,7 +459,7 @@ try {
     await sleep(150);
     const bobLost = bobShareFrom - bobState().gems;
     const caraLost = caraShareFrom - caraState().gems;
-    check(bobLost >= 2 && caraLost >= 2 && bobLost + caraLost <= 12, `an inhale robs everyone in it, sharing one drain between them (Bob lost ${bobLost}, Cara ${caraLost})`);
+    check(bobLost >= 2 && caraLost >= 2 && bobLost + caraLost <= 15, `an inhale robs everyone in it, sharing its drain between them (Bob lost ${bobLost}, Cara ${caraLost})`);
     await cara.leave();
     await sleep(1300);
 
@@ -483,16 +483,27 @@ try {
     await sleep(150);
     const stolen = bobBeforeTheft - bobState().gems;
     check(streaming && stolen >= 4 && me().gems - aliceBeforeTheft >= 4, `inhaling up close steals gems from anyone in front of your mouth (${stolen} stolen)`);
-    // A breath lasts a moment, and you need a moment to catch it
+    // Breath drains as you inhale and refills from wherever it is: a short puff costs a short wait...
     alice.send('inhale');
     await sleep(200);
-    const tooSoon = me().inhaling;
-    await sleep(1000);
-    alice.send('inhale');
-    await sleep(200);
-    check(!tooSoon && me().inhaling, 'you need a moment to catch your breath between inhales');
+    const againAtOnce = me().inhaling;
     alice.send('exhale');
-    await sleep(1100);
+    await sleep(150);
+    // ...and an empty breath needs a moment before the next inhale
+    alice.send('inhale');
+    await waitFor(() => me().inhaling, 1000, 'inhaling again');
+    await waitFor(() => !me().inhaling, 4000, 'a breath runs out');
+    alice.send('exhale');
+    alice.send('inhale');
+    await sleep(100);
+    const tooSoon = me().inhaling;
+    alice.send('exhale');
+    await sleep(400);
+    alice.send('inhale');
+    await sleep(150);
+    check(againAtOnce && !tooSoon && me().inhaling, `breath refills from wherever it is: a short puff costs a short wait, an empty breath a longer one (${againAtOnce}, ${tooSoon}, ${me().inhaling})`);
+    alice.send('exhale');
+    await sleep(2100);
     // Head-on, both inhaling each other: both steal at once (gems stream both ways), and neither body is pulled
     alice.send('test:setGems', { count: 50 });
     bob.send('test:setGems', { count: 30 });
@@ -838,7 +849,7 @@ try {
     await sleep(150);
     placeCenter(alice, me(), tileCenter(voidTile));
     await waitFor(() => me().recovering, 1000, 'stepping over the edge counts as a hit');
-    check(me().gems <= 6, `half your gems burst out (${me().gems} left)`);
+    await waitFor(() => me().gems <= 6, 1000, 'half your gems burst out');
     check(onFloor(me()), 'and you land back on the floor');
     await waitFor(() => !me().recovering, 2000, 'Alice recovers');
     alice.send('test:setGems', { count: 0 });

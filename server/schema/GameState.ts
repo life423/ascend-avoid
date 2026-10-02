@@ -337,7 +337,6 @@ class GameState extends Schema {
       if (!eater.inhaling || eater.state !== PLAYER_STATE.ALIVE) {
         if (eater.stealingFrom) this.endTheft(eater, now);
         if (eater.robbing) eater.robbing = "";
-        eater.stealShares.clear();
         if (eater.gulping) eater.gulping = "";
         return;
       }
@@ -466,9 +465,9 @@ class GameState extends Schema {
 
   /**
    * Gravity theft: everyone in the inhale cone has gems pulled out into the thief (one small enough
-   * to swallow is pulled in bodily too). An inhale has one drain budget, shared out by how squarely
-   * each victim sits in the cone, so a big cone covers more creatures without draining each one
-   * any faster. A victim's share drains at INHALE.STEAL_RATE a second times the thief's width over
+   * to swallow is pulled in bodily too). An inhale's drain is shared out by how squarely each victim
+   * sits in the cone, and grows only with the square root of how many it catches, so a big cone
+   * covers more creatures without draining each one as fast. A victim's share drains at INHALE.STEAL_RATE a second times the thief's width over
    * theirs (small creatures hold on to their gems weakly, big ones well). Two creatures inhaling
    * each other both steal at once. Take someone's last gem and they're drained: gone until they respawn.
    */
@@ -484,14 +483,18 @@ class GameState extends Schema {
     if (primary !== thief.stealingFrom) this.endTheft(thief, now, primary);
     const list = victims.map((entry) => entry.victim.sessionId).join(",");
     if (list !== thief.robbing) thief.robbing = list;
+    // Progress toward the next gem is kept between inhales, and while someone slips out of the cone for a moment
     for (const id of [...thief.stealShares.keys()]) {
-      if (!victims.some((entry) => entry.victim.sessionId === id)) thief.stealShares.delete(id);
+      const known = this.players.get(id);
+      if (!known || known.state !== PLAYER_STATE.ALIVE) thief.stealShares.delete(id);
     }
     const total = victims.reduce((sum, entry) => sum + entry.weight, 0);
+    // Catching several at once pays more than one, though far less than one each
+    const budget = Math.sqrt(victims.length);
     for (const { victim, weight } of victims) {
       // Small creatures hold on to their gems weakly, big ones well
       const grip = Math.min(INHALE.STEAL_MAX, Math.max(INHALE.STEAL_MIN, thief.width / victim.width));
-      let progress = (thief.stealShares.get(victim.sessionId) ?? 0) + deltaTime * INHALE.STEAL_RATE * grip * (weight / total) * this.stealStrength(thief, victim);
+      let progress = (thief.stealShares.get(victim.sessionId) ?? 0) + deltaTime * INHALE.STEAL_RATE * grip * budget * (weight / total) * this.stealStrength(thief, victim);
       while (progress >= 1 && victim.gems > 0) {
         progress -= 1;
         victim.setGems(victim.gems - 1, this.worldWidth, this.worldHeight);

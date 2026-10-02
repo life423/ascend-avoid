@@ -87,8 +87,9 @@ class PlayerSchema extends Schema {
   turbineStrip = 0;
   /** Server-only: when this breath runs out, and when you can spit again */
   inhaleStopAt = 0;
-  /** Server-only: when you've caught your breath for the next inhale */
-  inhaleReadyAt = 0;
+  /** Server-only: how much breath is left (0-1) as of staminaAt: it drains while inhaling and refills from wherever it is */
+  stamina = 1;
+  staminaAt = 0;
   spitReadyAt = 0;
   /** Server-only: where an inhale is aimed (the creature turns to face it) */
   aimX = 0;
@@ -315,18 +316,29 @@ class PlayerSchema extends Schema {
 
   /** Start inhaling (for up to `forMs`, INHALE.MAX_MS for players): you move as usual, and your mouth turns toward your aim */
   startInhale(now: number, forMs = 3000): void {
-    if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering || now < this.inhaleReadyAt) return;
+    if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering) return;
+    this.breathe(now);
+    if (this.stamina < INHALE.MIN_BREATH) return;
     this.inhaling = true;
-    this.inhaleStopAt = now + forMs;
+    // Until you let go, or the breath you have left runs out
+    this.inhaleStopAt = now + Math.min(forMs, this.stamina * INHALE.MAX_MS);
     this.aimX = 0;
     this.aimY = 0;
   }
 
-  /** Stop inhaling: you need a moment (INHALE.RECOVER_MS) to catch your breath before the next one */
+  /** Stop inhaling: your breath starts refilling from what's left */
   stopInhale(now = Date.now()): void {
     if (!this.inhaling) return;
+    this.breathe(now);
     this.inhaling = false;
-    this.inhaleReadyAt = now + INHALE.RECOVER_MS;
+  }
+
+  /** Bring the breath up to date: draining while inhaling, refilling otherwise (INHALE.MAX_MS, INHALE.REFILL_MS) */
+  private breathe(now: number): void {
+    const elapsed = Math.max(0, now - this.staminaAt);
+    this.staminaAt = now;
+    const change = this.inhaling ? -elapsed / INHALE.MAX_MS : elapsed / INHALE.REFILL_MS;
+    this.stamina = Math.min(1, Math.max(0, this.stamina + change));
   }
 
   /** Where the player is steering */
