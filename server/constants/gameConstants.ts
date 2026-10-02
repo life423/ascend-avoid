@@ -151,6 +151,7 @@ export const BOTS = {
   SAFETY_MARGIN: 10, // ...and keeping this far clear of it
   MISTAKE_CHANCE: 0.07, // how often a bot hops at random instead (varies by bot, up to 1.5x this)
   MAX_AGGRESSION: 0.35, // how keen the keenest bot is to shove whoever is next to it
+  HUNT_RANGE: 700, // bots go after creatures they can rob or swallow within about this far (more for bolder bots)...
   GEM_SIGHT: 1000, // bots go for gems within this distance...
   FLEE_RATIO: 1.5, // bots run from anyone this many times their size who comes within FLEE_RANGE
   FLEE_RANGE: 420, // (a giant's inhale reaches about 400)
