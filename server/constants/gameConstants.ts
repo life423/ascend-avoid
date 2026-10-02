@@ -248,8 +248,8 @@ export const SUCTION = {
  * swallowed whole once you've held it at your mouth for GULP_MS. The same button for everyone.
  */
 export const INHALE = {
-  REACH: 100, // plus REACH_PER_SIZE times your width: 150 for a newborn, 350 at 5x, 700 at 12x (big creatures are slow, but suck in from far away)
-  REACH_PER_SIZE: 2.5,
+  REACH: 80, // plus REACH_PER_SIZE times your width: 120 for a newborn, about 365 at 100 gems, 650 at 400 (the cone on screen is exactly this long)
+  REACH_PER_SIZE: 2,
   ARC: 35, // degrees either side of where you face
   PULL_GEMS: 520, // units a second
   PULL_BOMBS: 420,
@@ -266,7 +266,7 @@ export const INHALE = {
   STEAL_MIN: 0.3, // ...times your width over theirs, kept between these: small creatures hold on to their gems
   STEAL_MAX: 2, // weakly and big ones well, so a giant drains you fast and you can only pick at a giant
   STEAL_EDGE_SHARE: 0.25, // everyone in an inhale is robbed, sharing its drain by how squarely they sit in the cone: dead center counts 1, the very edge this
-  STEAL_FALLOFF: 2, // the cone reaches far, but bites near the mouth: drain falls as (1 - distance / reach) ^ this
+  STEAL_FALLOFF: 1, // drain fades evenly from the mouth to the tip of the cone, just as the cone fades on screen
   STEAL_ESCAPE: 0.75, // getting away cuts the drain by up to this much...
   STEAL_ESCAPE_AWAY: 0.6, // ...counting speed straight away at this share, and speed across the cone in full (strafing escapes best)...
   STEAL_POINT_BLANK: 0.25, // ...but less and less within this share of the reach: right at the mouth there's no getting away

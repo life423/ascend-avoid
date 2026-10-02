@@ -414,7 +414,8 @@ class GameState extends Schema {
 
   /** Whether `eater` is big enough to swallow `prey` whole: INHALE.EAT_RATIO times as wide */
   private canSwallow(eater: PlayerSchema, prey: PlayerSchema): boolean {
-    return prey.width * INHALE.EAT_RATIO <= eater.width;
+    // ...or it has no gems left to hold it together: then anyone can suck it up
+    return prey.gems <= 0 || prey.width * INHALE.EAT_RATIO <= eater.width;
   }
 
   /**

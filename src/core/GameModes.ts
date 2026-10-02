@@ -1765,13 +1765,14 @@ export class MultiplayerMode extends GameMode {
             ctx.arc(
                 x + (position.x + player.width / 2) * scale,
                 y + (position.y + player.height / 2) * scale,
-                isLocal ? 3.5 : 2.5,
+                // As big as they really are, scaled down (never too small to see)
+                Math.max(isLocal ? 2.5 : 1.8, (player.width / 2) * scale),
                 0,
                 Math.PI * 2
             )
             ctx.fill()
             if (sessionId === leaderId) {
-                drawCrown(ctx, x + (position.x + player.width / 2) * scale, y + (position.y + player.height / 2) * scale - 4, 10)
+                drawCrown(ctx, x + (position.x + player.width / 2) * scale, y + (position.y + player.height / 2) * scale - Math.max(4, (player.width / 2) * scale + 2), 10)
             }
         })
         state.turbines?.forEach((turbine: any) => {

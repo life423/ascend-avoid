@@ -552,6 +552,21 @@ try {
     check(bobState().state !== 'alive' && !!drainedNote && vanished, `steal someone's last gem and they shrink away, out until they come back (${bobState().state})`);
     await waitFor(() => bobState().state === 'alive' && !bobState().spawnProtected, 6000, 'Bob is back');
     await sleep(300);
+    // Someone with no gems left can be sucked up by anyone, even a creature barely bigger: held at the mouth, they go down
+    alice.send('test:setGems', { count: 1 });
+    bob.send('test:setGems', { count: 0 });
+    await sleep(250);
+    alice.send('test:moveTo', { x: 700, y: 1750 });
+    alice.send('test:face', { angle: 0 });
+    await sleep(150);
+    bob.send('test:moveTo', { x: 700 + me().width + 2, y: 1750 + (me().height - bobState().height) / 2 });
+    await sleep(1200);
+    alice.send('inhale');
+    await sleep(1500);
+    alice.send('exhale');
+    check(bobState().state !== 'alive', `a creature with no gems can be sucked up by anyone, even someone barely bigger (Bob ${bobState().state})`);
+    await waitFor(() => bobState().state === 'alive' && !bobState().spawnProtected, 6000, 'Bob is back');
+    await sleep(300);
     // Turning right around takes a moment, and much longer for a giant (mass: slower to start turning, and slower at it)
     const turnAround = async (gems, ms) => {
         alice.send('test:setGems', { count: gems });
