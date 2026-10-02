@@ -428,7 +428,7 @@ try {
     alice.send('test:moveTo', { x: 700, y: 1750 });
     alice.send('test:face', { angle: 0 });
     await sleep(150);
-    bob.send('test:moveTo', { x: 700 + me().width + 200, y: 1750 + (me().height - bobState().height) / 2 });
+    bob.send('test:moveTo', { x: 700 + me().width + 120, y: 1750 + (me().height - bobState().height) / 2 });
     await sleep(1300);
     const smallHad = bobState().gems;
     alice.send('inhale');
@@ -526,12 +526,12 @@ try {
     alice.send('test:moveTo', { x: 700, y: 1750 });
     alice.send('test:face', { angle: 0 });
     await sleep(150);
-    bob.send('test:moveTo', { x: 700 + me().width + 40, y: 1750 + (me().height - bobState().height) / 2 });
+    bob.send('test:moveTo', { x: 700 + me().width + 10, y: 1750 + (me().height - bobState().height) / 2 });
     await sleep(400);
     const giantFrom = bobState().x;
     const giantHad = bobState().gems;
     alice.send('inhale');
-    await sleep(1500);
+    await sleep(2000);
     alice.send('exhale');
     await sleep(150);
     check(giantHad - bobState().gems >= 2 && Math.abs(bobState().x - giantFrom) < 6, `a small creature can still rob a giant, slowly, and its body doesn't budge (${giantHad - bobState().gems} stolen)`);
@@ -552,7 +552,7 @@ try {
     check(bobState().state !== 'alive' && !!drainedNote && vanished, `steal someone's last gem and they shrink away, out until they come back (${bobState().state})`);
     await waitFor(() => bobState().state === 'alive' && !bobState().spawnProtected, 6000, 'Bob is back');
     await sleep(300);
-    // Every creature turns at the same rate, whatever its size (only top speed changes with size), and turning right around takes a moment
+    // Turning right around takes a moment, and much longer for a giant (mass: slower to start turning, and slower at it)
     const turnAround = async (gems, ms) => {
         alice.send('test:setGems', { count: gems });
         await sleep(200);
@@ -570,7 +570,7 @@ try {
     check(halfway > 1, `turning right around takes a moment (${halfway.toFixed(2)} radians still to go after 0.3s)`);
     const newbornOff = await turnAround(0, 900);
     const giantOff = await turnAround(300, 900);
-    check(newbornOff < 0.2 && giantOff < 0.2, `a giant turns around as fast as a newborn (${giantOff.toFixed(2)} vs ${newbornOff.toFixed(2)} radians off after 0.9s)`);
+    check(newbornOff < 0.2 && giantOff > 1, `a giant turns much slower than a newborn (after 0.9s, newborn ${newbornOff.toFixed(2)} and giant ${giantOff.toFixed(2)} radians off)`);
     // Inhaling never slows you down
     const stroll = async (inhaling) => {
         alice.send('test:moveTo', { x: 300, y: 1200 });

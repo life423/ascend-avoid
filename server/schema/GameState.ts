@@ -439,6 +439,31 @@ class GameState extends Schema {
   }
 
   /**
+   * How hard `thief`'s inhale pulls gems out of `victim` (0 to 1): sharply weaker with distance (the
+   * cone reaches far but bites near the mouth), and weaker while the victim gets away, strafing
+   * across the cone most of all. Right at the mouth there's no getting away.
+   */
+  private stealStrength(thief: PlayerSchema, victim: PlayerSchema): number {
+    const fx = Math.cos(thief.facing);
+    const fy = Math.sin(thief.facing);
+    const dx = victim.x + victim.width / 2 - (thief.x + thief.width / 2 + fx * thief.width * 0.3);
+    const dy = victim.y + victim.height / 2 - (thief.y + thief.height / 2 + fy * thief.width * 0.3);
+    const d = Math.hypot(dx, dy);
+    const reach = INHALE.REACH + thief.width * INHALE.REACH_PER_SIZE;
+    const gap = Math.max(0, d - victim.width / 2);
+    const near = Math.pow(Math.max(0, 1 - gap / reach), INHALE.STEAL_FALLOFF);
+    if (d < 1e-6) return near;
+    const nx = dx / d;
+    const ny = dy / d;
+    const velocity = victim.velocity();
+    const away = Math.max(0, velocity.x * nx + velocity.y * ny);
+    const across = Math.abs(velocity.y * nx - velocity.x * ny);
+    const escape = Math.min(1, (INHALE.STEAL_ESCAPE_AWAY * away + across) / moveSpeed(victim.width));
+    const reachable = Math.min(1, gap / (reach * INHALE.STEAL_POINT_BLANK));
+    return near * (1 - INHALE.STEAL_ESCAPE * escape * reachable);
+  }
+
+  /**
    * Gravity theft: everyone in the inhale cone has gems pulled out into the thief (one small enough
    * to swallow is pulled in bodily too). An inhale has one drain budget, shared out by how squarely
    * each victim sits in the cone, so a big cone covers more creatures without draining each one
@@ -465,7 +490,7 @@ class GameState extends Schema {
     for (const { victim, weight } of victims) {
       // Small creatures hold on to their gems weakly, big ones well
       const grip = Math.min(INHALE.STEAL_MAX, Math.max(INHALE.STEAL_MIN, thief.width / victim.width));
-      let progress = (thief.stealShares.get(victim.sessionId) ?? 0) + deltaTime * INHALE.STEAL_RATE * grip * (weight / total);
+      let progress = (thief.stealShares.get(victim.sessionId) ?? 0) + deltaTime * INHALE.STEAL_RATE * grip * (weight / total) * this.stealStrength(thief, victim);
       while (progress >= 1 && victim.gems > 0) {
         progress -= 1;
         victim.setGems(victim.gems - 1, this.worldWidth, this.worldHeight);

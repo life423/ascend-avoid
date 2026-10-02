@@ -1,7 +1,7 @@
 import * as schema from "@colyseus/schema";
 const { Schema, type } = schema;
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
-import { turnRate, turnToward, walk } from "../game/movement.js";
+import { turnStep, walk } from "../game/movement.js";
 import type { Box, Direction } from "../game/movement.js";
 
 const { ARENA_RULES, BOTS, GEMS, INHALE, PLAYER_STATE, PUSH, WORLD } = GAME_CONSTANTS;
@@ -53,6 +53,8 @@ class PlayerSchema extends Schema {
   private steerY = 0;
   private walkX = 0;
   private walkY = 0;
+  /** Server-only: how fast the creature is turning (radians a second; see turnStep) */
+  spin = 0;
   /** Server-only: where the player's middle was and how big it was when this tick began (see GameState.keepApart) */
   tickX = 0;
   tickY = 0;
@@ -363,10 +365,10 @@ class PlayerSchema extends Schema {
     this.walkY = velocity.y;
     // Facing: toward the aim while inhaling, otherwise where you steer
     const intent = this.inhaling ? { x: this.aimX, y: this.aimY } : { x: this.steerX, y: this.steerY };
-    if (Math.hypot(intent.x, intent.y) > 0.25) {
-      const facing = turnToward(this.facing, Math.atan2(intent.y, intent.x), turnRate(this.width) * deltaTime);
-      if (facing !== this.facing) this.facing = facing;
-    }
+    const aiming = Math.hypot(intent.x, intent.y) > 0.25;
+    const turn = turnStep(this.facing, this.spin, aiming ? Math.atan2(intent.y, intent.x) : null, this.width, this.inhaling, deltaTime);
+    this.spin = turn.spin;
+    if (turn.facing !== this.facing) this.facing = turn.facing;
     if (box.x !== this.x) this.x = box.x;
     if (box.y !== this.y) this.y = box.y;
   }

@@ -7,7 +7,7 @@ import { InputState } from '../types'
 import { getSprite } from '../utils/sprites'
 import { GameEvents } from '../constants/client-constants'
 import { ARENA_RULES, BOMBS, GEMS, INHALE, PLAYER_COLORS, SHIFT, TURBINE, WORLD } from '../../server/constants/gameConstants'
-import { turnRate, turnToward, walk } from '../../server/game/movement'
+import { turnStep, walk } from '../../server/game/movement'
 import { exhaustAngle, launchDuration, launchPosition } from '../../server/game/turbine'
 import { OnlineControls } from './OnlineControls'
 import type { Breath } from './OnlineControls'
@@ -1087,6 +1087,8 @@ export class MultiplayerMode extends GameMode {
     /** The aim last sent (your eyes turn toward it for everyone), and which way you face */
     private sentAim = { x: 0, y: 0 }
     private localFacing = -Math.PI / 2
+    /** How fast your creature is turning (radians a second; see turnStep) */
+    private localSpin = 0
     /** Your breath, tracked from when the server starts and stops your inhale (see breathOf) */
     private breathStartedAt = 0
     private breathEndedAt = -Infinity
@@ -1328,9 +1330,9 @@ export class MultiplayerMode extends GameMode {
         const box = { x: this.predicted.x, y: this.predicted.y, width: me.width, height: me.height }
         // Facing, worked out like the server does: the aim while inhaling, else where you steer
         const intent = this.inhaleHeld ? this.aim : steer
-        if (Math.hypot(intent.x, intent.y) > 0.25) {
-            this.localFacing = turnToward(this.localFacing, Math.atan2(intent.y, intent.x), turnRate(me.width) * deltaTime)
-        }
+        const turn = turnStep(this.localFacing, this.localSpin, Math.hypot(intent.x, intent.y) > 0.25 ? Math.atan2(intent.y, intent.x) : null, me.width, this.inhaleHeld, deltaTime)
+        this.localFacing = turn.facing
+        this.localSpin = turn.spin
         walk(box, this.velocity, steer, deltaTime, state.worldWidth, state.worldHeight)
         // Creatures are solid: stop at anyone you walk into and slide along them, as the server does
         const myId = this.multiplayerManager?.localSessionId

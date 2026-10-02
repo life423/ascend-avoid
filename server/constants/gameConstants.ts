@@ -216,12 +216,17 @@ export const COMETS = {
 } as const;
 
 /**
- * Which way creatures face (where the mouth points; you still walk wherever you steer): every
- * creature turns at the same rate, whatever its size, and not instantly, so a thief behind you
- * gets a few gems before you can face it.
+ * Which way creatures face (where the mouth and its inhale point; you still walk wherever you
+ * steer). Turning is like turning a real body: heavier creatures turn slower at most, and are slow
+ * to start turning and slow to stop (see turnStep), and anyone inhaling turns slower still, so a
+ * cone can't be whipped round onto someone circling you.
  */
 export const FACING = {
-  TURN_RATE: 4.5, // radians a second: about 0.7s to turn right around
+  TURN_RATE: 5.5, // radians a second at most for a newborn...
+  TURN_FALLOFF: 0.5, // ...falling as (PLAYER_SIZE / width) ^ this: about 2.8 at 25 gems, 2 at 100, 1.4 at 400
+  INHALE_TURN: 0.4, // ...and while inhaling, this share of that
+  TURN_ACCEL: 30, // how fast turning builds up or slows down (radians a second, each second) for a newborn...
+  ACCEL_FALLOFF: 1, // ...falling as (PLAYER_SIZE / width) ^ this: a giant takes a while to get turning, and to stop
 } as const;
 
 /**
@@ -261,6 +266,10 @@ export const INHALE = {
   STEAL_MIN: 0.3, // ...times your width over theirs, kept between these: small creatures hold on to their gems
   STEAL_MAX: 2, // weakly and big ones well, so a giant drains you fast and you can only pick at a giant
   STEAL_EDGE_SHARE: 0.25, // everyone in an inhale is robbed, sharing its drain by how squarely they sit in the cone: dead center counts 1, the very edge this
+  STEAL_FALLOFF: 2, // the cone reaches far, but bites near the mouth: drain falls as (1 - distance / reach) ^ this
+  STEAL_ESCAPE: 0.75, // getting away cuts the drain by up to this much...
+  STEAL_ESCAPE_AWAY: 0.6, // ...counting speed straight away at this share, and speed across the cone in full (strafing escapes best)...
+  STEAL_POINT_BLANK: 0.25, // ...but less and less within this share of the reach: right at the mouth there's no getting away
   STOLE_NOTICE: 5, // a theft this big gets a banner and a line in the feed
 } as const;
 

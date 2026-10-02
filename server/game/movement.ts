@@ -153,9 +153,36 @@ export function hop(player: Box, direction: Direction, worldWidth: number, world
   player.y = Math.max(EDGE_MARGIN, Math.min(player.y, worldHeight - player.height - EDGE_MARGIN));
 }
 
-/** How fast a creature turns (radians a second): the same for everyone, whatever its size */
-export function turnRate(_width?: number): number {
-  return FACING.TURN_RATE;
+/** How fast a creature can turn at most (radians a second): heavier creatures turn slower, and everyone turns slower while inhaling */
+export function turnRate(width: number, inhaling = false): number {
+  const light = ARENA_RULES.PLAYER_SIZE / Math.max(ARENA_RULES.PLAYER_SIZE, width);
+  return FACING.TURN_RATE * Math.pow(light, FACING.TURN_FALLOFF) * (inhaling ? FACING.INHALE_TURN : 1);
+}
+
+/** How fast a creature's turning can build up or slow down (radians a second, each second): heavy ones are slow to start and slow to stop */
+export function turnAccel(width: number): number {
+  return FACING.TURN_ACCEL * Math.pow(ARENA_RULES.PLAYER_SIZE / Math.max(ARENA_RULES.PLAYER_SIZE, width), FACING.ACCEL_FALLOFF);
+}
+
+/**
+ * One step of turning like a real body, the same on the server and in the browser: the spin
+ * (radians a second) builds toward `target` at turnAccel, never past turnRate, easing off in time
+ * to stop right on it; with no target (null) the spin dies away. Returns the new facing and spin.
+ */
+export function turnStep(facing: number, spin: number, target: number | null, width: number, inhaling: boolean, deltaTime: number): { facing: number; spin: number } {
+  const accel = turnAccel(width);
+  let want = 0;
+  let diff = 0;
+  if (target !== null) {
+    diff = Math.atan2(Math.sin(target - facing), Math.cos(target - facing));
+    want = Math.sign(diff) * Math.min(turnRate(width, inhaling), Math.sqrt(2 * accel * Math.abs(diff)));
+  }
+  const step = accel * deltaTime;
+  const next = Math.abs(want - spin) <= step ? want : spin + Math.sign(want - spin) * step;
+  // Arriving: stop right on the target instead of wobbling past it
+  if (target !== null && Math.sign(next) === Math.sign(diff) && Math.abs(diff) <= Math.abs(next * deltaTime)) return { facing: target, spin: 0 };
+  const turned = facing + next * deltaTime;
+  return { facing: Math.atan2(Math.sin(turned), Math.cos(turned)), spin: next };
 }
 
 /** Turn from one heading toward another (radians), by at most `step` the short way round */
