@@ -1664,7 +1664,7 @@ export class MultiplayerMode extends GameMode {
             // Draining someone (harder the bigger it is next to them) or holding someone to swallow: the inhale looks stronger
             const world = this.multiplayerManager?.getState()
             const victim = player.stealingFrom ? world?.players?.get(player.stealingFrom) : null
-            const grip = victim ? Math.min(INHALE.STEAL_MAX, Math.max(INHALE.STEAL_MIN, player.width / victim.width)) : 0
+            const grip = victim ? Math.min(INHALE.BODY_PULL_MAX, Math.max(0.3, player.width / victim.width)) : 0
             const intensity = player.gulping ? 1.8 : victim ? 1 + 0.5 * grip : 1
             drawInhaleCone(ctx, centerX, centerY, size, isLocal ? this.localFacing : (player.facing ?? -Math.PI / 2), timestamp, intensity)
         }

@@ -327,9 +327,9 @@ class GameState extends Schema {
 
   /**
    * Inhaling: everything in a cone in front of the creature's mouth. Gems are pulled in and
-   * swallowed; a bomb stays in the mouth (safe until it's spat). A creature too big to swallow isn't
-   * moved: it's robbed (steal). Only one INHALE.EAT_RATIO times narrower is pulled in bodily, and
-   * swallowed once held at the mouth for INHALE.GULP_MS.
+   * swallowed; a bomb stays in the mouth (safe until it's spat). Every creature in it is robbed
+   * (steal) and pulled bodily toward the mouth by mass; one with two-thirds the inhaler's mass or
+   * less goes down once held at the mouth for INHALE.GULP_MS.
    */
   private updateInhales(now: number, deltaTime: number): void {
     const cone = Math.cos((INHALE.ARC * Math.PI) / 180);
@@ -375,26 +375,28 @@ class GameState extends Schema {
           bomb.placeAt(bomb.x + ((mouthX - bomb.x) / d) * step, bomb.y + ((mouthY - bomb.y) / d) * step);
         });
       }
-      // Only a creature small enough to swallow is pulled in bodily (size resists it), and once held
-      // right at the mouth for GULP_MS it goes down whole. Anyone bigger is robbed instead (steal).
+      // Every creature in the cone is pulled bodily toward the mouth, by mass: harder the heavier the
+      // inhaler is next to it (a giant drags a newborn; a newborn barely moves a giant), the closer it
+      // is and the more squarely in front, but never past what it can get away from. One small enough
+      // to swallow goes down once it's held right at the mouth for GULP_MS.
       let held: PlayerSchema | null = null;
       let heldAt = Infinity;
       this.players.forEach((prey) => {
-        if (prey === eater || prey.state !== PLAYER_STATE.ALIVE || prey.spawnProtected || !this.canSwallow(eater, prey)) return;
+        if (prey === eater || prey.state !== PLAYER_STATE.ALIVE || prey.spawnProtected) return;
+        const alignment = this.stealWeight(eater, prey);
+        if (alignment <= 0) return;
         const px = prey.x + prey.width / 2;
         const py = prey.y + prey.height / 2;
-        const d = inCone(px, py, prey.width / 2);
-        if (d < 0) return;
-        if (d <= eater.width * INHALE.GULP_REACH + prey.width / 2 && d < heldAt) {
+        const d = Math.hypot(px - mouthX, py - mouthY);
+        if (this.canSwallow(eater, prey) && d <= eater.width * INHALE.GULP_REACH + prey.width / 2 && d < heldAt) {
           held = prey;
           heldAt = d;
         }
         if (d < 1) return;
-        // Never more than it can outrun, even with the eater chasing it at full speed (smaller is faster)
-        const preySpeed = moveSpeed(prey.width);
-        const escape = Math.min(INHALE.PREY_PULL_CAP * preySpeed, preySpeed - INHALE.ESCAPE_EDGE * moveSpeed(eater.width) - INHALE.ESCAPE_MIN);
+        const gap = Math.max(0, d - prey.width / 2);
+        const mass = Math.min(INHALE.BODY_PULL_MAX, eater.width / prey.width);
         const pull =
-          Math.max(0, Math.min(INHALE.PULL_PREY * suctionScale(eater.width, prey.width) * Math.pow(Math.max(0, 1 - d / reach), 2), escape)) * deltaTime;
+          Math.min(INHALE.BODY_PULL * mass * Math.pow(Math.max(0, 1 - gap / reach), 2) * alignment, INHALE.PREY_PULL_CAP * moveSpeed(prey.width)) * deltaTime;
         prey.nudge(((mouthX - px) / d) * pull, ((mouthY - py) / d) * pull, this.worldWidth, this.worldHeight);
       });
       const caught = held as PlayerSchema | null;
@@ -467,8 +469,8 @@ class GameState extends Schema {
    * Gravity theft: everyone in the inhale cone has gems pulled out into the thief (one small enough
    * to swallow is pulled in bodily too). An inhale's drain is shared out by how squarely each victim
    * sits in the cone, and grows only with the square root of how many it catches, so a big cone
-   * covers more creatures without draining each one as fast. A victim's share drains at INHALE.STEAL_RATE a second times the thief's width over
-   * theirs (small creatures hold on to their gems weakly, big ones well). Two creatures inhaling
+   * covers more creatures without draining each one as fast. A victim's share drains at INHALE.STEAL_RATE a second,
+   * whatever either one's size (mass resists being pulled, not being robbed). Two creatures inhaling
    * each other both steal at once. Take someone's last gem and they're drained: gone until they respawn.
    */
   private steal(thief: PlayerSchema, now: number, deltaTime: number): void {
@@ -492,9 +494,7 @@ class GameState extends Schema {
     // Catching several at once pays more than one, though far less than one each
     const budget = Math.sqrt(victims.length);
     for (const { victim, weight } of victims) {
-      // Small creatures hold on to their gems weakly, big ones well
-      const grip = Math.min(INHALE.STEAL_MAX, Math.max(INHALE.STEAL_MIN, thief.width / victim.width));
-      let progress = (thief.stealShares.get(victim.sessionId) ?? 0) + deltaTime * INHALE.STEAL_RATE * grip * budget * (weight / total) * this.stealStrength(thief, victim);
+      let progress = (thief.stealShares.get(victim.sessionId) ?? 0) + deltaTime * INHALE.STEAL_RATE * budget * (weight / total) * this.stealStrength(thief, victim);
       while (progress >= 1 && victim.gems > 0) {
         progress -= 1;
         victim.setGems(victim.gems - 1, this.worldWidth, this.worldHeight);

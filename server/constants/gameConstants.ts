@@ -241,11 +241,12 @@ export const SUCTION = {
 } as const;
 
 /**
- * Inhaling: everything in a cone in front of your mouth (it reaches farther the bigger you are).
- * Gems are pulled in and swallowed. A creature too big to swallow isn't moved at all: its gems are
- * pulled out of it into you (STEAL_RATE), and taking its last one knocks it out. Only a creature
- * EAT_RATIO times narrower is pulled in bodily (harder the smaller it is, see SUCTION), and it's
- * swallowed whole once you've held it at your mouth for GULP_MS. The same button for everyone.
+ * Inhaling, the one button: everything in a cone in front of your mouth (longer the bigger you
+ * are). Gems are pulled in and swallowed. Every creature in it is robbed of gems (STEAL_RATE) and
+ * pulled bodily toward your mouth, by mass: harder the heavier you are next to it, the closer it is
+ * and the more squarely in front (BODY_PULL). One with two-thirds your mass or less (EAT_RATIO)
+ * goes down once it's held right at your mouth for GULP_MS. Size resists being pulled, not being
+ * robbed; heavier creatures move and turn slower.
  */
 export const INHALE = {
   REACH: 80, // plus REACH_PER_SIZE times your width: 120 for a newborn, about 365 at 100 gems, 650 at 400 (the cone on screen is exactly this long)
@@ -253,19 +254,16 @@ export const INHALE = {
   ARC: 35, // degrees either side of where you face
   PULL_GEMS: 520, // units a second
   PULL_BOMBS: 420,
-  PULL_PREY: 320, // units a second right at your mouth (times SUCTION), easing to nothing at the edge of your reach...
-  PREY_PULL_CAP: 0.85, // ...but never more than this share of the prey's own top speed...
-  ESCAPE_EDGE: 1.3, // ...nor more than its top speed less this many times yours...
-  ESCAPE_MIN: 40, // ...less this many units a second more: running straight away always gets it out, even with you chasing
-  EAT_RATIO: 1.5, // you can only swallow a creature this many times narrower (about 2.25 times smaller)...
+  BODY_PULL: 80, // units a second a creature your own size is pulled at, right at your mouth and dead ahead...
+  BODY_PULL_MAX: 3, // ...times your width over its (mass, with pull and resistance each growing as the square root of mass), up to this...
+  PREY_PULL_CAP: 0.75, // ...but never more than this share of its own top speed: turn and strafe, and it can get away
+  EAT_RATIO: 1.22, // you can swallow a creature with two-thirds your mass or less (this many times narrower)...
   GULP_REACH: 0.35, // ...held this close to your mouth (times your width, plus its radius)...
-  GULP_MS: 750, // ...for this long (if it gets away first, it starts over)
+  GULP_MS: 400, // ...once it's held right at your mouth for this long (if it gets away first, it starts over)
   MAX_MS: 3000, // a full breath lasts this long while you inhale...
   REFILL_MS: 2000, // ...and refills from empty in this long, starting from wherever it is (a short puff costs a short wait)
   MIN_BREATH: 0.1, // you can start inhaling with at least this share of a breath
-  STEAL_RATE: 6, // gems a second pulled out of a creature too big to swallow when you're the same size...
-  STEAL_MIN: 0.5, // ...times your width over theirs, kept between these: small creatures hold on to their gems
-  STEAL_MAX: 2, // weakly and big ones well, so a giant drains you fast and you can only pick at a giant
+  STEAL_RATE: 6, // gems a second pulled out of a creature in your inhale (shared out, weaker farther out or while it gets away), whatever either one's size
   STEAL_EDGE_SHARE: 0.25, // everyone in an inhale is robbed, sharing its drain by how squarely they sit in the cone: dead center counts 1, the very edge this
   STEAL_FALLOFF: 1, // drain fades evenly from the mouth to the tip of the cone, just as the cone fades on screen
   STEAL_ESCAPE: 0.75, // getting away cuts the drain by up to this much...
