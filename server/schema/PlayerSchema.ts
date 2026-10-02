@@ -82,6 +82,8 @@ class PlayerSchema extends Schema {
   stealShares = new Map<string, number>();
   /** Server-only: how long each creature has been held in this one's inhale (0-1 of INHALE.LOCK_MS); fades fast once it's out */
   lockOn = new Map<string, number>();
+  /** Server-only (bots): when its inhale last had nobody in it, so it can let go and save its breath */
+  inhaleIdleSince = 0;
   /** Server-only: gems part-stolen, and how many this run of stealing has taken */
   stealProgress = 0;
   stolenRun = 0;
@@ -317,7 +319,7 @@ class PlayerSchema extends Schema {
   }
 
   /** Start inhaling (for up to `forMs`, INHALE.MAX_MS for players): you move as usual, and your mouth turns toward your aim */
-  startInhale(now: number, forMs = 3000): void {
+  startInhale(now: number, forMs: number = INHALE.MAX_MS): void {
     if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering) return;
     this.breathe(now);
     if (this.stamina < INHALE.MIN_BREATH) return;

@@ -731,10 +731,19 @@ class GameState extends Schema {
       }
       return;
     }
-    // Inhaling: keep the mouth on whoever it's robbing
+    // Inhaling: keep the mouth on whoever it's robbing or swallowing for as long as its breath lasts,
+    // and let go once nobody has been in its inhale for a moment (saving its breath)
     if (bot.inhaling) {
-      const robbing = bot.stealingFrom ? this.players.get(bot.stealingFrom) : undefined;
-      if (robbing) bot.aimAt(robbing.x + robbing.width / 2 - cx, robbing.y + robbing.height / 2 - cy);
+      const held = bot.stealingFrom ? this.players.get(bot.stealingFrom) : bot.gulping ? this.players.get(bot.gulping) : undefined;
+      if (held) {
+        bot.aimAt(held.x + held.width / 2 - cx, held.y + held.height / 2 - cy);
+        bot.inhaleIdleSince = 0;
+      } else if (!bot.inhaleIdleSince) {
+        bot.inhaleIdleSince = now;
+      } else if (now - bot.inhaleIdleSince > 700) {
+        bot.stopInhale(now);
+        bot.inhaleIdleSince = 0;
+      }
       return;
     }
     if (Math.random() > 0.12) return;
@@ -747,7 +756,7 @@ class GameState extends Schema {
     const robber = thief as PlayerSchema | null;
     if (robber) {
       if (Math.random() < 0.8) {
-        bot.startInhale(now, 900 + Math.random() * 600);
+        bot.startInhale(now, INHALE.MAX_MS);
         bot.aimAt(robber.x + robber.width / 2 - cx, robber.y + robber.height / 2 - cy);
       }
       return;
@@ -782,8 +791,9 @@ class GameState extends Schema {
     });
     const goal = want as { x: number; y: number } | null;
     if (!goal) return;
-    // Long enough to hold someone at its mouth until they go down
-    bot.startInhale(now, 1300 + Math.random() * 700);
+    // As long as its breath lasts (it lets go once nobody is in its inhale)
+    bot.inhaleIdleSince = 0;
+    bot.startInhale(now, INHALE.MAX_MS);
     bot.aimAt(goal.x - cx, goal.y - cy);
   }
 

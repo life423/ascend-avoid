@@ -493,7 +493,7 @@ try {
     // ...and an empty breath needs a moment before the next inhale
     alice.send('inhale');
     await waitFor(() => me().inhaling, 1000, 'inhaling again');
-    await waitFor(() => !me().inhaling, 4000, 'a breath runs out');
+    await waitFor(() => !me().inhaling, 6000, 'a breath runs out');
     alice.send('exhale');
     alice.send('inhale');
     await sleep(100);
@@ -614,12 +614,12 @@ try {
     const plainWalk = await stroll(false);
     const inhaleWalk = await stroll(true);
     check(inhaleWalk > plainWalk * 0.88, `inhaling never slows you down (${Math.round(inhaleWalk)} vs ${Math.round(plainWalk)} units)`);
-    // ...and neither does running out of breath partway (a breath lasts 3 seconds)
+    // ...and neither does running out of breath partway (a breath lasts 5 seconds)
     alice.send('test:moveTo', { x: 300, y: 1300 });
     await sleep(250);
     alice.send('inhale');
     alice.send('steer', { x: 1, y: 0 });
-    await sleep(2600);
+    await sleep(4600);
     const beforeBreath = me().x;
     await sleep(800);
     const afterBreath = me().x;
