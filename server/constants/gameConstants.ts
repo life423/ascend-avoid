@@ -264,7 +264,17 @@ export const INHALE = {
   LOCK_MS: 1500, // holding a creature in your inhale builds a lock to full over this long...
   LOCK_DECAY_MS: 350, // ...that fades this fast once it's out of the cone (or you stop), so breaking the cone frees it
   LOCK_START: 0.25, // body pull starts at this share and grows with the lock squared: a warning, then dangerous, then full
-  STEAL_LOCK_START: 0.6, // gem loss ramps up less: from this share to full
+  // Held in your airflow without a break, gems come off more and more violently: by seconds held, the
+  // drain multiplier (steps: 1x, then 1.5x from 0.4s, 2.5x from 0.8s, 4x from 1.2s, 6x from 1.6s, 8x from 2s on)
+  DRAIN_RAMP: [
+    [0, 1],
+    [0.4, 1.5],
+    [0.8, 2.5],
+    [1.2, 4],
+    [1.6, 6],
+    [2.0, 8],
+  ],
+  HOLD_DECAY: 6, // ...and out of the airflow, the time held drains away this many times faster than it built (2s is gone in a third of a second)
   CLOSE_RANGE: 0.25, // the share of the reach nearest the mouth where the pull gets much stronger...
   CLOSE_BOOST: 1.5, // ...up to this much more on top: caught close to the mouth of someone bigger, you're probably done
   MAX_MS: 5000, // a full breath lasts this long while you inhale (time to build a lock and drag someone in)...

@@ -7,7 +7,7 @@ import { InputState } from '../types'
 import { getSprite } from '../utils/sprites'
 import { GameEvents } from '../constants/client-constants'
 import { ARENA_RULES, BOMBS, GEMS, INHALE, PLAYER_COLORS, SHIFT, TURBINE, WORLD } from '../../server/constants/gameConstants'
-import { turnStep, walk } from '../../server/game/movement'
+import { moveSpeed, turnStep, walk } from '../../server/game/movement'
 import { exhaustAngle, launchDuration, launchPosition } from '../../server/game/turbine'
 import { OnlineControls } from './OnlineControls'
 import type { Breath } from './OnlineControls'
@@ -1015,80 +1015,13 @@ function suctionPower(width: number): number {
     return Math.min(INHALE_LOOK.POWER_MAX, Math.pow(Math.max(1, width / ARENA_RULES.PLAYER_SIZE), INHALE_LOOK.POWER_GROWTH))
 }
 
-/**
- * Air rushing into an inhaling creature's mouth, over exactly the region it pulls from: a cone
- * whose point is the mouth (just ahead of the middle, as on the server), as long as its reach and
- * as wide as its arc, with a faint dashed edge where the pull ends. Its streaks are denser, longer
- * and faster, and the mouth glows harder, the stronger the pull.
- */
-function drawInhaleCone(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, facing: number, timestamp: number, intensity = 1): void {
-    const r = size / 2
-    const reach = INHALE.REACH + size * INHALE.REACH_PER_SIZE
-    const spread = (INHALE.ARC * Math.PI) / 180
-    // Bigger creatures pull harder, and draining or swallowing someone pulls harder still
-    const power = Math.min(6, suctionPower(size) * intensity)
-    const mouthX = x + Math.cos(facing) * size * 0.3
-    const mouthY = y + Math.sin(facing) * size * 0.3
-    ctx.save()
-    // The region it pulls from, brightest at the mouth but visible right out to the edge
-    const glow = ctx.createRadialGradient(mouthX, mouthY, 0, mouthX, mouthY, reach)
-    glow.addColorStop(0, `rgba(180, 230, 255, ${Math.min(0.5, INHALE_LOOK.GLOW + 0.06 * power)})`)
-    glow.addColorStop(1, 'rgba(180, 230, 255, 0.07)')
-    ctx.fillStyle = glow
-    ctx.beginPath()
-    ctx.moveTo(mouthX, mouthY)
-    ctx.arc(mouthX, mouthY, reach, facing - spread, facing + spread)
-    ctx.closePath()
-    ctx.fill()
-    ctx.strokeStyle = `rgba(200, 240, 255, ${Math.min(0.5, 0.22 + 0.05 * power)})`
-    ctx.lineWidth = 1.5
-    ctx.setLineDash([6, 6])
-    ctx.lineDashOffset = timestamp / 40
-    ctx.beginPath()
-    ctx.arc(mouthX, mouthY, reach, facing - spread, facing + spread)
-    ctx.stroke()
-    ctx.setLineDash([])
-    // Streaks rushing in from the edge, closing in on the mouth
-    ctx.strokeStyle = `rgba(220, 245, 255, ${Math.min(0.85, 0.5 + 0.08 * power)})`
-    ctx.lineWidth = 1.5 + 0.6 * power
-    ctx.lineCap = 'round'
-    const streaks = Math.round(INHALE_LOOK.STREAKS + INHALE_LOOK.STREAKS_PER_POWER * power)
-    const period = (reach / (INHALE_LOOK.STREAK_SPEED * power)) * 1000
-    const length = INHALE_LOOK.STREAK_LENGTH + 10 * power
-    for (let i = 0; i < streaks; i++) {
-        const t = (timestamp / period + i / streaks) % 1
-        const along = reach * (1 - t) * (1 - t * 0.35)
-        const angle = facing + spread * 0.85 * Math.sin(i * 2.3) * (1 - 0.55 * t)
-        const inner = Math.max(0, along - length)
-        ctx.globalAlpha = Math.min(1, t * 4)
-        ctx.beginPath()
-        ctx.moveTo(mouthX + Math.cos(angle) * along, mouthY + Math.sin(angle) * along)
-        ctx.lineTo(mouthX + Math.cos(angle) * inner, mouthY + Math.sin(angle) * inner)
-        ctx.stroke()
-    }
-    // The mouth glows and throbs, harder and faster the stronger the pull
-    ctx.globalAlpha = 1
-    const throb = 0.5 + 0.5 * Math.sin((timestamp / 1000) * Math.PI * 2 * (2 + power))
-    const core = r * (0.35 + 0.1 * power) * (0.85 + 0.15 * throb) * 2.2
-    const rush = ctx.createRadialGradient(mouthX, mouthY, 0, mouthX, mouthY, core)
-    rush.addColorStop(0, `rgba(235, 250, 255, ${Math.min(0.75, 0.25 + 0.12 * power)})`)
-    rush.addColorStop(1, 'rgba(235, 250, 255, 0)')
-    ctx.fillStyle = rush
-    ctx.beginPath()
-    ctx.arc(mouthX, mouthY, core, 0, Math.PI * 2)
-    ctx.fill()
-    // Once the pull is strong, the cone's sides shimmer
-    if (power > 1.4) {
-        ctx.strokeStyle = `rgba(220, 245, 255, ${Math.min(0.45, 0.1 * (power - 1) * (0.6 + 0.4 * throb))})`
-        ctx.lineWidth = 1 + 0.5 * power
-        ctx.beginPath()
-        ctx.moveTo(mouthX, mouthY)
-        ctx.lineTo(mouthX + Math.cos(facing - spread) * reach, mouthY + Math.sin(facing - spread) * reach)
-        ctx.moveTo(mouthX, mouthY)
-        ctx.lineTo(mouthX + Math.cos(facing + spread) * reach, mouthY + Math.sin(facing + spread) * reach)
-        ctx.stroke()
-    }
-    ctx.restore()
+/** How a creature's airflow is moving (see drawAirflow) */
+type Airflow = { heading: number; along: number; x: number; y: number; at: number; inhaling: boolean; since: number; hookId: string; hookedAt: number }
+
+/** A point on a quadratic curve from (ax, ay) through control (bx, by) to (cx, cy) */
+function onCurve(ax: number, ay: number, bx: number, by: number, cx: number, cy: number, t: number): { x: number; y: number } {
+    const k = 1 - t
+    return { x: k * k * ax + 2 * k * t * bx + t * t * cx, y: k * k * ay + 2 * k * t * by + t * t * cy }
 }
 
 /**
@@ -1250,6 +1183,8 @@ export class MultiplayerMode extends GameMode {
     private drawnSizes = new Map<string, { size: number; speed: number }>()
     /** Each creature's growth pop: when it last gained a gem and how big the pop was (see drawPlayer) */
     private gemPops = new Map<string, { at: number; amount: number }>()
+    /** Each creature's airflow while it inhales (see drawAirflow) */
+    private flows = new Map<string, Airflow>()
     /** Canvas pixels per screen point (the HUD on phones is laid out in screen points) */
     private cssScale = 1
     /** The opening: when it started (null until then), and what it pulls in */
@@ -1571,7 +1506,8 @@ export class MultiplayerMode extends GameMode {
 
     /** Where your breath is: draining over INHALE.MAX_MS while you inhale, refilling over INHALE.REFILL_MS from wherever it is */
     private breathOf(inhaling: boolean, now: number): Breath {
-        const elapsed = Math.max(0, now - this.staminaAt)
+        // A step at most a quarter second long, so coming back to a paused tab does not empty (or fill) it at once
+        const elapsed = Math.min(250, Math.max(0, now - this.staminaAt))
         this.staminaAt = now
         this.stamina = Math.min(1, Math.max(0, this.stamina + (inhaling ? -elapsed / INHALE.MAX_MS : elapsed / INHALE.REFILL_MS)))
         if (inhaling) return { phase: 'inhaling', left: this.stamina }
@@ -1674,6 +1610,9 @@ export class MultiplayerMode extends GameMode {
         }
         for (const id of this.drawnSizes.keys()) {
             if (!present.has(id)) this.drawnSizes.delete(id)
+        }
+        for (const id of this.flows.keys()) {
+            if (!present.has(id)) this.flows.delete(id)
         }
         for (const id of this.gemPops.keys()) {
             if (!present.has(id)) this.gemPops.delete(id)
@@ -1862,7 +1801,10 @@ export class MultiplayerMode extends GameMode {
             const victim = player.stealingFrom ? world?.players?.get(player.stealingFrom) : null
             const grip = victim ? Math.min(INHALE.BODY_PULL_MAX, Math.max(0.3, player.width / victim.width)) : 0
             const intensity = player.gulping ? 1.8 : victim ? 1 + 0.5 * grip : 1
-            drawInhaleCone(ctx, centerX, centerY, size, isLocal ? this.localFacing : (player.facing ?? -Math.PI / 2), timestamp, intensity)
+            this.drawAirflow(ctx, sessionId, player, centerX, centerY, size, isLocal ? this.localFacing : (player.facing ?? -Math.PI / 2), timestamp, intensity, isLocal)
+        } else {
+            const flow = this.flows.get(sessionId)
+            if (flow) flow.inhaling = false
         }
         if (isLocal) {
             // Your breath: draining around you while you inhale, refilling while you catch it
@@ -2745,6 +2687,189 @@ export class MultiplayerMode extends GameMode {
             ctx.fillText(String(row.gems), x + width - 9 * u, rowY)
             rowY += rowHeight
         })
+        ctx.restore()
+    }
+
+    /**
+     * An inhale drawn as moving air rather than a fixed cone: streaks flowing into the mouth along
+     * curved lines, always inside the real pull area (which is only hinted at, with a dotted edge
+     * where the pull ends). At rest the flow is shorter and broader; going forward it stretches long
+     * and narrow; turning, its far end trails behind and swings round; draining someone, it tightens
+     * into a channel and leans toward them. Big creatures pull a wide, heavy, turbulent flow, small
+     * ones a quick narrow stream; low on breath it thins, flickers and breaks up; and little side
+     * streams peel off to each gem and creature it's pulling.
+     */
+    private drawAirflow(
+        ctx: CanvasRenderingContext2D,
+        id: string,
+        player: any,
+        x: number,
+        y: number,
+        size: number,
+        facing: number,
+        timestamp: number,
+        intensity: number,
+        isLocal: boolean
+    ): void {
+        const reach = INHALE.REACH + size * INHALE.REACH_PER_SIZE
+        const arc = (INHALE.ARC * Math.PI) / 180
+        const power = Math.min(6, suctionPower(size) * intensity)
+        // 1 for a newborn, up to 3 for a giant
+        const heft = Math.min(3, Math.sqrt(size / ARENA_RULES.PLAYER_SIZE))
+        let flow = this.flows.get(id)
+        if (!flow) {
+            flow = { heading: facing, along: 0, x, y, at: timestamp, inhaling: false, since: timestamp, hookId: '', hookedAt: timestamp }
+            this.flows.set(id, flow)
+        }
+        if (!flow.inhaling) {
+            flow.inhaling = true
+            flow.since = timestamp
+            flow.heading = facing
+        }
+        const dt = Math.min(0.1, Math.max(0.001, (timestamp - flow.at) / 1000))
+        // The far end trails the mouth through a turn (a small creature's catches up faster)
+        const turn = Math.atan2(Math.sin(facing - flow.heading), Math.cos(facing - flow.heading))
+        flow.heading += turn * Math.min(1, dt * (14 / heft))
+        // How fast it's going forward, as a share of its top speed
+        const forward = ((x - flow.x) * Math.cos(facing) + (y - flow.y) * Math.sin(facing)) / dt / moveSpeed(size)
+        flow.along += (Math.max(-1, Math.min(1, forward)) - flow.along) * Math.min(1, dt * 6)
+        flow.x = x
+        flow.y = y
+        flow.at = timestamp
+        // Breath: yours exactly; anyone else's guessed from how long they've been inhaling
+        const breath = isLocal ? this.stamina : Math.max(0, 1 - (timestamp - flow.since) / INHALE.MAX_MS)
+        const weak = breath < 0.3 ? 1 - breath / 0.3 : 0
+        // The shape, always inside the real pull area
+        const ahead = Math.max(0, flow.along)
+        const tight = Math.min(1, Math.max(0, (intensity - 1) / 0.8))
+        const length = reach * (0.72 + 0.28 * ahead)
+        const spread = arc * (1 - 0.35 * ahead) * (1 - 0.4 * tight)
+        // It leans toward whoever it's draining
+        const world = this.multiplayerManager?.getState()
+        const target = player.stealingFrom ? world?.players?.get(player.stealingFrom) : null
+        const mouthX = x + Math.cos(facing) * size * 0.3
+        const mouthY = y + Math.sin(facing) * size * 0.3
+        let lean = 0
+        let toward = facing
+        let hookLength = length
+        if (target) {
+            const tx = target.x + target.width / 2
+            const ty = target.y + target.height / 2
+            toward = Math.atan2(ty - mouthY, tx - mouthX)
+            lean = Math.max(-arc, Math.min(arc, Math.atan2(Math.sin(toward - facing), Math.cos(toward - facing)))) * 0.6
+            hookLength = Math.min(reach, Math.hypot(tx - mouthX, ty - mouthY))
+        }
+        // Hooked on someone a while (the lock building), the curling air straightens into beams
+        // running from them straight into the mouth; it curls again the moment the hook breaks
+        const hookId = target ? String(player.stealingFrom) : ''
+        if (hookId !== flow.hookId) {
+            flow.hookId = hookId
+            flow.hookedAt = timestamp
+        }
+        const straight = hookId ? Math.min(1, Math.max(0, (timestamp - flow.hookedAt - 400) / 1100)) : 0
+        // ...pinching tighter the longer the hold (as the drain escalates)
+        const pinch = 1 - 0.5 * straight
+        ctx.save()
+        // The real pull area, only hinted at
+        const hint = ctx.createRadialGradient(mouthX, mouthY, 0, mouthX, mouthY, reach)
+        hint.addColorStop(0, `rgba(180, 230, 255, ${Math.min(0.07, 0.025 + 0.008 * power)})`)
+        hint.addColorStop(0.6, 'rgba(180, 230, 255, 0)')
+        ctx.fillStyle = hint
+        ctx.beginPath()
+        ctx.moveTo(mouthX, mouthY)
+        ctx.arc(mouthX, mouthY, reach, facing - arc, facing + arc)
+        ctx.closePath()
+        ctx.fill()
+        ctx.strokeStyle = 'rgba(200, 240, 255, 0.16)'
+        ctx.lineWidth = 1
+        ctx.setLineDash([3, 9])
+        ctx.beginPath()
+        ctx.arc(mouthX, mouthY, reach, facing - arc, facing + arc)
+        ctx.stroke()
+        ctx.setLineDash([])
+        // The streaks, each riding a curved line from far out into the mouth
+        const far = flow.heading + lean
+        const streaks = Math.max(3, Math.round((8 + 5 * heft + 3 * power) * (1 - 0.6 * weak)))
+        const period = (length / (INHALE_LOOK.STREAK_SPEED * power * (1.6 / heft))) * 1000
+        const turbulence = 0.06 * heft * (1 - 0.5 * tight) + 0.12 * weak
+        const segment = 0.1 + 0.04 * power
+        ctx.lineCap = 'round'
+        ctx.strokeStyle = 'rgba(220, 245, 255, 1)'
+        for (let i = 0; i < streaks; i++) {
+            // Low on breath, the flow breaks up
+            if (weak > 0 && (i + Math.floor(timestamp / 120)) % 3 === 0) continue
+            const lane = Math.sin(i * 2.3 + 0.7)
+            const t = (((timestamp / period + i / streaks + 0.37 * Math.sin(i * 1.7)) % 1) + 1) % 1
+            // Curling in from the flow, or (hooked) a straight beam from the victim
+            const curled = far + lane * spread
+            const beam = toward + lane * spread * 0.2 * pinch
+            const startAngle = curled + Math.atan2(Math.sin(beam - curled), Math.cos(beam - curled)) * straight
+            const span = length + (hookLength - length) * straight
+            const ax = mouthX + Math.cos(startAngle) * span
+            const ay = mouthY + Math.sin(startAngle) * span
+            const bendAngle = facing + lane * spread * 0.5 + lean * 0.5
+            const wobble = Math.sin(timestamp / (180 * heft) + i * 1.9) * turbulence * span * (1 - straight)
+            const curveX = mouthX + Math.cos(bendAngle) * span * 0.45 - Math.sin(facing) * wobble
+            const curveY = mouthY + Math.sin(bendAngle) * span * 0.45 + Math.cos(facing) * wobble
+            const bx = curveX + ((ax + mouthX) / 2 - curveX) * straight
+            const by = curveY + ((ay + mouthY) / 2 - curveY) * straight
+            const reachOf = segment * (1 + 0.8 * straight)
+            const from = onCurve(ax, ay, bx, by, mouthX, mouthY, t)
+            const mid = onCurve(ax, ay, bx, by, mouthX, mouthY, Math.min(1, t + reachOf / 2))
+            const to = onCurve(ax, ay, bx, by, mouthX, mouthY, Math.min(1, t + reachOf))
+            const flicker = weak > 0 ? 0.5 + 0.5 * Math.sin(timestamp / 40 + i) : 1
+            ctx.globalAlpha = Math.min(0.95, (0.45 + 0.08 * power) * (1 + 0.4 * straight)) * Math.min(1, t * 4) * (1 - 0.6 * weak * (1 - flicker))
+            ctx.lineWidth = (0.8 + 0.45 * power) * (0.55 + 0.25 * heft) * (1 + 0.3 * straight) * (1 - 0.5 * weak)
+            ctx.beginPath()
+            ctx.moveTo(from.x, from.y)
+            ctx.quadraticCurveTo(mid.x, mid.y, to.x, to.y)
+            ctx.stroke()
+        }
+        // Side streams peeling off to each creature it's robbing and each gem in its pull
+        const pulled: { x: number; y: number; color: string }[] = []
+        for (const victimId of String(player.robbing ?? '').split(',')) {
+            const victim = victimId ? world?.players?.get(victimId) : null
+            if (victim) pulled.push({ x: victim.x + victim.width / 2, y: victim.y + victim.height / 2, color: 'rgba(220, 245, 255, 1)' })
+        }
+        world?.gems?.forEach((gem: any, gemId: string) => {
+            if (pulled.length >= 8) return
+            const dx = gem.x - mouthX
+            const dy = gem.y - mouthY
+            const d = Math.hypot(dx, dy)
+            if (d > reach || d < 1) return
+            const off = Math.acos(Math.max(-1, Math.min(1, (dx * Math.cos(facing) + dy * Math.sin(facing)) / d)))
+            if (off <= arc) pulled.push({ x: gem.x, y: gem.y, color: gemColor(gemId) })
+        })
+        ctx.lineWidth = 1.5
+        pulled.forEach((source, j) => {
+            const side = j % 2 ? 1 : -1
+            const dx = mouthX - source.x
+            const dy = mouthY - source.y
+            const bx = (source.x + mouthX) / 2 - dy * 0.2 * side
+            const by = (source.y + mouthY) / 2 + dx * 0.2 * side
+            ctx.strokeStyle = source.color
+            for (let k = 0; k < 2; k++) {
+                const t = (timestamp / 520 + k / 2 + j * 0.13) % 1
+                const from = onCurve(source.x, source.y, bx, by, mouthX, mouthY, t)
+                const to = onCurve(source.x, source.y, bx, by, mouthX, mouthY, Math.min(1, t + 0.14))
+                ctx.globalAlpha = 0.7 * Math.min(1, t * 3) * (1 - 0.5 * weak)
+                ctx.beginPath()
+                ctx.moveTo(from.x, from.y)
+                ctx.lineTo(to.x, to.y)
+                ctx.stroke()
+            }
+        })
+        // The mouth glows and throbs, harder and faster the stronger the pull
+        ctx.globalAlpha = 1 - 0.5 * weak
+        const throb = 0.5 + 0.5 * Math.sin((timestamp / 1000) * Math.PI * 2 * (2 + power))
+        const core = (size / 2) * (0.35 + 0.1 * power) * (0.85 + 0.15 * throb) * 2
+        const rush = ctx.createRadialGradient(mouthX, mouthY, 0, mouthX, mouthY, core)
+        rush.addColorStop(0, `rgba(235, 250, 255, ${Math.min(0.7, 0.22 + 0.1 * power)})`)
+        rush.addColorStop(1, 'rgba(235, 250, 255, 0)')
+        ctx.fillStyle = rush
+        ctx.beginPath()
+        ctx.arc(mouthX, mouthY, core, 0, Math.PI * 2)
+        ctx.fill()
         ctx.restore()
     }
 
