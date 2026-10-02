@@ -219,10 +219,10 @@ try {
 
     alice.send('test:setGems', { count: 100 });
     await waitFor(() => me().gems >= 99, 1000, 'Alice now holds 100 gems');
-    check(me().width >= 99 && me().width <= 100.5, `gems make you much bigger (${me().width} units wide at 100 gems, 5x a newborn)`);
+    check(me().width >= 142 && me().width <= 143.5, `gems make you much bigger (${me().width.toFixed(1)} units wide at 100 gems, 7x a newborn)`);
     alice.send('test:setGems', { count: 750 });
     await sleep(200);
-    check(me().gems >= 745 && me().width >= 235, `there's no size cap: 750 gems makes a giant 12x a newborn's width (${me().width} units)`);
+    check(me().gems >= 745 && me().width >= 380, `there's no size cap: 750 gems makes a giant 19x a newborn's width (${me().width.toFixed(1)} units)`);
     alice.send('test:setGems', { count: 100 });
     await sleep(200);
     alice.send('steer', { x: sideways() === 'right' ? 1 : -1, y: 0 });
@@ -231,7 +231,7 @@ try {
     await sleep(500);
     const bigSpeed = Math.abs(me().x - bigFrom) / 0.5;
     alice.send('steer', { x: 0, y: 0 });
-    check(bigSpeed > 140 && bigSpeed < bobSpeed * 0.75, `and slower (${Math.round(bigSpeed)} vs ${Math.round(bobSpeed)} units a second)`);
+    check(bigSpeed > 110 && bigSpeed < bobSpeed * 0.5, `and much slower (${Math.round(bigSpeed)} vs ${Math.round(bobSpeed)} units a second)`);
     alice.send('test:setGems', { count: 400 });
     await sleep(400);
     const shedFrom = me().gems;
@@ -312,36 +312,47 @@ try {
     const room = clearance(state(), me());
     check(room >= 100, `somewhere clear of traffic (${Math.round(room)} units from the nearest obstacle)`);
 
-    // Shoving
+    // Bodies are solid: nobody overlaps or passes through anyone, and touching never shoves anyone
     await waitFor(() => !me().spawnProtected && !bobState().spawnProtected, 3000, 'neither player is protected');
-    /** Line `left` up just left of `right`, have `left` run into `right`, and return how far `right` slides */
-    async function shove(left, right, leftGems, rightGems) {
-        const leftState = () => state().players.get(left.sessionId);
-        const rightState = () => state().players.get(right.sessionId);
-        left.send('test:setGems', { count: leftGems });
-        right.send('test:setGems', { count: rightGems });
+    /** Line `walker` up just left of `wall` and walk it right (and down, at an angle); returns how far `wall` moved, how far `walker` got down, and the gap between them */
+    async function walkInto(walker, wall, walkerGems, wallGems, { down = 0, inhale = false } = {}) {
+        const walkerState = () => state().players.get(walker.sessionId);
+        const wallState = () => state().players.get(wall.sessionId);
+        walker.send('test:setGems', { count: walkerGems });
+        wall.send('test:setGems', { count: wallGems });
         await sleep(150);
-        left.send('test:moveTo', { x: 700, y: 1000 });
-        right.send('test:moveTo', { x: 700 + leftState().width + 20, y: 1000 });
-        right.send('test:face', { angle: Math.PI });
+        walker.send('test:moveTo', { x: 700, y: 1000 });
+        wall.send('test:moveTo', { x: 700 + walkerState().width + 20, y: 1000 + (walkerState().height - wallState().height) / 2 });
+        walker.send('test:face', { angle: 0 });
         await sleep(250);
-        const startX = rightState().x;
-        left.send('steer', { x: 1, y: 0 });
-        await sleep(250);
-        left.send('steer', { x: 0, y: 0 });
-        await sleep(900);
-        return rightState().x - startX;
+        const middle = (who) => ({ x: who.x + who.width / 2, y: who.y + who.height / 2 });
+        const wallFrom = middle(wallState());
+        const walkerFromY = walkerState().y;
+        if (inhale) walker.send('inhale');
+        walker.send('steer', { x: 1, y: down });
+        await sleep(700);
+        const w = walkerState();
+        const v = wallState();
+        const gap = Math.hypot(v.x + v.width / 2 - (w.x + w.width / 2), v.y + v.height / 2 - (w.y + w.height / 2)) - (w.width + v.width) / 2;
+        walker.send('steer', { x: 0, y: 0 });
+        if (inhale) walker.send('exhale');
+        await sleep(400);
+        return {
+            wallMoved: Math.round(Math.hypot(middle(wallState()).x - wallFrom.x, middle(wallState()).y - wallFrom.y)),
+            wallPushed: Math.round(middle(wallState()).x - wallFrom.x),
+            walkerDown: Math.round(walkerState().y - walkerFromY),
+            gap: Math.round(gap),
+        };
     }
-    const even = await shove(alice, bob, 0, 0);
-    check(even > 100 && even < 200, `running into someone shoves them (${Math.round(even)} units)`);
-    check(bobState().sliding === false, 'and they slide to a stop');
-    const heavy = await shove(alice, bob, 100, 5);
-    check(heavy > even * 1.15, `heavier players shove harder (${Math.round(heavy)} units)`);
-    const light = await shove(bob, alice, 0, 100);
-    check(light < even * 0.6, `and are harder to shove (${Math.round(light)} units)`);
-
-    const knockedLoose = 100 - me().gems;
-    check(knockedLoose <= 2, `bumping someone just shoves: even the leader keeps their gems (${knockedLoose} lost, only the usual shedding)`);
+    const even = await walkInto(alice, bob, 0, 0);
+    check(even.wallMoved <= 2 && even.gap >= -2 && even.gap <= 8, `walking into someone stops you at their edge: no shove, no overlap (they moved ${even.wallMoved}, gap ${even.gap})`);
+    const giantWalk = await walkInto(alice, bob, 100, 5);
+    check(giantWalk.wallMoved <= 2 && giantWalk.gap >= -2, `a giant can't ram anyone either (they moved ${giantWalk.wallMoved}, gap ${giantWalk.gap})`);
+    const slide = await walkInto(alice, bob, 0, 0, { down: 1 });
+    check(slide.wallMoved <= 2 && slide.walkerDown > 80, `at an angle you slide along them (${slide.walkerDown} units down, they moved ${slide.wallMoved})`);
+    await sleep(1100);
+    const inhaleRam = await walkInto(alice, bob, 10, 10, { inhale: true });
+    check(inhaleRam.wallPushed <= 2 && inhaleRam.gap >= -2, `inhaling doesn't let you ram anyone: it draws them in, but walking into them never pushes them away (pushed ${inhaleRam.wallPushed})`);
 
     // Bombs: safe in your mouth, lit when spat, and the blast knocks everyone flying and gems loose
     await sleep(2700);
@@ -374,22 +385,84 @@ try {
     check(bobHad - bobState().gems >= 2, `then it blows, knocking gems loose (${bobHad - bobState().gems} of ${bobHad})`);
     check(Math.abs(bobState().x - bobFrom) > 60, `and everyone in the blast is knocked flying (${Math.round(bobState().x - bobFrom)} units)`);
 
-    // Inhale a smaller creature and it's swallowed whole, gems and all
+    // Swallowing is a finisher: only for someone far smaller, pulled to your mouth and held there a moment
+    // (These checks take a while: keep the first arena shift away until its own checks below)
+    alice.send('test:shift', { phase: 'normal', msLeft: 120000 });
     await sleep(1500);
+    alice.send('test:setGems', { count: 100 });
     bob.send('test:setGems', { count: 5 });
     await sleep(200);
     // (The blast knocked Alice back: put her where Bob will be in front of her mouth)
     alice.send('test:moveTo', { x: 700, y: 1750 });
     alice.send('test:face', { angle: 0 });
     await sleep(150);
-    bob.send('test:moveTo', { x: 700 + me().width + 40, y: 1750 + (me().height - bobState().height) / 2 });
-    await sleep(250);
+    bob.send('test:moveTo', { x: 700 + me().width + 20, y: 1750 + (me().height - bobState().height) / 2 });
+    await sleep(1100); // a breath taken just before needs a moment to come back
     const aliceBeforeGulp = me().gems;
     alice.send('inhale');
-    await sleep(900);
+    await sleep(150);
+    const heldNotEaten = bobState().state === 'alive' && me().gulping === bob.sessionId;
+    await sleep(1100);
     alice.send('exhale');
-    check(bobState().state !== 'alive' && me().gems >= aliceBeforeGulp + 4, `inhaling swallows a smaller creature whole (Alice ${aliceBeforeGulp} then ${me().gems}, Bob ${bobState().state})`);
+    check(heldNotEaten, 'a much smaller creature is pulled to your mouth and held there, not eaten at once');
+    check(bobState().state !== 'alive' && me().gems >= aliceBeforeGulp + 4, `held there a moment, it's swallowed whole (Alice ${aliceBeforeGulp} then ${me().gems}, Bob ${bobState().state})`);
     await waitFor(() => bobState().state === 'alive' && !bobState().spawnProtected, 6000, 'Bob is back');
+    // ...but running straight away breaks free (robbed on the way out, but not swallowed)
+    bob.send('test:setGems', { count: 30 });
+    await sleep(200);
+    alice.send('test:moveTo', { x: 700, y: 1750 });
+    alice.send('test:face', { angle: 0 });
+    await sleep(150);
+    bob.send('test:moveTo', { x: 700 + me().width + 90, y: 1750 + (me().height - bobState().height) / 2 });
+    await sleep(1300);
+    alice.send('inhale');
+    bob.send('steer', { x: 1, y: 0 });
+    await sleep(1600);
+    alice.send('exhale');
+    bob.send('steer', { x: 0, y: 0 });
+    check(bobState().state === 'alive', 'but running straight away breaks free before it goes down');
+    await sleep(1300);
+    // A creature small enough to swallow is still robbed anywhere in your inhale, not only once it's at your mouth
+    alice.send('test:setGems', { count: 100 });
+    bob.send('test:setGems', { count: 20 });
+    await sleep(200);
+    alice.send('test:moveTo', { x: 700, y: 1750 });
+    alice.send('test:face', { angle: 0 });
+    await sleep(150);
+    bob.send('test:moveTo', { x: 700 + me().width + 120, y: 1750 + (me().height - bobState().height) / 2 });
+    await sleep(1300);
+    const smallHad = bobState().gems;
+    alice.send('inhale');
+    await sleep(1000);
+    alice.send('exhale');
+    await sleep(150);
+    check(smallHad - bobState().gems >= 3 && bobState().state === 'alive', `a smaller creature anywhere in your inhale is robbed, not just one at your mouth (${smallHad - bobState().gems} stolen)`);
+    await sleep(1300);
+    // An inhale's drain is shared: two creatures in it lose about one creature's worth between them
+    const cara = await join('Cara');
+    const caraState = () => state().players.get(cara.sessionId);
+    await sleep(1800); // (newcomers are protected for a moment)
+    alice.send('test:setGems', { count: 40 });
+    bob.send('test:setGems', { count: 40 });
+    cara.send('test:setGems', { count: 40 });
+    await sleep(250);
+    alice.send('test:moveTo', { x: 700, y: 1750 });
+    alice.send('test:face', { angle: 0 });
+    await sleep(150);
+    bob.send('test:moveTo', { x: 700 + me().width + 30, y: 1750 - 60 });
+    cara.send('test:moveTo', { x: 700 + me().width + 30, y: 1750 + me().height - caraState().height + 60 });
+    await sleep(300);
+    const bobShareFrom = bobState().gems;
+    const caraShareFrom = caraState().gems;
+    alice.send('inhale');
+    await sleep(1500);
+    alice.send('exhale');
+    await sleep(150);
+    const bobLost = bobShareFrom - bobState().gems;
+    const caraLost = caraShareFrom - caraState().gems;
+    check(bobLost >= 2 && caraLost >= 2 && bobLost + caraLost <= 15, `an inhale robs everyone in it, sharing its drain between them (Bob lost ${bobLost}, Cara ${caraLost})`);
+    await cara.leave();
+    await sleep(1300);
 
     // Gravity theft: inhale up close at anyone too big to swallow and their gems stream into you
     alice.send('test:setGems', { count: 40 });
@@ -411,35 +484,119 @@ try {
     await sleep(150);
     const stolen = bobBeforeTheft - bobState().gems;
     check(streaming && stolen >= 4 && me().gems - aliceBeforeTheft >= 4, `inhaling up close steals gems from anyone in front of your mouth (${stolen} stolen)`);
-    // A breath lasts a moment, and you need a moment to catch it
+    // Breath drains as you inhale and refills from wherever it is: a short puff costs a short wait...
     alice.send('inhale');
     await sleep(200);
-    const tooSoon = me().inhaling;
-    await sleep(1000);
-    alice.send('inhale');
-    await sleep(200);
-    check(!tooSoon && me().inhaling, 'you need a moment to catch your breath between inhales');
+    const againAtOnce = me().inhaling;
     alice.send('exhale');
-    await sleep(1100);
-    // Head-on, both inhaling each other: the stronger pull takes the whole stream
-    alice.send('test:setGems', { count: 50 });
+    await sleep(150);
+    // ...and an empty breath needs a moment before the next inhale
+    alice.send('inhale');
+    await waitFor(() => me().inhaling, 1000, 'inhaling again');
+    await waitFor(() => !me().inhaling, 4000, 'a breath runs out');
+    alice.send('exhale');
+    alice.send('inhale');
+    await sleep(100);
+    const tooSoon = me().inhaling;
+    alice.send('exhale');
+    await sleep(400);
+    alice.send('inhale');
+    await sleep(150);
+    check(againAtOnce && !tooSoon && me().inhaling, `breath refills from wherever it is: a short puff costs a short wait, an empty breath a longer one (${againAtOnce}, ${tooSoon}, ${me().inhaling})`);
+    alice.send('exhale');
+    await sleep(2100);
+    // Head-on, both inhaling each other: both steal at once (gems stream both ways), and the heavier one drags the lighter one in
+    alice.send('test:setGems', { count: 40 });
     bob.send('test:setGems', { count: 30 });
     await sleep(200);
-    bob.send('test:moveTo', { x: 700 + me().width + 20, y: 1750 + (me().height - bobState().height) / 2 });
+    bob.send('test:moveTo', { x: 700 + me().width + 60, y: 1750 + (me().height - bobState().height) / 2 });
     bob.send('test:face', { angle: Math.PI });
     alice.send('test:face', { angle: 0 });
     await sleep(250);
-    const aliceBeforeTug = me().gems;
-    const bobBeforeTug = bobState().gems;
+    const aliceStoleBefore = me().stolenTotal;
+    const bobStoleBefore = bobState().stolenTotal;
+    const aliceAt = me().x;
+    const bobAt = bobState().x;
     alice.send('inhale');
     bob.send('inhale');
-    await sleep(1500);
+    await sleep(700);
+    const bothStreaming = me().stealingFrom === bob.sessionId && bobState().stealingFrom === alice.sessionId;
+    await sleep(800);
     alice.send('exhale');
     bob.send('exhale');
     await sleep(150);
-    check(me().gems > aliceBeforeTug + 3 && bobState().gems < bobBeforeTug - 3, `head-on, the stronger pull wins the tug-of-war (Alice ${aliceBeforeTug} then ${me().gems}, Bob ${bobBeforeTug} then ${bobState().gems})`);
-    check(bobState().state !== 'alive', 'and once the loser is drained small enough, it gets swallowed whole');
+    const aliceTook = me().stolenTotal - aliceStoleBefore;
+    const bobTook = bobState().stolenTotal - bobStoleBefore;
+    check(bothStreaming && aliceTook >= 4 && bobTook >= 4, `head-on, both steal from each other at once (Alice took ${aliceTook}, Bob took ${bobTook})`);
+    check(Math.abs(me().x - aliceAt) < Math.abs(bobState().x - bobAt) && bobState().state === 'alive', `and the heavier one drags the lighter one in, moving less itself (Alice moved ${Math.round(Math.abs(me().x - aliceAt))}, Bob ${Math.round(Math.abs(bobState().x - bobAt))})`);
+    // A small creature can rob a giant: gems stream out, and the giant's body doesn't budge
+    await sleep(1100);
+    alice.send('test:setGems', { count: 5 });
+    bob.send('test:setGems', { count: 300 });
+    await sleep(250);
+    alice.send('test:moveTo', { x: 700, y: 1750 });
+    alice.send('test:face', { angle: 0 });
+    await sleep(150);
+    bob.send('test:moveTo', { x: 700 + me().width + 10, y: 1750 + (me().height - bobState().height) / 2 });
+    await sleep(400);
+    const giantFrom = bobState().x;
+    const giantHad = bobState().gems;
+    alice.send('inhale');
+    await sleep(2000);
+    alice.send('exhale');
+    await sleep(150);
+    check(giantHad - bobState().gems >= 2 && Math.abs(bobState().x - giantFrom) < 15, `a small creature can rob a giant, but barely budges its body (${giantHad - bobState().gems} stolen, moved ${Math.round(Math.abs(bobState().x - giantFrom))})`);
+    // Take someone's last gem and they're drained: gone until they come back (close enough in size that it
+    // never turns into a swallow: drained small enough, it would)
+    await sleep(1100);
+    alice.send('test:setGems', { count: 1 });
+    bob.send('test:setGems', { count: 3 });
+    await sleep(250);
+    bob.send('test:moveTo', { x: 700 + me().width + 30, y: 1750 + (me().height - bobState().height) / 2 });
+    await sleep(250);
+    alice.messages.length = 0;
+    alice.send('inhale');
+    await sleep(1500);
+    alice.send('exhale');
+    const drainedNote = alice.messages.find((m) => m.type === 'credit' && m.message?.how === 'drained');
+    const vanished = alice.messages.some((m) => m.type === 'vanish');
+    check(bobState().state !== 'alive' && !!drainedNote && vanished, `steal someone's last gem and they shrink away, out until they come back (${bobState().state})`);
     await waitFor(() => bobState().state === 'alive' && !bobState().spawnProtected, 6000, 'Bob is back');
+    await sleep(300);
+    // Someone with no gems left can be sucked up by anyone, even a creature barely bigger: held at the mouth, they go down
+    alice.send('test:setGems', { count: 1 });
+    bob.send('test:setGems', { count: 0 });
+    await sleep(250);
+    alice.send('test:moveTo', { x: 700, y: 1750 });
+    alice.send('test:face', { angle: 0 });
+    await sleep(150);
+    bob.send('test:moveTo', { x: 700 + me().width + 2, y: 1750 + (me().height - bobState().height) / 2 });
+    await sleep(1200);
+    alice.send('inhale');
+    await sleep(1500);
+    alice.send('exhale');
+    check(bobState().state !== 'alive', `a creature with no gems can be sucked up by anyone, even someone barely bigger (Bob ${bobState().state})`);
+    await waitFor(() => bobState().state === 'alive' && !bobState().spawnProtected, 6000, 'Bob is back');
+    await sleep(300);
+    // Turning right around takes a moment, and much longer for a giant (mass: slower to start turning, and slower at it)
+    const turnAround = async (gems, ms) => {
+        alice.send('test:setGems', { count: gems });
+        await sleep(200);
+        alice.send('test:moveTo', { x: 1500, y: 1200 });
+        alice.send('test:face', { angle: 0 });
+        await sleep(200);
+        alice.send('steer', { x: -1, y: 0 });
+        await sleep(ms);
+        const facing = me().facing;
+        alice.send('steer', { x: 0, y: 0 });
+        await sleep(150);
+        return Math.abs(Math.atan2(Math.sin(facing - Math.PI), Math.cos(facing - Math.PI)));
+    };
+    const halfway = await turnAround(0, 300);
+    check(halfway > 1, `turning right around takes a moment (${halfway.toFixed(2)} radians still to go after 0.3s)`);
+    const newbornOff = await turnAround(0, 900);
+    const giantOff = await turnAround(300, 900);
+    check(newbornOff < 0.2 && giantOff > 1, `a giant turns much slower than a newborn (after 0.9s, newborn ${newbornOff.toFixed(2)} and giant ${giantOff.toFixed(2)} radians off)`);
     // Inhaling never slows you down
     const stroll = async (inhaling) => {
         alice.send('test:moveTo', { x: 300, y: 1200 });
@@ -471,7 +628,7 @@ try {
     check(!me().inhaling && afterBreath - beforeBreath > plainWalk * 0.55, `running out of breath doesn't change how you move (${Math.round(afterBreath - beforeBreath)} units in 0.8s)`);
     await sleep(1200);
     // Stealing works on the move: walking up to someone while inhaling (no bouncing off them), and
-    // chasing someone who runs (the pull drags them back)
+    // chasing someone who runs (while you keep them in reach)
     alice.send('test:setGems', { count: 40 });
     bob.send('test:setGems', { count: 40 });
     await sleep(200);
@@ -502,7 +659,7 @@ try {
     bob.send('steer', { x: 0, y: 0 });
     alice.send('exhale');
     check(bobBeforeChase - bobState().gems >= 4, `chasing someone your size keeps stealing while you keep up (${bobBeforeChase - bobState().gems} stolen)`);
-    // (Drained small enough, he may have been swallowed: wait for him)
+    // (In case he was drained: wait for him)
     await waitFor(() => bobState().state === 'alive' && !bobState().spawnProtected, 6000, 'Bob is back');
     bob.send('steer', { x: 0, y: 0 }); // his stop may have arrived while he was swallowed
     await sleep(1300);
@@ -528,30 +685,23 @@ try {
     check(bobState().state === 'alive' && escapeTo > escapeFrom + 50, `smaller is faster: a newborn caught in a big creature's inhale outruns it (gap ${Math.round(escapeFrom)} to ${Math.round(escapeTo)})`);
     await sleep(1300);
 
-    // Bumper cars: running into someone at speed bounces you both apart, the lighter one farther, and costs no gems
-    async function bump(bigGems, smallGems) {
-        alice.send('test:setGems', { count: bigGems });
-        bob.send('test:setGems', { count: smallGems });
-        await sleep(200);
-        alice.send('test:moveTo', { x: 600, y: 400 });
-        bob.send('test:moveTo', { x: 600 + me().width + 30, y: 400 + (me().height - bobState().height) / 2 });
-        bob.send('test:face', { angle: Math.PI });
-        await sleep(250);
-        const aliceFrom = me().x;
-        const bobFrom = bobState().x;
-        const had = bobState().gems;
-        alice.send('steer', { x: 1, y: 0 });
-        await sleep(450);
-        alice.send('steer', { x: 0, y: 0 });
-        await sleep(900);
-        const result = { lost: had - bobState().gems, bobMoved: Math.round(bobState().x - bobFrom), aliceMoved: Math.round(me().x - aliceFrom) };
-        await sleep(600);
-        return result;
-    }
-    const evenBump = await bump(10, 10);
-    check(evenBump.bobMoved > 100 && evenBump.aliceMoved < 30 && evenBump.lost === 0, `running into someone bounces you both apart like bumper cars (him ${evenBump.bobMoved}, you ${evenBump.aliceMoved}, ${evenBump.lost} gems lost)`);
-    const bigBump = await bump(100, 10);
-    check(bigBump.bobMoved > evenBump.bobMoved * 1.2 && bigBump.lost === 0, `a bigger creature bumps harder, but from the front nobody loses gems (${bigBump.bobMoved} units, ${bigBump.lost} lost)`);
+    // Walking into each other, both just stop: nobody bounces
+    alice.send('test:setGems', { count: 10 });
+    bob.send('test:setGems', { count: 10 });
+    await sleep(200);
+    alice.send('test:moveTo', { x: 600, y: 400 });
+    bob.send('test:moveTo', { x: 600 + me().width + 60, y: 400 + (me().height - bobState().height) / 2 });
+    await sleep(250);
+    alice.send('steer', { x: 1, y: 0 });
+    bob.send('steer', { x: -1, y: 0 });
+    await sleep(600);
+    alice.send('steer', { x: 0, y: 0 });
+    bob.send('steer', { x: 0, y: 0 });
+    await sleep(150);
+    const metAt = { alice: me().x, bob: bobState().x };
+    const headOnGap = bobState().x - (me().x + me().width);
+    await sleep(500);
+    check(headOnGap >= -2 && headOnGap <= 8 && Math.abs(me().x - metAt.alice) < 3 && Math.abs(bobState().x - metAt.bob) < 3, `walking into each other, both just stop: nobody bounces (gap ${Math.round(headOnGap)})`);
     await waitFor(() => bobState().state === 'alive' && !bobState().spawnProtected, 6000, 'Bob is back');
 
     // The 3-gem rule: with fewer than 3 gems, any hit knocks you out
@@ -571,14 +721,11 @@ try {
         if (Math.hypot(gem.x - me().x, gem.y - me().y) < 350) nearby += gem.value;
     });
     check(nearby >= 2, `and they burst out for the taking (${nearby} nearby)`);
+    // Someone who just arrived is solid too
     bob.send('test:protect', { ms: 3000 });
-    const shielded = await shove(alice, bob, 0, 0);
-    check(Math.abs(shielded) < 5, `players who just arrived can't be shoved (${Math.round(shielded)} units)`);
+    const shielded = await walkInto(alice, bob, 0, 0);
     bob.send('test:protect', { ms: 0 });
-    alice.send('test:protect', { ms: 3000 });
-    await sleep(100);
-    const freed = await shove(alice, bob, 0, 0);
-    check(freed > 100 && me().spawnProtected === false, 'shoving someone ends your own protection');
+    check(shielded.wallMoved <= 2 && shielded.gap >= -2, `someone who just arrived is solid too (they moved ${shielded.wallMoved}, gap ${shielded.gap})`);
 
     // Traffic hits follow the shapes on screen and count along the whole path of a hop. All
     // traffic but one standing block is parked in a far corner, so only that block can hit Alice.
@@ -702,7 +849,7 @@ try {
     await sleep(150);
     placeCenter(alice, me(), tileCenter(voidTile));
     await waitFor(() => me().recovering, 1000, 'stepping over the edge counts as a hit');
-    check(me().gems <= 6, `half your gems burst out (${me().gems} left)`);
+    await waitFor(() => me().gems <= 6, 1000, 'half your gems burst out');
     check(onFloor(me()), 'and you land back on the floor');
     await waitFor(() => !me().recovering, 2000, 'Alice recovers');
     alice.send('test:setGems', { count: 0 });
@@ -723,15 +870,18 @@ try {
     bob.send('test:moveTo', { x: tileRight - me().width - 4 - bobState().width - 20, y: rowMiddle - bobState().height / 2 });
     await sleep(250);
     bob.messages.length = 0;
+    const aliceAtEdge = me().x;
     bob.send('steer', { x: 1, y: 0 });
-    await sleep(300);
+    await sleep(700);
     bob.send('steer', { x: 0, y: 0 });
-    await waitFor(() => bob.messages.some((m) => m.type === 'credit' && m.message.how === 'edge'), 2000, 'bumping someone off the edge is credited');
-    const credit = bob.messages.find((m) => m.type === 'credit')?.message;
-    check(credit?.by === 'Bob' && credit?.target === 'Alice', `everyone sees who did it (${credit?.by} shoved ${credit?.target})`);
+    await sleep(300);
+    check(me().state === 'alive' && onFloor(me()) && Math.abs(me().x - aliceAtEdge) < 3 && !bob.messages.some((m) => m.type === 'credit'), `nobody can be rammed off the edge: bodies are solid (Alice moved ${Math.round(me().x - aliceAtEdge)} units)`);
 
     await waitFor(() => !me().recovering && !me().sliding, 2000, 'Alice is steady');
 
+    // (Both newborn-sized, so both fit on the jackpot at once: bodies are solid)
+    alice.send('test:setGems', { count: 0 });
+    await sleep(150);
     const spot = tileCenter(floorTiles[Math.floor(floorTiles.length / 2)]);
     placeCenter(alice, me(), spot);
     placeCenter(bob, bobState(), { x: spot.x + 10, y: spot.y });

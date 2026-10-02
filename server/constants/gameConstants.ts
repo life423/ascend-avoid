@@ -85,7 +85,8 @@ export const WORLD = {
    * the width VIEW_AREA gives, widening with (width / newborn width) ^ VIEW_GROWTH, less than you
    * grow, so a giant still fills a good part of the screen (about a sixth of its height at 12x) */
   VIEW_ZOOM_SMALL: 0.8,
-  VIEW_GROWTH: 0.3,
+  VIEW_GROWTH: 0.15, // (much less than you grow: a giant fills its own screen)
+  VIEW_ZOOM_MAX: 1.5, // and never zoomed out past this, so a huge creature looms like a boss on everyone's screen
   OBSTACLE_COUNT: 6, // lane traffic (comets and balls cross it at other angles); open space to fight and charge in
   RESPAWN_DELAY_MS: 2000,
   SPAWN_PROTECTION_MS: 1500,
@@ -105,7 +106,7 @@ export const GEMS = {
    * like Agar.io. 45 wide at 10 gems, 100 at 100 (5x a newborn), 240 at 750 (12x), 300 at 1,200 (15x).
    * Shedding (DECAY_*) slows growth down instead of stopping it.
    */
-  SIZE_PER_ROOT: 8,
+  BASE_MASS: 2, // width = PLAYER_SIZE x sqrt(1 + gems / this) (a newborn's body counts as this many gems): every gem grows you, gently at first (24.5 wide with 1 gem), 7x a newborn at 100, 14x at 400
   SPRAY_SHARE: 0.5, // a hit sprays out this share of your gems...
   SURVIVE_AT: 3, // ...but with fewer than this, a hit knocks you out (your last gems burst out)
   SPRAY_PIECES: 24, // at most this many gems fly out; big piles make bigger gems
@@ -122,12 +123,10 @@ export const GEMS = {
 } as const;
 
 /**
- * Shoving: hop into someone and they slide away. Weight grows with size (1 to 2.25), so heavier
- * players shove harder and are harder to shove.
+ * Knockback from blasts and hits. Creatures never shove each other: touching just stops you (see
+ * GameState.keepApart). Weight grows with size, so heavier creatures slide less.
  */
 export const PUSH = {
-  BUMP: 150, // running into someone at speed: each bounces about this far (split by weight)
-  BUMP_SPEED: 0.5, // ...moving toward them at this share of top speed or more
   DISTANCE: 140, // how far a shove sends someone your own weight (about two hops)...
   MIN_RATIO: 0.3, // ...scaled by your weight over theirs, kept within these limits
   MAX_RATIO: 3,
@@ -216,39 +215,60 @@ export const COMETS = {
   CURVE_MAX: 30,
 } as const;
 
-/** Which way creatures face: small ones turn fast, big ones slower but still fast enough to defend */
+/**
+ * Which way creatures face (where the mouth and its inhale point; you still walk wherever you
+ * steer). Turning is like turning a real body: heavier creatures turn slower at most, and are slow
+ * to start turning and slow to stop (see turnStep), and anyone inhaling turns slower still, so a
+ * cone can't be whipped round onto someone circling you.
+ */
 export const FACING = {
-  TURN_SMALL: 14, // radians a second for a newborn...
-  TURN_FALLOFF: 0.55, // ...falling as TURN_SMALL x (PLAYER_SIZE / width) ^ this: about 5.8 at 5x, 3.6 at 12x (a second to turn around)
+  TURN_RATE: 5.5, // radians a second at most for a newborn...
+  TURN_FALLOFF: 0.5, // ...falling as (PLAYER_SIZE / width) ^ this: about 2.8 at 25 gems, 2 at 100, 1.4 at 400
+  INHALE_TURN: 0.4, // ...and while inhaling, this share of that
+  TURN_ACCEL: 30, // how fast turning builds up or slows down (radians a second, each second) for a newborn...
+  ACCEL_FALLOFF: 1, // ...falling as (PLAYER_SIZE / width) ^ this: a giant takes a while to get turning, and to stop
 } as const;
 
 /**
- * Inhale (hold the button): you keep moving at full speed, aiming your mouth, and pull in everything in a
- * cone in front of you. Gems are swallowed; creatures EAT_RATIO times smaller are swallowed whole
- * (all their gems become yours; they can escape if they run early); a bomb stays in your mouth,
- * safe until you spit it. Bigger creatures reach farther.
+ * How hard suction moves a body (a creature's inhale, or a turbine's intake): the puller's width
+ * over the target's, softened by SOFTEN and kept between MIN and MAX. Small creatures are moved
+ * strongly, giants barely. Bodies only: gems have their own rule (see INHALE.STEAL_RATE).
+ */
+export const SUCTION = {
+  SOFTEN: 0.75,
+  MIN: 0.3,
+  MAX: 2,
+} as const;
+
+/**
+ * Inhaling, the one button: everything in a cone in front of your mouth (longer the bigger you
+ * are). Gems are pulled in and swallowed. Every creature in it is robbed of gems (STEAL_RATE) and
+ * pulled bodily toward your mouth, by mass: harder the heavier you are next to it, the closer it is
+ * and the more squarely in front (BODY_PULL). One with two-thirds your mass or less (EAT_RATIO)
+ * goes down once it's held right at your mouth for GULP_MS. Size resists being pulled, not being
+ * robbed; heavier creatures move and turn slower.
  */
 export const INHALE = {
-  REACH: 110, // plus REACH_PER_SIZE times your size
-  REACH_PER_SIZE: 1.2,
+  REACH: 80, // plus REACH_PER_SIZE times your width: 120 for a newborn, about 365 at 100 gems, 650 at 400 (the cone on screen is exactly this long)
+  REACH_PER_SIZE: 2,
   ARC: 35, // degrees either side of where you face
   PULL_GEMS: 520, // units a second
   PULL_BOMBS: 420,
-  PULL_PREY: 400, // units a second, right at your mouth, easing to nothing at the edge of your reach: anything smaller is faster, so it can outrun the pull unless it lets you get close
-  EAT_RATIO: 1.25,
-  MAX_MS: 3000, // how long one breath lasts...
-  RECOVER_MS: 1000, // ...and how long you need to catch it before the next
-  /**
-   * Gravity theft: up close, inhaling steals gems from the nearest creature in front of your mouth
-   * that's too big to swallow, STEAL_RATE a second times the square root of your weight (bigger
-   * pulls harder, but not in proportion). Head-on, both inhaling each other, the stronger pull takes
-   * the whole stream; within TUG_EDGE of each other, neither gains.
-   */
-  STEAL_REACH_PER_SIZE: 0.25, // plus this times the thief's width (bigger creatures reach farther)
-  STEAL_REACH: 100, // the gap between you and them (anyone smaller than the thief is faster, and can run out of it)
-  STEAL_ARC: 50, // degrees either side of where you face
-  STEAL_RATE: 4,
-  TUG_EDGE: 1.08,
+  BODY_PULL: 80, // units a second a creature your own size is pulled at, right at your mouth and dead ahead...
+  BODY_PULL_MAX: 3, // ...times your width over its (mass, with pull and resistance each growing as the square root of mass), up to this...
+  PREY_PULL_CAP: 0.75, // ...but never more than this share of its own top speed: turn and strafe, and it can get away
+  EAT_RATIO: 1.22, // you can swallow a creature with two-thirds your mass or less (this many times narrower)...
+  GULP_REACH: 0.35, // ...held this close to your mouth (times your width, plus its radius)...
+  GULP_MS: 400, // ...once it's held right at your mouth for this long (if it gets away first, it starts over)
+  MAX_MS: 3000, // a full breath lasts this long while you inhale...
+  REFILL_MS: 2000, // ...and refills from empty in this long, starting from wherever it is (a short puff costs a short wait)
+  MIN_BREATH: 0.1, // you can start inhaling with at least this share of a breath
+  STEAL_RATE: 6, // gems a second pulled out of a creature in your inhale (shared out, weaker farther out or while it gets away), whatever either one's size
+  STEAL_EDGE_SHARE: 0.25, // everyone in an inhale is robbed, sharing its drain by how squarely they sit in the cone: dead center counts 1, the very edge this
+  STEAL_FALLOFF: 1, // drain fades evenly from the mouth to the tip of the cone, just as the cone fades on screen
+  STEAL_ESCAPE: 0.75, // getting away cuts the drain by up to this much...
+  STEAL_ESCAPE_AWAY: 0.6, // ...counting speed straight away at this share, and speed across the cone in full (strafing escapes best)...
+  STEAL_POINT_BLANK: 0.25, // ...but less and less within this share of the reach: right at the mouth there's no getting away
   STOLE_NOTICE: 5, // a theft this big gets a banner and a line in the feed
 } as const;
 
@@ -322,7 +342,8 @@ export const TURBINE = {
   STRIP_RATE: 3, // ...this many a second...
   STRIP_PER_ROOT: 1.5, // ...plus this times the square root of their weight (giants lose them fastest)
   GEM_PULL: 480, // units a second loose gems are pulled at near the intake (a quarter of that at the edge)
-  PLAYER_PULL: 140, // units a second players are pulled at right by the intake, easing to nothing at the edge
+  PLAYER_PULL: 120, // units a second players are pulled at right by the intake (times SUCTION), easing to nothing at the edge...
+  SUCTION_SIZE: 60, // ...as if by a creature this wide (newborns are dragged hard, giants can walk away)
   TRAVEL_SPEED: 700, // units a second a stolen gem flies into the intake...
   MIN_TRAVEL_MS: 200,
   INSIDE_MS: 450, // ...then it crosses the turbine...
@@ -347,11 +368,12 @@ export const TURBINE = {
 } as const;
 
 export const ARENA_RULES = {
-  PLAYER_SIZE: 20, // a new player's size; gems make you bigger (GEMS.SIZE_PER_ROOT)
+  PLAYER_SIZE: 20, // a new player's size; gems make you bigger (GEMS.BASE_MASS)
   HOP: 60, // one tap = one hop, while you're small...
   HOP_BEYOND_SIZE: 12, // ...and once you're big, your size plus this, so a hop always clears you
   MOVE_SPEED: 320, // top speed (units a second) for a newborn...
-  SPEED_FALLOFF: 0.35, // ...falling as MOVE_SPEED x (PLAYER_SIZE / width) ^ this: about 180 at 5x, 135 at 12x
+  SPEED_FALLOFF: 0.45, // ...falling as MOVE_SPEED x (PLAYER_SIZE / width) ^ this, an agar.io-like curve: about 260 with 1 gem, 220 with 5, 175 with 25, 135 with 100, 105 with 400...
+  MIN_SPEED: 90, // ...but never slower than this: giants are slower, but still move well enough to hunt
   MOVE_RESPONSE: 14, // how quickly you reach the speed you're steering (and glide to a stop)
   HOP_REPEAT_DELAY: 0.2, // holding a direction: the first repeat hop comes after this many seconds,
   HOP_REPEAT: 1 / 6, // then one every this many seconds (six a second)
@@ -452,6 +474,7 @@ export const GAME_CONSTANTS = {
   INHALE,
   BOMBS,
   TURBINE,
+  SUCTION,
   SHIFT,
   KEYS,
   DEVICE_SETTINGS

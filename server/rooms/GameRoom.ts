@@ -133,7 +133,10 @@ export class GameRoom extends Room<GameState> {
       });
       this.onMessage("test:face", (client, data: any) => {
         const player = playerOf(client);
-        if (player) player.facing = Number(data?.angle) || 0;
+        if (player) {
+          player.facing = Number(data?.angle) || 0;
+          player.spin = 0;
+        }
       });
       this.onMessage("test:placeTurbine", (_client, data: any) => {
         this.state.placeTurbine(Number(data?.x) || 0, Number(data?.y) || 0, Number(data?.intake) || 0, data?.still === true);

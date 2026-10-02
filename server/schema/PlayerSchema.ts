@@ -1,7 +1,7 @@
 import * as schema from "@colyseus/schema";
 const { Schema, type } = schema;
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
-import { turnRate, turnToward, walk } from "../game/movement.js";
+import { turnStep, walk } from "../game/movement.js";
 import type { Box, Direction } from "../game/movement.js";
 
 const { ARENA_RULES, BOTS, GEMS, INHALE, PLAYER_STATE, PUSH, WORLD } = GAME_CONSTANTS;
@@ -9,7 +9,7 @@ const { ARENA_RULES, BOTS, GEMS, INHALE, PLAYER_STATE, PUSH, WORLD } = GAME_CONS
 
 /** A creature's size: small to start, growing with the square root of its gems, with no ceiling */
 function sizeFor(gems: number): number {
-  const size = ARENA_RULES.PLAYER_SIZE + GEMS.SIZE_PER_ROOT * Math.sqrt(gems);
+  const size = ARENA_RULES.PLAYER_SIZE * Math.sqrt(1 + gems / GEMS.BASE_MASS);
   return Math.round(size * 2) / 2;
 }
 
@@ -53,6 +53,12 @@ class PlayerSchema extends Schema {
   private steerY = 0;
   private walkX = 0;
   private walkY = 0;
+  /** Server-only: how fast the creature is turning (radians a second; see turnStep) */
+  spin = 0;
+  /** Server-only: where the player's middle was and how big it was when this tick began (see GameState.keepApart) */
+  tickX = 0;
+  tickY = 0;
+  tickRadius = 0;
   /** How the last shove came (for credits): "bump", or "bomb" */
   lastShoveKind = "";
   /** Which way the creature faces (radians): its back is where it's vulnerable */
@@ -63,6 +69,17 @@ class PlayerSchema extends Schema {
   mouth: string;
   /** Whose gems are streaming into your mouth right now ("" when nobody's) */
   stealingFrom: string;
+  /** Who this creature is holding at its mouth to swallow, and when (world time) they go down unless they get away; "" when nobody */
+  gulping: string;
+  gulpEndsAt: number;
+  /** Every gem it has ever stolen (browsers draw each one flying over, even when gems go both ways at once) */
+  stolenTotal: number;
+  /** Everyone this creature is robbing right now, comma-separated (the one squarest in its inhale first, which is also stealingFrom) */
+  robbing: string;
+  /** Every gem ever stolen from this creature (browsers draw each one flying out of it to whoever took it) */
+  robbedTotal: number;
+  /** Server-only: how far along the next gem from each victim is (see GameState.steal) */
+  stealShares = new Map<string, number>();
   /** Server-only: gems part-stolen, and how many this run of stealing has taken */
   stealProgress = 0;
   stolenRun = 0;
@@ -70,8 +87,9 @@ class PlayerSchema extends Schema {
   turbineStrip = 0;
   /** Server-only: when this breath runs out, and when you can spit again */
   inhaleStopAt = 0;
-  /** Server-only: when you've caught your breath for the next inhale */
-  inhaleReadyAt = 0;
+  /** Server-only: how much breath is left (0-1) as of staminaAt: it drains while inhaling and refills from wherever it is */
+  stamina = 1;
+  staminaAt = 0;
   spitReadyAt = 0;
   /** Server-only: where an inhale is aimed (the creature turns to face it) */
   aimX = 0;
@@ -83,6 +101,11 @@ class PlayerSchema extends Schema {
     this.inhaling = false;
     this.mouth = "";
     this.stealingFrom = "";
+    this.gulping = "";
+    this.gulpEndsAt = 0;
+    this.stolenTotal = 0;
+    this.robbing = "";
+    this.robbedTotal = 0;
     this.sessionId = sessionId;
     this.playerIndex = playerIndex;
     this.name = `Player ${playerIndex + 1}`;
@@ -257,6 +280,27 @@ class PlayerSchema extends Schema {
     this.steerY = y * scale;
   }
 
+  /** A new tick begins: remember where the player's middle is, and how big it is */
+  markTick(): void {
+    this.tickX = this.x + this.width / 2;
+    this.tickY = this.y + this.height / 2;
+    this.tickRadius = this.width / 2;
+  }
+
+  /** Ran into something solid along (nx, ny): stop moving that way (moving along it carries on, so it slides) */
+  blockAlong(nx: number, ny: number): void {
+    const walk = this.walkX * nx + this.walkY * ny;
+    if (walk > 0) {
+      this.walkX -= walk * nx;
+      this.walkY -= walk * ny;
+    }
+    const slide = this.vx * nx + this.vy * ny;
+    if (slide > 0) {
+      this.vx -= slide * nx;
+      this.vy -= slide * ny;
+    }
+  }
+
   /** How fast the player is moving right now: walking and sliding together */
   velocity(): { x: number; y: number } {
     return { x: this.walkX + this.vx, y: this.walkY + this.vy };
@@ -272,18 +316,29 @@ class PlayerSchema extends Schema {
 
   /** Start inhaling (for up to `forMs`, INHALE.MAX_MS for players): you move as usual, and your mouth turns toward your aim */
   startInhale(now: number, forMs = 3000): void {
-    if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering || now < this.inhaleReadyAt) return;
+    if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering) return;
+    this.breathe(now);
+    if (this.stamina < INHALE.MIN_BREATH) return;
     this.inhaling = true;
-    this.inhaleStopAt = now + forMs;
+    // Until you let go, or the breath you have left runs out
+    this.inhaleStopAt = now + Math.min(forMs, this.stamina * INHALE.MAX_MS);
     this.aimX = 0;
     this.aimY = 0;
   }
 
-  /** Stop inhaling: you need a moment (INHALE.RECOVER_MS) to catch your breath before the next one */
+  /** Stop inhaling: your breath starts refilling from what's left */
   stopInhale(now = Date.now()): void {
     if (!this.inhaling) return;
+    this.breathe(now);
     this.inhaling = false;
-    this.inhaleReadyAt = now + INHALE.RECOVER_MS;
+  }
+
+  /** Bring the breath up to date: draining while inhaling, refilling otherwise (INHALE.MAX_MS, INHALE.REFILL_MS) */
+  private breathe(now: number): void {
+    const elapsed = Math.max(0, now - this.staminaAt);
+    this.staminaAt = now;
+    const change = this.inhaling ? -elapsed / INHALE.MAX_MS : elapsed / INHALE.REFILL_MS;
+    this.stamina = Math.min(1, Math.max(0, this.stamina + change));
   }
 
   /** Where the player is steering */
@@ -322,10 +377,10 @@ class PlayerSchema extends Schema {
     this.walkY = velocity.y;
     // Facing: toward the aim while inhaling, otherwise where you steer
     const intent = this.inhaling ? { x: this.aimX, y: this.aimY } : { x: this.steerX, y: this.steerY };
-    if (Math.hypot(intent.x, intent.y) > 0.25) {
-      const facing = turnToward(this.facing, Math.atan2(intent.y, intent.x), turnRate(this.width) * deltaTime);
-      if (facing !== this.facing) this.facing = facing;
-    }
+    const aiming = Math.hypot(intent.x, intent.y) > 0.25;
+    const turn = turnStep(this.facing, this.spin, aiming ? Math.atan2(intent.y, intent.x) : null, this.width, this.inhaling, deltaTime);
+    this.spin = turn.spin;
+    if (turn.facing !== this.facing) this.facing = turn.facing;
     if (box.x !== this.x) this.x = box.x;
     if (box.y !== this.y) this.y = box.y;
   }
@@ -377,6 +432,11 @@ type("number")(PlayerSchema.prototype, "facing");
 type("boolean")(PlayerSchema.prototype, "inhaling");
 type("string")(PlayerSchema.prototype, "mouth");
 type("string")(PlayerSchema.prototype, "stealingFrom");
+type("string")(PlayerSchema.prototype, "gulping");
+type("number")(PlayerSchema.prototype, "gulpEndsAt");
+type("number")(PlayerSchema.prototype, "stolenTotal");
+type("string")(PlayerSchema.prototype, "robbing");
+type("number")(PlayerSchema.prototype, "robbedTotal");
 type("boolean")(PlayerSchema.prototype, "isBot");
 
 export { PlayerSchema };

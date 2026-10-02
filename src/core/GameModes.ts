@@ -7,7 +7,7 @@ import { InputState } from '../types'
 import { getSprite } from '../utils/sprites'
 import { GameEvents } from '../constants/client-constants'
 import { ARENA_RULES, BOMBS, GEMS, INHALE, PLAYER_COLORS, SHIFT, TURBINE, WORLD } from '../../server/constants/gameConstants'
-import { turnRate, turnToward, walk } from '../../server/game/movement'
+import { turnStep, walk } from '../../server/game/movement'
 import { exhaustAngle, launchDuration, launchPosition } from '../../server/game/turbine'
 import { OnlineControls } from './OnlineControls'
 import type { Breath } from './OnlineControls'
@@ -824,14 +824,38 @@ function drawBreath(ctx: CanvasRenderingContext2D, x: number, y: number, size: n
     ctx.restore()
 }
 
-/** Air rushing into an inhaling creature's mouth: a fading cone with streaks flowing in */
-function drawInhaleCone(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, facing: number, timestamp: number): void {
+/**
+ * How suction looks (browsers only). A creature's suction power grows with its size,
+ * (width / newborn width) ^ POWER_GROWTH up to POWER_MAX, and everything about its inhale scales
+ * with it: more, longer, thicker, faster streaks and a brighter cone; gems it steals fly faster
+ * and glow more. Mouth and cone size already grow with the creature itself.
+ */
+const INHALE_LOOK = {
+    POWER_GROWTH: 0.5,
+    POWER_MAX: 4,
+    STREAKS: 6, // streaks in a newborn's cone...
+    STREAKS_PER_POWER: 4, // ...plus this many per point of power (about 20 for a 12x giant)
+    STREAK_SPEED: 260, // units a second a newborn's streaks rush in, times power
+    STREAK_LENGTH: 14, // plus 10 per point of power
+    GLOW: 0.22, // cone brightness, plus 0.06 per point of power
+    THEFT_FLIGHT_MS: 450, // how long a stolen gem takes to fly over, divided by the square root of the thief's power
+} as const
+
+/** How strong a creature's suction looks: 1 for a newborn, growing with size (see INHALE_LOOK) */
+function suctionPower(width: number): number {
+    return Math.min(INHALE_LOOK.POWER_MAX, Math.pow(Math.max(1, width / ARENA_RULES.PLAYER_SIZE), INHALE_LOOK.POWER_GROWTH))
+}
+
+/** Air rushing into an inhaling creature's mouth: a fading cone, its streaks denser, longer and faster the stronger its suction */
+function drawInhaleCone(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, facing: number, timestamp: number, intensity = 1): void {
     const r = size / 2
     const reach = INHALE.REACH + size * INHALE.REACH_PER_SIZE
     const spread = (INHALE.ARC * Math.PI) / 180
+    // Bigger creatures pull harder, and draining or swallowing someone pulls harder still
+    const power = Math.min(6, suctionPower(size) * intensity)
     ctx.save()
     const glow = ctx.createRadialGradient(x, y, r, x, y, r + reach)
-    glow.addColorStop(0, 'rgba(180, 230, 255, 0.3)')
+    glow.addColorStop(0, `rgba(180, 230, 255, ${Math.min(0.5, INHALE_LOOK.GLOW + 0.06 * power)})`)
     glow.addColorStop(1, 'rgba(180, 230, 255, 0)')
     ctx.fillStyle = glow
     ctx.beginPath()
@@ -839,16 +863,46 @@ function drawInhaleCone(ctx: CanvasRenderingContext2D, x: number, y: number, siz
     ctx.arc(x, y, r, facing + spread, facing - spread, true)
     ctx.closePath()
     ctx.fill()
-    ctx.strokeStyle = 'rgba(220, 245, 255, 0.6)'
-    ctx.lineWidth = 2
+    ctx.strokeStyle = `rgba(220, 245, 255, ${Math.min(0.85, 0.5 + 0.08 * power)})`
+    ctx.lineWidth = 1.5 + 0.6 * power
     ctx.lineCap = 'round'
-    for (let i = 0; i < 7; i++) {
-        const t = (timestamp / 450 + i / 7) % 1
-        const along = r + reach * (1 - t)
-        const angle = facing + spread * 0.85 * Math.sin(i * 2.3)
+    const streaks = Math.round(INHALE_LOOK.STREAKS + INHALE_LOOK.STREAKS_PER_POWER * power)
+    const period = (reach / (INHALE_LOOK.STREAK_SPEED * power)) * 1000
+    const length = INHALE_LOOK.STREAK_LENGTH + 10 * power
+    for (let i = 0; i < streaks; i++) {
+        const t = (timestamp / period + i / streaks) % 1
+        // Faster and faster as it nears the mouth
+        const along = r + reach * (1 - t) * (1 - t * 0.35)
+        // Lanes close in on the mouth as the air rushes in
+        const angle = facing + spread * 0.85 * Math.sin(i * 2.3) * (1 - 0.55 * t)
+        ctx.globalAlpha = Math.min(1, t * 4)
         ctx.beginPath()
         ctx.moveTo(x + Math.cos(angle) * along, y + Math.sin(angle) * along)
-        ctx.lineTo(x + Math.cos(angle) * Math.max(r, along - 20), y + Math.sin(angle) * Math.max(r, along - 20))
+        ctx.lineTo(x + Math.cos(angle) * Math.max(r, along - length), y + Math.sin(angle) * Math.max(r, along - length))
+        ctx.stroke()
+    }
+    // The mouth glows and throbs, harder and faster the stronger the pull
+    ctx.globalAlpha = 1
+    const throb = 0.5 + 0.5 * Math.sin((timestamp / 1000) * Math.PI * 2 * (2 + power))
+    const mouthX = x + Math.cos(facing) * r
+    const mouthY = y + Math.sin(facing) * r
+    const core = r * (0.35 + 0.1 * power) * (0.85 + 0.15 * throb) * 2.2
+    const rush = ctx.createRadialGradient(mouthX, mouthY, 0, mouthX, mouthY, core)
+    rush.addColorStop(0, `rgba(235, 250, 255, ${Math.min(0.75, 0.25 + 0.12 * power)})`)
+    rush.addColorStop(1, 'rgba(235, 250, 255, 0)')
+    ctx.fillStyle = rush
+    ctx.beginPath()
+    ctx.arc(mouthX, mouthY, core, 0, Math.PI * 2)
+    ctx.fill()
+    // Once the pull is strong, the cone's edges shimmer
+    if (power > 1.4) {
+        ctx.strokeStyle = `rgba(220, 245, 255, ${Math.min(0.45, 0.1 * (power - 1) * (0.6 + 0.4 * throb))})`
+        ctx.lineWidth = 1 + 0.5 * power
+        ctx.beginPath()
+        ctx.moveTo(x + Math.cos(facing - spread) * r, y + Math.sin(facing - spread) * r)
+        ctx.lineTo(x + Math.cos(facing - spread) * (r + reach), y + Math.sin(facing - spread) * (r + reach))
+        ctx.moveTo(x + Math.cos(facing + spread) * r, y + Math.sin(facing + spread) * r)
+        ctx.lineTo(x + Math.cos(facing + spread) * (r + reach), y + Math.sin(facing + spread) * (r + reach))
         ctx.stroke()
     }
     ctx.restore()
@@ -1011,6 +1065,8 @@ export class MultiplayerMode extends GameMode {
     private zoom: number = WORLD.VIEW_ZOOM_SMALL
     /** Each player's drawn size, springing toward their real size so growing and shrinking pop */
     private drawnSizes = new Map<string, { size: number; speed: number }>()
+    /** Each creature's growth pop: when it last gained a gem and how big the pop was (see drawPlayer) */
+    private gemPops = new Map<string, { at: number; amount: number }>()
     /** When your player was knocked out, for the "back in" countdown */
     private knockedOutAt: number | null = null
     /** The last time someone got you (and how), for the knocked-out screen: "Swallowed by Drew" */
@@ -1031,10 +1087,12 @@ export class MultiplayerMode extends GameMode {
     /** The aim last sent (your eyes turn toward it for everyone), and which way you face */
     private sentAim = { x: 0, y: 0 }
     private localFacing = -Math.PI / 2
+    /** How fast your creature is turning (radians a second; see turnStep) */
+    private localSpin = 0
     /** Your breath, tracked from when the server starts and stops your inhale (see breathOf) */
-    private breathStartedAt = 0
-    private breathEndedAt = -Infinity
-    private wasInhaling = false
+    /** Your breath (0-1), worked out like the server does: drains while you inhale, refills from wherever it is */
+    private stamina = 1
+    private staminaAt = 0
     private breath: Breath = { phase: 'ready' }
     /** Gem bursts and hard hits to draw, the banner for hits you cause, and the shake they bring */
     private gemBursts: { x: number; y: number; count: number; at: number }[] = []
@@ -1064,7 +1122,9 @@ export class MultiplayerMode extends GameMode {
     private blasts: { x: number; y: number; radius: number; at: number }[] = []
     /** Gravity theft on screen: each victim's gems last frame, and the stolen gems in flight */
     private theftGems = new Map<string, number>()
-    private theftParticles: { from: string; to: string; at: number; angle: number }[] = []
+    /** Drained creatures shrinking away to nothing */
+    private vanishes: { x: number; y: number; size: number; color: string; facing: number; at: number }[] = []
+    private theftParticles: { from: string; to: string; at: number; angle: number; flight: number; power: number }[] = []
     private pickups: { amount: number; at: number }[] = []
     private shakeUntil = 0
     /** Gems shown in the header (as Score), and the most you've held this visit (as High Score) */
@@ -1107,6 +1167,17 @@ export class MultiplayerMode extends GameMode {
         })
         eventBus.on('multiplayer:credit', (data: any) => this.noteCredit(data))
         eventBus.on('multiplayer:burst', (data: any) => this.noteBurst(data))
+        eventBus.on('multiplayer:vanish', (data: any) => {
+            const local = data?.id === this.multiplayerManager?.localSessionId
+            this.vanishes.push({
+                x: Number(data?.x) || 0,
+                y: Number(data?.y) || 0,
+                size: Number(data?.size) || 20,
+                color: local ? '#ffffff' : PLAYER_COLORS[(Number(data?.index) || 0) % PLAYER_COLORS.length],
+                facing: Number(data?.facing) || 0,
+                at: performance.now(),
+            })
+        })
         eventBus.on('multiplayer:impact', (data: any) => this.noteImpact(data))
         eventBus.on('multiplayer:blast', (data: any) => this.blasts.push({ x: Number(data?.x) || 0, y: Number(data?.y) || 0, radius: Number(data?.radius) || BOMBS.BLAST_RADIUS, at: performance.now() }))
         eventBus.on('multiplayer:jackpot', (data: any) => {
@@ -1259,10 +1330,30 @@ export class MultiplayerMode extends GameMode {
         const box = { x: this.predicted.x, y: this.predicted.y, width: me.width, height: me.height }
         // Facing, worked out like the server does: the aim while inhaling, else where you steer
         const intent = this.inhaleHeld ? this.aim : steer
-        if (Math.hypot(intent.x, intent.y) > 0.25) {
-            this.localFacing = turnToward(this.localFacing, Math.atan2(intent.y, intent.x), turnRate(me.width) * deltaTime)
-        }
+        const turn = turnStep(this.localFacing, this.localSpin, Math.hypot(intent.x, intent.y) > 0.25 ? Math.atan2(intent.y, intent.x) : null, me.width, this.inhaleHeld, deltaTime)
+        this.localFacing = turn.facing
+        this.localSpin = turn.spin
         walk(box, this.velocity, steer, deltaTime, state.worldWidth, state.worldHeight)
+        // Creatures are solid: stop at anyone you walk into and slide along them, as the server does
+        const myId = this.multiplayerManager?.localSessionId
+        state.players.forEach((other: any, id: string) => {
+            if (id === myId || other.state !== 'alive') return
+            const at = this.drawnPositions.get(id) ?? { x: other.x, y: other.y }
+            const dx = box.x + box.width / 2 - (at.x + other.width / 2)
+            const dy = box.y + box.height / 2 - (at.y + other.height / 2)
+            const distance = Math.hypot(dx, dy)
+            const overlap = (box.width + other.width) / 2 - distance
+            if (overlap <= 0 || distance < 1e-6) return
+            const nx = dx / distance
+            const ny = dy / distance
+            box.x += nx * overlap
+            box.y += ny * overlap
+            const into = -(this.velocity.x * nx + this.velocity.y * ny)
+            if (into > 0) {
+                this.velocity.x += into * nx
+                this.velocity.y += into * ny
+            }
+        })
 
         // The server shows where you were about a round trip ago: quietly correct any drift from that
         this.history.push({ at: now, x: box.x, y: box.y })
@@ -1289,13 +1380,13 @@ export class MultiplayerMode extends GameMode {
         this.predicted = { x: box.x, y: box.y }
     }
 
-    /** Where your breath is: draining for INHALE.MAX_MS while you inhale, then refilling for INHALE.RECOVER_MS */
+    /** Where your breath is: draining over INHALE.MAX_MS while you inhale, refilling over INHALE.REFILL_MS from wherever it is */
     private breathOf(inhaling: boolean, now: number): Breath {
-        if (inhaling && !this.wasInhaling) this.breathStartedAt = now
-        if (!inhaling && this.wasInhaling) this.breathEndedAt = now
-        this.wasInhaling = inhaling
-        if (inhaling) return { phase: 'inhaling', left: Math.max(0, 1 - (now - this.breathStartedAt) / INHALE.MAX_MS) }
-        if (now - this.breathEndedAt < INHALE.RECOVER_MS) return { phase: 'recovering', back: (now - this.breathEndedAt) / INHALE.RECOVER_MS }
+        const elapsed = Math.max(0, now - this.staminaAt)
+        this.staminaAt = now
+        this.stamina = Math.min(1, Math.max(0, this.stamina + (inhaling ? -elapsed / INHALE.MAX_MS : elapsed / INHALE.REFILL_MS)))
+        if (inhaling) return { phase: 'inhaling', left: this.stamina }
+        if (this.stamina < 1) return { phase: 'recovering', back: this.stamina }
         return { phase: 'ready' }
     }
 
@@ -1395,9 +1486,14 @@ export class MultiplayerMode extends GameMode {
         for (const id of this.drawnSizes.keys()) {
             if (!present.has(id)) this.drawnSizes.delete(id)
         }
+        for (const id of this.gemPops.keys()) {
+            if (!present.has(id)) this.gemPops.delete(id)
+        }
 
         this.drawTheft(ctx, state, timestamp)
         this.drawTurbineFlights(ctx, state, timestamp)
+        this.drawGulps(ctx, state, timestamp)
+        this.drawVanishes(ctx, timestamp)
         this.drawBlasts(ctx, timestamp)
         this.drawBursts(ctx, timestamp)
         this.drawPickups(ctx, me, timestamp)
@@ -1421,9 +1517,9 @@ export class MultiplayerMode extends GameMode {
      */
     private updateCamera(canvas: HTMLCanvasElement, state: any, me: any, timestamp: number): View {
         const aspect = Math.min(WORLD.MAX_VIEW_ASPECT, Math.max(WORLD.MIN_VIEW_ASPECT, canvas.width / canvas.height))
-        // The view widens as you grow, but less than you do, so a giant still fills a good part of the screen
+        // The view widens as you grow, but much less than you do and only so far, so a giant fills its own screen and looms on everyone else's
         const grown = me ? Math.max(1, me.width / ARENA_RULES.PLAYER_SIZE) : 1
-        this.zoom += (WORLD.VIEW_ZOOM_SMALL * Math.pow(grown, WORLD.VIEW_GROWTH) - this.zoom) * 0.05
+        this.zoom += (Math.min(WORLD.VIEW_ZOOM_MAX, WORLD.VIEW_ZOOM_SMALL * Math.pow(grown, WORLD.VIEW_GROWTH)) - this.zoom) * 0.05
         const area = WORLD.VIEW_AREA * this.zoom * this.zoom
         const scale = Math.max(
             canvas.width / Math.sqrt(area * aspect),
@@ -1556,12 +1652,22 @@ export class MultiplayerMode extends GameMode {
         }
         grow.speed = (grow.speed + (player.width - grow.size) * 0.3) * 0.6
         grow.size += grow.speed
-        const size = Math.max(4, grow.size)
+        // ...plus a little pop for every gem it gains (settling over 130ms), however big it already is
+        const gemPop = this.gemPops.get(sessionId)
+        const pop = gemPop ? 1 + gemPop.amount * Math.max(0, 1 - (timestamp - gemPop.at) / 130) : 1
+        const size = Math.max(4, grow.size) * pop
         const left = drawn.x + (player.width - size) / 2
         const top = drawn.y + (player.height - size) / 2
         const centerX = drawn.x + player.width / 2
         const centerY = drawn.y + player.height / 2
-        if (player.inhaling) drawInhaleCone(ctx, centerX, centerY, size, isLocal ? this.localFacing : (player.facing ?? -Math.PI / 2), timestamp)
+        if (player.inhaling) {
+            // Draining someone (harder the bigger it is next to them) or holding someone to swallow: the inhale looks stronger
+            const world = this.multiplayerManager?.getState()
+            const victim = player.stealingFrom ? world?.players?.get(player.stealingFrom) : null
+            const grip = victim ? Math.min(INHALE.BODY_PULL_MAX, Math.max(0.3, player.width / victim.width)) : 0
+            const intensity = player.gulping ? 1.8 : victim ? 1 + 0.5 * grip : 1
+            drawInhaleCone(ctx, centerX, centerY, size, isLocal ? this.localFacing : (player.facing ?? -Math.PI / 2), timestamp, intensity)
+        }
         if (isLocal) {
             // Your breath: draining around you while you inhale, refilling while you catch it
             this.breath = this.breathOf(Boolean(player.inhaling), performance.now())
@@ -1659,13 +1765,14 @@ export class MultiplayerMode extends GameMode {
             ctx.arc(
                 x + (position.x + player.width / 2) * scale,
                 y + (position.y + player.height / 2) * scale,
-                isLocal ? 3.5 : 2.5,
+                // As big as they really are, scaled down (never too small to see)
+                Math.max(isLocal ? 2.5 : 1.8, (player.width / 2) * scale),
                 0,
                 Math.PI * 2
             )
             ctx.fill()
             if (sessionId === leaderId) {
-                drawCrown(ctx, x + (position.x + player.width / 2) * scale, y + (position.y + player.height / 2) * scale - 4, 10)
+                drawCrown(ctx, x + (position.x + player.width / 2) * scale, y + (position.y + player.height / 2) * scale - Math.max(4, (player.width / 2) * scale + 2), 10)
             }
         })
         state.turbines?.forEach((turbine: any) => {
@@ -1725,20 +1832,20 @@ export class MultiplayerMode extends GameMode {
         if (targetIsYou && how !== 'stole') {
             this.knockoutCause = { how, by: String(data?.by ?? 'Someone'), at: performance.now() }
         }
-        const verb = how === 'stole' ? 'robbed' : how === 'ate' ? 'swallowed' : how === 'bomb' ? 'blew up' : 'shoved'
-        const where = how === 'stole' ? `of ${Number(data?.gems) || 0} gems` : how === 'edge' ? 'off the edge' : how === 'traffic' ? 'into traffic' : ''
+        const verb = how === 'stole' ? 'robbed' : how === 'ate' ? 'swallowed' : how === 'drained' ? 'drained' : how === 'turbine' ? 'fed' : how === 'bomb' ? 'blew up' : 'shoved'
+        const where = how === 'stole' ? `of ${Number(data?.gems) || 0} gems` : how === 'turbine' ? 'to a turbine' : how === 'edge' ? 'off the edge' : how === 'traffic' ? 'into traffic' : ''
         if (data?.byId === localId) {
             const name = String(data?.target ?? 'someone')
-            const title = how === 'stole' ? `You stole ${Number(data?.gems) || 0} gems from ${name}!` : how === 'ate' ? `You swallowed ${name}!` : how === 'bomb' ? `You blew up ${name}!` : `You wrecked ${name}!`
+            const title = how === 'stole' ? `You stole ${Number(data?.gems) || 0} gems from ${name}!` : how === 'ate' ? `You swallowed ${name}!` : how === 'drained' ? `You drained ${name}!` : how === 'turbine' ? `You fed ${name} to a turbine!` : how === 'bomb' ? `You blew up ${name}!` : `You wrecked ${name}!`
             const parts =
                 how === 'stole' ? []
-                : how === 'ate' ? [`+${Number(data?.gems) || 0} gems`]
+                : how === 'ate' || how === 'drained' ? (Number(data?.gems) > 0 ? [`+${Number(data?.gems)} gems`] : [])
                 : how === 'bomb' ? [data?.out ? 'knocked out' : `${Number(data?.gems) || 0} gems knocked loose`]
                 : [where, data?.out ? 'knocked out' : '']
             this.banner = { title, sub: parts.filter(Boolean).join(' · ').toUpperCase(), at: performance.now() }
             return
         }
-        const out = how !== 'ate' && data?.out ? (targetIsYou ? ' and knocked you out' : ' and knocked them out') : ''
+        const out = how !== 'ate' && how !== 'drained' && how !== 'turbine' && data?.out ? (targetIsYou ? ' and knocked you out' : ' and knocked them out') : ''
         this.addNotice(`${this.nameOf(data?.byId, data?.by)} ${verb} ${target}${where ? ' ' + where : ''}${out}!`, data?.out === true)
     }
 
@@ -1988,38 +2095,88 @@ export class MultiplayerMode extends GameMode {
      * Gravity theft: every gem stolen pops out of the victim and arcs into the thief's mouth, so you
      * can watch them shrink, with a faint gold tether between the two while the stream runs
      */
-    private drawTheft(ctx: CanvasRenderingContext2D, state: any, timestamp: number): void {
-        const now = performance.now()
-        const robbed = new Set<string>()
-        state.players.forEach((thief: any, id: string) => {
-            if (!thief.stealingFrom) return
-            const victim = state.players.get(thief.stealingFrom)
-            if (!victim) return
-            robbed.add(thief.stealingFrom)
-            // Each gem the victim just lost pops out and heads for the thief
-            const had = this.theftGems.get(thief.stealingFrom) ?? victim.gems
-            for (let i = 0; i < Math.min(8, had - victim.gems); i++) {
-                this.theftParticles.push({ from: thief.stealingFrom, to: id, at: now + i * 45, angle: Math.random() * Math.PI * 2 })
-            }
-            this.theftGems.set(thief.stealingFrom, victim.gems)
-            const a = this.centerOf(thief.stealingFrom, victim)
-            const b = this.centerOf(id, thief)
+    /** Someone held at a mouth, about to be swallowed: a red ring closes in on them (they're still free if they get away first) */
+    private drawGulps(ctx: CanvasRenderingContext2D, state: any, timestamp: number): void {
+        const now = this.worldNow(state, timestamp)
+        state.players?.forEach((eater: any) => {
+            if (!eater.gulping) return
+            const prey = state.players.get(eater.gulping)
+            if (!prey || prey.state !== 'alive') return
+            const left = Math.max(0, Math.min(1, (eater.gulpEndsAt - now) / INHALE.GULP_MS))
+            const at = this.centerOf(eater.gulping, prey)
             ctx.save()
-            ctx.strokeStyle = 'rgba(255, 209, 102, 0.25)'
-            ctx.lineWidth = 2
-            ctx.setLineDash([4, 8])
-            ctx.lineDashOffset = -timestamp / 20
+            ctx.strokeStyle = `rgba(255, 107, 107, ${0.55 + 0.45 * (1 - left)})`
+            ctx.lineWidth = 3
             ctx.beginPath()
-            ctx.moveTo(a.x, a.y)
-            ctx.lineTo(b.x, b.y)
+            ctx.arc(at.x, at.y, prey.width / 2 + 4 + 24 * left, 0, Math.PI * 2)
             ctx.stroke()
             ctx.restore()
         })
-        for (const id of [...this.theftGems.keys()]) if (!robbed.has(id)) this.theftGems.delete(id)
+    }
+
+    /** Drained creatures: each shrinks away to nothing where it was, with a last ring of gold */
+    private drawVanishes(ctx: CanvasRenderingContext2D, timestamp: number): void {
+        const now = performance.now()
+        const VANISH_MS = 550
+        this.vanishes = this.vanishes.filter((v) => now - v.at < VANISH_MS)
+        for (const v of this.vanishes) {
+            const k = (now - v.at) / VANISH_MS
+            ctx.save()
+            ctx.globalAlpha = 1 - k * 0.6
+            drawCreature(ctx, v.x, v.y, Math.max(1, v.size * Math.pow(1 - k, 1.6)), v.color, v.facing, timestamp)
+            ctx.globalAlpha = (1 - k) * 0.8
+            ctx.strokeStyle = '#ffd166'
+            ctx.lineWidth = 2
+            ctx.beginPath()
+            ctx.arc(v.x, v.y, v.size * 0.5 + 30 * k, 0, Math.PI * 2)
+            ctx.stroke()
+            ctx.restore()
+        }
+    }
+
+    private drawTheft(ctx: CanvasRenderingContext2D, state: any, timestamp: number): void {
+        const now = performance.now()
+        // Who is robbing whom (a thief can rob several at once): a faint dashed tether from each victim to each thief
+        const robbers = new Map<string, string[]>()
+        state.players.forEach((thief: any, id: string) => {
+            for (const victimId of String(thief.robbing ?? '').split(',')) {
+                const victim = victimId ? state.players.get(victimId) : null
+                if (!victim) continue
+                const list = robbers.get(victimId) ?? []
+                list.push(id)
+                robbers.set(victimId, list)
+                const a = this.centerOf(victimId, victim)
+                const b = this.centerOf(id, thief)
+                ctx.save()
+                ctx.strokeStyle = 'rgba(255, 209, 102, 0.25)'
+                ctx.lineWidth = 2
+                ctx.setLineDash([4, 8])
+                ctx.lineDashOffset = -timestamp / 20
+                ctx.beginPath()
+                ctx.moveTo(a.x, a.y)
+                ctx.lineTo(b.x, b.y)
+                ctx.stroke()
+                ctx.restore()
+            }
+        })
+        // Each gem a victim just lost pops out of it and heads for one of the thieves robbing it
+        state.players.forEach((victim: any, victimId: string) => {
+            const total = Number(victim.robbedTotal) || 0
+            const had = this.theftGems.get(victimId) ?? total
+            this.theftGems.set(victimId, total)
+            const thieves = robbers.get(victimId)
+            if (!thieves || total <= had) return
+            for (let i = 0; i < Math.min(8, total - had); i++) {
+                const to = thieves[i % thieves.length] as string
+                const power = suctionPower(state.players.get(to)?.width ?? ARENA_RULES.PLAYER_SIZE)
+                this.theftParticles.push({ from: victimId, to, at: now + i * 45, angle: Math.random() * Math.PI * 2, flight: INHALE_LOOK.THEFT_FLIGHT_MS / Math.sqrt(power), power })
+            }
+        })
+        for (const id of [...this.theftGems.keys()]) if (!state.players.has(id)) this.theftGems.delete(id)
         // The stolen gems in flight: out of the victim's body, a little arc, then sucked into the mouth
-        this.theftParticles = this.theftParticles.filter((p) => now - p.at < 450)
+        this.theftParticles = this.theftParticles.filter((p) => now - p.at < p.flight)
         for (const p of this.theftParticles) {
-            const t = (now - p.at) / 450
+            const t = (now - p.at) / p.flight
             if (t < 0) continue
             const victim = state.players.get(p.from)
             const thief = state.players.get(p.to)
@@ -2035,10 +2192,10 @@ export class MultiplayerMode extends GameMode {
             const lift = Math.sin(t * Math.PI) * 18
             const x = startX + (mouthX - startX) * ease
             const y = startY + (mouthY - startY) * ease - lift
-            const g = 6.5 * (1 - t * 0.5)
+            const g = 6.5 * (0.9 + 0.1 * p.power) * (1 - t * 0.5)
             ctx.save()
             ctx.shadowColor = 'rgba(255, 209, 102, 0.9)'
-            ctx.shadowBlur = 8
+            ctx.shadowBlur = 6 + 4 * p.power
             ctx.fillStyle = '#ffd166'
             ctx.beginPath()
             ctx.moveTo(x, y - g)
@@ -2106,7 +2263,20 @@ export class MultiplayerMode extends GameMode {
                     this.bursts.push({ x: before.cx, y: before.cy, size: player.width, color, at: timestamp })
                     if (id === localId) this.shakeUntil = timestamp + SHAKE_MS
                 } else if (id === localId && player.gems > before.gems) {
-                    this.pickups.push({ amount: player.gems - before.gems, at: timestamp })
+                    // Stealing: a "+1" for each gem coming in (head-on, whoever is winning the exchange); otherwise what you grabbed
+                    const gained = player.gems - before.gems
+                    if (player.stealingFrom) for (let i = 0; i < gained; i++) this.pickups.push({ amount: 1, at: timestamp + i * 70 })
+                    else this.pickups.push({ amount: gained, at: timestamp })
+                } else if (id === localId && player.gems < before.gems && this.beingRobbed(state, id)) {
+                    // Gems pulled out of you: a "-1" for each one, one after another
+                    for (let i = 0; i < before.gems - player.gems; i++) this.pickups.push({ amount: -1, at: timestamp + i * 70 })
+                }
+                // Every gem shows: the creature pops a little as each one comes in
+                if (alive && player.gems > before.gems) {
+                    // 2.5% a gem, adding to whatever pop is still settling, up to 5% (so a fast drain swells rather than vibrates)
+                    const last = this.gemPops.get(id)
+                    const left = last ? last.amount * Math.max(0, 1 - (timestamp - last.at) / 130) : 0
+                    this.gemPops.set(id, { at: timestamp, amount: Math.min(0.05, left + 0.025 * (player.gems - before.gems)) })
                 }
                 if (player.sliding && !before.sliding) {
                     // Shoved: a small white ring, and a nudge of your screen if it's you
@@ -2280,7 +2450,16 @@ export class MultiplayerMode extends GameMode {
         }
     }
 
-    /** "+1" rising above you when you grab gems */
+    /** Whether anyone is stealing gems from this player right now */
+    private beingRobbed(state: any, id: string): boolean {
+        let robbed = false
+        state.players.forEach((other: any) => {
+            if (String(other.robbing ?? '').split(',').includes(id)) robbed = true
+        })
+        return robbed
+    }
+
+    /** "+1" rising above you when you grab gems, and a red "-1" for each one someone steals */
     private drawPickups(ctx: CanvasRenderingContext2D, me: any, timestamp: number): void {
         this.pickups = this.pickups.filter((pickup) => timestamp - pickup.at < PICKUP_TEXT_MS)
         if (!me || this.pickups.length === 0) return
@@ -2292,8 +2471,10 @@ export class MultiplayerMode extends GameMode {
         ctx.fillStyle = GOLD
         for (const pickup of this.pickups) {
             const t = (timestamp - pickup.at) / PICKUP_TEXT_MS
+            if (t < 0) continue
             ctx.globalAlpha = 1 - t
-            ctx.fillText(`+${pickup.amount}`, position.x + me.width / 2, position.y - 30 - t * 34)
+            ctx.fillStyle = pickup.amount > 0 ? GOLD : '#ff6b6b'
+            ctx.fillText(pickup.amount > 0 ? `+${pickup.amount}` : `${pickup.amount}`, position.x + me.width / 2, position.y - 30 - t * 34)
         }
         ctx.restore()
     }
@@ -2389,6 +2570,8 @@ export class MultiplayerMode extends GameMode {
         const credited = cause !== null && this.knockedOutAt !== null && Math.abs(cause.at - this.knockedOutAt) < 1500
         const verb =
             cause?.how === 'ate' ? 'Swallowed'
+            : cause?.how === 'drained' ? 'Drained'
+            : cause?.how === 'turbine' ? 'Fed to a turbine'
             : cause?.how === 'bomb' ? 'Blown up'
             : cause?.how === 'edge' ? 'Shoved off'
             : cause?.how === 'traffic' ? 'Wrecked'

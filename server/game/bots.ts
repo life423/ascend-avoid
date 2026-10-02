@@ -135,11 +135,10 @@ export class BotBrain {
     const cy = bot.y + bot.height / 2;
     // A new floor is coming: get onto it
     if (world.shiftPhase !== "normal" && !world.isFloorAt(cx, cy)) return world.nearestFloorPoint(cx, cy);
-    // Something much bigger close by, or a robber its size or bigger: get away (smaller, it's faster)
+    // Something big enough to swallow it close by: get away (smaller, it's faster). Robbers get robbed back (see GameState)
     const threat = { x: 0, y: 0, distance: BOTS.FLEE_RANGE };
     world.players.forEach((other) => {
-      const robbing = other.stealingFrom === bot.sessionId && other.width >= bot.width;
-      if (other === bot || other.state !== PLAYER_STATE.ALIVE || (other.width < bot.width * BOTS.FLEE_RATIO && !robbing)) return;
+      if (other === bot || other.state !== PLAYER_STATE.ALIVE || other.width < bot.width * BOTS.FLEE_RATIO) return;
       const ox = other.x + other.width / 2;
       const oy = other.y + other.height / 2;
       const distance = Math.hypot(ox - cx, oy - cy) - other.width / 2;
