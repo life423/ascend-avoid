@@ -466,13 +466,25 @@ class GameState extends Schema {
     const dy = victim.y + victim.height / 2 - (thief.y + thief.height / 2 + fy * thief.width * 0.3);
     const d = Math.hypot(dx, dy);
     const radius = victim.width / 2;
-    if (d - radius > INHALE.REACH + thief.width * INHALE.REACH_PER_SIZE) return 0;
+    // Touching it across your front: the inhale grabs it, no aiming needed
+    const grabbed = this.touchingFront(thief, victim) ? INHALE.CONTACT_WEIGHT : 0;
+    if (d - radius > INHALE.REACH + thief.width * INHALE.REACH_PER_SIZE) return grabbed;
     if (d <= radius) return 1;
     // In the cone if any of it is: its center's angle off the facing, against how wide it looks from here
     const off = Math.acos(Math.max(-1, Math.min(1, (dx * fx + dy * fy) / d)));
     const allowed = (INHALE.ARC * Math.PI) / 180 + Math.asin(Math.min(1, radius / d));
-    if (off > allowed) return 0;
-    return INHALE.STEAL_EDGE_SHARE + (1 - INHALE.STEAL_EDGE_SHARE) * (1 - off / allowed);
+    if (off > allowed) return grabbed;
+    return Math.max(grabbed, INHALE.STEAL_EDGE_SHARE + (1 - INHALE.STEAL_EDGE_SHARE) * (1 - off / allowed));
+  }
+
+  /** Whether `victim` is touching `thief` anywhere across its front (contact range: an inhale grabs it with no aiming) */
+  private touchingFront(thief: PlayerSchema, victim: PlayerSchema): boolean {
+    const dx = victim.x + victim.width / 2 - (thief.x + thief.width / 2);
+    const dy = victim.y + victim.height / 2 - (thief.y + thief.height / 2);
+    const d = Math.hypot(dx, dy);
+    if (d - (thief.width + victim.width) / 2 > INHALE.CONTACT_GAP) return false;
+    if (d < 1e-6) return true;
+    return (dx * Math.cos(thief.facing) + dy * Math.sin(thief.facing)) / d >= Math.cos((INHALE.CONTACT_ARC * Math.PI) / 180);
   }
 
   /**
@@ -841,15 +853,37 @@ class GameState extends Schema {
       const dy = other.y + other.height / 2 - (player.y + player.height / 2);
       const distance = Math.hypot(dx, dy);
       const overlap = (player.width + other.width) / 2 - distance;
-      if (overlap <= 0) return;
+      if (overlap <= -ARENA_RULES.CONTACT_TOUCH) return;
       const nx = distance > 1e-6 ? dx / distance : 1;
       const ny = distance > 1e-6 ? dy / distance : 0;
+      // Touching: most of this step's sideways movement is undone, so they stay pressed together
+      // instead of orbiting; moving away peels off freely
+      const stepX = player.x + player.width / 2 - player.tickX;
+      const stepY = player.y + player.height / 2 - player.tickY;
+      const stepToward = stepX * nx + stepY * ny;
+      const step = Math.hypot(stepX, stepY);
+      if (step > 1e-6 && stepToward >= -0.2 * step) {
+        const grip = ARENA_RULES.CONTACT_GRIP;
+        player.nudge(-(stepX - stepToward * nx) * grip, -(stepY - stepToward * ny) * grip, this.worldWidth, this.worldHeight);
+      }
+      // Soft bodies: a little squish before they push back hard
+      const excess = overlap - ARENA_RULES.CONTACT_SQUISH * Math.min(player.width, other.width);
+      if (excess <= 0) return;
       // How far each moved (or grew) toward the other this tick
       const mine = Math.max(0, (player.x + player.width / 2 - player.tickX) * nx + (player.y + player.height / 2 - player.tickY) * ny + player.width / 2 - player.tickRadius);
       const theirs = Math.max(0, -((other.x + other.width / 2 - other.tickX) * nx + (other.y + other.height / 2 - other.tickY) * ny) + other.width / 2 - other.tickRadius);
-      const share = mine + theirs > 1e-6 ? mine / (mine + theirs) : 0.5;
-      player.nudge(-nx * overlap * share, -ny * overlap * share, this.worldWidth, this.worldHeight);
-      other.nudge(nx * overlap * (1 - share), ny * overlap * (1 - share), this.worldWidth, this.worldHeight);
+      // Whoever moved (or grew) into the other gives way; when both push, the lighter one gives way more
+      // (mass only decides it when both are walking into each other: not growing, not being pulled)
+      const movedIn = (player.x + player.width / 2 - player.tickX) * nx + (player.y + player.height / 2 - player.tickY) * ny;
+      const theyMovedIn = -((other.x + other.width / 2 - other.tickX) * nx + (other.y + other.height / 2 - other.tickY) * ny);
+      const walking = player.velocity();
+      const theirWalking = other.velocity();
+      const bothPush = walking.x * nx + walking.y * ny > 1 && -(theirWalking.x * nx + theirWalking.y * ny) > 1 && movedIn > 0 && theyMovedIn > 0;
+      const mineHeavy = bothPush ? movedIn * other.width * other.width : mine;
+      const theirsHeavy = bothPush ? theyMovedIn * player.width * player.width : theirs;
+      const share = mineHeavy + theirsHeavy > 1e-6 ? mineHeavy / (mineHeavy + theirsHeavy) : 0.5;
+      player.nudge(-nx * excess * share, -ny * excess * share, this.worldWidth, this.worldHeight);
+      other.nudge(nx * excess * (1 - share), ny * excess * (1 - share), this.worldWidth, this.worldHeight);
       if (mine > 0) player.blockAlong(nx, ny);
       if (theirs > 0) other.blockAlong(-nx, -ny);
     });

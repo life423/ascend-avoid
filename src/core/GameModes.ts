@@ -1467,11 +1467,21 @@ export class MultiplayerMode extends GameMode {
             const dy = box.y + box.height / 2 - (at.y + other.height / 2)
             const distance = Math.hypot(dx, dy)
             const overlap = (box.width + other.width) / 2 - distance
-            if (overlap <= 0 || distance < 1e-6) return
+            if (overlap <= -ARENA_RULES.CONTACT_TOUCH || distance < 1e-6) return
             const nx = dx / distance
             const ny = dy / distance
-            box.x += nx * overlap
-            box.y += ny * overlap
+            // Touching: most of this step's sideways movement is undone unless you're moving away (as the server does)
+            const speed = Math.hypot(this.velocity.x, this.velocity.y)
+            const toward = -(this.velocity.x * nx + this.velocity.y * ny)
+            if (speed > 1e-6 && toward >= -0.2 * speed) {
+                box.x -= (this.velocity.x + toward * nx) * deltaTime * ARENA_RULES.CONTACT_GRIP
+                box.y -= (this.velocity.y + toward * ny) * deltaTime * ARENA_RULES.CONTACT_GRIP
+            }
+            // Soft bodies: a little squish before pushing back hard
+            const excess = overlap - ARENA_RULES.CONTACT_SQUISH * Math.min(box.width, other.width)
+            if (excess <= 0) return
+            box.x += nx * excess
+            box.y += ny * excess
             const into = -(this.velocity.x * nx + this.velocity.y * ny)
             if (into > 0) {
                 this.velocity.x += into * nx
@@ -1833,7 +1843,18 @@ export class MultiplayerMode extends GameMode {
         }
         // A round creature whose eyes show which way it faces (its back is where it's vulnerable)
         const facing = isLocal ? this.localFacing : (player.facing ?? -Math.PI / 2)
+        // Pressed against someone, the body gives a little along the line of contact
+        const squash = this.squashFor(sessionId, left + size / 2, top + size / 2, size)
+        ctx.save()
+        if (squash.amount > 0) {
+            ctx.translate(left + size / 2, top + size / 2)
+            ctx.rotate(squash.angle)
+            ctx.scale(1 - squash.amount, 1 + squash.amount * 0.5)
+            ctx.rotate(-squash.angle)
+            ctx.translate(-(left + size / 2), -(top + size / 2))
+        }
         drawCreature(ctx, left + size / 2, top + size / 2, size, isLocal ? '#ffffff' : PLAYER_COLORS[player.playerIndex % PLAYER_COLORS.length], facing, timestamp, player.mouth ?? '', Boolean(player.inhaling))
+        ctx.restore()
         ctx.globalAlpha = 1
         ctx.font = `600 16px ${FONT}`
         ctx.textAlign = 'center'
@@ -2871,6 +2892,29 @@ export class MultiplayerMode extends GameMode {
         ctx.arc(mouthX, mouthY, core, 0, Math.PI * 2)
         ctx.fill()
         ctx.restore()
+    }
+
+    /** Pressed against another creature: how much this one squishes, and along which line (lighter ones squish more) */
+    private squashFor(id: string, x: number, y: number, size: number): { angle: number; amount: number } {
+        const state = this.multiplayerManager?.getState()
+        if (!state) return { angle: 0, amount: 0 }
+        let angle = 0
+        let amount = 0
+        state.players.forEach((other: any, otherId: string) => {
+            if (otherId === id || other.state !== 'alive') return
+            const at = this.drawnPositions.get(otherId) ?? other
+            const ox = at.x + other.width / 2
+            const oy = at.y + other.height / 2
+            const d = Math.hypot(ox - x, oy - y)
+            const overlap = (size + other.width) / 2 - d
+            if (overlap <= 0 || d < 1e-6) return
+            const squash = Math.min(0.14, (overlap / size) * (other.width / (other.width + size)) * 1.6)
+            if (squash > amount) {
+                amount = squash
+                angle = Math.atan2(oy - y, ox - x)
+            }
+        })
+        return { angle, amount }
     }
 
     /** Phones and tablets: the score in a pill at the top middle, and how many are playing beside the menu button */
