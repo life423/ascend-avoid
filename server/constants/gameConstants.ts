@@ -389,8 +389,8 @@ export const ARENA_RULES = {
   HOP: 60, // one tap = one hop, while you're small...
   HOP_BEYOND_SIZE: 12, // ...and once you're big, your size plus this, so a hop always clears you
   MOVE_SPEED: 320, // top speed (units a second) for a newborn...
-  SPEED_FALLOFF: 0.45, // ...falling as MOVE_SPEED x (PLAYER_SIZE / width) ^ this, an agar.io-like curve: about 260 with 1 gem, 220 with 5, 175 with 25, 135 with 100, 105 with 400...
-  MIN_SPEED: 90, // ...but never slower than this: giants are slower, but still move well enough to hunt
+  SPEED_FALLOFF: 0.7, // ...falling smoothly as MOVE_SPEED x (PLAYER_SIZE / width) ^ this, with every gem: about 275 with 1 gem, 205 with 5, 130 with 25, 80 with 100, 50 with 400
+  MIN_SPEED: 0, // no floor: the bigger you get, the slower you go (raise this to bring a floor back)
   MOVE_RESPONSE: 14, // how quickly you reach the speed you're steering (and glide to a stop)
   HOP_REPEAT_DELAY: 0.2, // holding a direction: the first repeat hop comes after this many seconds,
   HOP_REPEAT: 1 / 6, // then one every this many seconds (six a second)

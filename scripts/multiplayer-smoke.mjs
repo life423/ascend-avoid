@@ -231,7 +231,7 @@ try {
     await sleep(500);
     const bigSpeed = Math.abs(me().x - bigFrom) / 0.5;
     alice.send('steer', { x: 0, y: 0 });
-    check(bigSpeed > 110 && bigSpeed < bobSpeed * 0.5, `and much slower (${Math.round(bigSpeed)} vs ${Math.round(bobSpeed)} units a second)`);
+    check(bigSpeed > 60 && bigSpeed < bobSpeed * 0.35, `and lumbering: about a quarter of a newborn's speed (${Math.round(bigSpeed)} vs ${Math.round(bobSpeed)} units a second)`);
     alice.send('test:setGems', { count: 400 });
     await sleep(400);
     const shedFrom = me().gems;
