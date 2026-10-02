@@ -2767,6 +2767,8 @@ export class MultiplayerMode extends GameMode {
             flow.hookedAt = timestamp
         }
         const straight = hookId ? Math.min(1, Math.max(0, (timestamp - flow.hookedAt - 400) / 1100)) : 0
+        // ...pinching tighter the longer the hold (as the drain escalates)
+        const pinch = 1 - 0.5 * straight
         ctx.save()
         // The real pull area, only hinted at
         const hint = ctx.createRadialGradient(mouthX, mouthY, 0, mouthX, mouthY, reach)
@@ -2800,7 +2802,7 @@ export class MultiplayerMode extends GameMode {
             const t = (((timestamp / period + i / streaks + 0.37 * Math.sin(i * 1.7)) % 1) + 1) % 1
             // Curling in from the flow, or (hooked) a straight beam from the victim
             const curled = far + lane * spread
-            const beam = toward + lane * spread * 0.2
+            const beam = toward + lane * spread * 0.2 * pinch
             const startAngle = curled + Math.atan2(Math.sin(beam - curled), Math.cos(beam - curled)) * straight
             const span = length + (hookLength - length) * straight
             const ax = mouthX + Math.cos(startAngle) * span

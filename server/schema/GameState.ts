@@ -39,6 +39,13 @@ function distanceToRect(px: number, py: number, x: number, y: number, width: num
   return Math.hypot(dx, dy);
 }
 
+/** How much harder gems come off someone held in an airflow this long without a break (INHALE.DRAIN_RAMP) */
+function drainRamp(held: number): number {
+  let times = 1;
+  for (const [at, multiplier] of INHALE.DRAIN_RAMP) if (held >= at) times = multiplier;
+  return times;
+}
+
 /**
  * The online world: one big open arena that never stops. Players drop in the moment they join,
  * grab gems, shove each other and dodge traffic crossing the map in every direction. A hit
@@ -390,6 +397,7 @@ class GameState extends Schema {
         // Holding it in the cone builds the lock: a light pull at first, dangerous after a second
         const lock = Math.min(1, (eater.lockOn.get(prey.sessionId) ?? 0) + (deltaTime * 1000) / INHALE.LOCK_MS);
         eater.lockOn.set(prey.sessionId, lock);
+        eater.heldFor.set(prey.sessionId, (eater.heldFor.get(prey.sessionId) ?? 0) + deltaTime);
         locked.add(prey.sessionId);
         const px = prey.x + prey.width / 2;
         const py = prey.y + prey.height / 2;
@@ -431,6 +439,12 @@ class GameState extends Schema {
       const left = lock - (deltaTime * 1000) / INHALE.LOCK_DECAY_MS;
       if (left <= 0) eater.lockOn.delete(id);
       else eater.lockOn.set(id, left);
+    }
+    for (const [id, held] of eater.heldFor) {
+      if (keep?.has(id)) continue;
+      const left = held - deltaTime * INHALE.HOLD_DECAY;
+      if (left <= 0) eater.heldFor.delete(id);
+      else eater.heldFor.set(id, left);
     }
   }
 
@@ -515,7 +529,7 @@ class GameState extends Schema {
     // Catching several at once pays more than one, though far less than one each
     const budget = Math.sqrt(victims.length);
     for (const { victim, weight } of victims) {
-      let progress = (thief.stealShares.get(victim.sessionId) ?? 0) + deltaTime * INHALE.STEAL_RATE * budget * (weight / total) * this.stealStrength(thief, victim) * (INHALE.STEAL_LOCK_START + (1 - INHALE.STEAL_LOCK_START) * (thief.lockOn.get(victim.sessionId) ?? 0));
+      let progress = (thief.stealShares.get(victim.sessionId) ?? 0) + deltaTime * INHALE.STEAL_RATE * budget * (weight / total) * this.stealStrength(thief, victim) * drainRamp(thief.heldFor.get(victim.sessionId) ?? 0);
       while (progress >= 1 && victim.gems > 0) {
         progress -= 1;
         victim.setGems(victim.gems - 1, this.worldWidth, this.worldHeight);

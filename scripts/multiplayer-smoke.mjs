@@ -460,7 +460,7 @@ try {
     await sleep(150);
     const bobLost = bobShareFrom - bobState().gems;
     const caraLost = caraShareFrom - caraState().gems;
-    check(bobLost >= 2 && caraLost >= 2 && bobLost + caraLost <= 25, `an inhale robs everyone in it, sharing its drain between them (Bob lost ${bobLost}, Cara ${caraLost})`);
+    check(bobLost >= 2 && caraLost >= 2 && bobLost + caraLost <= 70, `an inhale robs everyone in it, sharing its drain between them (Bob lost ${bobLost}, Cara ${caraLost})`);
     await cara.leave();
     await sleep(1300);
 

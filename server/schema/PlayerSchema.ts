@@ -82,6 +82,8 @@ class PlayerSchema extends Schema {
   stealShares = new Map<string, number>();
   /** Server-only: how long each creature has been held in this one's inhale (0-1 of INHALE.LOCK_MS); fades fast once it's out */
   lockOn = new Map<string, number>();
+  /** Server-only: how long (seconds) each creature has been held in this one's airflow without a break (see INHALE.DRAIN_RAMP) */
+  heldFor = new Map<string, number>();
   /** Server-only (bots): when its inhale last had nobody in it, so it can let go and save its breath */
   inhaleIdleSince = 0;
   /** Server-only: gems part-stolen, and how many this run of stealing has taken */
