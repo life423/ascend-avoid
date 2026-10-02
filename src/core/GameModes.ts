@@ -846,23 +846,40 @@ function suctionPower(width: number): number {
     return Math.min(INHALE_LOOK.POWER_MAX, Math.pow(Math.max(1, width / ARENA_RULES.PLAYER_SIZE), INHALE_LOOK.POWER_GROWTH))
 }
 
-/** Air rushing into an inhaling creature's mouth: a fading cone, its streaks denser, longer and faster the stronger its suction */
+/**
+ * Air rushing into an inhaling creature's mouth, over exactly the region it pulls from: a cone
+ * whose point is the mouth (just ahead of the middle, as on the server), as long as its reach and
+ * as wide as its arc, with a faint dashed edge where the pull ends. Its streaks are denser, longer
+ * and faster, and the mouth glows harder, the stronger the pull.
+ */
 function drawInhaleCone(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, facing: number, timestamp: number, intensity = 1): void {
     const r = size / 2
     const reach = INHALE.REACH + size * INHALE.REACH_PER_SIZE
     const spread = (INHALE.ARC * Math.PI) / 180
     // Bigger creatures pull harder, and draining or swallowing someone pulls harder still
     const power = Math.min(6, suctionPower(size) * intensity)
+    const mouthX = x + Math.cos(facing) * size * 0.3
+    const mouthY = y + Math.sin(facing) * size * 0.3
     ctx.save()
-    const glow = ctx.createRadialGradient(x, y, r, x, y, r + reach)
+    // The region it pulls from, brightest at the mouth but visible right out to the edge
+    const glow = ctx.createRadialGradient(mouthX, mouthY, 0, mouthX, mouthY, reach)
     glow.addColorStop(0, `rgba(180, 230, 255, ${Math.min(0.5, INHALE_LOOK.GLOW + 0.06 * power)})`)
-    glow.addColorStop(1, 'rgba(180, 230, 255, 0)')
+    glow.addColorStop(1, 'rgba(180, 230, 255, 0.07)')
     ctx.fillStyle = glow
     ctx.beginPath()
-    ctx.arc(x, y, r + reach, facing - spread, facing + spread)
-    ctx.arc(x, y, r, facing + spread, facing - spread, true)
+    ctx.moveTo(mouthX, mouthY)
+    ctx.arc(mouthX, mouthY, reach, facing - spread, facing + spread)
     ctx.closePath()
     ctx.fill()
+    ctx.strokeStyle = `rgba(200, 240, 255, ${Math.min(0.5, 0.22 + 0.05 * power)})`
+    ctx.lineWidth = 1.5
+    ctx.setLineDash([6, 6])
+    ctx.lineDashOffset = timestamp / 40
+    ctx.beginPath()
+    ctx.arc(mouthX, mouthY, reach, facing - spread, facing + spread)
+    ctx.stroke()
+    ctx.setLineDash([])
+    // Streaks rushing in from the edge, closing in on the mouth
     ctx.strokeStyle = `rgba(220, 245, 255, ${Math.min(0.85, 0.5 + 0.08 * power)})`
     ctx.lineWidth = 1.5 + 0.6 * power
     ctx.lineCap = 'round'
@@ -871,21 +888,18 @@ function drawInhaleCone(ctx: CanvasRenderingContext2D, x: number, y: number, siz
     const length = INHALE_LOOK.STREAK_LENGTH + 10 * power
     for (let i = 0; i < streaks; i++) {
         const t = (timestamp / period + i / streaks) % 1
-        // Faster and faster as it nears the mouth
-        const along = r + reach * (1 - t) * (1 - t * 0.35)
-        // Lanes close in on the mouth as the air rushes in
+        const along = reach * (1 - t) * (1 - t * 0.35)
         const angle = facing + spread * 0.85 * Math.sin(i * 2.3) * (1 - 0.55 * t)
+        const inner = Math.max(0, along - length)
         ctx.globalAlpha = Math.min(1, t * 4)
         ctx.beginPath()
-        ctx.moveTo(x + Math.cos(angle) * along, y + Math.sin(angle) * along)
-        ctx.lineTo(x + Math.cos(angle) * Math.max(r, along - length), y + Math.sin(angle) * Math.max(r, along - length))
+        ctx.moveTo(mouthX + Math.cos(angle) * along, mouthY + Math.sin(angle) * along)
+        ctx.lineTo(mouthX + Math.cos(angle) * inner, mouthY + Math.sin(angle) * inner)
         ctx.stroke()
     }
     // The mouth glows and throbs, harder and faster the stronger the pull
     ctx.globalAlpha = 1
     const throb = 0.5 + 0.5 * Math.sin((timestamp / 1000) * Math.PI * 2 * (2 + power))
-    const mouthX = x + Math.cos(facing) * r
-    const mouthY = y + Math.sin(facing) * r
     const core = r * (0.35 + 0.1 * power) * (0.85 + 0.15 * throb) * 2.2
     const rush = ctx.createRadialGradient(mouthX, mouthY, 0, mouthX, mouthY, core)
     rush.addColorStop(0, `rgba(235, 250, 255, ${Math.min(0.75, 0.25 + 0.12 * power)})`)
@@ -894,15 +908,15 @@ function drawInhaleCone(ctx: CanvasRenderingContext2D, x: number, y: number, siz
     ctx.beginPath()
     ctx.arc(mouthX, mouthY, core, 0, Math.PI * 2)
     ctx.fill()
-    // Once the pull is strong, the cone's edges shimmer
+    // Once the pull is strong, the cone's sides shimmer
     if (power > 1.4) {
         ctx.strokeStyle = `rgba(220, 245, 255, ${Math.min(0.45, 0.1 * (power - 1) * (0.6 + 0.4 * throb))})`
         ctx.lineWidth = 1 + 0.5 * power
         ctx.beginPath()
-        ctx.moveTo(x + Math.cos(facing - spread) * r, y + Math.sin(facing - spread) * r)
-        ctx.lineTo(x + Math.cos(facing - spread) * (r + reach), y + Math.sin(facing - spread) * (r + reach))
-        ctx.moveTo(x + Math.cos(facing + spread) * r, y + Math.sin(facing + spread) * r)
-        ctx.lineTo(x + Math.cos(facing + spread) * (r + reach), y + Math.sin(facing + spread) * (r + reach))
+        ctx.moveTo(mouthX, mouthY)
+        ctx.lineTo(mouthX + Math.cos(facing - spread) * reach, mouthY + Math.sin(facing - spread) * reach)
+        ctx.moveTo(mouthX, mouthY)
+        ctx.lineTo(mouthX + Math.cos(facing + spread) * reach, mouthY + Math.sin(facing + spread) * reach)
         ctx.stroke()
     }
     ctx.restore()
@@ -1765,14 +1779,14 @@ export class MultiplayerMode extends GameMode {
             ctx.arc(
                 x + (position.x + player.width / 2) * scale,
                 y + (position.y + player.height / 2) * scale,
-                // As big as they really are, scaled down (never too small to see)
-                Math.max(isLocal ? 2.5 : 1.8, (player.width / 2) * scale),
+                // Sized like they really are, scaled up 2.5x so the differences show on so small a map
+                1.5 + (player.width / 2) * scale * 2.5,
                 0,
                 Math.PI * 2
             )
             ctx.fill()
             if (sessionId === leaderId) {
-                drawCrown(ctx, x + (position.x + player.width / 2) * scale, y + (position.y + player.height / 2) * scale - Math.max(4, (player.width / 2) * scale + 2), 10)
+                drawCrown(ctx, x + (position.x + player.width / 2) * scale, y + (position.y + player.height / 2) * scale - (3.5 + (player.width / 2) * scale * 2.5), 10)
             }
         })
         state.turbines?.forEach((turbine: any) => {

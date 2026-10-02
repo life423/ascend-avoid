@@ -1,5 +1,5 @@
-import { BOTS, PLAYER_STATE, TURBINE } from "../constants/gameConstants.js";
-import { hop, hopLength } from "./movement.js";
+import { BOTS, INHALE, PLAYER_STATE, TURBINE } from "../constants/gameConstants.js";
+import { hop } from "./movement.js";
 import type { Box, Direction } from "./movement.js";
 import type { GameState } from "../schema/GameState.js";
 import type { PlayerSchema } from "../schema/PlayerSchema.js";
@@ -155,7 +155,8 @@ export class BotBrain {
     if (threat.distance < BOTS.FLEE_RANGE) return { x: cx + (cx - threat.x) * 3, y: cy + (cy - threat.y) * 3 };
     // Low on gems (or just reckless): go for the jackpot
     if (world.jackpotOn && (bot.gems < 20 || this.reckless)) return { x: world.jackpotX, y: world.jackpotY };
-    const victim = this.shoveTarget(bot, world);
+    // Someone to rob or swallow: go after them (the bot inhales once they are in reach)
+    const victim = this.huntTarget(bot, world);
     this.victim = victim;
     if (victim) return { x: victim.x + victim.width / 2, y: victim.y + victim.height / 2 };
 
@@ -187,25 +188,31 @@ export class BotBrain {
     return this.goal;
   }
 
-  /** Someone lined up within a hop that the bot fancies shoving: always the leader, lighter players more often */
-  private shoveTarget(bot: PlayerSchema, world: GameState): PlayerSchema | null {
-    const reach = hopLength(bot.width);
+  /**
+   * Someone worth going after: a creature in sight with gems to rob, better still one small enough
+   * to swallow (or with no gems left), and the leader most of all; richer and closer is better.
+   * Never one big enough to swallow the bot. Bolder bots hunt farther.
+   */
+  private huntTarget(bot: PlayerSchema, world: GameState): PlayerSchema | null {
     const cx = bot.x + bot.width / 2;
     const cy = bot.y + bot.height / 2;
     const leader = world.leader();
-    const pick: { target: PlayerSchema | null } = { target: null };
+    const range = BOTS.HUNT_RANGE * (0.6 + this.aggression);
+    let best: PlayerSchema | null = null;
+    let bestAppeal = 0;
     world.players.forEach((other) => {
-      if (pick.target || other === bot || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected || other.sliding) return;
-      const dx = Math.abs(other.x + other.width / 2 - cx);
-      const dy = Math.abs(other.y + other.height / 2 - cy);
-      const halfWidths = (bot.width + other.width) / 2;
-      const halfHeights = (bot.height + other.height) / 2;
-      const linedUp = (dy < halfHeights && dx < halfWidths + reach) || (dx < halfWidths && dy < halfHeights + reach);
-      if (!linedUp) return;
-      const keenness = other === leader ? 1 : other.weight() < bot.weight() ? this.aggression * 2 : this.aggression;
-      // Bots get pushier during a shift
-      if (Math.random() < keenness * (world.shiftPhase === "shift" ? 1.5 : 1)) pick.target = other;
+      if (other === bot || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected) return;
+      if (other.width >= bot.width * INHALE.EAT_RATIO) return;
+      const distance = Math.hypot(other.x + other.width / 2 - cx, other.y + other.height / 2 - cy) - other.width / 2;
+      if (distance > range) return;
+      const edible = other.gems <= 0 || other.width * INHALE.EAT_RATIO <= bot.width;
+      if (!edible && other.gems < 3) return;
+      const appeal = ((edible ? 2 : 1) * (other === leader ? 1.5 : 1) * (other.gems + 5)) / (distance + 100);
+      if (appeal > bestAppeal) {
+        bestAppeal = appeal;
+        best = other;
+      }
     });
-    return pick.target;
+    return best as PlayerSchema | null;
   }
 }

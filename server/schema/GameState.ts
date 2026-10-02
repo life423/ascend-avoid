@@ -328,8 +328,8 @@ class GameState extends Schema {
   /**
    * Inhaling: everything in a cone in front of the creature's mouth. Gems are pulled in and
    * swallowed; a bomb stays in the mouth (safe until it's spat). Every creature in it is robbed
-   * (steal) and pulled bodily toward the mouth by mass; one with two-thirds the inhaler's mass or
-   * less goes down once held at the mouth for INHALE.GULP_MS.
+   * (steal) and pulled bodily toward the mouth by mass; one 1.3 times
+   * narrower or more goes down once held at the mouth for INHALE.GULP_MS.
    */
   private updateInhales(now: number, deltaTime: number): void {
     const cone = Math.cos((INHALE.ARC * Math.PI) / 180);
@@ -338,6 +338,7 @@ class GameState extends Schema {
         if (eater.stealingFrom) this.endTheft(eater, now);
         if (eater.robbing) eater.robbing = "";
         if (eater.gulping) eater.gulping = "";
+        this.fadeLocks(eater, null, deltaTime);
         return;
       }
       const fx = Math.cos(eater.facing);
@@ -381,10 +382,15 @@ class GameState extends Schema {
       // to swallow goes down once it's held right at the mouth for GULP_MS.
       let held: PlayerSchema | null = null;
       let heldAt = Infinity;
+      const locked = new Set<string>();
       this.players.forEach((prey) => {
         if (prey === eater || prey.state !== PLAYER_STATE.ALIVE || prey.spawnProtected) return;
         const alignment = this.stealWeight(eater, prey);
         if (alignment <= 0) return;
+        // Holding it in the cone builds the lock: a light pull at first, dangerous after a second
+        const lock = Math.min(1, (eater.lockOn.get(prey.sessionId) ?? 0) + (deltaTime * 1000) / INHALE.LOCK_MS);
+        eater.lockOn.set(prey.sessionId, lock);
+        locked.add(prey.sessionId);
         const px = prey.x + prey.width / 2;
         const py = prey.y + prey.height / 2;
         const d = Math.hypot(px - mouthX, py - mouthY);
@@ -395,10 +401,15 @@ class GameState extends Schema {
         if (d < 1) return;
         const gap = Math.max(0, d - prey.width / 2);
         const mass = Math.min(INHALE.BODY_PULL_MAX, eater.width / prey.width);
-        const pull =
-          Math.min(INHALE.BODY_PULL * mass * Math.pow(Math.max(0, 1 - gap / reach), 2) * alignment, INHALE.PREY_PULL_CAP * moveSpeed(prey.width)) * deltaTime;
+        const near = Math.max(0, 1 - gap / reach);
+        // Much stronger in the last stretch before the mouth
+        const close = Math.max(0, 1 - gap / (reach * INHALE.CLOSE_RANGE));
+        const lockPull = INHALE.LOCK_START + (1 - INHALE.LOCK_START) * lock * lock;
+        const strength = INHALE.BODY_PULL * mass * near * near * (1 + INHALE.CLOSE_BOOST * close) * alignment * lockPull;
+        const pull = Math.min(strength, INHALE.PREY_PULL_CAP * moveSpeed(prey.width)) * deltaTime;
         prey.nudge(((mouthX - px) / d) * pull, ((mouthY - py) / d) * pull, this.worldWidth, this.worldHeight);
       });
+      this.fadeLocks(eater, locked, deltaTime);
       const caught = held as PlayerSchema | null;
       if (!caught) {
         if (eater.gulping) eater.gulping = "";
@@ -411,6 +422,16 @@ class GameState extends Schema {
       }
       this.steal(eater, now, deltaTime);
     });
+  }
+
+  /** Locks on creatures no longer held (or every lock, when `keep` is null) fade fast: out of the cone, out of danger */
+  private fadeLocks(eater: PlayerSchema, keep: Set<string> | null, deltaTime: number): void {
+    for (const [id, lock] of eater.lockOn) {
+      if (keep?.has(id)) continue;
+      const left = lock - (deltaTime * 1000) / INHALE.LOCK_DECAY_MS;
+      if (left <= 0) eater.lockOn.delete(id);
+      else eater.lockOn.set(id, left);
+    }
   }
 
   /** Whether `eater` is big enough to swallow `prey` whole: INHALE.EAT_RATIO times as wide */
@@ -494,7 +515,7 @@ class GameState extends Schema {
     // Catching several at once pays more than one, though far less than one each
     const budget = Math.sqrt(victims.length);
     for (const { victim, weight } of victims) {
-      let progress = (thief.stealShares.get(victim.sessionId) ?? 0) + deltaTime * INHALE.STEAL_RATE * budget * (weight / total) * this.stealStrength(thief, victim);
+      let progress = (thief.stealShares.get(victim.sessionId) ?? 0) + deltaTime * INHALE.STEAL_RATE * budget * (weight / total) * this.stealStrength(thief, victim) * (INHALE.STEAL_LOCK_START + (1 - INHALE.STEAL_LOCK_START) * (thief.lockOn.get(victim.sessionId) ?? 0));
       while (progress >= 1 && victim.gems > 0) {
         progress -= 1;
         victim.setGems(victim.gems - 1, this.worldWidth, this.worldHeight);
