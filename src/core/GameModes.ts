@@ -674,18 +674,31 @@ function drawLaunchPuff(ctx: CanvasRenderingContext2D, x: number, y: number, ang
     ctx.restore()
 }
 
-function drawGem(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number): void {
-    ctx.fillStyle = 'rgba(255, 209, 102, 0.18)'
+/** Gem colors: most are gold, some cyan, blue or pink (all worth the same), for a livelier field */
+const GEM_COLORS = [GOLD, GOLD, GOLD, '#4fe3d9', '#5aa8ff', '#ff7ad9']
+
+/** A gem's color, fixed by its id so it never changes */
+function gemColor(id: string): string {
+    let hash = 0
+    for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) | 0
+    return GEM_COLORS[Math.abs(hash) % GEM_COLORS.length] ?? GOLD
+}
+
+function drawGem(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, color: string = GOLD): void {
+    const alpha = ctx.globalAlpha
+    ctx.globalAlpha = alpha * 0.2
+    ctx.fillStyle = color
     ctx.beginPath()
     ctx.arc(x, y, radius * 1.9, 0, Math.PI * 2)
     ctx.fill()
+    ctx.globalAlpha = alpha
     ctx.beginPath()
     ctx.moveTo(x, y - radius)
     ctx.lineTo(x + radius * 0.78, y)
     ctx.lineTo(x, y + radius)
     ctx.lineTo(x - radius * 0.78, y)
     ctx.closePath()
-    ctx.fillStyle = GOLD
+    ctx.fillStyle = color
     ctx.fill()
     ctx.beginPath()
     ctx.moveTo(x, y - radius)
@@ -694,6 +707,162 @@ function drawGem(ctx: CanvasRenderingContext2D, x: number, y: number, radius: nu
     ctx.closePath()
     ctx.fillStyle = 'rgba(255, 255, 255, 0.55)'
     ctx.fill()
+}
+
+/** Phones and tablets (the header is hidden there online, and the HUD takes its place) */
+const COMPACT = window.matchMedia('(max-width: 1199px)')
+
+/** A HUD pill or card: dark glass with a teal rim */
+function hudPanel(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
+    ctx.fillStyle = 'rgba(6, 16, 30, 0.8)'
+    roundedRect(ctx, x, y, w, h, r)
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(79, 209, 197, 0.55)'
+    ctx.lineWidth = 1.5
+    ctx.stroke()
+}
+
+/** Two people: the players icon */
+function drawPeople(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string): void {
+    ctx.strokeStyle = color
+    ctx.lineWidth = Math.max(1, size * 0.11)
+    ctx.beginPath()
+    ctx.arc(x - size * 0.16, y - size * 0.16, size * 0.19, 0, Math.PI * 2)
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.arc(x - size * 0.16, y + size * 0.44, size * 0.36, Math.PI * 1.12, Math.PI * 1.88)
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.arc(x + size * 0.22, y - size * 0.1, size * 0.15, 0, Math.PI * 2)
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.arc(x + size * 0.26, y + size * 0.44, size * 0.28, Math.PI * 1.2, Math.PI * 1.85)
+    ctx.stroke()
+}
+
+/** The opening: how long it plays, and how long the HUD then takes to fade in */
+const INTRO = { MS: 2300, HUD_FADE_MS: 450 } as const
+/** It plays once per page load */
+let introPlayed = false
+
+type IntroSpark = { x: number; y: number; color: string; size: number; delay: number; gem: boolean }
+
+/** Stars and gems around the screen for the opening to pull in (positions as shares of the screen) */
+function makeIntroSparks(): IntroSpark[] {
+    const colors = ['#ffffff', '#ffffff', GOLD, '#4fe3d9', '#5aa8ff', '#ff7ad9']
+    const sparks: IntroSpark[] = []
+    for (let i = 0; i < 70; i++) {
+        const angle = Math.random() * Math.PI * 2
+        const distance = 0.2 + Math.random() * 0.55
+        sparks.push({
+            x: 0.5 + Math.cos(angle) * distance,
+            y: 0.45 + Math.sin(angle) * distance * 1.2,
+            color: colors[i % colors.length] ?? '#ffffff',
+            size: 1 + Math.random() * 2,
+            delay: Math.random() * 450,
+            gem: i % 4 === 0,
+        })
+    }
+    return sparks
+}
+
+/**
+ * The opening, over the arena: ASCEND appears large, its letters spread apart; stars and gems are
+ * drawn toward it; then the letters are pulled inward, crushed into a tiny glowing point, and pop.
+ */
+function drawIntro(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, t: number, sparks: IntroSpark[]): void {
+    const clamp = (v: number) => Math.max(0, Math.min(1, v))
+    const ease = (v: number) => v * v * (3 - 2 * v)
+    const w = canvas.width
+    const h = canvas.height
+    const cx = w / 2
+    const cy = h * 0.45
+    ctx.save()
+    // The arena dims behind the word, coming back as it goes
+    ctx.fillStyle = `rgba(2, 6, 14, ${0.55 * (1 - clamp((t - 1700) / 500))})`
+    ctx.fillRect(0, 0, w, h)
+    // Stars and gems drawn in: slowly, then rushing
+    ctx.lineCap = 'round'
+    for (const spark of sparks) {
+        const k = clamp((t - 250 - spark.delay) / 1100)
+        if (k <= 0) continue
+        const pull = k * k * k
+        const sx = spark.x * w
+        const sy = spark.y * h
+        const x = sx + (cx - sx) * pull
+        const y = sy + (cy - sy) * pull
+        const back = Math.max(0, pull - 0.12 * k)
+        ctx.globalAlpha = 0.85 * (1 - clamp((k - 0.85) / 0.15))
+        ctx.strokeStyle = spark.color
+        ctx.lineWidth = spark.size * 0.8
+        ctx.beginPath()
+        ctx.moveTo(sx + (cx - sx) * back, sy + (cy - sy) * back)
+        ctx.lineTo(x, y)
+        ctx.stroke()
+        if (spark.gem) {
+            drawGem(ctx, x, y, spark.size * 2.4, spark.color)
+        } else {
+            ctx.fillStyle = spark.color
+            ctx.beginPath()
+            ctx.arc(x, y, spark.size, 0, Math.PI * 2)
+            ctx.fill()
+        }
+    }
+    ctx.globalAlpha = 1
+    // The word, letters spread apart, then sucked into the middle
+    const word = 'ASCEND'
+    const size = Math.min(w * 0.15, 112)
+    ctx.font = `900 ${size}px ${FONT}`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    const widths = word.split('').map((letter) => ctx.measureText(letter).width)
+    const appear = ease(clamp(t / 450))
+    const suck = clamp((t - 950) / 750)
+    const inward = suck * suck
+    const gap = size * 0.35 * (1 - 0.35 * ease(clamp(t / 900)))
+    const total = widths.reduce((sum, width) => sum + width, 0) + gap * (word.length - 1)
+    let left = cx - total / 2
+    ctx.shadowColor = 'rgba(79, 209, 197, 0.9)'
+    ctx.shadowBlur = 18 + 22 * suck
+    word.split('').forEach((letter, i) => {
+        const width = widths[i] ?? 0
+        const home = left + width / 2
+        left += width + gap
+        const alpha = appear * (1 - clamp((suck - 0.85) / 0.15))
+        if (alpha <= 0) return
+        ctx.save()
+        ctx.globalAlpha = alpha
+        ctx.translate(home + (cx - home) * inward, cy)
+        ctx.rotate((i - 2.5) * 0.3 * inward)
+        const scale = (0.85 + 0.15 * appear) * (1 - 0.92 * inward)
+        ctx.scale(scale, scale)
+        ctx.fillStyle = '#eaffff'
+        ctx.fillText(letter, 0, 0)
+        ctx.restore()
+    })
+    ctx.shadowBlur = 0
+    // A tiny glowing point gathers, then pops
+    const gather = clamp((t - 1500) / 350)
+    const pop = clamp((t - 1850) / 400)
+    if (gather > 0 && pop < 1) {
+        const r = (4 + 10 * gather) * (1 - pop) * 5
+        const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(1, r))
+        glow.addColorStop(0, `rgba(255, 255, 255, ${0.95 * (1 - pop)})`)
+        glow.addColorStop(0.3, `rgba(160, 240, 255, ${0.6 * (1 - pop)})`)
+        glow.addColorStop(1, 'rgba(79, 209, 197, 0)')
+        ctx.fillStyle = glow
+        ctx.beginPath()
+        ctx.arc(cx, cy, Math.max(1, r), 0, Math.PI * 2)
+        ctx.fill()
+    }
+    if (pop > 0 && pop < 1) {
+        ctx.strokeStyle = `rgba(200, 250, 255, ${1 - pop})`
+        ctx.lineWidth = 1 + 3 * (1 - pop)
+        ctx.beginPath()
+        ctx.arc(cx, cy, 10 + 150 * ease(pop), 0, Math.PI * 2)
+        ctx.stroke()
+    }
+    ctx.restore()
 }
 
 /** The jackpot crystal: a big violet gem with a glow */
@@ -1081,6 +1250,11 @@ export class MultiplayerMode extends GameMode {
     private drawnSizes = new Map<string, { size: number; speed: number }>()
     /** Each creature's growth pop: when it last gained a gem and how big the pop was (see drawPlayer) */
     private gemPops = new Map<string, { at: number; amount: number }>()
+    /** Canvas pixels per screen point (the HUD on phones is laid out in screen points) */
+    private cssScale = 1
+    /** The opening: when it started (null until then), and what it pulls in */
+    private introStart: number | null = null
+    private introSparks: IntroSpark[] = []
     /** When your player was knocked out, for the "back in" countdown */
     private knockedOutAt: number | null = null
     /** The last time someone got you (and how), for the knocked-out screen: "Swallowed by Drew" */
@@ -1290,6 +1464,7 @@ export class MultiplayerMode extends GameMode {
         const now = performance.now()
         // The button: hold to inhale (taken every frame, so nothing waits for later)
         const events = this.controls?.takeEvents() ?? []
+        if (this.introPlaying) events.length = 0
         const deltaTime = this.lastMoveAt ? Math.min(0.1, (now - this.lastMoveAt) / 1000) : 0
         this.lastMoveAt = now
 
@@ -1300,7 +1475,7 @@ export class MultiplayerMode extends GameMode {
             this.predicted = null
             return
         }
-        const steer = this.steerVector(input, me)
+        const steer = this.introPlaying ? { x: 0, y: 0 } : this.steerVector(input, me)
         // Inhaling never slows you down: you always steer exactly as usual
         this.sendSteer(steer)
         if (me.state !== 'alive') {
@@ -1512,16 +1687,23 @@ export class MultiplayerMode extends GameMode {
         this.drawBursts(ctx, timestamp)
         this.drawPickups(ctx, me, timestamp)
 
-        // Screen-space overlays
+        // Screen-space overlays: hidden while the opening plays, then fading in
         ctx.setTransform(1, 0, 0, 1, 0, 0)
-        this.drawMinimap(ctx, canvas, state, view, localId, leaderId)
-        this.drawLeaderboard(ctx, canvas, state, localId, leaderId)
-        this.drawNotices(ctx, canvas)
-        this.drawShiftChip(ctx, canvas, state, timestamp)
-        this.drawTrafficChip(ctx, canvas, state, timestamp)
-        this.drawBanner(ctx, canvas)
-        this.controls?.draw(ctx, timestamp, this.breath)
-        if (me && me.state !== 'alive') this.drawKnockedOut(ctx, canvas)
+        this.cssScale = canvas.width / Math.max(1, canvas.getBoundingClientRect().width)
+        const hud = this.runIntro(ctx, canvas, timestamp)
+        if (hud > 0) {
+            ctx.globalAlpha = hud
+            if (COMPACT.matches) this.drawTopBar(ctx, canvas, state, me)
+            this.drawMinimap(ctx, canvas, state, view, localId, leaderId)
+            this.drawLeaderboard(ctx, canvas, state, localId, leaderId)
+            this.drawNotices(ctx, canvas)
+            this.drawShiftChip(ctx, canvas, state, timestamp)
+            this.drawTrafficChip(ctx, canvas, state, timestamp)
+            this.drawBanner(ctx, canvas)
+            this.controls?.draw(ctx, timestamp, this.breath)
+            if (me && me.state !== 'alive') this.drawKnockedOut(ctx, canvas)
+            ctx.globalAlpha = 1
+        }
         ctx.restore()
     }
 
@@ -1742,14 +1924,17 @@ export class MultiplayerMode extends GameMode {
         const scale = size / Math.max(state.worldWidth, state.worldHeight)
         const width = state.worldWidth * scale
         const height = state.worldHeight * scale
-        const x = canvas.width - width - 12
-        // On a touchscreen the INHALE button has the bottom right, so the minimap moves to the top
-        const y = this.controls?.touchDevice ? 34 : canvas.height - height - 12
+        const x = canvas.width - width - (COMPACT.matches ? 10 * this.cssScale : 12)
+        // On phones and tablets it sits under the menu button; elsewhere, on a touchscreen the INHALE button has the bottom right, so it moves to the top
+        const y = COMPACT.matches ? Math.round(54 * this.cssScale) : this.controls?.touchDevice ? 34 : canvas.height - height - 12
         this.minimapBottom = y + height
         ctx.save()
         ctx.fillStyle = 'rgba(5, 12, 24, 0.72)'
-        roundedRect(ctx, x - 4, y - 4, width + 8, height + 8, 6)
+        roundedRect(ctx, x - 4, y - 4, width + 8, height + 8, 10)
         ctx.fill()
+        ctx.strokeStyle = 'rgba(79, 209, 197, 0.5)'
+        ctx.lineWidth = 1.5
+        ctx.stroke()
         ctx.lineWidth = 1
         ctx.strokeStyle = 'rgba(79, 209, 197, 0.55)'
         ctx.strokeRect(x, y, width, height)
@@ -1818,7 +2003,7 @@ export class MultiplayerMode extends GameMode {
         ctx.font = `600 11px ${FONT}`
         ctx.textAlign = 'right'
         ctx.textBaseline = 'bottom'
-        ctx.fillText(`${playing} playing`, x + width, y - 8)
+        if (!COMPACT.matches) ctx.fillText(`${playing} playing`, x + width, y - 8)
         ctx.restore()
     }
 
@@ -2430,18 +2615,18 @@ export class MultiplayerMode extends GameMode {
                 ctx.beginPath()
                 ctx.ellipse(drawn.x, drawn.y + radius * 0.6, radius * (0.4 + 0.8 * fall), radius * (0.2 + 0.35 * fall), 0, 0, Math.PI * 2)
                 ctx.fill()
-                drawGem(ctx, drawn.x, drawn.y - (1 - fall) * 90, radius)
+                drawGem(ctx, drawn.x, drawn.y - (1 - fall) * 90, radius, gemColor(id))
                 return
             }
             this.fallingSince.delete(id)
             if (gem.locked && gem.owner === localId) {
                 // Your own spilled gem: faded until you can grab it back
                 ctx.globalAlpha = 0.35
-                drawGem(ctx, drawn.x, drawn.y, radius)
+                drawGem(ctx, drawn.x, drawn.y, radius, gemColor(id))
                 ctx.globalAlpha = 1
                 return
             }
-            drawGem(ctx, drawn.x, drawn.y, radius)
+            drawGem(ctx, drawn.x, drawn.y, radius, gemColor(id))
         })
         for (const id of this.drawnGems.keys()) {
             if (!present.has(id)) this.drawnGems.delete(id)
@@ -2496,7 +2681,7 @@ export class MultiplayerMode extends GameMode {
     /** The top five by gems, top left, with you added below if you're further down */
     private drawLeaderboard(
         ctx: CanvasRenderingContext2D,
-        canvas: HTMLCanvasElement,
+        _canvas: HTMLCanvasElement,
         state: any,
         localId: string | null,
         leaderId: string | null
@@ -2506,50 +2691,138 @@ export class MultiplayerMode extends GameMode {
             ranked.push({ id, name: String(player.name), gems: player.gems, isBot: player.isBot === true })
         })
         ranked.sort((a, b) => b.gems - a.gems)
-        const rows = ranked.slice(0, 5).map((entry, index) => ({ ...entry, rank: index + 1 }))
+        const compact = COMPACT.matches
+        const top = compact ? 3 : 5
+        const rows = ranked.slice(0, top).map((entry, index) => ({ ...entry, rank: index + 1 }))
         const mine = ranked.findIndex((entry) => entry.id === localId)
-        if (mine >= 5) rows.push({ ...ranked[mine], rank: mine + 1 })
-
-        const width = Math.round(Math.min(170, Math.max(120, canvas.width * 0.3)))
-        const rowHeight = 18
-        const x = 12
-        const y = 12
+        const apart = mine >= top
+        const me = ranked[mine]
+        if (apart && me) rows.push({ ...me, rank: mine + 1 })
+        // Sizes in screen points on phones, so it lines up with everything else there
+        const u = compact ? this.cssScale : 1
+        const x = (compact ? 10 : 12) * u
+        const y = (compact ? 10 : 12) * u
+        const width = (compact ? 132 : 190) * u
+        const rowHeight = (compact ? 21 : 24) * u
+        const gapForYou = apart ? 7 * u : 0
         ctx.save()
-        ctx.fillStyle = 'rgba(5, 12, 24, 0.72)'
-        roundedRect(ctx, x, y, width, rows.length * rowHeight + 10, 6)
-        ctx.fill()
-        ctx.font = `600 12px ${FONT}`
+        hudPanel(ctx, x, y, width, rows.length * rowHeight + 10 * u + gapForYou, 10 * u)
+        ctx.font = `600 ${(compact ? 11.5 : 13) * u}px ${FONT}`
         ctx.textBaseline = 'middle'
+        let rowY = y + 5 * u + rowHeight / 2
         rows.forEach((row, index) => {
-            const rowY = y + 5 + rowHeight * index + rowHeight / 2
             const isLocal = row.id === localId
+            if (apart && index === rows.length - 1) {
+                // You, further down: set apart by a line
+                ctx.strokeStyle = 'rgba(79, 209, 197, 0.35)'
+                ctx.lineWidth = 1
+                ctx.beginPath()
+                ctx.moveTo(x + 8 * u, rowY - rowHeight / 2 + 3 * u)
+                ctx.lineTo(x + width - 8 * u, rowY - rowHeight / 2 + 3 * u)
+                ctx.stroke()
+                rowY += gapForYou
+            }
             if (row.id === leaderId) {
-                drawCrown(ctx, x + 14, rowY + 5, 13)
+                drawCrown(ctx, x + 14 * u, rowY + 4 * u, 12 * u)
             } else {
                 ctx.fillStyle = 'rgba(207, 216, 220, 0.7)'
                 ctx.textAlign = 'center'
-                ctx.fillText(String(row.rank), x + 14, rowY)
+                ctx.fillText(String(row.rank), x + 14 * u, rowY)
             }
-            let nameX = x + 28
+            let nameX = x + 27 * u
             if (row.isBot) {
-                drawRobot(ctx, x + 34, rowY, 10)
-                nameX += 14
+                drawRobot(ctx, x + 33 * u, rowY, 9 * u)
+                nameX += 13 * u
+            } else if (isLocal) {
+                drawCreature(ctx, x + 33 * u, rowY, 14 * u, '#ffffff', -0.7)
+                nameX += 13 * u
             }
-            ctx.fillStyle = isLocal ? '#ffffff' : 'rgba(207, 216, 220, 0.9)'
+            ctx.fillStyle = isLocal ? '#4fd1c5' : 'rgba(225, 235, 240, 0.92)'
             ctx.textAlign = 'left'
-            ctx.fillText(row.name, nameX, rowY, width - 70 - (nameX - x - 28))
-            ctx.fillStyle = GOLD
+            ctx.fillText(row.name, nameX, rowY, width - (nameX - x) - 34 * u)
+            ctx.fillStyle = isLocal ? '#4fd1c5' : GOLD
             ctx.textAlign = 'right'
-            ctx.fillText(String(row.gems), x + width - 10, rowY)
+            ctx.fillText(String(row.gems), x + width - 9 * u, rowY)
+            rowY += rowHeight
         })
         ctx.restore()
+    }
+
+    /** Phones and tablets: the score in a pill at the top middle, and how many are playing beside the menu button */
+    private drawTopBar(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, state: any, me: any): void {
+        const u = this.cssScale
+        ctx.save()
+        ctx.textBaseline = 'middle'
+        ctx.textAlign = 'left'
+        const top = 10 * u
+        // The score
+        const label = 'Score'
+        const value = String(me?.gems ?? 0)
+        ctx.font = `600 ${12.5 * u}px ${FONT}`
+        const labelWidth = ctx.measureText(label).width
+        ctx.font = `800 ${18 * u}px ${FONT}`
+        const valueWidth = ctx.measureText(value).width
+        const pillHeight = 34 * u
+        const pillWidth = labelWidth + valueWidth + 36 * u
+        const pillX = canvas.width / 2 - pillWidth / 2
+        hudPanel(ctx, pillX, top, pillWidth, pillHeight, pillHeight / 2)
+        ctx.font = `600 ${12.5 * u}px ${FONT}`
+        ctx.fillStyle = '#e8f4f8'
+        ctx.fillText(label, pillX + 14 * u, top + pillHeight / 2)
+        ctx.font = `800 ${18 * u}px ${FONT}`
+        ctx.fillStyle = '#4fd1c5'
+        ctx.fillText(value, pillX + 22 * u + labelWidth, top + pillHeight / 2 + 1 * u)
+        // How many are playing, beside the menu button
+        const text = `${state.players?.size ?? 0} playing`
+        ctx.font = `600 ${11 * u}px ${FONT}`
+        const textWidth = ctx.measureText(text).width
+        const height = 28 * u
+        const width = textWidth + 34 * u
+        const x = canvas.width - (10 + 36 + 8) * u - width
+        const y = top + (36 * u - height) / 2
+        hudPanel(ctx, x, y, width, height, height / 2)
+        drawPeople(ctx, x + 14 * u, y + height / 2, 14 * u, '#cfe8ee')
+        ctx.fillStyle = '#e8f4f8'
+        ctx.fillText(text, x + 25 * u, y + height / 2)
+        ctx.restore()
+    }
+
+    /**
+     * The opening over the arena (see drawIntro), once per page load, with nothing else on screen
+     * and the controls off; returns how visible the HUD should be (it fades in after)
+     */
+    private runIntro(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, timestamp: number): number {
+        if (this.introStart === null) {
+            if (introPlayed) return 1
+            introPlayed = true
+            this.introStart = timestamp
+            this.introSparks = makeIntroSparks()
+            document.body.classList.add('intro-playing')
+            // The header just went away on phones: let the canvas take the whole screen
+            window.dispatchEvent(new Event('resize'))
+        }
+        const t = timestamp - this.introStart
+        if (t < INTRO.MS) {
+            drawIntro(ctx, canvas, t, this.introSparks)
+            return 0
+        }
+        if (this.introSparks.length) {
+            this.introSparks = []
+            document.body.classList.remove('intro-playing')
+        }
+        return Math.min(1, (t - INTRO.MS) / INTRO.HUD_FADE_MS)
+    }
+
+    /** Whether the opening is still playing (the controls are off until it's done) */
+    private get introPlaying(): boolean {
+        return this.introStart !== null && this.introSparks.length > 0
     }
 
     /** Recent notices at the top right, newest first, fading out */
     private drawNotices(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement): void {
         const now = performance.now()
         this.notices = this.notices.filter((notice) => now - notice.at < JOIN_NOTICE_MS)
-        let y = this.controls?.touchDevice ? this.minimapBottom + 12 : 12
+        let y = this.controls?.touchDevice || COMPACT.matches ? this.minimapBottom + 12 : 12
         ctx.save()
         for (const notice of [...this.notices].reverse()) {
             ctx.globalAlpha = Math.min(1, (JOIN_NOTICE_MS - (now - notice.at)) / 500)

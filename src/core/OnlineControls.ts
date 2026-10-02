@@ -6,11 +6,11 @@ export type ControlEvent = 'inhale' | 'exhale'
 export type Breath = { phase: 'ready' } | { phase: 'inhaling'; left: number } | { phase: 'recovering'; back: number }
 
 /** How far (px) the joystick's knob travels from its center */
-const STICK_RADIUS = 46
+const STICK_RADIUS = 68
 /** Pushed less than this share of the way, the joystick doesn't steer */
 const DEAD_ZONE = 0.25
 /** The button's radius (px) */
-const BUTTON_RADIUS = 38
+const BUTTON_RADIUS = 50
 const FONT = 'Montserrat, system-ui, sans-serif'
 
 /** Whether a key went to a text box (the drawer's name box, say), so it shouldn't steer, inhale or toggle anything */
@@ -134,20 +134,24 @@ export class OnlineControls {
         this.drawStick(ctx, height, timestamp)
 
         // The button: lit while you inhale, dimmed while you catch your breath
-        const x = width - 70
-        const y = height - 78
         const r = BUTTON_RADIUS
+        const x = width - r - 24
+        const y = height - r - 30
         ctx.fillStyle = inhaling
             ? `rgba(160, 230, 255, ${0.16 + 0.1 * Math.sin(timestamp / 90)})`
             : recovering
               ? 'rgba(20, 30, 40, 0.55)'
-              : 'rgba(79, 209, 197, 0.16)'
+              : 'rgba(6, 22, 34, 0.72)'
         ctx.beginPath()
         ctx.arc(x, y, r, 0, Math.PI * 2)
         ctx.fill()
-        ctx.lineWidth = 2
-        ctx.strokeStyle = recovering ? 'rgba(255, 255, 255, 0.15)' : 'rgba(79, 209, 197, 0.55)'
+        // A glowing teal ring
+        ctx.lineWidth = 4
+        ctx.strokeStyle = recovering ? 'rgba(255, 255, 255, 0.15)' : 'rgba(79, 209, 197, 0.95)'
+        ctx.shadowColor = 'rgba(79, 209, 197, 0.65)'
+        ctx.shadowBlur = recovering ? 0 : 16
         ctx.stroke()
+        ctx.shadowBlur = 0
         // Its rim: your breath while you inhale or catch it
         if (inhaling || recovering) {
             ctx.strokeStyle = breathColor
@@ -158,7 +162,7 @@ export class OnlineControls {
         }
         // Just the word, centered on its letters (it flashes red when you're low on breath)
         ctx.fillStyle = recovering ? 'rgba(255, 255, 255, 0.4)' : low ? breathColor : '#ffffff'
-        ctx.font = `800 14px ${FONT}`
+        ctx.font = `800 17px ${FONT}`
         ctx.textBaseline = 'alphabetic'
         const word = ctx.measureText('INHALE')
         ctx.fillText('INHALE', x, y + (word.actualBoundingBoxAscent - word.actualBoundingBoxDescent) / 2)
@@ -176,7 +180,7 @@ export class OnlineControls {
             ctx.stroke()
             ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(0.9, alpha * 1.8)})`
             ctx.beginPath()
-            ctx.arc(knobX, knobY, 22, 0, Math.PI * 2)
+            ctx.arc(knobX, knobY, 28, 0, Math.PI * 2)
             ctx.fill()
         }
         if (this.stick) {
