@@ -37,6 +37,8 @@ export class GameRoom extends Room<GameState> {
     if (!IS_PRODUCTION && options.testTraffic === "always") this.state.forceTraffic("always");
     // ...and one with bombs (switched off in live worlds)
     if (!IS_PRODUCTION && options.testBombs === true) this.state.enableBombs();
+    // Arena shifts are off in normal play (SHIFT.ENABLED); a test world can switch them on
+    if (!IS_PRODUCTION && options.testShifts === true) this.state.enableShifts();
     // ...and one with no bots
     if (!IS_PRODUCTION && Number.isInteger(options.testBots)) this.state.botFill = options.testBots;
     // Test worlds have no turbines unless they ask: testTurbines true runs them as usual, "manual" places them by hand

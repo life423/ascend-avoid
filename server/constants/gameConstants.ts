@@ -316,6 +316,7 @@ export const BOMBS = {
 } as const;
 
 export const SHIFT = {
+  ENABLED: false, // arena shifts (the red zone, the shrinking floor and its jackpot) are switched off for now; true brings them back (tests turn them on per world)
   GRID: 10, // shapes are drawn on a 10x10 grid of tiles (420 units each)
   FIRST_AFTER_MS: 90000, // the first shift comes this long after a world starts...
   EVERY_MS: 150000, // ...then this long after the arena returns

@@ -60,7 +60,8 @@ try {
 
     // This world starts with no loose gems, no bots, and traffic that can't hit anyone (the test
     // hits players itself), so nothing happens by accident and every count is exact
-    const alice = await join('Alice', { testFieldGems: 0, testCalm: true, testBots: 0, testTraffic: 'always', testBombs: true });
+    // This world tests arena shifts too, so it switches them on (they're off in normal play)
+    const alice = await join('Alice', { testFieldGems: 0, testCalm: true, testBots: 0, testTraffic: 'always', testBombs: true, testShifts: true });
     const state = () => alice.state;
     const me = () => state().players.get(alice.sessionId);
     await waitFor(() => state().players?.size === 1, 2000, 'the first visitor is in the world right away');
@@ -73,6 +74,7 @@ try {
     const fresh = await new Client(URL).create('game_room', { name: 'Fresh', testBots: 0 });
     fresh.onMessage('*', () => {});
     await sleep(600);
+    check(fresh.state.shiftsOn === false && fresh.state.shiftPhase === 'normal' && fresh.state.floor === '', 'arena shifts are switched off in normal play: the arena stays whole');
     let freshMoving = 0;
     fresh.state.obstacles.forEach((o) => { if (o.vx || o.vy) freshMoving++; });
     fresh.state.comets?.forEach((c) => { if (c.vx || c.vy) freshMoving++; });

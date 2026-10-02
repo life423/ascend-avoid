@@ -93,7 +93,7 @@ export class BotBrain {
     if (Math.random() < this.mistakeChance) {
       // A careless hop (misjudging traffic), though never straight over the edge
       const careless = MOVES[Math.floor(Math.random() * MOVES.length)];
-      if (!careless || world.shiftPhase === "normal") return careless;
+      if (!careless || !world.shiftsOn || world.shiftPhase === "normal") return careless;
       const box = { x: bot.x, y: bot.y, width: bot.width, height: bot.height };
       hop(box, careless, world.worldWidth, world.worldHeight);
       if (world.isFloorAt(box.x + box.width / 2, box.y + box.height / 2)) return careless;
@@ -113,7 +113,7 @@ export class BotBrain {
       // getting closer to the goal
       let score = (impact === Infinity ? 10000 : impact * 1000) + (here - distanceFrom(box)) + Math.random() * 5;
       // Never hop over the edge during a shift, and keep to the new floor during its grace period
-      if (world.shiftPhase !== "normal") {
+      if (world.shiftsOn && world.shiftPhase !== "normal") {
         const x = box.x + box.width / 2;
         const y = box.y + box.height / 2;
         if (!world.isFloorAt(x, y)) score -= world.shiftPhase === "shift" ? 20000 : 500;
@@ -134,7 +134,7 @@ export class BotBrain {
     const cx = bot.x + bot.width / 2;
     const cy = bot.y + bot.height / 2;
     // A new floor is coming: get onto it
-    if (world.shiftPhase !== "normal" && !world.isFloorAt(cx, cy)) return world.nearestFloorPoint(cx, cy);
+    if (world.shiftsOn && world.shiftPhase !== "normal" && !world.isFloorAt(cx, cy)) return world.nearestFloorPoint(cx, cy);
     // Something big enough to swallow it close by: get away (smaller, it's faster). Robbers get robbed back (see GameState)
     const threat = { x: 0, y: 0, distance: BOTS.FLEE_RANGE };
     world.players.forEach((other) => {
@@ -161,7 +161,7 @@ export class BotBrain {
     if (victim) return { x: victim.x + victim.width / 2, y: victim.y + victim.height / 2 };
 
     // A bot with plenty of gems stops hunting them, so people can outgrow it (except during a shift)
-    const hungry = bot.gems < BOTS.CONTENT_AT || world.shiftPhase === "shift";
+    const hungry = bot.gems < BOTS.CONTENT_AT || (world.shiftsOn && world.shiftPhase === "shift");
     if (hungry && this.goal?.gemId && now < this.goal.until && world.gems.has(this.goal.gemId)) return this.goal;
 
     // The most attractive gem in sight: bigger and closer is better
