@@ -245,7 +245,7 @@ export const SUCTION = {
  * Inhaling, the one button: everything in a cone in front of your mouth (longer the bigger you
  * are). Gems are pulled in and swallowed. Every creature in it is robbed of gems (STEAL_RATE) and
  * pulled bodily toward your mouth, by mass: harder the heavier you are next to it, the closer it is
- * and the more squarely in front (BODY_PULL). One with two-thirds your mass or less (EAT_RATIO)
+ * and the more squarely in front (BODY_PULL). One 1.3 times narrower or more (EAT_RATIO)
  * goes down once it's held right at your mouth for GULP_MS. Size resists being pulled, not being
  * robbed; heavier creatures move and turn slower.
  */
@@ -255,12 +255,18 @@ export const INHALE = {
   ARC: 35, // degrees either side of where you face
   PULL_GEMS: 520, // units a second
   PULL_BOMBS: 420,
-  BODY_PULL: 80, // units a second a creature your own size is pulled at, right at your mouth and dead ahead...
+  BODY_PULL: 110, // units a second a creature your own size is pulled at, dead ahead (it builds up: see LOCK_MS)...
   BODY_PULL_MAX: 3, // ...times your width over its (mass, with pull and resistance each growing as the square root of mass), up to this...
-  PREY_PULL_CAP: 0.75, // ...but never more than this share of its own top speed: turn and strafe, and it can get away
-  EAT_RATIO: 1.22, // you can swallow a creature with two-thirds your mass or less (this many times narrower)...
+  PREY_PULL_CAP: 0.9, // ...but never more than this share of its own top speed: break the cone (turn, strafe) and it can get away
+  EAT_RATIO: 1.3, // you can swallow a creature 1.3 times narrower (about 1.7 times lighter)...
   GULP_REACH: 0.35, // ...held this close to your mouth (times your width, plus its radius)...
   GULP_MS: 400, // ...once it's held right at your mouth for this long (if it gets away first, it starts over)
+  LOCK_MS: 1500, // holding a creature in your inhale builds a lock to full over this long...
+  LOCK_DECAY_MS: 350, // ...that fades this fast once it's out of the cone (or you stop), so breaking the cone frees it
+  LOCK_START: 0.25, // body pull starts at this share and grows with the lock squared: a warning, then dangerous, then full
+  STEAL_LOCK_START: 0.6, // gem loss ramps up less: from this share to full
+  CLOSE_RANGE: 0.25, // the share of the reach nearest the mouth where the pull gets much stronger...
+  CLOSE_BOOST: 1.5, // ...up to this much more on top: caught close to the mouth of someone bigger, you're probably done
   MAX_MS: 3000, // a full breath lasts this long while you inhale...
   REFILL_MS: 2000, // ...and refills from empty in this long, starting from wherever it is (a short puff costs a short wait)
   MIN_BREATH: 0.1, // you can start inhaling with at least this share of a breath

@@ -80,6 +80,8 @@ class PlayerSchema extends Schema {
   robbedTotal: number;
   /** Server-only: how far along the next gem from each victim is (see GameState.steal) */
   stealShares = new Map<string, number>();
+  /** Server-only: how long each creature has been held in this one's inhale (0-1 of INHALE.LOCK_MS); fades fast once it's out */
+  lockOn = new Map<string, number>();
   /** Server-only: gems part-stolen, and how many this run of stealing has taken */
   stealProgress = 0;
   stolenRun = 0;

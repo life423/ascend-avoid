@@ -849,9 +849,10 @@ try {
     const voidTile = floor.indexOf('0');
     alice.send('test:setGems', { count: 10 });
     await sleep(150);
+    alice.messages.length = 0;
     placeCenter(alice, me(), tileCenter(voidTile));
     await waitFor(() => me().recovering, 1000, 'stepping over the edge counts as a hit');
-    await waitFor(() => me().gems <= 6, 1000, 'half your gems burst out');
+    await waitFor(() => alice.messages.some((m) => m.type === 'burst' && m.message?.count >= 5), 1000, 'half your gems burst out');
     check(onFloor(me()), 'and you land back on the floor');
     await waitFor(() => !me().recovering, 2000, 'Alice recovers');
     alice.send('test:setGems', { count: 0 });
