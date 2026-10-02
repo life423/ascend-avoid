@@ -460,7 +460,7 @@ try {
     await sleep(150);
     const bobLost = bobShareFrom - bobState().gems;
     const caraLost = caraShareFrom - caraState().gems;
-    check(bobLost >= 2 && caraLost >= 2 && bobLost + caraLost <= 15, `an inhale robs everyone in it, sharing its drain between them (Bob lost ${bobLost}, Cara ${caraLost})`);
+    check(bobLost >= 2 && caraLost >= 2 && bobLost + caraLost <= 25, `an inhale robs everyone in it, sharing its drain between them (Bob lost ${bobLost}, Cara ${caraLost})`);
     await cara.leave();
     await sleep(1300);
 
@@ -644,6 +644,8 @@ try {
     alice.send('exhale');
     check(bobBeforeApproach - bobState().gems >= 4, `walking up to someone while inhaling steals from them (${bobBeforeApproach - bobState().gems} stolen)`);
     await sleep(1300);
+    await waitFor(() => bobState().state === 'alive' && !bobState().spawnProtected, 6000, 'Bob is ready to run');
+    alice.send('test:setGems', { count: 40 });
     bob.send('test:setGems', { count: 40 });
     await sleep(200);
     alice.send('test:moveTo', { x: 300, y: 1300 });

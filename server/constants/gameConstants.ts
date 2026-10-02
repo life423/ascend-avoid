@@ -263,7 +263,7 @@ export const INHALE = {
   MAX_MS: 3000, // a full breath lasts this long while you inhale...
   REFILL_MS: 2000, // ...and refills from empty in this long, starting from wherever it is (a short puff costs a short wait)
   MIN_BREATH: 0.1, // you can start inhaling with at least this share of a breath
-  STEAL_RATE: 6, // gems a second pulled out of a creature in your inhale (shared out, weaker farther out or while it gets away), whatever either one's size
+  STEAL_RATE: 10, // gems a second pulled out of a creature in your inhale (shared out, weaker farther out or while it gets away), whatever either one's size
   STEAL_EDGE_SHARE: 0.25, // everyone in an inhale is robbed, sharing its drain by how squarely they sit in the cone: dead center counts 1, the very edge this
   STEAL_FALLOFF: 1, // drain fades evenly from the mouth to the tip of the cone, just as the cone fades on screen
   STEAL_ESCAPE: 0.75, // getting away cuts the drain by up to this much...
