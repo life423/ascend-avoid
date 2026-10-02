@@ -855,3 +855,41 @@ body.online-mode .touch-controls-area {
     }
 }
 
+
+/* ============================================
+   PHONES AND TABLETS, ONLINE: the arena fills the screen. Score, players, leaderboard, minimap
+   and controls are drawn over it (see GameModes); the menu button floats top right.
+   ============================================ */
+@media (max-width: 1199px) {
+    body.online-mode .app-header {
+        display: none;
+    }
+
+    body.online-mode .game-canvas-container {
+        padding: 0;
+    }
+
+    body.online-mode .game-canvas {
+        border: 0 !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+    }
+
+    body.online-mode .hamburger-button {
+        top: 10px;
+        right: 10px;
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        background: rgba(6, 16, 30, 0.78);
+        border: 1.5px solid rgba(79, 209, 197, 0.75);
+        box-shadow: 0 0 12px rgba(79, 209, 197, 0.25);
+        transition: opacity 0.4s ease;
+    }
+
+    /* The opening plays over the arena with nothing else on screen */
+    body.intro-playing .hamburger-button {
+        opacity: 0;
+        pointer-events: none;
+    }
+}
