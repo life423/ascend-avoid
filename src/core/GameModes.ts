@@ -1016,7 +1016,7 @@ function suctionPower(width: number): number {
 }
 
 /** How a creature's airflow is moving (see drawAirflow) */
-type Airflow = { heading: number; along: number; x: number; y: number; at: number; inhaling: boolean; since: number }
+type Airflow = { heading: number; along: number; x: number; y: number; at: number; inhaling: boolean; since: number; hookId: string; hookedAt: number }
 
 /** A point on a quadratic curve from (ax, ay) through control (bx, by) to (cx, cy) */
 function onCurve(ax: number, ay: number, bx: number, by: number, cx: number, cy: number, t: number): { x: number; y: number } {
@@ -2718,7 +2718,7 @@ export class MultiplayerMode extends GameMode {
         const heft = Math.min(3, Math.sqrt(size / ARENA_RULES.PLAYER_SIZE))
         let flow = this.flows.get(id)
         if (!flow) {
-            flow = { heading: facing, along: 0, x, y, at: timestamp, inhaling: false, since: timestamp }
+            flow = { heading: facing, along: 0, x, y, at: timestamp, inhaling: false, since: timestamp, hookId: '', hookedAt: timestamp }
             this.flows.set(id, flow)
         }
         if (!flow.inhaling) {
@@ -2747,13 +2747,26 @@ export class MultiplayerMode extends GameMode {
         // It leans toward whoever it's draining
         const world = this.multiplayerManager?.getState()
         const target = player.stealingFrom ? world?.players?.get(player.stealingFrom) : null
-        let lean = 0
-        if (target) {
-            const toward = Math.atan2(target.y + target.height / 2 - y, target.x + target.width / 2 - x)
-            lean = Math.max(-arc, Math.min(arc, Math.atan2(Math.sin(toward - facing), Math.cos(toward - facing)))) * 0.6
-        }
         const mouthX = x + Math.cos(facing) * size * 0.3
         const mouthY = y + Math.sin(facing) * size * 0.3
+        let lean = 0
+        let toward = facing
+        let hookLength = length
+        if (target) {
+            const tx = target.x + target.width / 2
+            const ty = target.y + target.height / 2
+            toward = Math.atan2(ty - mouthY, tx - mouthX)
+            lean = Math.max(-arc, Math.min(arc, Math.atan2(Math.sin(toward - facing), Math.cos(toward - facing)))) * 0.6
+            hookLength = Math.min(reach, Math.hypot(tx - mouthX, ty - mouthY))
+        }
+        // Hooked on someone a while (the lock building), the curling air straightens into beams
+        // running from them straight into the mouth; it curls again the moment the hook breaks
+        const hookId = target ? String(player.stealingFrom) : ''
+        if (hookId !== flow.hookId) {
+            flow.hookId = hookId
+            flow.hookedAt = timestamp
+        }
+        const straight = hookId ? Math.min(1, Math.max(0, (timestamp - flow.hookedAt - 400) / 1100)) : 0
         ctx.save()
         // The real pull area, only hinted at
         const hint = ctx.createRadialGradient(mouthX, mouthY, 0, mouthX, mouthY, reach)
@@ -2785,19 +2798,26 @@ export class MultiplayerMode extends GameMode {
             if (weak > 0 && (i + Math.floor(timestamp / 120)) % 3 === 0) continue
             const lane = Math.sin(i * 2.3 + 0.7)
             const t = (((timestamp / period + i / streaks + 0.37 * Math.sin(i * 1.7)) % 1) + 1) % 1
-            const startAngle = far + lane * spread
-            const ax = mouthX + Math.cos(startAngle) * length
-            const ay = mouthY + Math.sin(startAngle) * length
+            // Curling in from the flow, or (hooked) a straight beam from the victim
+            const curled = far + lane * spread
+            const beam = toward + lane * spread * 0.2
+            const startAngle = curled + Math.atan2(Math.sin(beam - curled), Math.cos(beam - curled)) * straight
+            const span = length + (hookLength - length) * straight
+            const ax = mouthX + Math.cos(startAngle) * span
+            const ay = mouthY + Math.sin(startAngle) * span
             const bendAngle = facing + lane * spread * 0.5 + lean * 0.5
-            const wobble = Math.sin(timestamp / (180 * heft) + i * 1.9) * turbulence * length
-            const bx = mouthX + Math.cos(bendAngle) * length * 0.45 - Math.sin(facing) * wobble
-            const by = mouthY + Math.sin(bendAngle) * length * 0.45 + Math.cos(facing) * wobble
+            const wobble = Math.sin(timestamp / (180 * heft) + i * 1.9) * turbulence * span * (1 - straight)
+            const curveX = mouthX + Math.cos(bendAngle) * span * 0.45 - Math.sin(facing) * wobble
+            const curveY = mouthY + Math.sin(bendAngle) * span * 0.45 + Math.cos(facing) * wobble
+            const bx = curveX + ((ax + mouthX) / 2 - curveX) * straight
+            const by = curveY + ((ay + mouthY) / 2 - curveY) * straight
+            const reachOf = segment * (1 + 0.8 * straight)
             const from = onCurve(ax, ay, bx, by, mouthX, mouthY, t)
-            const mid = onCurve(ax, ay, bx, by, mouthX, mouthY, Math.min(1, t + segment / 2))
-            const to = onCurve(ax, ay, bx, by, mouthX, mouthY, Math.min(1, t + segment))
+            const mid = onCurve(ax, ay, bx, by, mouthX, mouthY, Math.min(1, t + reachOf / 2))
+            const to = onCurve(ax, ay, bx, by, mouthX, mouthY, Math.min(1, t + reachOf))
             const flicker = weak > 0 ? 0.5 + 0.5 * Math.sin(timestamp / 40 + i) : 1
-            ctx.globalAlpha = Math.min(0.85, 0.45 + 0.08 * power) * Math.min(1, t * 4) * (1 - 0.6 * weak * (1 - flicker))
-            ctx.lineWidth = (0.8 + 0.45 * power) * (0.55 + 0.25 * heft) * (1 - 0.5 * weak)
+            ctx.globalAlpha = Math.min(0.95, (0.45 + 0.08 * power) * (1 + 0.4 * straight)) * Math.min(1, t * 4) * (1 - 0.6 * weak * (1 - flicker))
+            ctx.lineWidth = (0.8 + 0.45 * power) * (0.55 + 0.25 * heft) * (1 + 0.3 * straight) * (1 - 0.5 * weak)
             ctx.beginPath()
             ctx.moveTo(from.x, from.y)
             ctx.quadraticCurveTo(mid.x, mid.y, to.x, to.y)
