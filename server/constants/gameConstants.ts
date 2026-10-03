@@ -117,8 +117,8 @@ export const GEMS = {
   SPRAY_LIFETIME_MS: 15000, // uncollected sprayed gems vanish
   HIT_RECOVERY_MS: 800, // after a hit you skid and blink: traffic passes through you and you can't hop
   OWNER_PICKUP_DELAY_MS: 1500, // your own spilled gems wait this long for you, so whoever caused it gets first crack
-  DECAY_START: 100, // above this many gems you slowly shed them...
-  DECAY_RATE: 0.0025, // ...this share of what's above DECAY_START each second (1.6 a second at 750, 2.7 at 1,200)
+  DECAY_START: 300, // gems above this slowly shed (late game: a strong player can hold about 1500, see CAMERA)
+  DECAY_RATE: 0.001, // ...this share of the excess a second (about 1.2 a second at 1500)
   MAX_GEMS: 1400, // cap on gems in the world at once
 } as const;
 
@@ -318,6 +318,107 @@ export const BOMBS = {
   SPIT_COOLDOWN_MS: 400,
 } as const;
 
+/**
+ * Cores (experimental): heavy objects anywhere in the arena that inhales push around (see
+ * game/corePhysics). Inhale only ever applies force; momentum, swings and tug-of-war come from the
+ * physics. Never swallowed, by anyone. A hard enough hit stuns (no gems lost).
+ */
+export const CORE = {
+  COUNT: 3, // how many are in a world
+  RADIUS: 24, // physical size (drawn at this size too); small enough for a newborn to work with
+  MASS: 3, // in newborns: a creature's mass is (its width / a newborn's) squared
+  DRAG: 0.35, // momentum fades by this share a second (exponentially): half its speed in about 2s, so launches carry
+  MAX_SPEED: 750, // the Core's own top speed, whoever moved it
+  WALL_RESTITUTION: 0.6, // share of its speed kept bouncing off the arena's edge
+  CORE_RESTITUTION: 0.8, // ...and off another Core
+  REACH: 140, // a Core feels an inhale from this far from the mouth to its near edge...
+  REACH_PER_SIZE: 2.5, // ...plus this times the inhaler's width (newborn 190, 5x 390, 10x 640)
+  FALLOFF_POWER: 1.3, // pull fades with distance across that reach as (1 - distance / reach) ^ this
+  SUCTION: 3000, // pull (divided by MASS for acceleration), times how much of the Core is in the airflow: a newborn close up, about 1000 a second each second (enough to drag it along at a run)...
+  PULL_GROWTH: 0.4, // ...times (width / a newborn's) ^ this for bigger creatures...
+  PULL_MAX: 2.5, // ...up to this
+  NEAR_ARC: 150, // near the body the airflow wraps wider: its arc grows from the inhale's own toward this many degrees either side
+  NEAR_SPAN: 4, // ...over this many times the falloff zone outside the equilibrium distance (a Core trailing beside you stays in your airflow)
+  DEFLECT: 2.5, // near the body, the air the body blocks is turned to flow round it the way it was already going (toward the mouth): how readily (no target angle; nothing when dead ahead)
+  NEAR_FIELD: 4500, // inside the equilibrium distance, compressed air pushes it back out this hard (times the same size factor)...
+  RADIAL_DAMPING: 4, // ...and its motion toward or away from the body (only that) is damped this much a second there, so the push adds no energy
+  SIDE_MULTIPLIER: 1.25, // equilibrium distance beside the body, as a multiple of (body radius + Core radius)...
+  FRONT_MULTIPLIER: 1.7, // ...and in front of the mouth
+  FALLOFF: 0.8, // the inward pull fades smoothly to nothing over this share of the equilibrium distance outside it
+  STUN_MOMENTUM: 750, // a hit (MASS x the speed it comes at you) stuns from this momentum (250 a second)...
+  STUN_FULL_MOMENTUM: 1950, // ...for longer up to this one (650 a second)
+  STUN_MIN_MS: 300,
+  STUN_MAX_MS: 850,
+  STUN_IMMUNE_MS: 1200, // after a stun wears off, no more stuns for this long...
+  SEPARATE: 6, // ...and a Core has to come away by this much before it can stun the same player again
+  IMPACT_BOUNCE: 0.35, // how springy a Core is hitting a player (it loses speed, so it can't ricochet through everyone)
+  SPAWN_CLEAR: 600, // spawned at least this far from any player...
+  SPAWN_GAP: 1000, // ...from other Cores...
+  SPAWN_TURBINE_GAP: 500, // ...and from turbines
+  DEBUG: false, // development only: draw each Core's velocity, speed and equilibrium distances
+} as const;
+
+/**
+ * Player airflow connections (see game/airflow): one airflow quality (0-1) from shared geometry
+ * drives the soft latch, its gentle aim assist, the cone focusing into a stream, drain, the drain
+ * ramp, swallowing and breath. Deep body overlap smothers the air: worse, not better.
+ */
+export const LATCH = {
+  ACQUIRE_QUALITY: 0.3, // airflow this clean on a creature catches it (the latch)...
+  KEEP_QUALITY: 0.12, // ...it holds while the airflow stays at least this clean...
+  CURVE_ARC: 50, // a focused beam can bend: the latched creature is judged (and the latch kept) up to this many degrees further round, times how focused it is...
+  CURVE_WEIGHT: 0.85, // ...and counts as in your airflow (drain, pull) at this weight times the focus
+  BREAK_ANGLE: 75, // ...within this many degrees of your facing...
+  RANGE: 1.15, // ...and this share of your inhale's reach...
+  MEMORY_MS: 350, // ...and survives a moment below those (a little sideways step doesn't lose it)
+  SMOOTHING: 6, // airflow quality is smoothed at this rate a second (its stability)
+  ASSIST: 0.6, // a focused latch adds this much aim toward its target (your own turning does the rest)...
+  SIZE_MIN: 0.75, // ...times sqrt(your width / theirs), kept within these
+  SIZE_MAX: 1.35,
+  HYSTERESIS: 0.25, // inhaling each other: the other side needs a latch this much better to take the focused connection...
+  TIE: 0.1, // ...and from nothing, within this of each other, neither gets it
+  OVERLAP_SMOTHER: 0.4, // bodies overlapping by this share of the smaller one's width smother the air completely
+  OVERLAP_DRAIN_MIN: 0.25,
+  SCALE_FULL_RATIO: 0.35, // scale separation: an attacker at least this share of your width drains you fully...
+  SCALE_MIN_RATIO: 0.1, // ...one this small (or smaller) only at SCALE_MIN: a mosquito alone, dangerous only in numbers or through the arena
+  SCALE_MIN: 0.08, // smothered air still drains this share of gems
+  RAMP_MIN_QUALITY: 0.35, // the drain ramp builds only on airflow at least this clean; below, it fades...
+  RAMP_FADE: 1.5, // ...this many times as fast as it built
+  SWALLOW_MIN_QUALITY: 0.5, // a swallow needs airflow at least this clean (size alone isn't enough)
+  BEAM_FOCUS_FROM: 0.25, // the cone starts focusing into a stream at this quality...
+  BEAM_FULL_AT: 0.6, // ...and is a tight stream by this (qualities a real fight reaches)
+  BEAM_STABLE_MS: 400, // a focused connection has to hold this long before it saves breath
+  BEAM_EFFICIENT_FROM: 0.4, // breath use falls from this beam quality...
+  BEAM_NEUTRAL_AT: 0.75, // ...to nothing here...
+  BEAM_RECHARGE_MS: 9000, // ...and above, it refills (at best empty to full in this long; out of combat it's INHALE.REFILL_MS)...
+  DANGER_SHARE: 0.5, // only the inner share of an inhale's reach is lethal: gem drain fades to nothing over the outer part (range catches, closeness kills)
+  PRESSURE_BUILD_S: 0.35, // drain on a newly caught creature builds from nothing over this long for a newborn...
+  PRESSURE_SIZE_GROWTH: 0.35, // ...longer as (width / newborn) ^ this for bigger inhalers (about 0.7s at 100 gems); the pull lock too
+  BEAM_RECHARGE_CAP: 0.8, // ...but never past this share of a full breath while inhaling
+} as const;
+
+/**
+ * The camera (see game/camera): a soft-follow rig. It follows you on a critically damped spring,
+ * leading your movement a little (and your facing, more while inhaling), never far off you; and
+ * it zooms by how big you should look on screen, but never so close that a bigger creature could
+ * reach the lethal part of its airflow before you'd have seen it coming (the threat horizon).
+ */
+export const CAMERA = {
+  SIZE_SHARE: 0.06, // a newborn would fill this share of the screen's short side...
+  SIZE_SHARE_GROWTH: 0.45, // ...growing as (width / a newborn's) ^ this (about 10% at 25 gems, 15% at 100), so growth outpaces the zoom...
+  SIZE_SHARE_MAX: 0.35, // ...up to this. Late-game target: about 1500 gems is 27x a newborn's width and fills about 27% of the screen, a newborn beside it about 1%
+  THREAT_RATIO: 1.5, // ...but the view always shows a creature this many times wider coming...
+  REACTION_S: 0.9, // ...this long before the lethal part of its airflow could reach you (this wins at small sizes)...
+  THREAT_MAX_WIDTH: 150, // ...planned for creatures up to this wide; past it there's little bigger to fear, so your growth fills the screen
+  LOOK_AHEAD_S: 0.22, // the camera leads your movement by this much of your velocity...
+  FACING: 0.02, // ...plus a little toward where you face (a share of the view's short side)...
+  INHALE_FACING: 0.06, // ...more while inhaling, where the fight is...
+  MAX_OFFSET: 0.12, // ...never more than this share of the view off you
+  LOOK_SMOOTH: 3, // look-ahead changes smoothed at this rate a second (no jitter from the stick)
+  FOLLOW_OMEGA: 7, // position follows on a critically damped spring this stiff (settles in about half a second)...
+  ZOOM_OMEGA: 2.5, // ...zoom on a softer one
+} as const;
+
 export const SHIFT = {
   ENABLED: false, // arena shifts (the red zone, the shrinking floor and its jackpot) are switched off for now; true brings them back (tests turn them on per world)
   GRID: 10, // shapes are drawn on a 10x10 grid of tiles (420 units each)
@@ -397,6 +498,7 @@ export const ARENA_RULES = {
   MIN_SPEED: 0, // no floor: the bigger you get, the slower you go (raise this to bring a floor back)
   // Contact grip: creatures are soft bodies, not billiard balls
   CONTACT_SQUISH: 0.15, // touching creatures squish up to this share of the smaller one's width into each other before pushing back hard...
+  SCALE_SHOVE_RATIO: 4, // something this many times wider moving into a creature pushes it aside instead of being stopped by it
   CONTACT_TOUCH: 3, // ...count as touching within this many units...
   CONTACT_GRIP: 0.8, // ...and pressed together, this share of each step's sideways movement is undone so they stay put instead of orbiting (moving away peels off freely)
   MOVE_RESPONSE: 14, // how quickly you reach the speed you're steering (and glide to a stop)
@@ -480,6 +582,9 @@ export const DESKTOP_SETTINGS = DEVICE_SETTINGS.DESKTOP;
 
 // Bundle all constants for convenient access
 export const GAME_CONSTANTS = {
+  CORE,
+  LATCH,
+  CAMERA,
   CANVAS,
   PLAYER,
   OBSTACLE,

@@ -6,7 +6,10 @@ import Player from '../entities/Player'
 import { InputState } from '../types'
 import { getSprite } from '../utils/sprites'
 import { GameEvents } from '../constants/client-constants'
-import { ARENA_RULES, BOMBS, GEMS, INHALE, PLAYER_COLORS, SHIFT, TURBINE, WORLD } from '../../server/constants/gameConstants'
+import { ARENA_RULES, BOMBS, CORE, GEMS, INHALE, LATCH, PLAYER_COLORS, SHIFT, TURBINE, WORLD } from '../../server/constants/gameConstants'
+import { airflowOnCore } from '../../server/game/corePhysics'
+import { breathRate, cleanAir, latchSizeFactor, streamLook } from '../../server/game/airflow'
+import { CameraRig } from '../../server/game/camera'
 import { moveSpeed, turnStep, walk } from '../../server/game/movement'
 import { exhaustAngle, launchDuration, launchPosition } from '../../server/game/turbine'
 import { OnlineControls } from './OnlineControls'
@@ -462,8 +465,6 @@ const SNAP_DISTANCE = 150
 const RECONNECT_DELAY_MS = 3000
 /** How long a notice (someone joined, a shove, the jackpot) stays up */
 const JOIN_NOTICE_MS = 3500
-/** How quickly the camera catches up with you (share of the distance per 60 fps frame) */
-const CAMERA_EASE = 0.2
 /** Grid spacing on the arena floor (world units) */
 const GRID = 100
 const FONT = 'Montserrat, system-ui, sans-serif'
@@ -1016,7 +1017,7 @@ function suctionPower(width: number): number {
 }
 
 /** How a creature's airflow is moving (see drawAirflow) */
-type Airflow = { heading: number; along: number; x: number; y: number; at: number; inhaling: boolean; since: number; hookId: string; hookedAt: number }
+type Airflow = { heading: number; along: number; x: number; y: number; at: number; inhaling: boolean; since: number; hookId: string; hookedAt: number; coherence: number; rope?: { x: number; y: number }[] }
 
 /** A point on a quadratic curve from (ax, ay) through control (bx, by) to (cx, cy) */
 function onCurve(ax: number, ay: number, bx: number, by: number, cx: number, cy: number, t: number): { x: number; y: number } {
@@ -1177,14 +1178,19 @@ export class MultiplayerMode extends GameMode {
     /** The world point at the center of the screen */
     private camera: { x: number; y: number } | null = null
     private lastRenderAt = 0
-    /** How far the camera is zoomed out (grows with your size, eased so it never jumps) */
-    private zoom: number = WORLD.VIEW_ZOOM_SMALL
     /** Each player's drawn size, springing toward their real size so growing and shrinking pop */
     private drawnSizes = new Map<string, { size: number; speed: number }>()
     /** Each creature's growth pop: when it last gained a gem and how big the pop was (see drawPlayer) */
     private gemPops = new Map<string, { at: number; amount: number }>()
+    /** The camera rig, and the creature's last middle and smoothed velocity it follows */
+    private cameraRig = new CameraRig()
+    private cameraFrom: { x: number; y: number } | null = null
+    private cameraVelocity = { x: 0, y: 0 }
     /** Each creature's airflow while it inhales (see drawAirflow) */
     private flows = new Map<string, Airflow>()
+    /** Where each Core is drawn: carrying on at its velocity, easing to each server update (see drawCores) */
+    private coresDrawn = new Map<string, { x: number; y: number }>()
+    private coresDrawnAt = 0
     /** Canvas pixels per screen point (the HUD on phones is laid out in screen points) */
     private cssScale = 1
     /** The opening: when it started (null until then), and what it pulls in */
@@ -1410,7 +1416,8 @@ export class MultiplayerMode extends GameMode {
             this.predicted = null
             return
         }
-        const steer = this.introPlaying ? { x: 0, y: 0 } : this.steerVector(input, me)
+        // Stunned (by a Core), you can't steer, just like on the server
+        const steer = this.introPlaying || me.stunned ? { x: 0, y: 0 } : this.steerVector(input, me)
         // Inhaling never slows you down: you always steer exactly as usual
         this.sendSteer(steer)
         if (me.state !== 'alive') {
@@ -1454,7 +1461,16 @@ export class MultiplayerMode extends GameMode {
         const box = { x: this.predicted.x, y: this.predicted.y, width: me.width, height: me.height }
         // Facing, worked out like the server does: the aim while inhaling, else where you steer
         const intent = this.inhaleHeld ? this.aim : steer
-        const turn = turnStep(this.localFacing, this.localSpin, Math.hypot(intent.x, intent.y) > 0.25 ? Math.atan2(intent.y, intent.x) : null, me.width, this.inhaleHeld, deltaTime)
+        // A focused latch adds a little aim toward its target, as on the server (your turning does the rest)
+        const latched = me.latchTarget && me.latchPull > 0 && me.inhaling ? this.multiplayerManager?.getState()?.players?.get(me.latchTarget) : null
+        let aimed = intent
+        if (latched) {
+            const dx = latched.x + latched.width / 2 - (me.x + me.width / 2)
+            const dy = latched.y + latched.height / 2 - (me.y + me.height / 2)
+            const d = Math.max(1e-6, Math.hypot(dx, dy))
+            aimed = { x: intent.x + (dx / d) * LATCH.ASSIST * me.latchPull, y: intent.y + (dy / d) * LATCH.ASSIST * me.latchPull }
+        }
+        const turn = turnStep(this.localFacing, this.localSpin, Math.hypot(aimed.x, aimed.y) > 0.25 ? Math.atan2(aimed.y, aimed.x) : null, me.width, this.inhaleHeld, deltaTime)
         this.localFacing = turn.facing
         this.localSpin = turn.spin
         walk(box, this.velocity, steer, deltaTime, state.worldWidth, state.worldHeight)
@@ -1515,11 +1531,12 @@ export class MultiplayerMode extends GameMode {
     }
 
     /** Where your breath is: draining over INHALE.MAX_MS while you inhale, refilling over INHALE.REFILL_MS from wherever it is */
-    private breathOf(inhaling: boolean, now: number): Breath {
+    private breathOf(inhaling: boolean, now: number, beamQuality = 0): Breath {
         // A step at most a quarter second long, so coming back to a paused tab does not empty (or fill) it at once
         const elapsed = Math.min(250, Math.max(0, now - this.staminaAt))
         this.staminaAt = now
-        this.stamina = Math.min(1, Math.max(0, this.stamina + (inhaling ? -elapsed / INHALE.MAX_MS : elapsed / INHALE.REFILL_MS)))
+        // (a clean focused beam uses less breath, then none, then slowly refills it: see game/airflow)
+        this.stamina = Math.min(1, Math.max(0, this.stamina + (inhaling ? elapsed * breathRate(beamQuality, this.stamina) : elapsed / INHALE.REFILL_MS)))
         if (inhaling) return { phase: 'inhaling', left: this.stamina }
         if (this.stamina < 1) return { phase: 'recovering', back: this.stamina }
         return { phase: 'ready' }
@@ -1574,6 +1591,7 @@ export class MultiplayerMode extends GameMode {
         const top = view.y - view.height / 2 - margin
         const bottom = view.y + view.height / 2 + margin
         this.drawTurbines(ctx, state, timestamp)
+        this.drawCores(ctx, state, timestamp)
         this.drawGems(ctx, state, left, right, top, bottom, timestamp)
         this.drawGemBursts(ctx)
         this.drawJackpot(ctx, state, localId, timestamp)
@@ -1662,31 +1680,28 @@ export class MultiplayerMode extends GameMode {
      */
     private updateCamera(canvas: HTMLCanvasElement, state: any, me: any, timestamp: number): View {
         const aspect = Math.min(WORLD.MAX_VIEW_ASPECT, Math.max(WORLD.MIN_VIEW_ASPECT, canvas.width / canvas.height))
-        // The view widens as you grow, but much less than you do and only so far, so a giant fills its own screen and looms on everyone else's
-        const grown = me ? Math.max(1, me.width / ARENA_RULES.PLAYER_SIZE) : 1
-        this.zoom += (Math.min(WORLD.VIEW_ZOOM_MAX, WORLD.VIEW_ZOOM_SMALL * Math.pow(grown, WORLD.VIEW_GROWTH)) - this.zoom) * 0.05
-        const area = WORLD.VIEW_AREA * this.zoom * this.zoom
-        const scale = Math.max(
-            canvas.width / Math.sqrt(area * aspect),
-            canvas.height / Math.sqrt(area / aspect)
-        )
-        const width = canvas.width / scale
-        const height = canvas.height / scale
-
-        let focus = this.camera ?? { x: state.worldWidth / 2, y: state.worldHeight / 2 }
+        // The soft-follow rig (game/camera): it leads your movement a little (and your facing, more while
+        // inhaling), follows on a spring, and zooms by how big you should look and the threat horizon
+        const dt = this.lastRenderAt ? (timestamp - this.lastRenderAt) / 1000 : 0
+        let subject = null
         if (me && me.state === 'alive') {
             const position = this.predicted ?? me
-            focus = { x: position.x + me.width / 2, y: position.y + me.height / 2 }
+            const middleX = position.x + me.width / 2
+            const middleY = position.y + me.height / 2
+            if (this.cameraFrom && dt > 0) {
+                const blend = 1 - Math.exp(-10 * Math.min(0.1, dt))
+                this.cameraVelocity.x += ((middleX - this.cameraFrom.x) / dt - this.cameraVelocity.x) * blend
+                this.cameraVelocity.y += ((middleY - this.cameraFrom.y) / dt - this.cameraVelocity.y) * blend
+            }
+            this.cameraFrom = { x: middleX, y: middleY }
+            subject = { x: middleX, y: middleY, vx: this.cameraVelocity.x, vy: this.cameraVelocity.y, width: me.width, facing: this.localFacing, inhaling: Boolean(me.inhaling) }
         }
-        if (!this.camera || Math.hypot(focus.x - this.camera.x, focus.y - this.camera.y) > Math.max(width, height)) {
-            // First frame, or a respawn far away: jump there
-            this.camera = { x: focus.x, y: focus.y }
-        } else {
-            const frames = this.lastRenderAt ? Math.min(4, (timestamp - this.lastRenderAt) / (1000 / 60)) : 1
-            const ease = 1 - Math.pow(1 - CAMERA_EASE, Math.max(0, frames))
-            this.camera.x += (focus.x - this.camera.x) * ease
-            this.camera.y += (focus.y - this.camera.y) * ease
-        }
+        this.cameraRig.update(subject, dt)
+        const short = this.cameraRig.short || 600
+        const scale = Math.max(canvas.width / (canvas.width >= canvas.height ? short * aspect : short), canvas.height / (canvas.width >= canvas.height ? short : short / aspect))
+        const width = canvas.width / scale
+        const height = canvas.height / scale
+        this.camera = this.cameraRig.short ? { x: this.cameraRig.x, y: this.cameraRig.y } : (this.camera ?? { x: state.worldWidth / 2, y: state.worldHeight / 2 })
         this.lastRenderAt = timestamp
 
         // Keep the view inside the world
@@ -1818,7 +1833,7 @@ export class MultiplayerMode extends GameMode {
         }
         if (isLocal) {
             // Your breath: draining around you while you inhale, refilling while you catch it
-            this.breath = this.breathOf(Boolean(player.inhaling), performance.now())
+            this.breath = this.breathOf(Boolean(player.inhaling), performance.now(), Number(player.beamQuality) || 0)
             drawBreath(ctx, centerX, centerY, size, this.breath, timestamp)
         }
         if (isLocal && player.gems < GEMS.SURVIVE_AT) {
@@ -1855,6 +1870,29 @@ export class MultiplayerMode extends GameMode {
         }
         drawCreature(ctx, left + size / 2, top + size / 2, size, isLocal ? '#ffffff' : PLAYER_COLORS[player.playerIndex % PLAYER_COLORS.length], facing, timestamp, player.mouth ?? '', Boolean(player.inhaling))
         ctx.restore()
+        // Stunned by a Core: a few little stars wheeling over its head
+        if (player.stunned) {
+            ctx.save()
+            ctx.fillStyle = 'rgba(255, 228, 130, 0.95)'
+            for (let i = 0; i < 3; i++) {
+                const a = timestamp / 220 + (i * Math.PI * 2) / 3
+                const sx = left + size / 2 + Math.cos(a) * size * 0.42
+                const sy = top - 4 + Math.sin(a) * size * 0.12
+                const star = 2.5 + size * 0.025
+                ctx.beginPath()
+                ctx.moveTo(sx, sy - star * 1.6)
+                ctx.lineTo(sx + star * 0.5, sy - star * 0.5)
+                ctx.lineTo(sx + star * 1.6, sy)
+                ctx.lineTo(sx + star * 0.5, sy + star * 0.5)
+                ctx.lineTo(sx, sy + star * 1.6)
+                ctx.lineTo(sx - star * 0.5, sy + star * 0.5)
+                ctx.lineTo(sx - star * 1.6, sy)
+                ctx.lineTo(sx - star * 0.5, sy - star * 0.5)
+                ctx.closePath()
+                ctx.fill()
+            }
+            ctx.restore()
+        }
         ctx.globalAlpha = 1
         ctx.font = `600 16px ${FONT}`
         ctx.textAlign = 'center'
@@ -2741,7 +2779,7 @@ export class MultiplayerMode extends GameMode {
         const heft = Math.min(3, Math.sqrt(size / ARENA_RULES.PLAYER_SIZE))
         let flow = this.flows.get(id)
         if (!flow) {
-            flow = { heading: facing, along: 0, x, y, at: timestamp, inhaling: false, since: timestamp, hookId: '', hookedAt: timestamp }
+            flow = { heading: facing, along: 0, x, y, at: timestamp, inhaling: false, since: timestamp, hookId: '', hookedAt: timestamp, coherence: 0 }
             this.flows.set(id, flow)
         }
         if (!flow.inhaling) {
@@ -2766,10 +2804,12 @@ export class MultiplayerMode extends GameMode {
         const ahead = Math.max(0, flow.along)
         const tight = Math.min(1, Math.max(0, (intensity - 1) / 0.8))
         const length = reach * (0.72 + 0.28 * ahead)
-        const spread = arc * (1 - 0.35 * ahead) * (1 - 0.4 * tight)
+        // (and the cone itself narrows as its air goes into a stream)
+        const spread = arc * (1 - 0.35 * ahead) * (1 - 0.4 * tight) * (1 - 0.6 * Math.max(0, Math.min(1, (flow.coherence - LATCH.BEAM_FOCUS_FROM) / (LATCH.BEAM_FULL_AT - LATCH.BEAM_FOCUS_FROM))))
         // It leans toward whoever it's draining
         const world = this.multiplayerManager?.getState()
-        const target = player.stealingFrom ? world?.players?.get(player.stealingFrom) : null
+        // Focused on its latched creature if it has one, else whoever it's robbing
+        const target = player.latchTarget ? world?.players?.get(player.latchTarget) : player.stealingFrom ? world?.players?.get(player.stealingFrom) : null
         const mouthX = x + Math.cos(facing) * size * 0.3
         const mouthY = y + Math.sin(facing) * size * 0.3
         let lean = 0
@@ -2789,13 +2829,23 @@ export class MultiplayerMode extends GameMode {
             flow.hookId = hookId
             flow.hookedAt = timestamp
         }
-        const straight = hookId ? Math.min(1, Math.max(0, (timestamp - flow.hookedAt - 400) / 1100)) : 0
+        // How focused the stream is: the latch's airflow quality, from the server (it frays back into a cone as that falls)
+        // The cone's own streaks stay a cone; the connection to a latched creature is its own stream (drawStream)
+        const straight = 0
+        // Coherence follows the latch's real airflow quality; it rises smoothly but falls fast, so a broken latch frays straight back into the cone
+        const latchedQuality = player.latchTarget ? Math.max(0, Math.min(1, Number(player.latchQuality) || 0)) : 0
+        flow.coherence = latchedQuality >= flow.coherence
+            ? flow.coherence + (latchedQuality - flow.coherence) * Math.min(1, dt * 8)
+            : Math.max(latchedQuality, flow.coherence - dt * 4)
+        const fraying = Math.max(0, flow.coherence - latchedQuality)
+        const coherent = Math.max(0, Math.min(1, (flow.coherence - LATCH.BEAM_FOCUS_FROM) / (LATCH.BEAM_FULL_AT - LATCH.BEAM_FOCUS_FROM)))
+        const beamShare = coherent * coherent * (3 - 2 * coherent)
         // ...pinching tighter the longer the hold (as the drain escalates)
         const pinch = 1 - 0.5 * straight
         ctx.save()
         // The real pull area, only hinted at
         const hint = ctx.createRadialGradient(mouthX, mouthY, 0, mouthX, mouthY, reach)
-        hint.addColorStop(0, `rgba(180, 230, 255, ${Math.min(0.07, 0.025 + 0.008 * power)})`)
+        hint.addColorStop(0, `rgba(180, 230, 255, ${Math.min(0.07, 0.025 + 0.008 * power) * (1 - 0.6 * Math.max(0, Math.min(1, (flow.coherence - LATCH.BEAM_FOCUS_FROM) / (LATCH.BEAM_FULL_AT - LATCH.BEAM_FOCUS_FROM))))})`)
         hint.addColorStop(0.6, 'rgba(180, 230, 255, 0)')
         ctx.fillStyle = hint
         ctx.beginPath()
@@ -2812,7 +2862,8 @@ export class MultiplayerMode extends GameMode {
         ctx.setLineDash([])
         // The streaks, each riding a curved line from far out into the mouth
         const far = flow.heading + lean
-        const streaks = Math.max(3, Math.round((8 + 5 * heft + 3 * power) * (1 - 0.6 * weak)))
+        // (as the stream forms, the cone gives its air to it)
+        const streaks = Math.max(3, Math.round((8 + 5 * heft + 3 * power) * (1 - 0.6 * weak) * (1 - 0.7 * beamShare)))
         const period = (length / (INHALE_LOOK.STREAK_SPEED * power * (1.6 / heft))) * 1000
         const turbulence = 0.06 * heft * (1 - 0.5 * tight) + 0.12 * weak
         const segment = 0.1 + 0.04 * power
@@ -2847,6 +2898,11 @@ export class MultiplayerMode extends GameMode {
             ctx.moveTo(from.x, from.y)
             ctx.quadraticCurveTo(mid.x, mid.y, to.x, to.y)
             ctx.stroke()
+        }
+        // The stream to a latched creature, drawn from the real airflow numbers
+        const streamTarget = player.latchTarget ? world?.players?.get(player.latchTarget) : null
+        if (streamTarget && flow.coherence > 0.02) {
+            this.drawStream(ctx, id, player, streamTarget, mouthX, mouthY, facing, timestamp, flow.coherence, fraying, power, heft, flow, dt)
         }
         // Side streams peeling off to each creature it's robbing and each gem in its pull
         const pulled: { x: number; y: number; color: string }[] = []
@@ -2917,6 +2973,263 @@ export class MultiplayerMode extends GameMode {
             }
         })
         return { angle, amount }
+    }
+
+    /**
+     * The Cores: dense, heavy orbs with a metal rim and a glowing heart (teal at rest, hot orange when
+     * moving fast enough to stun), turning rings, and a trail at speed. Drawn a little ahead of the
+     * server (carrying on at their velocity, easing to each update). Where someone's airflow is holding
+     * one off, the squeezed air shows: a crescent between them and streams bending round the Core.
+     */
+    private drawCores(ctx: CanvasRenderingContext2D, state: any, timestamp: number): void {
+        if (!state.cores) return
+        const dt = Math.min(0.1, Math.max(0, (timestamp - this.coresDrawnAt) / 1000))
+        this.coresDrawnAt = timestamp
+        const localId = this.multiplayerManager?.localSessionId
+        const present = new Set<string>()
+        state.cores.forEach((core: any) => {
+            present.add(core.id)
+            let drawn = this.coresDrawn.get(core.id)
+            if (!drawn) {
+                drawn = { x: core.x, y: core.y }
+                this.coresDrawn.set(core.id, drawn)
+            }
+            drawn.x += core.vx * dt
+            drawn.y += core.vy * dt
+            const ease = Math.min(1, dt * 12)
+            drawn.x += (core.x - drawn.x) * ease
+            drawn.y += (core.y - drawn.y) * ease
+            if (Math.hypot(core.x - drawn.x, core.y - drawn.y) > 200) {
+                drawn.x = core.x
+                drawn.y = core.y
+            }
+            const x = drawn.x
+            const y = drawn.y
+            const r = core.radius
+            const speed = Math.hypot(core.vx, core.vy)
+            const danger = Math.min(1, Math.max(0, (speed * CORE.MASS - CORE.STUN_MOMENTUM * 0.6) / (CORE.STUN_MOMENTUM * 0.4)))
+            ctx.save()
+            // Squeezed air between it and anyone whose airflow is holding it off
+            state.players.forEach((player: any, id: string) => {
+                if (!player.inhaling || player.state !== 'alive') return
+                const isLocal = id === localId
+                const at = isLocal && this.predicted ? this.predicted : (this.drawnPositions.get(id) ?? player)
+                const inhaler = { x: at.x + player.width / 2, y: at.y + player.height / 2, width: player.width, facing: isLocal ? this.localFacing : player.facing, inhaling: true }
+                const { pressure } = airflowOnCore(inhaler, { x, y, vx: core.vx, vy: core.vy, radius: r })
+                if (pressure < 0.05) return
+                const toward = Math.atan2(inhaler.y - y, inhaler.x - x)
+                ctx.lineCap = 'round'
+                ctx.strokeStyle = `rgba(200, 240, 255, ${0.15 + 0.45 * pressure})`
+                ctx.lineWidth = 2 + 3 * pressure
+                ctx.beginPath()
+                ctx.arc(x, y, r + 7, toward - 0.9, toward + 0.9)
+                ctx.stroke()
+                ctx.lineWidth = 1.5
+                const phase = (timestamp / 400) % 1
+                for (const side of [-1, 1]) {
+                    ctx.globalAlpha = 0.5 * pressure
+                    ctx.beginPath()
+                    ctx.arc(x, y, r + 14 + 6 * phase, toward + side * 0.6, toward + side * (0.6 + 1.6 * (1 - phase)), side < 0)
+                    ctx.stroke()
+                }
+                ctx.globalAlpha = 1
+            })
+            // A trail when it's really moving (hot when it could stun)
+            if (speed > 120) {
+                const tailX = x - core.vx * 0.12
+                const tailY = y - core.vy * 0.12
+                const trail = ctx.createLinearGradient(tailX, tailY, x, y)
+                trail.addColorStop(0, 'rgba(120, 200, 255, 0)')
+                trail.addColorStop(1, danger > 0 ? `rgba(255, 150, 80, ${0.1 + 0.35 * danger})` : 'rgba(120, 200, 255, 0.2)')
+                ctx.strokeStyle = trail
+                ctx.lineWidth = r * 1.4
+                ctx.lineCap = 'round'
+                ctx.beginPath()
+                ctx.moveTo(tailX, tailY)
+                ctx.lineTo(x, y)
+                ctx.stroke()
+            }
+            // Its shadow, then a dense dark body with a metal rim
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.35)'
+            ctx.beginPath()
+            ctx.ellipse(x + r * 0.15, y + r * 0.25, r * 1.05, r * 0.95, 0, 0, Math.PI * 2)
+            ctx.fill()
+            const body = ctx.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.1, x, y, r)
+            body.addColorStop(0, '#3a4a66')
+            body.addColorStop(0.6, '#1a2235')
+            body.addColorStop(1, '#0a0e18')
+            ctx.fillStyle = body
+            ctx.beginPath()
+            ctx.arc(x, y, r, 0, Math.PI * 2)
+            ctx.fill()
+            ctx.strokeStyle = 'rgba(170, 195, 220, 0.75)'
+            ctx.lineWidth = 2.5
+            ctx.stroke()
+            // Two slow rings turning around it (faster when it moves)
+            const spin = timestamp / 1600 + (core.vx + core.vy) / 2000
+            ctx.strokeStyle = 'rgba(140, 200, 255, 0.35)'
+            ctx.lineWidth = 1.5
+            for (const tilt of [0.35, 1.9]) {
+                ctx.beginPath()
+                ctx.ellipse(x, y, r * 0.78, r * 0.3, spin + tilt, 0, Math.PI * 2)
+                ctx.stroke()
+            }
+            // The heart: teal at rest, hot orange when fast enough to stun
+            const pulse = 0.85 + 0.15 * Math.sin(timestamp / 260)
+            const red = Math.round(79 + 176 * danger)
+            const green = Math.round(227 - 87 * danger)
+            const blue = Math.round(217 - 157 * danger)
+            const heart = ctx.createRadialGradient(x, y, 0, x, y, r * 0.55 * pulse)
+            heart.addColorStop(0, `rgba(${red}, ${green}, ${blue}, 0.95)`)
+            heart.addColorStop(1, `rgba(${red}, ${green}, ${blue}, 0)`)
+            ctx.fillStyle = heart
+            ctx.beginPath()
+            ctx.arc(x, y, r * 0.55 * pulse, 0, Math.PI * 2)
+            ctx.fill()
+            // Development only: velocity and speed
+            if (CORE.DEBUG) {
+                ctx.strokeStyle = '#ff4fd8'
+                ctx.lineWidth = 2
+                ctx.beginPath()
+                ctx.moveTo(x, y)
+                ctx.lineTo(x + core.vx * 0.3, y + core.vy * 0.3)
+                ctx.stroke()
+                ctx.fillStyle = '#ff4fd8'
+                ctx.font = `12px ${FONT}`
+                ctx.fillText(`${Math.round(speed)} u/s`, x + r + 6, y - r)
+            }
+            ctx.restore()
+        })
+        for (const id of [...this.coresDrawn.keys()]) if (!present.has(id)) this.coresDrawn.delete(id)
+    }
+
+    /**
+     * The stream between an inhaler and its latched creature, drawn only from the airflow numbers
+     * (game/airflow streamLook): it narrows and smooths as quality rises, bends as the creature slips
+     * off your facing (the air leaves your mouth along it and curves to them), runs continuous when the
+     * beam is efficient on breath and breaks up when it's wasteful, churns where bodies press together,
+     * and, between two inhaling each other, the flows meet in a turbulent pressure zone pushed toward
+     * whichever side is losing. Coherence, not brightness, says how strong it is.
+     */
+    private drawStream(ctx: CanvasRenderingContext2D, id: string, player: any, target: any, mouthX: number, mouthY: number, facing: number, timestamp: number, coherence: number, fraying: number, power: number, heft: number, flow: Airflow, dt: number): void {
+        const at = this.drawnPositions.get(player.latchTarget) ?? target
+        const tx = at.x + target.width / 2
+        const ty = at.y + target.height / 2
+        const dx = tx - mouthX
+        const dy = ty - mouthY
+        const dist = Math.hypot(dx, dy)
+        if (dist < 1) return
+        const nx = -dy / dist
+        const ny = dx / dist
+        const me = this.drawnPositions.get(id) ?? player
+        const mutual = Boolean(target.inhaling) && target.latchTarget === id
+        const mine = coherence * latchSizeFactor(player.width, target.width)
+        const theirs = mutual ? (Number(target.latchQuality) || 0) * latchSizeFactor(target.width, player.width) : 0
+        const look = streamLook({
+            quality: coherence,
+            beamQuality: Number(player.beamQuality) || 0,
+            clean: cleanAir({ x: me.x + player.width / 2, y: me.y + player.height / 2, width: player.width }, { x: tx, y: ty, width: target.width }),
+            mine,
+            theirs,
+            fraying,
+        })
+        // Where my air comes from: the creature, or (inhaling each other) where our flows meet
+        const sourceX = mouthX + dx * look.boundary
+        const sourceY = mouthY + dy * look.boundary
+        const span = dist * look.boundary
+        // The stream is a rope of air: it leaves your mouth along your facing, its far end holds on its
+        // source, and in between it eases toward a smooth curve, the far part slowly (slowest when the
+        // stream is coherent), so turning winds it and a tight line holds its curve before relaxing
+        const points = 10
+        const rest = (u: number) => {
+            const k = 1 - u
+            const bx = mouthX + Math.cos(facing) * span * 0.45
+            const by = mouthY + Math.sin(facing) * span * 0.45
+            const cx = sourceX + (mouthX - sourceX) * 0.25
+            const cy = sourceY + (mouthY - sourceY) * 0.25
+            return {
+                x: k * k * k * mouthX + 3 * k * k * u * bx + 3 * k * u * u * cx + u * u * u * sourceX,
+                y: k * k * k * mouthY + 3 * k * k * u * by + 3 * k * u * u * cy + u * u * u * sourceY,
+            }
+        }
+        const last = flow.rope?.[points]
+        if (!flow.rope || flow.rope.length !== points + 1 || !last || Math.hypot(last.x - sourceX, last.y - sourceY) > 300) {
+            flow.rope = Array.from({ length: points + 1 }, (_, i) => rest(i / points))
+        }
+        const rope = flow.rope
+        const knot = (i: number) => rope[i] as { x: number; y: number }
+        rope[0] = { x: mouthX, y: mouthY }
+        rope[points] = { x: sourceX, y: sourceY }
+        for (let i = 1; i < points; i++) {
+            const u = i / points
+            const goal = rest(u)
+            const rate = 14 * (1 - u) + (1.2 + 6 * (1 - look.coherence)) * u
+            const ease = 1 - Math.exp(-rate * Math.min(0.1, Math.max(0, dt)))
+            knot(i).x += (goal.x - knot(i).x) * ease
+            knot(i).y += (goal.y - knot(i).y) * ease
+        }
+        // A point along the rope: u 0 at its source, 1 at the mouth (the way the air travels)
+        const along = (u: number) => {
+            const f = (1 - Math.max(0, Math.min(1, u))) * points
+            const i = Math.min(points - 1, Math.floor(f))
+            const r = f - i
+            return { x: knot(i).x + (knot(i + 1).x - knot(i).x) * r, y: knot(i).y + (knot(i + 1).y - knot(i).y) * r }
+        }
+        const width = target.width * 0.5 * (1 - 0.85 * look.coherence) + 1.5
+        const lanes = Math.round(4 + 8 * look.efficiency + 2 * heft)
+        const segment = 0.12 + 0.25 * look.coherence + 0.15 * look.efficiency
+        const period = (Math.max(30, span) / (INHALE_LOOK.STREAK_SPEED * Math.max(1, power) * (0.8 + 0.6 * look.coherence))) * 1000
+        ctx.save()
+        ctx.lineCap = 'round'
+        ctx.strokeStyle = look.recharging ? 'rgba(190, 255, 235, 1)' : 'rgba(220, 245, 255, 1)'
+        ctx.lineWidth = 1.1 + 1.3 * look.coherence
+        const pointAt = (u: number, lane: number, phase: number) => {
+            const base = along(u)
+            const ahead = along(u + 0.03)
+            const behind = along(u - 0.03)
+            const tangent = Math.hypot(ahead.x - behind.x, ahead.y - behind.y)
+            const sideX = tangent > 1e-6 ? -(ahead.y - behind.y) / tangent : nx
+            const sideY = tangent > 1e-6 ? (ahead.x - behind.x) / tangent : ny
+            const offset = width * lane * (1 - u * 0.8) + Math.sin(timestamp / 70 + phase + u * 6) * look.turbulence * width * 0.8
+            return { x: base.x + sideX * offset, y: base.y + sideY * offset }
+        }
+        for (let i = 0; i < lanes; i++) {
+            // A wasteful beam is broken up; an efficient one runs unbroken
+            if (look.efficiency < 0.5 && look.coherence < 0.6 && (i + Math.floor(timestamp / 90)) % 3 === 0) continue
+            const lane = lanes > 1 ? (i / (lanes - 1)) * 2 - 1 : 0
+            const t = (((timestamp / period + i * 0.37) % 1) + 1) % 1
+            const end = Math.min(1, t + segment)
+            const from = pointAt(t, lane, i * 2.1)
+            const mid = pointAt((t + end) / 2, lane, i * 2.1)
+            const to = pointAt(end, lane, i * 2.1)
+            ctx.globalAlpha = (0.3 + 0.5 * look.coherence) * Math.min(1, t * 4)
+            ctx.beginPath()
+            ctx.moveTo(from.x, from.y)
+            ctx.quadraticCurveTo(mid.x, mid.y, to.x, to.y)
+            ctx.stroke()
+        }
+        // Smothered: where the bodies press together, the air bunches up and churns
+        const churn = (cx: number, cy: number, radius: number, strength: number, seed: number) => {
+            ctx.lineWidth = 1.5
+            ctx.strokeStyle = 'rgba(220, 240, 255, 1)'
+            const count = Math.round(4 + 6 * strength)
+            for (let j = 0; j < count; j++) {
+                const a = timestamp / (160 + 40 * (j % 3)) + j * 1.7 + seed
+                const r = radius * (0.4 + 0.6 * ((j * 0.618) % 1))
+                ctx.globalAlpha = 0.25 + 0.45 * strength
+                ctx.beginPath()
+                ctx.arc(cx + Math.cos(a * 0.7) * r * 0.5, cy + Math.sin(a * 0.9) * r * 0.5, r * 0.45, a, a + 1.6 + strength)
+                ctx.stroke()
+            }
+        }
+        const smother = 1 - cleanAir({ x: me.x + player.width / 2, y: me.y + player.height / 2, width: player.width }, { x: tx, y: ty, width: target.width })
+        if (smother > 0.02) churn((mouthX + tx) / 2, (mouthY + ty) / 2, Math.min(player.width, target.width) * 0.6, smother, 0)
+        // Inhaling each other: a turbulent pressure zone where the flows meet (drawn once per pair), bigger the more even the contest
+        if (mutual && look.boundary < 0.98 && id < player.latchTarget) {
+            const balance = 1 - Math.abs(mine - theirs) / Math.max(1e-6, mine + theirs)
+            churn(sourceX, sourceY, Math.min(player.width, target.width) * (0.5 + 0.7 * balance), 0.4 + 0.6 * balance, 1.3)
+        }
+        ctx.restore()
     }
 
     /** Phones and tablets: the score in a pill at the top middle, and how many are playing beside the menu button */
