@@ -1017,7 +1017,7 @@ function suctionPower(width: number): number {
 }
 
 /** How a creature's airflow is moving (see drawAirflow) */
-type Airflow = { heading: number; along: number; x: number; y: number; at: number; inhaling: boolean; since: number; hookId: string; hookedAt: number; coherence: number }
+type Airflow = { heading: number; along: number; x: number; y: number; at: number; inhaling: boolean; since: number; hookId: string; hookedAt: number; coherence: number; rope?: { x: number; y: number }[] }
 
 /** A point on a quadratic curve from (ax, ay) through control (bx, by) to (cx, cy) */
 function onCurve(ax: number, ay: number, bx: number, by: number, cx: number, cy: number, t: number): { x: number; y: number } {
@@ -2902,7 +2902,7 @@ export class MultiplayerMode extends GameMode {
         // The stream to a latched creature, drawn from the real airflow numbers
         const streamTarget = player.latchTarget ? world?.players?.get(player.latchTarget) : null
         if (streamTarget && flow.coherence > 0.02) {
-            this.drawStream(ctx, id, player, streamTarget, mouthX, mouthY, facing, timestamp, flow.coherence, fraying, power, heft)
+            this.drawStream(ctx, id, player, streamTarget, mouthX, mouthY, facing, timestamp, flow.coherence, fraying, power, heft, flow, dt)
         }
         // Side streams peeling off to each creature it's robbing and each gem in its pull
         const pulled: { x: number; y: number; color: string }[] = []
@@ -3111,7 +3111,7 @@ export class MultiplayerMode extends GameMode {
      * and, between two inhaling each other, the flows meet in a turbulent pressure zone pushed toward
      * whichever side is losing. Coherence, not brightness, says how strong it is.
      */
-    private drawStream(ctx: CanvasRenderingContext2D, id: string, player: any, target: any, mouthX: number, mouthY: number, facing: number, timestamp: number, coherence: number, fraying: number, power: number, heft: number): void {
+    private drawStream(ctx: CanvasRenderingContext2D, id: string, player: any, target: any, mouthX: number, mouthY: number, facing: number, timestamp: number, coherence: number, fraying: number, power: number, heft: number, flow: Airflow, dt: number): void {
         const at = this.drawnPositions.get(player.latchTarget) ?? target
         const tx = at.x + target.width / 2
         const ty = at.y + target.height / 2
@@ -3137,9 +3137,44 @@ export class MultiplayerMode extends GameMode {
         const sourceX = mouthX + dx * look.boundary
         const sourceY = mouthY + dy * look.boundary
         const span = dist * look.boundary
-        // The air leaves the mouth along your facing and curves to them: off your facing, it bends
-        const bendX = mouthX + Math.cos(facing) * span * 0.5
-        const bendY = mouthY + Math.sin(facing) * span * 0.5
+        // The stream is a rope of air: it leaves your mouth along your facing, its far end holds on its
+        // source, and in between it eases toward a smooth curve, the far part slowly (slowest when the
+        // stream is coherent), so turning winds it and a tight line holds its curve before relaxing
+        const points = 10
+        const rest = (u: number) => {
+            const k = 1 - u
+            const bx = mouthX + Math.cos(facing) * span * 0.45
+            const by = mouthY + Math.sin(facing) * span * 0.45
+            const cx = sourceX + (mouthX - sourceX) * 0.25
+            const cy = sourceY + (mouthY - sourceY) * 0.25
+            return {
+                x: k * k * k * mouthX + 3 * k * k * u * bx + 3 * k * u * u * cx + u * u * u * sourceX,
+                y: k * k * k * mouthY + 3 * k * k * u * by + 3 * k * u * u * cy + u * u * u * sourceY,
+            }
+        }
+        const last = flow.rope?.[points]
+        if (!flow.rope || flow.rope.length !== points + 1 || !last || Math.hypot(last.x - sourceX, last.y - sourceY) > 300) {
+            flow.rope = Array.from({ length: points + 1 }, (_, i) => rest(i / points))
+        }
+        const rope = flow.rope
+        const knot = (i: number) => rope[i] as { x: number; y: number }
+        rope[0] = { x: mouthX, y: mouthY }
+        rope[points] = { x: sourceX, y: sourceY }
+        for (let i = 1; i < points; i++) {
+            const u = i / points
+            const goal = rest(u)
+            const rate = 14 * (1 - u) + (1.2 + 6 * (1 - look.coherence)) * u
+            const ease = 1 - Math.exp(-rate * Math.min(0.1, Math.max(0, dt)))
+            knot(i).x += (goal.x - knot(i).x) * ease
+            knot(i).y += (goal.y - knot(i).y) * ease
+        }
+        // A point along the rope: u 0 at its source, 1 at the mouth (the way the air travels)
+        const along = (u: number) => {
+            const f = (1 - Math.max(0, Math.min(1, u))) * points
+            const i = Math.min(points - 1, Math.floor(f))
+            const r = f - i
+            return { x: knot(i).x + (knot(i + 1).x - knot(i).x) * r, y: knot(i).y + (knot(i + 1).y - knot(i).y) * r }
+        }
         const width = target.width * 0.5 * (1 - 0.85 * look.coherence) + 1.5
         const lanes = Math.round(4 + 8 * look.efficiency + 2 * heft)
         const segment = 0.12 + 0.25 * look.coherence + 0.15 * look.efficiency
@@ -3149,11 +3184,14 @@ export class MultiplayerMode extends GameMode {
         ctx.strokeStyle = look.recharging ? 'rgba(190, 255, 235, 1)' : 'rgba(220, 245, 255, 1)'
         ctx.lineWidth = 1.1 + 1.3 * look.coherence
         const pointAt = (u: number, lane: number, phase: number) => {
-            const k = 1 - u
-            const px = k * k * sourceX + 2 * k * u * bendX + u * u * mouthX
-            const py = k * k * sourceY + 2 * k * u * bendY + u * u * mouthY
+            const base = along(u)
+            const ahead = along(u + 0.03)
+            const behind = along(u - 0.03)
+            const tangent = Math.hypot(ahead.x - behind.x, ahead.y - behind.y)
+            const sideX = tangent > 1e-6 ? -(ahead.y - behind.y) / tangent : nx
+            const sideY = tangent > 1e-6 ? (ahead.x - behind.x) / tangent : ny
             const offset = width * lane * (1 - u * 0.8) + Math.sin(timestamp / 70 + phase + u * 6) * look.turbulence * width * 0.8
-            return { x: px + nx * offset, y: py + ny * offset }
+            return { x: base.x + sideX * offset, y: base.y + sideY * offset }
         }
         for (let i = 0; i < lanes; i++) {
             // A wasteful beam is broken up; an efficient one runs unbroken

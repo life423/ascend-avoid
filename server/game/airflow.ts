@@ -33,7 +33,7 @@ export function cleanAir(a: Body, b: Body): number {
  * body, and how clear the air between them (deep overlap smothers it). Centered, in front, close
  * with clean separation approaches 1.
  */
-export function airflowQuality(attacker: Mouthed, target: Body): number {
+export function airflowQuality(attacker: Mouthed, target: Body, extraArc = 0): number {
   const fx = Math.cos(attacker.facing);
   const fy = Math.sin(attacker.facing);
   const mouthX = attacker.x + fx * attacker.width * 0.3;
@@ -47,12 +47,14 @@ export function airflowQuality(attacker: Mouthed, target: Body): number {
   if (gap > reach) return 0;
   const halfWidth = Math.asin(Math.min(1, radius / Math.max(md, radius)));
   const arc = (INHALE.ARC * Math.PI) / 180;
-  const off = md > 1e-6 ? Math.acos(Math.max(-1, Math.min(1, (mx * fx + my * fy) / md))) : 0;
+  // (a focused beam bends: its center can swing up to extraArc degrees toward its latched creature)
+  const bend = (extraArc * Math.PI) / 180;
+  const off = md > 1e-6 ? Math.max(0, Math.acos(Math.max(-1, Math.min(1, (mx * fx + my * fy) / md))) - bend) : 0;
   const alignment = clamp01((arc + halfWidth - off) / (arc + halfWidth));
   const cx = target.x - attacker.x;
   const cy = target.y - attacker.y;
   const cd = Math.hypot(cx, cy);
-  const frontness = cd > 1e-6 ? Math.max(0, (cx * fx + cy * fy) / cd) : 0;
+  const frontness = cd > 1e-6 ? Math.max(0, Math.cos(Math.max(0, Math.acos(Math.max(-1, Math.min(1, (cx * fx + cy * fy) / cd))) - bend))) : 0;
   return alignment * Math.sqrt(1 - gap / reach) * Math.sqrt(frontness) * cleanAir(attacker, target);
 }
 

@@ -415,7 +415,7 @@ class GameState extends Schema {
         eater.lockOn.set(prey.sessionId, lock);
         // The drain ramp builds only on clean airflow; smothered (deep overlap) or poorly aimed, it fades
         const heldTime = eater.heldFor.get(prey.sessionId) ?? 0;
-        const clean = airflowQuality(this.mouthed(eater), this.bodyOf(prey)) >= LATCH.RAMP_MIN_QUALITY;
+        const clean = airflowQuality(this.mouthed(eater), this.bodyOf(prey), eater.latchTarget === prey.sessionId ? LATCH.CURVE_ARC * eater.beamFocus : 0) >= LATCH.RAMP_MIN_QUALITY;
         eater.heldFor.set(prey.sessionId, clean ? heldTime + deltaTime : Math.max(0, heldTime - deltaTime * LATCH.RAMP_FADE));
         locked.add(prey.sessionId);
         const px = prey.x + prey.width / 2;
@@ -487,7 +487,8 @@ class GameState extends Schema {
     const d = Math.hypot(dx, dy);
     const radius = victim.width / 2;
     // Touching it across your front: the inhale grabs it, no aiming needed
-    const grabbed = this.touchingFront(thief, victim) ? INHALE.CONTACT_WEIGHT : 0;
+    // ...and a focused beam holds its latched creature even round a curve
+    const grabbed = Math.max(this.touchingFront(thief, victim) ? INHALE.CONTACT_WEIGHT : 0, thief.latchTarget === victim.sessionId ? LATCH.CURVE_WEIGHT * thief.beamFocus : 0);
     if (d - radius > INHALE.REACH + thief.width * INHALE.REACH_PER_SIZE) return grabbed;
     if (d <= radius) return 1;
     // In the cone if any of it is: its center's angle off the facing, against how wide it looks from here
@@ -1345,7 +1346,8 @@ class GameState extends Schema {
           attacker.airQuality.delete(id);
           return;
         }
-        const raw = airflowQuality(from, this.bodyOf(target));
+        // (the latched creature is judged along the beam, which can bend the more focused it is)
+        const raw = airflowQuality(from, this.bodyOf(target), id === attacker.latchTarget ? LATCH.CURVE_ARC * attacker.beamFocus : 0);
         const was = attacker.airQuality.get(id) ?? 0;
         const quality = was + (raw - was) * smoothing;
         if (quality < 0.005 && raw === 0) attacker.airQuality.delete(id);
@@ -1429,7 +1431,8 @@ class GameState extends Schema {
     const reach = INHALE.REACH + attacker.width * INHALE.REACH_PER_SIZE;
     if (d - (attacker.width + target.width) / 2 > reach * LATCH.RANGE) return false;
     if (d < 1e-6) return true;
-    return (dx * Math.cos(attacker.facing) + dy * Math.sin(attacker.facing)) / d >= Math.cos((LATCH.BREAK_ANGLE * Math.PI) / 180);
+    const angle = Math.min(170, LATCH.BREAK_ANGLE + LATCH.CURVE_ARC * attacker.beamFocus);
+    return (dx * Math.cos(attacker.facing) + dy * Math.sin(attacker.facing)) / d >= Math.cos((angle * Math.PI) / 180);
   }
 
   /** How many Cores this world keeps (test worlds: their own number, 0 unless they ask) */

@@ -462,7 +462,7 @@ try {
     await sleep(150);
     const bobLost = bobShareFrom - bobState().gems;
     const caraLost = caraShareFrom - caraState().gems;
-    check(bobLost >= 2 && caraLost >= 2 && bobLost + caraLost <= 70, `an inhale robs everyone in it, sharing its drain between them (Bob lost ${bobLost}, Cara ${caraLost})`);
+    check(bobLost >= 1 && caraLost >= 1 && bobLost + caraLost <= 70, `an inhale robs everyone in it, most from the one its beam is focused on (Bob lost ${bobLost}, Cara ${caraLost})`);
     await cara.leave();
     await sleep(1300);
     // Touching you across your front, a creature is caught by your inhale with no aiming; a little gap away, aiming matters again

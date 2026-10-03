@@ -62,6 +62,8 @@ const deep = airflowQuality(attacker, { x: 20, y: 0, width: 80 });
 check(clean > 0.8, `clean, centered, in front: airflow quality near 1 (${clean.toFixed(2)})`);
 check(squished < clean && deep < LATCH.SWALLOW_MIN_QUALITY && deep < LATCH.RAMP_MIN_QUALITY, `overlap smothers the airflow: squished ${squished.toFixed(2)}, deep ${deep.toFixed(2)} (too smothered to ramp or swallow)`);
 check(airflowQuality(attacker, { x: -100, y: 0, width: 80 }) === 0, "behind you, no airflow at all");
+const roundTheBend = { x: Math.cos(1.05) * 140, y: Math.sin(1.05) * 140, width: 40 };
+check(airflowQuality(attacker, roundTheBend) === 0 && airflowQuality(attacker, roundTheBend, LATCH.CURVE_ARC) > 0.2, "a focused beam can hold its creature round a curve the plain cone couldn't reach");
 check(cleanAir({ x: 0, y: 0, width: 80 }, { x: 100, y: 0, width: 80 }) === 1 && cleanAir({ x: 0, y: 0, width: 80 }, { x: 60, y: 0, width: 80 }) > cleanAir({ x: 0, y: 0, width: 80 }, { x: 40, y: 0, width: 80 }), "the more bodies overlap, the less clear the air");
 
 // Latch size factor
