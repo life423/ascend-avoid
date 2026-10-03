@@ -132,3 +132,10 @@ export function streamLook(state: StreamState): { coherence: number; turbulence:
     boundary: state.theirs <= 0 ? 1 : total > 1e-6 ? state.mine / total : 0.5,
   };
 }
+
+/** Scale separation: how much of its drain an attacker this wide gets on a target this wide (full unless it's tiny by comparison, then a mosquito) */
+export function scaleDrain(attackerWidth: number, targetWidth: number): number {
+  const ratio = attackerWidth / Math.max(1, targetWidth);
+  const v = Math.max(0, Math.min(1, (ratio - LATCH.SCALE_MIN_RATIO) / (LATCH.SCALE_FULL_RATIO - LATCH.SCALE_MIN_RATIO)));
+  return LATCH.SCALE_MIN + (1 - LATCH.SCALE_MIN) * v * v * (3 - 2 * v);
+}

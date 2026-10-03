@@ -19,7 +19,7 @@ export function springStep(value: number, velocity: number, target: number, omeg
 /** The short side of the view (world units) for a creature this wide: big enough to keep it the right size on screen, and to show a bigger creature coming in time */
 export function viewShort(width: number): number {
   const share = Math.min(CAMERA.SIZE_SHARE_MAX, CAMERA.SIZE_SHARE * Math.pow(Math.max(1, width / ARENA_RULES.PLAYER_SIZE), CAMERA.SIZE_SHARE_GROWTH));
-  return Math.max(width / share, 2 * threatHorizon(width, CAMERA.THREAT_RATIO, CAMERA.REACTION_S));
+  return Math.max(width / share, 2 * threatHorizon(Math.min(width, CAMERA.THREAT_MAX_WIDTH), CAMERA.THREAT_RATIO, CAMERA.REACTION_S));
 }
 
 /** What the camera follows: a creature's middle, velocity, width and facing, and whether it's inhaling */

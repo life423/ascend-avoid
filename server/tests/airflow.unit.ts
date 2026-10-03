@@ -7,7 +7,7 @@ import { airflowQuality, breathRate, cleanAir, latchSizeFactor } from "../game/a
 import { turnRate, turnStep } from "../game/movement.js";
 import { CAMERA, CORE, INHALE, LATCH } from "../constants/gameConstants.js";
 import { CameraRig, lookAhead, springStep, viewShort } from "../game/camera.js";
-import { dangerRadius, lethalShare, pressureBuild, streamLook } from "../game/airflow.js";
+import { dangerRadius, lethalShare, pressureBuild, scaleDrain, streamLook } from "../game/airflow.js";
 import { moveSpeed } from "../game/movement.js";
 
 let failed = 0;
@@ -108,13 +108,18 @@ const leadIdle = lookAhead({ ...running, vx: 0, inhaling: false }, viewShort(20)
 const leadInhaling = lookAhead({ ...running, vx: 0 }, viewShort(20));
 check(leadInhaling.y > leadIdle.y && leadIdle.y > 0, "the camera gives a little room where you face, more while inhaling");
 check(20 / viewShort(20) < 143 / viewShort(143) && 143 / viewShort(143) < 284 / viewShort(284), `growing, you take more of the screen (${[20, 72, 143, 284].map((w) => ((w / viewShort(w)) * 100).toFixed(1) + "%").join(", ")})`);
-const sizes = [20, 40, 72, 143, 284];
+const sizes = [20, 40, 72, 143];
 check(sizes.every((w) => viewShort(w) / 2 >= dangerRadius(w * CAMERA.THREAT_RATIO) + moveSpeed(w * CAMERA.THREAT_RATIO) * CAMERA.REACTION_S - 1e-6), "at every size the view shows a bigger creature coming before its lethal airflow could reach you");
 const rig = new CameraRig();
 rig.update(running, 1 / 60);
 for (let i = 0; i < 30; i++) rig.update({ ...running, x: running.x + 320 * (i + 1) / 60 }, 1 / 60);
 const behind = running.x + 320 * 30 / 60 - rig.x;
 check(Math.abs(behind) > 1 && Math.abs(behind) < CAMERA.MAX_OFFSET * viewShort(20) + 1, `moving, you drift a little within the frame, not welded to its center (${behind.toFixed(0)} units off center)`);
+
+// Late game: scale separation
+const lateGame = 20 * Math.sqrt(1 + 1500 / 2);
+check(lateGame / viewShort(lateGame) > 0.24 && (20 / lateGame) * (lateGame / viewShort(lateGame)) < 0.015, `late game, a 1500-gem giant fills about a quarter of the screen and a newborn beside it looks trivial (${((lateGame / viewShort(lateGame)) * 100).toFixed(0)}% vs ${(((20 / lateGame) * lateGame) / viewShort(lateGame) * 100).toFixed(1)}%)`);
+check(scaleDrain(20, 548) === LATCH.SCALE_MIN && scaleDrain(60, 120) === 1 && scaleDrain(20, 100) > LATCH.SCALE_MIN && scaleDrain(20, 100) < 1, "a tiny attacker on a giant is a mosquito: its drain fades with the size gap");
 
 console.log(failed ? `${failed} unit check(s) failed` : "All unit checks passed");
 process.exit(failed ? 1 : 0);

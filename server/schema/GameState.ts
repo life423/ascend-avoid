@@ -9,7 +9,7 @@ import { BombSchema } from "./BombSchema.js";
 import { TurbineFlightSchema, TurbineSchema } from "./TurbineSchema.js";
 import { CoreSchema } from "./CoreSchema.js";
 import { airflowOnCore, bodyMass, impactStunMs, stepCore } from "../game/corePhysics.js";
-import { airflowQuality, cleanAir, latchSizeFactor, lethalShare, pressureBuild, pressureBuildSeconds } from "../game/airflow.js";
+import { airflowQuality, cleanAir, latchSizeFactor, lethalShare, pressureBuild, pressureBuildSeconds, scaleDrain } from "../game/airflow.js";
 import { BotBrain } from "../game/bots.js";
 import { closestFloorPoint, isFloor, jackpotSpot, layoutToString, pickLayout, randomFloorPoint } from "../game/layouts.js";
 import type { Layout } from "../game/layouts.js";
@@ -563,7 +563,7 @@ class GameState extends Schema {
     // Catching several at once pays more than one, though far less than one each
     const budget = Math.sqrt(victims.length);
     for (const { victim, weight } of victims) {
-      let progress = (thief.stealShares.get(victim.sessionId) ?? 0) + deltaTime * INHALE.STEAL_RATE * budget * (weight / total) * this.stealStrength(thief, victim) * drainRamp(thief.heldFor.get(victim.sessionId) ?? 0) * pressureBuild(thief.heldFor.get(victim.sessionId) ?? 0, thief.width) * (LATCH.OVERLAP_DRAIN_MIN + (1 - LATCH.OVERLAP_DRAIN_MIN) * cleanAir(this.bodyOf(thief), this.bodyOf(victim)));
+      let progress = (thief.stealShares.get(victim.sessionId) ?? 0) + deltaTime * INHALE.STEAL_RATE * budget * (weight / total) * this.stealStrength(thief, victim) * drainRamp(thief.heldFor.get(victim.sessionId) ?? 0) * pressureBuild(thief.heldFor.get(victim.sessionId) ?? 0, thief.width) * scaleDrain(thief.width, victim.width) * (LATCH.OVERLAP_DRAIN_MIN + (1 - LATCH.OVERLAP_DRAIN_MIN) * cleanAir(this.bodyOf(thief), this.bodyOf(victim)));
       while (progress >= 1 && victim.gems > 0) {
         progress -= 1;
         victim.setGems(victim.gems - 1, this.worldWidth, this.worldHeight);
@@ -903,11 +903,14 @@ class GameState extends Schema {
       const bothPush = walking.x * nx + walking.y * ny > 1 && -(theirWalking.x * nx + theirWalking.y * ny) > 1 && movedIn > 0 && theyMovedIn > 0;
       const mineHeavy = bothPush ? movedIn * other.width * other.width : mine;
       const theirsHeavy = bothPush ? theyMovedIn * player.width * player.width : theirs;
-      const share = mineHeavy + theirsHeavy > 1e-6 ? mineHeavy / (mineHeavy + theirsHeavy) : 0.5;
+      // Scale separation: something enormous walking into something tiny pushes it aside instead of being stopped (being pulled never shoves)
+      const dwarfs = player.width >= other.width * ARENA_RULES.SCALE_SHOVE_RATIO && walking.x * nx + walking.y * ny > 1;
+      const dwarfed = other.width >= player.width * ARENA_RULES.SCALE_SHOVE_RATIO && -(theirWalking.x * nx + theirWalking.y * ny) > 1;
+      const share = dwarfs ? 0 : dwarfed ? 1 : mineHeavy + theirsHeavy > 1e-6 ? mineHeavy / (mineHeavy + theirsHeavy) : 0.5;
       player.nudge(-nx * excess * share, -ny * excess * share, this.worldWidth, this.worldHeight);
       other.nudge(nx * excess * (1 - share), ny * excess * (1 - share), this.worldWidth, this.worldHeight);
-      if (mine > 0) player.blockAlong(nx, ny);
-      if (theirs > 0) other.blockAlong(-nx, -ny);
+      if (mine > 0 && !dwarfs) player.blockAlong(nx, ny);
+      if (theirs > 0 && !dwarfed) other.blockAlong(-nx, -ny);
     });
   }
 
