@@ -121,7 +121,9 @@ export interface StreamState {
  * the way across where their flows meet (1: this side's stream reaches all the way).
  */
 export function streamLook(state: StreamState): { coherence: number; turbulence: number; efficiency: number; recharging: boolean; boundary: number } {
-  const coherence = clamp01(state.quality);
+  // Coherence is the focus curve on airflow quality (the same as the server's beam focus)
+  const focusing = clamp01((state.quality - LATCH.BEAM_FOCUS_FROM) / (LATCH.BEAM_FULL_AT - LATCH.BEAM_FOCUS_FROM));
+  const coherence = focusing * focusing * (3 - 2 * focusing);
   const rate = breathRate(state.beamQuality, 0) * INHALE.MAX_MS;
   const total = state.mine + state.theirs;
   return {

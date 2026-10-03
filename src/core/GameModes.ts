@@ -2804,7 +2804,8 @@ export class MultiplayerMode extends GameMode {
         const ahead = Math.max(0, flow.along)
         const tight = Math.min(1, Math.max(0, (intensity - 1) / 0.8))
         const length = reach * (0.72 + 0.28 * ahead)
-        const spread = arc * (1 - 0.35 * ahead) * (1 - 0.4 * tight)
+        // (and the cone itself narrows as its air goes into a stream)
+        const spread = arc * (1 - 0.35 * ahead) * (1 - 0.4 * tight) * (1 - 0.6 * Math.max(0, Math.min(1, (flow.coherence - LATCH.BEAM_FOCUS_FROM) / (LATCH.BEAM_FULL_AT - LATCH.BEAM_FOCUS_FROM))))
         // It leans toward whoever it's draining
         const world = this.multiplayerManager?.getState()
         // Focused on its latched creature if it has one, else whoever it's robbing
@@ -2837,14 +2838,14 @@ export class MultiplayerMode extends GameMode {
             ? flow.coherence + (latchedQuality - flow.coherence) * Math.min(1, dt * 8)
             : Math.max(latchedQuality, flow.coherence - dt * 4)
         const fraying = Math.max(0, flow.coherence - latchedQuality)
-        const coherent = Math.min(1, flow.coherence / 0.6)
+        const coherent = Math.max(0, Math.min(1, (flow.coherence - LATCH.BEAM_FOCUS_FROM) / (LATCH.BEAM_FULL_AT - LATCH.BEAM_FOCUS_FROM)))
         const beamShare = coherent * coherent * (3 - 2 * coherent)
         // ...pinching tighter the longer the hold (as the drain escalates)
         const pinch = 1 - 0.5 * straight
         ctx.save()
         // The real pull area, only hinted at
         const hint = ctx.createRadialGradient(mouthX, mouthY, 0, mouthX, mouthY, reach)
-        hint.addColorStop(0, `rgba(180, 230, 255, ${Math.min(0.07, 0.025 + 0.008 * power)})`)
+        hint.addColorStop(0, `rgba(180, 230, 255, ${Math.min(0.07, 0.025 + 0.008 * power) * (1 - 0.6 * Math.max(0, Math.min(1, (flow.coherence - LATCH.BEAM_FOCUS_FROM) / (LATCH.BEAM_FULL_AT - LATCH.BEAM_FOCUS_FROM))))})`)
         hint.addColorStop(0.6, 'rgba(180, 230, 255, 0)')
         ctx.fillStyle = hint
         ctx.beginPath()
@@ -3139,9 +3140,9 @@ export class MultiplayerMode extends GameMode {
         // The air leaves the mouth along your facing and curves to them: off your facing, it bends
         const bendX = mouthX + Math.cos(facing) * span * 0.5
         const bendY = mouthY + Math.sin(facing) * span * 0.5
-        const width = target.width * 0.5 * (1 - 0.65 * look.coherence) + 2
+        const width = target.width * 0.5 * (1 - 0.85 * look.coherence) + 1.5
         const lanes = Math.round(4 + 8 * look.efficiency + 2 * heft)
-        const segment = 0.1 + 0.3 * look.efficiency * look.coherence
+        const segment = 0.12 + 0.25 * look.coherence + 0.15 * look.efficiency
         const period = (Math.max(30, span) / (INHALE_LOOK.STREAK_SPEED * Math.max(1, power) * (0.8 + 0.6 * look.coherence))) * 1000
         ctx.save()
         ctx.lineCap = 'round'
@@ -3156,7 +3157,7 @@ export class MultiplayerMode extends GameMode {
         }
         for (let i = 0; i < lanes; i++) {
             // A wasteful beam is broken up; an efficient one runs unbroken
-            if (look.efficiency < 0.5 && (i + Math.floor(timestamp / 90)) % 3 === 0) continue
+            if (look.efficiency < 0.5 && look.coherence < 0.6 && (i + Math.floor(timestamp / 90)) % 3 === 0) continue
             const lane = lanes > 1 ? (i / (lanes - 1)) * 2 - 1 : 0
             const t = (((timestamp / period + i * 0.37) % 1) + 1) % 1
             const end = Math.min(1, t + segment)
