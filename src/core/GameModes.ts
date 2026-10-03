@@ -6,8 +6,9 @@ import Player from '../entities/Player'
 import { InputState } from '../types'
 import { getSprite } from '../utils/sprites'
 import { GameEvents } from '../constants/client-constants'
-import { ARENA_RULES, BOMBS, CORE, GEMS, INHALE, PLAYER_COLORS, SHIFT, TURBINE, WORLD } from '../../server/constants/gameConstants'
+import { ARENA_RULES, BOMBS, CORE, GEMS, INHALE, LATCH, PLAYER_COLORS, SHIFT, TURBINE, WORLD } from '../../server/constants/gameConstants'
 import { airflowOnCore } from '../../server/game/corePhysics'
+import { breathRate } from '../../server/game/airflow'
 import { moveSpeed, turnStep, walk } from '../../server/game/movement'
 import { exhaustAngle, launchDuration, launchPosition } from '../../server/game/turbine'
 import { OnlineControls } from './OnlineControls'
@@ -1459,7 +1460,16 @@ export class MultiplayerMode extends GameMode {
         const box = { x: this.predicted.x, y: this.predicted.y, width: me.width, height: me.height }
         // Facing, worked out like the server does: the aim while inhaling, else where you steer
         const intent = this.inhaleHeld ? this.aim : steer
-        const turn = turnStep(this.localFacing, this.localSpin, Math.hypot(intent.x, intent.y) > 0.25 ? Math.atan2(intent.y, intent.x) : null, me.width, this.inhaleHeld, deltaTime)
+        // A focused latch adds a little aim toward its target, as on the server (your turning does the rest)
+        const latched = me.latchTarget && me.latchPull > 0 && me.inhaling ? this.multiplayerManager?.getState()?.players?.get(me.latchTarget) : null
+        let aimed = intent
+        if (latched) {
+            const dx = latched.x + latched.width / 2 - (me.x + me.width / 2)
+            const dy = latched.y + latched.height / 2 - (me.y + me.height / 2)
+            const d = Math.max(1e-6, Math.hypot(dx, dy))
+            aimed = { x: intent.x + (dx / d) * LATCH.ASSIST * me.latchPull, y: intent.y + (dy / d) * LATCH.ASSIST * me.latchPull }
+        }
+        const turn = turnStep(this.localFacing, this.localSpin, Math.hypot(aimed.x, aimed.y) > 0.25 ? Math.atan2(aimed.y, aimed.x) : null, me.width, this.inhaleHeld, deltaTime)
         this.localFacing = turn.facing
         this.localSpin = turn.spin
         walk(box, this.velocity, steer, deltaTime, state.worldWidth, state.worldHeight)
@@ -1520,11 +1530,12 @@ export class MultiplayerMode extends GameMode {
     }
 
     /** Where your breath is: draining over INHALE.MAX_MS while you inhale, refilling over INHALE.REFILL_MS from wherever it is */
-    private breathOf(inhaling: boolean, now: number): Breath {
+    private breathOf(inhaling: boolean, now: number, beamQuality = 0): Breath {
         // A step at most a quarter second long, so coming back to a paused tab does not empty (or fill) it at once
         const elapsed = Math.min(250, Math.max(0, now - this.staminaAt))
         this.staminaAt = now
-        this.stamina = Math.min(1, Math.max(0, this.stamina + (inhaling ? -elapsed / INHALE.MAX_MS : elapsed / INHALE.REFILL_MS)))
+        // (a clean focused beam uses less breath, then none, then slowly refills it: see game/airflow)
+        this.stamina = Math.min(1, Math.max(0, this.stamina + (inhaling ? elapsed * breathRate(beamQuality, this.stamina) : elapsed / INHALE.REFILL_MS)))
         if (inhaling) return { phase: 'inhaling', left: this.stamina }
         if (this.stamina < 1) return { phase: 'recovering', back: this.stamina }
         return { phase: 'ready' }
@@ -1824,7 +1835,7 @@ export class MultiplayerMode extends GameMode {
         }
         if (isLocal) {
             // Your breath: draining around you while you inhale, refilling while you catch it
-            this.breath = this.breathOf(Boolean(player.inhaling), performance.now())
+            this.breath = this.breathOf(Boolean(player.inhaling), performance.now(), Number(player.beamQuality) || 0)
             drawBreath(ctx, centerX, centerY, size, this.breath, timestamp)
         }
         if (isLocal && player.gems < GEMS.SURVIVE_AT) {
@@ -2798,7 +2809,8 @@ export class MultiplayerMode extends GameMode {
         const spread = arc * (1 - 0.35 * ahead) * (1 - 0.4 * tight)
         // It leans toward whoever it's draining
         const world = this.multiplayerManager?.getState()
-        const target = player.stealingFrom ? world?.players?.get(player.stealingFrom) : null
+        // Focused on its latched creature if it has one, else whoever it's robbing
+        const target = player.latchTarget ? world?.players?.get(player.latchTarget) : player.stealingFrom ? world?.players?.get(player.stealingFrom) : null
         const mouthX = x + Math.cos(facing) * size * 0.3
         const mouthY = y + Math.sin(facing) * size * 0.3
         let lean = 0
@@ -2818,7 +2830,8 @@ export class MultiplayerMode extends GameMode {
             flow.hookId = hookId
             flow.hookedAt = timestamp
         }
-        const straight = hookId ? Math.min(1, Math.max(0, (timestamp - flow.hookedAt - 400) / 1100)) : 0
+        // How focused the stream is: the latch's airflow quality, from the server (it frays back into a cone as that falls)
+        const straight = Math.min(1, Math.max(0, Number(player.beamFocus) || 0))
         // ...pinching tighter the longer the hold (as the drain escalates)
         const pinch = 1 - 0.5 * straight
         ctx.save()

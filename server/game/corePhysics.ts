@@ -15,13 +15,15 @@ export interface CoreBody {
   radius: number;
 }
 
-/** A creature as the airflow sees it: its middle, width, facing and whether it's inhaling */
+/** A creature as the airflow sees it: its middle, width, facing, whether it's inhaling, and how it's moving */
 export interface Inhaler {
   x: number;
   y: number;
   width: number;
   facing: number;
   inhaling: boolean;
+  vx?: number;
+  vy?: number;
 }
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
@@ -44,11 +46,13 @@ export function equilibriumDistance(inhaler: Inhaler, core: CoreBody, ux: number
 
 /**
  * The acceleration one inhaler's airflow puts on a Core, and how compressed the air between them is
- * (0 to 1, for drawing). Far away: suction toward the mouth, fading with distance as inhales do.
- * Closer: the inward part of the suction fades smoothly to nothing at the equilibrium distance (the
- * air diverts round the body) while its sideways part stays, so turning swings the Core. Inside
- * that distance, compressed air pushes it back out along the line from the body, with damping on
- * that line only: sideways momentum is never touched, and the push adds no energy.
+ * (0 to 1, for drawing). Suction toward the mouth over the Core's own reach (measured to its near
+ * edge), times how much of the Core is in the airflow (its whole width counts, not just its middle).
+ * Near the body, the part of that air the body blocks (the inward part) fades smoothly to nothing at
+ * the equilibrium distance and is turned to flow round the body the way it was already going
+ * (toward the mouth): no target angle, nothing dead ahead. Inside that distance, compressed air pushes
+ * the Core back out along the line from the body, damped on that line only, so sideways momentum is
+ * kept and no energy is added. Turning or moving shifts where the mouth is, and so the airflow.
  */
 export function airflowOnCore(inhaler: Inhaler, core: CoreBody): { ax: number; ay: number; pressure: number } {
   const none = { ax: 0, ay: 0, pressure: 0 };
@@ -67,47 +71,48 @@ export function airflowOnCore(inhaler: Inhaler, core: CoreBody): { ax: number; a
   let ax = 0;
   let ay = 0;
   let pressure = 0;
-  // Suction toward the mouth, inside the inhale's reach and arc (the arc wraps wider near the body)
   const mouthX = inhaler.x + fx * inhaler.width * 0.3;
   const mouthY = inhaler.y + fy * inhaler.width * 0.3;
   const mx = mouthX - core.x;
   const my = mouthY - core.y;
   const md = Math.hypot(mx, my);
-  const reach = INHALE.REACH + inhaler.width * INHALE.REACH_PER_SIZE;
+  const reach = CORE.REACH + inhaler.width * CORE.REACH_PER_SIZE;
   const gap = Math.max(0, md - core.radius);
   if (md > 1e-6 && gap < reach) {
-    const near = clamp01(1 - (d - equilibrium) / (zone * 2));
-    const arc = ((INHALE.ARC + (CORE.NEAR_ARC - INHALE.ARC) * near) * Math.PI) / 180 + Math.asin(Math.min(1, core.radius / Math.max(md, core.radius)));
+    // The arc widens near the body, where the air wraps round it
+    const near = clamp01(1 - (d - equilibrium) / (zone * CORE.NEAR_SPAN));
+    const arc = ((INHALE.ARC + (CORE.NEAR_ARC - INHALE.ARC) * near) * Math.PI) / 180;
+    // How much of the Core (its whole width, seen from the mouth) is inside that arc
+    const halfWidth = Math.asin(Math.min(1, core.radius / Math.max(md, core.radius)));
     const off = Math.acos(Math.max(-1, Math.min(1, (-mx * fx - my * fy) / md)));
-    const alignment = clamp01(1 - off / arc);
-    const fade = 1 - gap / reach;
-    const pull = CORE.SUCTION * strength * fade * fade * alignment;
+    const exposure = clamp01((arc + halfWidth - off) / (2 * halfWidth));
+    const pull = CORE.SUCTION * strength * exposure * Math.pow(1 - gap / reach, CORE.FALLOFF_POWER);
     let px = (mx / md) * pull;
     let py = (my / md) * pull;
     const inward = px * ux + py * uy;
-    if (inward < 0) {
-      // Its inward part fades to nothing at the equilibrium distance; its sideways part stays
+    if (pull > 1e-9 && inward < 0) {
+      // Near the body, the inward part (the air the body is in the way of) fades out...
       const divert = smooth(clamp01((d - equilibrium) / zone));
-      px -= inward * ux * (1 - divert);
-      py -= inward * uy * (1 - divert);
-      pressure = Math.max(pressure, alignment * (1 - divert) * 0.6);
+      const blocked = -inward * (1 - divert);
+      px += ux * blocked;
+      py += uy * blocked;
+      // ...and flows round the body instead, the way that air was already going
+      const sideX = px - (px * ux + py * uy) * ux;
+      const sideY = py - (px * ux + py * uy) * uy;
+      const side = Math.hypot(sideX, sideY);
+      if (side > 1e-9) {
+        const turned = blocked * Math.min(1, (CORE.DEFLECT * side) / pull);
+        px += (sideX / side) * turned;
+        py += (sideY / side) * turned;
+      }
+      pressure = Math.max(pressure, exposure * (1 - divert) * 0.6);
     }
     ax += px;
     ay += py;
   }
-  // Near the body the air flows round it toward the mouth: a Core off to one side is swept toward
-  // your front (nothing when it's dead ahead), so turning swings it round you
-  const nearBody = clamp01(1 - (d - equilibrium) / (zone * 2));
-  const offFront = Math.atan2(ux * fy - uy * fx, ux * fx + uy * fy);
-  if (nearBody > 0 && Math.abs(offFront) < (CORE.NEAR_ARC * Math.PI) / 180) {
-    const wrap = CORE.SUCTION * strength * CORE.WRAP * Math.sin(Math.abs(offFront)) * nearBody;
-    const toward = offFront > 0 ? 1 : -1;
-    ax += -uy * wrap * toward;
-    ay += ux * wrap * toward;
-  }
   if (d < equilibrium + zone) {
-    // In the pressure zone: motion toward or away from the body (only that) is damped
-    const radial = core.vx * ux + core.vy * uy;
+    // In the pressure zone: motion toward or away from the body (only that, and relative to it, so a Core can follow you) is damped
+    const radial = (core.vx - (inhaler.vx ?? 0)) * ux + (core.vy - (inhaler.vy ?? 0)) * uy;
     const damping = CORE.RADIAL_DAMPING * clamp01(1 - (d - equilibrium) / zone);
     ax -= ux * radial * damping;
     ay -= uy * radial * damping;

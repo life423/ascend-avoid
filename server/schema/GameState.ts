@@ -9,6 +9,7 @@ import { BombSchema } from "./BombSchema.js";
 import { TurbineFlightSchema, TurbineSchema } from "./TurbineSchema.js";
 import { CoreSchema } from "./CoreSchema.js";
 import { airflowOnCore, bodyMass, impactStunMs, stepCore } from "../game/corePhysics.js";
+import { airflowQuality, cleanAir, latchSizeFactor } from "../game/airflow.js";
 import { BotBrain } from "../game/bots.js";
 import { closestFloorPoint, isFloor, jackpotSpot, layoutToString, pickLayout, randomFloorPoint } from "../game/layouts.js";
 import type { Layout } from "../game/layouts.js";
@@ -17,7 +18,7 @@ import { moveSpeed } from "../game/movement.js";
 import { exhaustAngle } from "../game/turbine.js";
 import type { Direction } from "../game/movement.js";
 
-const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS, COMETS, INHALE, BOMBS, TURBINE, SUCTION, CORE } = GAME_CONSTANTS;
+const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS, COMETS, INHALE, BOMBS, TURBINE, SUCTION, CORE, LATCH } = GAME_CONSTANTS;
 /** Which way each of a bot's decisions steers it */
 const STEER: Record<Direction, { x: number; y: number }> = {
   up: { x: 0, y: -1 },
@@ -200,6 +201,7 @@ class GameState extends Schema {
     this.updateShift(deltaTime, now);
     this.updateTraffic();
     this.updateInhales(now, deltaTime);
+    this.updateLatches(now, deltaTime);
     this.updateBombs(now, deltaTime);
     this.updateTurbines(now, deltaTime);
     this.obstacles.forEach((obstacle) => {
@@ -410,12 +412,16 @@ class GameState extends Schema {
         // Holding it in the cone builds the lock: a light pull at first, dangerous after a second
         const lock = Math.min(1, (eater.lockOn.get(prey.sessionId) ?? 0) + (deltaTime * 1000) / INHALE.LOCK_MS);
         eater.lockOn.set(prey.sessionId, lock);
-        eater.heldFor.set(prey.sessionId, (eater.heldFor.get(prey.sessionId) ?? 0) + deltaTime);
+        // The drain ramp builds only on clean airflow; smothered (deep overlap) or poorly aimed, it fades
+        const heldTime = eater.heldFor.get(prey.sessionId) ?? 0;
+        const clean = airflowQuality(this.mouthed(eater), this.bodyOf(prey)) >= LATCH.RAMP_MIN_QUALITY;
+        eater.heldFor.set(prey.sessionId, clean ? heldTime + deltaTime : Math.max(0, heldTime - deltaTime * LATCH.RAMP_FADE));
         locked.add(prey.sessionId);
         const px = prey.x + prey.width / 2;
         const py = prey.y + prey.height / 2;
         const d = Math.hypot(px - mouthX, py - mouthY);
-        if (this.canSwallow(eater, prey) && d <= eater.width * INHALE.GULP_REACH + prey.width / 2 && d < heldAt) {
+        // A swallow needs the size, the prey at the mouth, and clean airflow (sitting on top of it isn't enough)
+        if (this.canSwallow(eater, prey) && d <= eater.width * INHALE.GULP_REACH + prey.width / 2 && d < heldAt && airflowQuality(this.mouthed(eater), this.bodyOf(prey)) >= LATCH.SWALLOW_MIN_QUALITY) {
           held = prey;
           heldAt = d;
         }
@@ -554,7 +560,7 @@ class GameState extends Schema {
     // Catching several at once pays more than one, though far less than one each
     const budget = Math.sqrt(victims.length);
     for (const { victim, weight } of victims) {
-      let progress = (thief.stealShares.get(victim.sessionId) ?? 0) + deltaTime * INHALE.STEAL_RATE * budget * (weight / total) * this.stealStrength(thief, victim) * drainRamp(thief.heldFor.get(victim.sessionId) ?? 0);
+      let progress = (thief.stealShares.get(victim.sessionId) ?? 0) + deltaTime * INHALE.STEAL_RATE * budget * (weight / total) * this.stealStrength(thief, victim) * drainRamp(thief.heldFor.get(victim.sessionId) ?? 0) * (LATCH.OVERLAP_DRAIN_MIN + (1 - LATCH.OVERLAP_DRAIN_MIN) * cleanAir(this.bodyOf(thief), this.bodyOf(victim)));
       while (progress >= 1 && victim.gems > 0) {
         progress -= 1;
         victim.setGems(victim.gems - 1, this.worldWidth, this.worldHeight);
@@ -1298,6 +1304,120 @@ class GameState extends Schema {
     }
   }
 
+  /** A creature's middle and width, for the airflow (see game/airflow) */
+  private bodyOf(player: PlayerSchema): { x: number; y: number; width: number } {
+    return { x: player.x + player.width / 2, y: player.y + player.height / 2, width: player.width };
+  }
+
+  /** ...and which way its mouth faces */
+  private mouthed(player: PlayerSchema): { x: number; y: number; width: number; facing: number } {
+    return { ...this.bodyOf(player), facing: player.facing };
+  }
+
+  /**
+   * Player airflow connections: each inhaler's airflow quality on every creature, smoothed for
+   * stability. A clean enough one catches a latch, held through brief slips (a little sideways step
+   * doesn't lose it), broken by turning well away, distance or a stun. Between two inhaling each
+   * other only one side owns the focused connection (hysteresis; from a near tie, neither). The owner
+   * gets a gentle aim toward its target (through its own turning), its cone focuses into a stream,
+   * and once that holds cleanly, its breath is used less, then refilled (game/airflow breathRate).
+   */
+  private updateLatches(now: number, deltaTime: number): void {
+    const smoothing = Math.min(1, deltaTime * LATCH.SMOOTHING);
+    this.players.forEach((attacker) => {
+      if (!attacker.inhaling || attacker.state !== PLAYER_STATE.ALIVE || attacker.stunned) {
+        attacker.dropLatch();
+        attacker.airQuality.clear();
+        return;
+      }
+      const from = this.mouthed(attacker);
+      let best: PlayerSchema | null = null;
+      let bestQuality = 0;
+      this.players.forEach((target) => {
+        const id = target.sessionId;
+        if (target === attacker || target.state !== PLAYER_STATE.ALIVE || target.spawnProtected) {
+          attacker.airQuality.delete(id);
+          return;
+        }
+        const raw = airflowQuality(from, this.bodyOf(target));
+        const was = attacker.airQuality.get(id) ?? 0;
+        const quality = was + (raw - was) * smoothing;
+        if (quality < 0.005 && raw === 0) attacker.airQuality.delete(id);
+        else attacker.airQuality.set(id, quality);
+        if (quality > bestQuality) {
+          bestQuality = quality;
+          best = target;
+        }
+      });
+      const current = attacker.latchTarget ? this.players.get(attacker.latchTarget) : undefined;
+      if (attacker.latchTarget && (!current || current.state !== PLAYER_STATE.ALIVE)) attacker.dropLatch();
+      else if (current) {
+        const holds = (attacker.airQuality.get(current.sessionId) ?? 0) >= LATCH.KEEP_QUALITY && this.latchInRange(attacker, current);
+        if (holds) attacker.latchLostAt = 0;
+        else if (!attacker.latchLostAt) attacker.latchLostAt = now;
+        else if (now - attacker.latchLostAt > LATCH.MEMORY_MS) attacker.dropLatch();
+      }
+      const chosen = best as PlayerSchema | null;
+      if (chosen && bestQuality >= LATCH.ACQUIRE_QUALITY && chosen.sessionId !== attacker.latchTarget) {
+        // A new latch, or a clearly better one
+        const held = attacker.latchTarget ? attacker.airQuality.get(attacker.latchTarget) ?? 0 : 0;
+        if (!attacker.latchTarget || bestQuality > held * (1 + LATCH.HYSTERESIS)) {
+          attacker.dropLatch();
+          attacker.latchTarget = chosen.sessionId;
+          attacker.latchSince = now;
+        }
+      }
+      const target = attacker.latchTarget ? this.players.get(attacker.latchTarget) : undefined;
+      attacker.latchScore = target ? (attacker.airQuality.get(target.sessionId) ?? 0) * latchSizeFactor(attacker.width, target.width) : 0;
+    });
+    // Who owns the focused connection (decided on last tick's owners, so the order doesn't matter)
+    this.players.forEach((attacker) => {
+      const target = attacker.latchTarget ? this.players.get(attacker.latchTarget) : undefined;
+      let owns = !!target;
+      if (target && target.latchTarget === attacker.sessionId) {
+        const mine = attacker.latchScore;
+        const theirs = target.latchScore;
+        if (attacker.focused) owns = theirs <= mine * (1 + LATCH.HYSTERESIS);
+        else if (target.focused) owns = mine > theirs * (1 + LATCH.HYSTERESIS);
+        else owns = mine > theirs * (1 + LATCH.TIE);
+      }
+      attacker.focusNext = owns;
+    });
+    this.players.forEach((attacker) => {
+      const target = attacker.latchTarget ? this.players.get(attacker.latchTarget) : undefined;
+      attacker.focused = !!target && attacker.focusNext;
+      const quality = target && attacker.focused ? attacker.airQuality.get(target.sessionId) ?? 0 : 0;
+      const focus = target && attacker.focused ? Math.min(1, Math.max(0, (quality - LATCH.BEAM_FOCUS_FROM) / (LATCH.BEAM_FULL_AT - LATCH.BEAM_FOCUS_FROM))) : 0;
+      const beam = target && attacker.focused && now - attacker.latchSince >= LATCH.BEAM_STABLE_MS ? quality : 0;
+      const pull = target && attacker.focused ? attacker.latchScore : 0;
+      const round = (v: number) => Math.round(v * 100) / 100;
+      if (attacker.beamFocus !== round(focus)) attacker.beamFocus = round(focus);
+      if (attacker.beamQuality !== round(beam)) attacker.beamQuality = round(beam);
+      if (attacker.latchPull !== round(pull)) attacker.latchPull = round(pull);
+      if (target && pull > 0) {
+        const dx = target.x + target.width / 2 - (attacker.x + attacker.width / 2);
+        const dy = target.y + target.height / 2 - (attacker.y + attacker.height / 2);
+        const d = Math.max(1e-6, Math.hypot(dx, dy));
+        attacker.assistX = (dx / d) * LATCH.ASSIST * pull;
+        attacker.assistY = (dy / d) * LATCH.ASSIST * pull;
+      } else {
+        attacker.assistX = 0;
+        attacker.assistY = 0;
+      }
+    });
+  }
+
+  /** Whether a latch can still hold: the target within LATCH.BREAK_ANGLE of the attacker's facing and LATCH.RANGE of its reach */
+  private latchInRange(attacker: PlayerSchema, target: PlayerSchema): boolean {
+    const dx = target.x + target.width / 2 - (attacker.x + attacker.width / 2);
+    const dy = target.y + target.height / 2 - (attacker.y + attacker.height / 2);
+    const d = Math.hypot(dx, dy);
+    const reach = INHALE.REACH + attacker.width * INHALE.REACH_PER_SIZE;
+    if (d - (attacker.width + target.width) / 2 > reach * LATCH.RANGE) return false;
+    if (d < 1e-6) return true;
+    return (dx * Math.cos(attacker.facing) + dy * Math.sin(attacker.facing)) / d >= Math.cos((LATCH.BREAK_ANGLE * Math.PI) / 180);
+  }
+
   /** How many Cores this world keeps (test worlds: their own number, 0 unless they ask) */
   setCoreCount(count: number): void {
     this.coreCount = Math.max(0, Math.floor(count));
@@ -1331,7 +1451,8 @@ class GameState extends Schema {
       let ay = 0;
       this.players.forEach((player) => {
         if (player.state !== PLAYER_STATE.ALIVE || player.stunned) return;
-        const pull = airflowOnCore({ x: player.x + player.width / 2, y: player.y + player.height / 2, width: player.width, facing: player.facing, inhaling: player.inhaling }, core);
+        const moving = player.velocity();
+        const pull = airflowOnCore({ x: player.x + player.width / 2, y: player.y + player.height / 2, width: player.width, facing: player.facing, inhaling: player.inhaling, vx: moving.x, vy: moving.y }, core);
         ax += pull.ax;
         ay += pull.ay;
       });

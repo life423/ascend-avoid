@@ -989,8 +989,25 @@ try {
     park(kai, 1000, 1000, 0);
     await sleep(300);
     check(kai.state.cores.length === 1, 'a Core sits in the arena');
-    // A newborn's inhale moves it
+    // A newborn's inhale visibly catches a Core and accelerates it well before the air's balance point...
     let k = middleOf(kaiMe());
+    coreAt(k.x + 160, k.y);
+    await sleep(250);
+    kai.send('inhale');
+    await sleep(600);
+    check(-core().vx > 60 && core().x - middleOf(kaiMe()).x > 70, `a newborn's inhale catches a Core and visibly accelerates it, before the air's balance point (${Math.round(-core().vx)} a second, ${Math.round(core().x - middleOf(kaiMe()).x)} out)`);
+    // ...and moving sideways drags it along a new path
+    const coreYFrom = core().y;
+    kai.send('steer', { x: 0, y: -1 });
+    await sleep(800);
+    kai.send('steer', { x: 0, y: 0 });
+    kai.send('exhale');
+    check(coreYFrom - core().y > 25, `moving sideways while inhaling drags a Core along (${Math.round(coreYFrom - core().y)} units sideways)`);
+    await sleep(1500);
+    park(kai, 1000, 1000, 0);
+    await sleep(300);
+    // A newborn's inhale moves it
+    k = middleOf(kaiMe());
     coreAt(k.x + 110, k.y);
     await sleep(250);
     let coreFrom = core().x;
@@ -1060,11 +1077,11 @@ try {
     park(kai, 1000, 1000, 0);
     await sleep(200);
     k = middleOf(kaiMe());
-    coreAt(k.x + (kaiMe().width / 2 + 34) * 1.7, k.y, 0, 300);
+    coreAt(k.x + (kaiMe().width / 2 + core().radius) * 1.7, k.y, 0, 300);
     kai.send('inhale');
     await sleep(250);
     check(Math.abs(core().vy) > 150, `sideways momentum survives near the air's balance point (${Math.round(core().vy)} of 300 after 0.25s)`);
-    coreAt(k.x + (kaiMe().width / 2 + 34) * 1.7, k.y);
+    coreAt(k.x + (kaiMe().width / 2 + core().radius) * 1.7, k.y);
     await sleep(700);
     const angleFrom = Math.atan2(core().y - k.y, core().x - k.x);
     for (const angle of [0.5, 1.0, 1.5]) {
@@ -1081,7 +1098,7 @@ try {
     park(lea, 2600, 1000, 0);
     await sleep(250);
     let l = middleOf(leaMe());
-    coreAt(l.x - leaMe().width / 2 - 34 - 20, l.y, 60, 0);
+    coreAt(l.x - leaMe().width / 2 - core().radius - 20, l.y, 60, 0);
     await sleep(900);
     check(!leaMe().stunned, 'a Core drifting into you only nudges you');
     park(lea, 2600, 1500, 0);
@@ -1098,6 +1115,75 @@ try {
     coreAt(l.x - 300, l.y, 650, 0);
     await sleep(600);
     check(!leaMe().stunned, 'no stun-lock: hit again straight after, you are not stunned again');
+    // Radius-aware: a Core whose middle is outside a giant's airflow but whose edge is in still responds
+    kai.send('test:setGems', { count: 100 });
+    lea.send('test:moveTo', { x: 3400, y: 3400 });
+    await sleep(1700);
+    park(kai, 1000, 2000, 0);
+    await sleep(250);
+    k = middleOf(kaiMe());
+    const mouthX = k.x + kaiMe().width * 0.3;
+    const edgeOff = (35 * Math.PI) / 180 + 0.6 * Math.asin(core().radius / 250);
+    coreAt(mouthX + Math.cos(edgeOff) * 250, k.y + Math.sin(edgeOff) * 250);
+    await sleep(200);
+    kai.send('inhale');
+    await sleep(500);
+    kai.send('exhale');
+    check(coreSpeed() > 25, `a Core only partly in the airflow (its middle outside the cone) still responds (${Math.round(coreSpeed())} a second)`);
+    await sleep(1500);
+    // ----- Player airflow: soft latch, focused stream, mutual competition -----
+    kai.send('test:setGems', { count: 40 });
+    lea.send('test:setGems', { count: 40 });
+    coreAt(4000, 4000);
+    await sleep(300);
+    park(kai, 1000, 2000, 0);
+    await sleep(200);
+    k = middleOf(kaiMe());
+    park(lea, k.x + kaiMe().width / 2 + 40, k.y - leaMe().height / 2, 0);
+    await sleep(300);
+    kai.send('inhale');
+    await waitFor(() => kaiMe().latchTarget === lea.sessionId, 1500, 'a creature caught cleanly in your airflow is latched');
+    await sleep(400);
+    check(kaiMe().beamFocus > 0.2, `a good latch focuses the airflow into a stream toward them (focus ${kaiMe().beamFocus.toFixed(2)})`);
+    const facingBefore = kaiMe().facing;
+    lea.send('test:moveTo', { x: leaMe().x, y: leaMe().y + 45 });
+    await sleep(700);
+    check(kaiMe().latchTarget === lea.sessionId && kaiMe().facing - facingBefore > 0.05, `a small sideways step keeps the latch, and your facing is drawn gently after them (${(kaiMe().facing - facingBefore).toFixed(2)} radians)`);
+    lea.send('test:moveTo', { x: leaMe().x, y: leaMe().y + 450 });
+    await waitFor(() => kaiMe().latchTarget === '' && kaiMe().beamFocus === 0, 1500, 'moving well away breaks the latch, and the stream spreads back into a cone');
+    kai.send('exhale');
+    await sleep(1500);
+    // Inhaling each other: at most one side holds the focused connection, and it doesn't flicker
+    park(kai, 1000, 2000, 0);
+    await sleep(150);
+    k = middleOf(kaiMe());
+    park(lea, k.x + kaiMe().width / 2 + 50, k.y - leaMe().height / 2, Math.PI);
+    await sleep(300);
+    kai.send('inhale');
+    lea.send('inhale');
+    await sleep(900);
+    const owners = [];
+    for (let i = 0; i < 6; i++) {
+        owners.push((kaiMe().latchPull > 0 ? 'K' : '') + (leaMe().latchPull > 0 ? 'L' : '') || '-');
+        await sleep(150);
+    }
+    kai.send('exhale');
+    lea.send('exhale');
+    const ownerChanges = owners.filter((o, i) => i > 0 && o !== owners[i - 1]).length;
+    check(owners.every((o) => o.length === 1) && ownerChanges <= 1, `inhaling each other, never both sides hold the focused connection, and it doesn't flicker (${owners.join(' ')})`);
+    await sleep(1500);
+    // A Core stun breaks the latch and the stream at once
+    park(kai, 1000, 2000, 0);
+    await sleep(150);
+    k = middleOf(kaiMe());
+    park(lea, k.x + kaiMe().width / 2 + 40, k.y - leaMe().height / 2, 0);
+    await sleep(300);
+    kai.send('inhale');
+    await waitFor(() => kaiMe().latchTarget === lea.sessionId, 1500, 'latched again');
+    coreAt(k.x - 320, k.y, 650, 0);
+    await waitFor(() => kaiMe().stunned, 1500, 'a fast Core stuns the latched inhaler');
+    check(!kaiMe().inhaling && kaiMe().latchTarget === '' && kaiMe().beamFocus === 0, 'a stun stops the inhale, breaks the latch and ends the stream at once');
+    kai.send('exhale');
     await kai.leave();
     await lea.leave();
 

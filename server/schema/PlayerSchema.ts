@@ -2,6 +2,7 @@ import * as schema from "@colyseus/schema";
 const { Schema, type } = schema;
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 import { turnStep, walk } from "../game/movement.js";
+import { breathRate } from "../game/airflow.js";
 import type { Box, Direction } from "../game/movement.js";
 
 const { ARENA_RULES, BOTS, GEMS, INHALE, PLAYER_STATE, PUSH, WORLD, CORE } = GAME_CONSTANTS;
@@ -87,6 +88,20 @@ class PlayerSchema extends Schema {
   /** Server-only: when the stun wears off, and when another can land */
   stunEndsAt = 0;
   stunImmuneUntil = 0;
+  /** The creature this one's airflow is latched on ("" for none), how focused the stream is (0-1, for drawing), the beam's quality when it saves breath (0 unless held cleanly), and how strongly it draws your aim (all synced) */
+  latchTarget: string;
+  beamFocus: number;
+  beamQuality: number;
+  latchPull: number;
+  /** Server-only: smoothed airflow quality on each creature, when the latch began and when it last slipped, its score, whether it owns the focused connection, and the aim it adds */
+  airQuality = new Map<string, number>();
+  latchSince = 0;
+  latchLostAt = 0;
+  latchScore = 0;
+  focused = false;
+  focusNext = false;
+  assistX = 0;
+  assistY = 0;
   /** Server-only: how long (seconds) each creature has been held in this one's airflow without a break (see INHALE.DRAIN_RAMP) */
   heldFor = new Map<string, number>();
   /** Server-only (bots): when its inhale last had nobody in it, so it can let go and save its breath */
@@ -116,6 +131,10 @@ class PlayerSchema extends Schema {
     this.gulpEndsAt = 0;
     this.stolenTotal = 0;
     this.stunned = false;
+    this.latchTarget = "";
+    this.beamFocus = 0;
+    this.beamQuality = 0;
+    this.latchPull = 0;
     this.robbing = "";
     this.robbedTotal = 0;
     this.sessionId = sessionId;
@@ -313,12 +332,27 @@ class PlayerSchema extends Schema {
     }
   }
 
+  /** Let go of any latch: no focused stream, no aim drawn, no beam breath */
+  dropLatch(): void {
+    if (this.latchTarget) this.latchTarget = "";
+    if (this.beamFocus) this.beamFocus = 0;
+    if (this.beamQuality) this.beamQuality = 0;
+    if (this.latchPull) this.latchPull = 0;
+    this.focused = false;
+    this.focusNext = false;
+    this.latchScore = 0;
+    this.latchLostAt = 0;
+    this.assistX = 0;
+    this.assistY = 0;
+  }
+
   /** Hit hard by a Core: stunned for `ms` (no moving, no inhaling), then immune for a moment so it can't stun-lock */
   stun(now: number, ms: number): void {
     this.stunned = true;
     this.stunEndsAt = now + ms;
     this.stunImmuneUntil = now + ms + CORE.STUN_IMMUNE_MS;
     this.stopInhale(now);
+    this.dropLatch();
   }
 
   /** How fast the player is moving right now: walking and sliding together */
@@ -335,13 +369,14 @@ class PlayerSchema extends Schema {
   }
 
   /** Start inhaling (for up to `forMs`, INHALE.MAX_MS for players): you move as usual, and your mouth turns toward your aim */
-  startInhale(now: number, forMs: number = INHALE.MAX_MS): void {
+  startInhale(now: number, forMs: number = Infinity): void {
     if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering || this.stunned) return;
     this.breathe(now);
     if (this.stamina < INHALE.MIN_BREATH) return;
     this.inhaling = true;
     // Until you let go, or the breath you have left runs out
-    this.inhaleStopAt = now + Math.min(forMs, this.stamina * INHALE.MAX_MS);
+    // Until you let go, the time asked for, or the breath runs out (a good beam can stretch it)
+    this.inhaleStopAt = now + forMs;
     this.aimX = 0;
     this.aimY = 0;
   }
@@ -357,7 +392,7 @@ class PlayerSchema extends Schema {
   private breathe(now: number): void {
     const elapsed = Math.max(0, now - this.staminaAt);
     this.staminaAt = now;
-    const change = this.inhaling ? -elapsed / INHALE.MAX_MS : elapsed / INHALE.REFILL_MS;
+    const change = this.inhaling ? elapsed * breathRate(this.beamQuality, this.stamina) : elapsed / INHALE.REFILL_MS;
     this.stamina = Math.min(1, Math.max(0, this.stamina + change));
   }
 
@@ -382,6 +417,11 @@ class PlayerSchema extends Schema {
     if (this.state !== PLAYER_STATE.ALIVE) return;
     if (this.spawnProtected && now >= this.protectedUntil) this.spawnProtected = false;
     if (this.recovering && now >= this.recoverUntil) this.recovering = false;
+    // Breath runs out (a clean beam uses less, or even refills it)
+    if (this.inhaling) {
+      this.breathe(now);
+      if (this.stamina <= 0) this.stopInhale(now);
+    }
     if (this.inhaling && now >= this.inhaleStopAt) this.stopInhale(now);
     if (this.sliding) {
       this.walkX = 0;
@@ -398,7 +438,8 @@ class PlayerSchema extends Schema {
     this.walkX = velocity.x;
     this.walkY = velocity.y;
     // Facing: toward the aim while inhaling, otherwise where you steer
-    const intent = this.inhaling ? { x: this.aimX, y: this.aimY } : { x: this.steerX, y: this.steerY };
+    // A focused latch adds a little aim toward its target; your turning (rate, acceleration, size) does the rest
+    const intent = this.inhaling ? { x: this.aimX + this.assistX, y: this.aimY + this.assistY } : { x: this.steerX, y: this.steerY };
     const aiming = Math.hypot(intent.x, intent.y) > 0.25;
     const turn = turnStep(this.facing, this.spin, aiming ? Math.atan2(intent.y, intent.x) : null, this.width, this.inhaling, deltaTime);
     this.spin = turn.spin;
@@ -458,6 +499,10 @@ type("string")(PlayerSchema.prototype, "gulping");
 type("number")(PlayerSchema.prototype, "gulpEndsAt");
 type("number")(PlayerSchema.prototype, "stolenTotal");
 type("boolean")(PlayerSchema.prototype, "stunned");
+type("string")(PlayerSchema.prototype, "latchTarget");
+type("number")(PlayerSchema.prototype, "beamFocus");
+type("number")(PlayerSchema.prototype, "beamQuality");
+type("number")(PlayerSchema.prototype, "latchPull");
 type("string")(PlayerSchema.prototype, "robbing");
 type("number")(PlayerSchema.prototype, "robbedTotal");
 type("boolean")(PlayerSchema.prototype, "isBot");

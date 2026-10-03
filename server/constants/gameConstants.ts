@@ -325,24 +325,28 @@ export const BOMBS = {
  */
 export const CORE = {
   COUNT: 3, // how many are in a world
-  RADIUS: 34,
-  MASS: 6, // in newborns: a creature's mass is (its width / a newborn's) squared
-  DRAG: 0.5, // momentum fades by this share a second (exponentially): half its speed in about 1.4s
+  RADIUS: 24, // physical size (drawn at this size too); small enough for a newborn to work with
+  MASS: 3, // in newborns: a creature's mass is (its width / a newborn's) squared
+  DRAG: 0.35, // momentum fades by this share a second (exponentially): half its speed in about 2s, so launches carry
   MAX_SPEED: 750, // the Core's own top speed, whoever moved it
   WALL_RESTITUTION: 0.6, // share of its speed kept bouncing off the arena's edge
   CORE_RESTITUTION: 0.8, // ...and off another Core
-  SUCTION: 2400, // pull toward the mouth (divided by MASS for acceleration): a newborn close up, about 400 a second each second...
-  PULL_GROWTH: 0.5, // ...times (width / a newborn's) ^ this for bigger creatures...
-  PULL_MAX: 4, // ...up to this
+  REACH: 140, // a Core feels an inhale from this far from the mouth to its near edge...
+  REACH_PER_SIZE: 2.5, // ...plus this times the inhaler's width (newborn 190, 5x 390, 10x 640)
+  FALLOFF_POWER: 1.3, // pull fades with distance across that reach as (1 - distance / reach) ^ this
+  SUCTION: 3000, // pull (divided by MASS for acceleration), times how much of the Core is in the airflow: a newborn close up, about 1000 a second each second (enough to drag it along at a run)...
+  PULL_GROWTH: 0.4, // ...times (width / a newborn's) ^ this for bigger creatures...
+  PULL_MAX: 2.5, // ...up to this
   NEAR_ARC: 150, // near the body the airflow wraps wider: its arc grows from the inhale's own toward this many degrees either side
-  WRAP: 0.8, // ...and flows round the body toward the mouth: a Core beside you is swept toward your front this hard (a share of the suction), so turning swings it
-  NEAR_FIELD: 9000, // inside the equilibrium distance, compressed air pushes it back out this hard (times the same size factor)...
+  NEAR_SPAN: 4, // ...over this many times the falloff zone outside the equilibrium distance (a Core trailing beside you stays in your airflow)
+  DEFLECT: 2.5, // near the body, the air the body blocks is turned to flow round it the way it was already going (toward the mouth): how readily (no target angle; nothing when dead ahead)
+  NEAR_FIELD: 4500, // inside the equilibrium distance, compressed air pushes it back out this hard (times the same size factor)...
   RADIAL_DAMPING: 4, // ...and its motion toward or away from the body (only that) is damped this much a second there, so the push adds no energy
   SIDE_MULTIPLIER: 1.25, // equilibrium distance beside the body, as a multiple of (body radius + Core radius)...
   FRONT_MULTIPLIER: 1.7, // ...and in front of the mouth
   FALLOFF: 0.8, // the inward pull fades smoothly to nothing over this share of the equilibrium distance outside it
-  STUN_MOMENTUM: 1500, // a hit (MASS x the speed it comes at you) stuns from this momentum...
-  STUN_FULL_MOMENTUM: 3900, // ...for longer up to this one
+  STUN_MOMENTUM: 750, // a hit (MASS x the speed it comes at you) stuns from this momentum (250 a second)...
+  STUN_FULL_MOMENTUM: 1950, // ...for longer up to this one (650 a second)
   STUN_MIN_MS: 300,
   STUN_MAX_MS: 850,
   STUN_IMMUNE_MS: 1200, // after a stun wears off, no more stuns for this long...
@@ -352,6 +356,37 @@ export const CORE = {
   SPAWN_GAP: 1000, // ...from other Cores...
   SPAWN_TURBINE_GAP: 500, // ...and from turbines
   DEBUG: false, // development only: draw each Core's velocity, speed and equilibrium distances
+} as const;
+
+/**
+ * Player airflow connections (see game/airflow): one airflow quality (0-1) from shared geometry
+ * drives the soft latch, its gentle aim assist, the cone focusing into a stream, drain, the drain
+ * ramp, swallowing and breath. Deep body overlap smothers the air: worse, not better.
+ */
+export const LATCH = {
+  ACQUIRE_QUALITY: 0.45, // airflow this clean on a creature catches it (the latch)...
+  KEEP_QUALITY: 0.15, // ...it holds while the airflow stays at least this clean...
+  BREAK_ANGLE: 75, // ...within this many degrees of your facing...
+  RANGE: 1.15, // ...and this share of your inhale's reach...
+  MEMORY_MS: 350, // ...and survives a moment below those (a little sideways step doesn't lose it)
+  SMOOTHING: 6, // airflow quality is smoothed at this rate a second (its stability)
+  ASSIST: 0.6, // a focused latch adds this much aim toward its target (your own turning does the rest)...
+  SIZE_MIN: 0.75, // ...times sqrt(your width / theirs), kept within these
+  SIZE_MAX: 1.35,
+  HYSTERESIS: 0.25, // inhaling each other: the other side needs a latch this much better to take the focused connection...
+  TIE: 0.1, // ...and from nothing, within this of each other, neither gets it
+  OVERLAP_SMOTHER: 0.4, // bodies overlapping by this share of the smaller one's width smother the air completely
+  OVERLAP_DRAIN_MIN: 0.25, // smothered air still drains this share of gems
+  RAMP_MIN_QUALITY: 0.35, // the drain ramp builds only on airflow at least this clean; below, it fades...
+  RAMP_FADE: 1.5, // ...this many times as fast as it built
+  SWALLOW_MIN_QUALITY: 0.5, // a swallow needs airflow at least this clean (size alone isn't enough)
+  BEAM_FOCUS_FROM: 0.35, // the cone starts focusing into a stream at this quality...
+  BEAM_FULL_AT: 0.8, // ...fully at this
+  BEAM_STABLE_MS: 400, // a focused connection has to hold this long before it saves breath
+  BEAM_EFFICIENT_FROM: 0.4, // breath use falls from this beam quality...
+  BEAM_NEUTRAL_AT: 0.75, // ...to nothing here...
+  BEAM_RECHARGE_MS: 9000, // ...and above, it refills (at best empty to full in this long; out of combat it's INHALE.REFILL_MS)...
+  BEAM_RECHARGE_CAP: 0.8, // ...but never past this share of a full breath while inhaling
 } as const;
 
 export const SHIFT = {
@@ -517,6 +552,7 @@ export const DESKTOP_SETTINGS = DEVICE_SETTINGS.DESKTOP;
 // Bundle all constants for convenient access
 export const GAME_CONSTANTS = {
   CORE,
+  LATCH,
   CANVAS,
   PLAYER,
   OBSTACLE,
