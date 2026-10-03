@@ -5,7 +5,10 @@
 import { airflowOnCore, stepCore, type CoreBody, type Inhaler } from "../game/corePhysics.js";
 import { airflowQuality, breathRate, cleanAir, latchSizeFactor } from "../game/airflow.js";
 import { turnRate, turnStep } from "../game/movement.js";
-import { CORE, INHALE, LATCH } from "../constants/gameConstants.js";
+import { CAMERA, CORE, INHALE, LATCH } from "../constants/gameConstants.js";
+import { CameraRig, lookAhead, springStep, viewShort } from "../game/camera.js";
+import { dangerRadius, lethalShare, pressureBuild } from "../game/airflow.js";
+import { moveSpeed } from "../game/movement.js";
 
 let failed = 0;
 function check(ok: boolean, label: string): void {
@@ -77,6 +80,33 @@ const step = 0.05;
 const giantTurn = turnStep(0, 0, Math.PI / 2, 143, true, step);
 const newbornTurn = turnStep(0, 0, Math.PI / 2, 20, true, step);
 check(Math.abs(giantTurn.facing) <= turnRate(143, true) * step + 1e-9 && newbornTurn.facing > giantTurn.facing, "turning toward a latched target respects turn limits, and a giant turns slower");
+
+// Range catches, closeness kills; pressure builds
+check(lethalShare(0.3) === 1 && lethalShare(1) === 0 && lethalShare(0.75) > 0 && lethalShare(0.75) < 1, "the outer part of an inhale's reach isn't lethal: drain fades to nothing toward the tip");
+check(pressureBuild(0, 20) === 0 && pressureBuild(0.35, 20) === 1 && pressureBuild(0.35, 143) < 1 && pressureBuild(0.8, 143) === 1, "an inhale's pressure builds from nothing, more slowly for a giant");
+
+// Camera
+let spring = { value: 0, velocity: 0 };
+let overshoot = 0;
+for (let i = 0; i < 120; i++) {
+  spring = springStep(spring.value, spring.velocity, 100, CAMERA.FOLLOW_OMEGA, 1 / 60);
+  overshoot = Math.max(overshoot, spring.value - 100);
+}
+check(overshoot <= 1e-9 && Math.abs(spring.value - 100) < 1, "the camera settles on a critically damped spring, never overshooting");
+const running = { x: 0, y: 0, vx: 320, vy: 0, width: 20, facing: Math.PI / 2, inhaling: true };
+const lead = lookAhead({ ...running, vx: 5000 }, viewShort(20));
+check(Math.hypot(lead.x, lead.y) <= CAMERA.MAX_OFFSET * viewShort(20) + 1e-9, "the camera never leads you more than a small share of the view");
+const leadIdle = lookAhead({ ...running, vx: 0, inhaling: false }, viewShort(20));
+const leadInhaling = lookAhead({ ...running, vx: 0 }, viewShort(20));
+check(leadInhaling.y > leadIdle.y && leadIdle.y > 0, "the camera gives a little room where you face, more while inhaling");
+check(20 / viewShort(20) < 143 / viewShort(143) && 143 / viewShort(143) < 284 / viewShort(284), `growing, you take more of the screen (${[20, 72, 143, 284].map((w) => ((w / viewShort(w)) * 100).toFixed(1) + "%").join(", ")})`);
+const sizes = [20, 40, 72, 143, 284];
+check(sizes.every((w) => viewShort(w) / 2 >= dangerRadius(w * CAMERA.THREAT_RATIO) + moveSpeed(w * CAMERA.THREAT_RATIO) * CAMERA.REACTION_S - 1e-6), "at every size the view shows a bigger creature coming before its lethal airflow could reach you");
+const rig = new CameraRig();
+rig.update(running, 1 / 60);
+for (let i = 0; i < 30; i++) rig.update({ ...running, x: running.x + 320 * (i + 1) / 60 }, 1 / 60);
+const behind = running.x + 320 * 30 / 60 - rig.x;
+check(Math.abs(behind) > 1 && Math.abs(behind) < CAMERA.MAX_OFFSET * viewShort(20) + 1, `moving, you drift a little within the frame, not welded to its center (${behind.toFixed(0)} units off center)`);
 
 console.log(failed ? `${failed} unit check(s) failed` : "All unit checks passed");
 process.exit(failed ? 1 : 0);

@@ -110,17 +110,19 @@ export function airflowOnCore(inhaler: Inhaler, core: CoreBody): { ax: number; a
     ax += px;
     ay += py;
   }
-  if (d < equilibrium + zone) {
+  // The cushion of air near the body is only where the airflow is: full across your front half, fading to nothing behind you
+  const inFlow = clamp01(ux * fx + uy * fy + 0.5);
+  if (d < equilibrium + zone && inFlow > 0) {
     // In the pressure zone: motion toward or away from the body (only that, and relative to it, so a Core can follow you) is damped
     const radial = (core.vx - (inhaler.vx ?? 0)) * ux + (core.vy - (inhaler.vy ?? 0)) * uy;
-    const damping = CORE.RADIAL_DAMPING * clamp01(1 - (d - equilibrium) / zone);
+    const damping = CORE.RADIAL_DAMPING * clamp01(1 - (d - equilibrium) / zone) * inFlow;
     ax -= ux * radial * damping;
     ay -= uy * radial * damping;
   }
-  if (d < equilibrium) {
+  if (d < equilibrium && inFlow > 0) {
     // Inside the equilibrium distance: compressed air pushes it back out
     const squeeze = (equilibrium - d) / equilibrium;
-    const push = CORE.NEAR_FIELD * strength * squeeze;
+    const push = CORE.NEAR_FIELD * strength * squeeze * inFlow;
     ax += ux * push;
     ay += uy * push;
     pressure = Math.max(pressure, Math.min(1, 0.6 + squeeze * 2));

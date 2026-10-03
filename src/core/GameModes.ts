@@ -9,6 +9,7 @@ import { GameEvents } from '../constants/client-constants'
 import { ARENA_RULES, BOMBS, CORE, GEMS, INHALE, LATCH, PLAYER_COLORS, SHIFT, TURBINE, WORLD } from '../../server/constants/gameConstants'
 import { airflowOnCore } from '../../server/game/corePhysics'
 import { breathRate } from '../../server/game/airflow'
+import { CameraRig } from '../../server/game/camera'
 import { moveSpeed, turnStep, walk } from '../../server/game/movement'
 import { exhaustAngle, launchDuration, launchPosition } from '../../server/game/turbine'
 import { OnlineControls } from './OnlineControls'
@@ -464,8 +465,6 @@ const SNAP_DISTANCE = 150
 const RECONNECT_DELAY_MS = 3000
 /** How long a notice (someone joined, a shove, the jackpot) stays up */
 const JOIN_NOTICE_MS = 3500
-/** How quickly the camera catches up with you (share of the distance per 60 fps frame) */
-const CAMERA_EASE = 0.2
 /** Grid spacing on the arena floor (world units) */
 const GRID = 100
 const FONT = 'Montserrat, system-ui, sans-serif'
@@ -1179,12 +1178,14 @@ export class MultiplayerMode extends GameMode {
     /** The world point at the center of the screen */
     private camera: { x: number; y: number } | null = null
     private lastRenderAt = 0
-    /** How far the camera is zoomed out (grows with your size, eased so it never jumps) */
-    private zoom: number = WORLD.VIEW_ZOOM_SMALL
     /** Each player's drawn size, springing toward their real size so growing and shrinking pop */
     private drawnSizes = new Map<string, { size: number; speed: number }>()
     /** Each creature's growth pop: when it last gained a gem and how big the pop was (see drawPlayer) */
     private gemPops = new Map<string, { at: number; amount: number }>()
+    /** The camera rig, and the creature's last middle and smoothed velocity it follows */
+    private cameraRig = new CameraRig()
+    private cameraFrom: { x: number; y: number } | null = null
+    private cameraVelocity = { x: 0, y: 0 }
     /** Each creature's airflow while it inhales (see drawAirflow) */
     private flows = new Map<string, Airflow>()
     /** Where each Core is drawn: carrying on at its velocity, easing to each server update (see drawCores) */
@@ -1679,31 +1680,28 @@ export class MultiplayerMode extends GameMode {
      */
     private updateCamera(canvas: HTMLCanvasElement, state: any, me: any, timestamp: number): View {
         const aspect = Math.min(WORLD.MAX_VIEW_ASPECT, Math.max(WORLD.MIN_VIEW_ASPECT, canvas.width / canvas.height))
-        // The view widens as you grow, but much less than you do and only so far, so a giant fills its own screen and looms on everyone else's
-        const grown = me ? Math.max(1, me.width / ARENA_RULES.PLAYER_SIZE) : 1
-        this.zoom += (Math.min(WORLD.VIEW_ZOOM_MAX, WORLD.VIEW_ZOOM_SMALL * Math.pow(grown, WORLD.VIEW_GROWTH)) - this.zoom) * 0.05
-        const area = WORLD.VIEW_AREA * this.zoom * this.zoom
-        const scale = Math.max(
-            canvas.width / Math.sqrt(area * aspect),
-            canvas.height / Math.sqrt(area / aspect)
-        )
-        const width = canvas.width / scale
-        const height = canvas.height / scale
-
-        let focus = this.camera ?? { x: state.worldWidth / 2, y: state.worldHeight / 2 }
+        // The soft-follow rig (game/camera): it leads your movement a little (and your facing, more while
+        // inhaling), follows on a spring, and zooms by how big you should look and the threat horizon
+        const dt = this.lastRenderAt ? (timestamp - this.lastRenderAt) / 1000 : 0
+        let subject = null
         if (me && me.state === 'alive') {
             const position = this.predicted ?? me
-            focus = { x: position.x + me.width / 2, y: position.y + me.height / 2 }
+            const middleX = position.x + me.width / 2
+            const middleY = position.y + me.height / 2
+            if (this.cameraFrom && dt > 0) {
+                const blend = 1 - Math.exp(-10 * Math.min(0.1, dt))
+                this.cameraVelocity.x += ((middleX - this.cameraFrom.x) / dt - this.cameraVelocity.x) * blend
+                this.cameraVelocity.y += ((middleY - this.cameraFrom.y) / dt - this.cameraVelocity.y) * blend
+            }
+            this.cameraFrom = { x: middleX, y: middleY }
+            subject = { x: middleX, y: middleY, vx: this.cameraVelocity.x, vy: this.cameraVelocity.y, width: me.width, facing: this.localFacing, inhaling: Boolean(me.inhaling) }
         }
-        if (!this.camera || Math.hypot(focus.x - this.camera.x, focus.y - this.camera.y) > Math.max(width, height)) {
-            // First frame, or a respawn far away: jump there
-            this.camera = { x: focus.x, y: focus.y }
-        } else {
-            const frames = this.lastRenderAt ? Math.min(4, (timestamp - this.lastRenderAt) / (1000 / 60)) : 1
-            const ease = 1 - Math.pow(1 - CAMERA_EASE, Math.max(0, frames))
-            this.camera.x += (focus.x - this.camera.x) * ease
-            this.camera.y += (focus.y - this.camera.y) * ease
-        }
+        this.cameraRig.update(subject, dt)
+        const short = this.cameraRig.short || 600
+        const scale = Math.max(canvas.width / (canvas.width >= canvas.height ? short * aspect : short), canvas.height / (canvas.width >= canvas.height ? short : short / aspect))
+        const width = canvas.width / scale
+        const height = canvas.height / scale
+        this.camera = this.cameraRig.short ? { x: this.cameraRig.x, y: this.cameraRig.y } : (this.camera ?? { x: state.worldWidth / 2, y: state.worldHeight / 2 })
         this.lastRenderAt = timestamp
 
         // Keep the view inside the world

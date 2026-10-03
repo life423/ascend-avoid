@@ -9,7 +9,7 @@ import { BombSchema } from "./BombSchema.js";
 import { TurbineFlightSchema, TurbineSchema } from "./TurbineSchema.js";
 import { CoreSchema } from "./CoreSchema.js";
 import { airflowOnCore, bodyMass, impactStunMs, stepCore } from "../game/corePhysics.js";
-import { airflowQuality, cleanAir, latchSizeFactor } from "../game/airflow.js";
+import { airflowQuality, cleanAir, latchSizeFactor, lethalShare, pressureBuild, pressureBuildSeconds } from "../game/airflow.js";
 import { BotBrain } from "../game/bots.js";
 import { closestFloorPoint, isFloor, jackpotSpot, layoutToString, pickLayout, randomFloorPoint } from "../game/layouts.js";
 import type { Layout } from "../game/layouts.js";
@@ -410,7 +410,8 @@ class GameState extends Schema {
         const alignment = this.stealWeight(eater, prey);
         if (alignment <= 0) return;
         // Holding it in the cone builds the lock: a light pull at first, dangerous after a second
-        const lock = Math.min(1, (eater.lockOn.get(prey.sessionId) ?? 0) + (deltaTime * 1000) / INHALE.LOCK_MS);
+        // (a bigger inhaler's airflow takes longer to establish)
+        const lock = Math.min(1, (eater.lockOn.get(prey.sessionId) ?? 0) + deltaTime / ((INHALE.LOCK_MS / 1000) * (pressureBuildSeconds(eater.width) / LATCH.PRESSURE_BUILD_S)));
         eater.lockOn.set(prey.sessionId, lock);
         // The drain ramp builds only on clean airflow; smothered (deep overlap) or poorly aimed, it fades
         const heldTime = eater.heldFor.get(prey.sessionId) ?? 0;
@@ -520,7 +521,9 @@ class GameState extends Schema {
     const reach = INHALE.REACH + thief.width * INHALE.REACH_PER_SIZE;
     const gap = Math.max(0, d - victim.width / 2);
     const near = Math.pow(Math.max(0, 1 - gap / reach), INHALE.STEAL_FALLOFF);
-    if (d < 1e-6) return near;
+    // The outer part of the reach catches but doesn't kill: drain fades to nothing toward the tip
+    const lethal = lethalShare(gap / reach);
+    if (d < 1e-6) return near * lethal;
     const nx = dx / d;
     const ny = dy / d;
     const velocity = victim.velocity();
@@ -528,7 +531,7 @@ class GameState extends Schema {
     const across = Math.abs(velocity.y * nx - velocity.x * ny);
     const escape = Math.min(1, (INHALE.STEAL_ESCAPE_AWAY * away + across) / moveSpeed(victim.width));
     const reachable = Math.min(1, gap / (reach * INHALE.STEAL_POINT_BLANK));
-    return near * (1 - INHALE.STEAL_ESCAPE * escape * reachable);
+    return near * lethal * (1 - INHALE.STEAL_ESCAPE * escape * reachable);
   }
 
   /**
@@ -560,7 +563,7 @@ class GameState extends Schema {
     // Catching several at once pays more than one, though far less than one each
     const budget = Math.sqrt(victims.length);
     for (const { victim, weight } of victims) {
-      let progress = (thief.stealShares.get(victim.sessionId) ?? 0) + deltaTime * INHALE.STEAL_RATE * budget * (weight / total) * this.stealStrength(thief, victim) * drainRamp(thief.heldFor.get(victim.sessionId) ?? 0) * (LATCH.OVERLAP_DRAIN_MIN + (1 - LATCH.OVERLAP_DRAIN_MIN) * cleanAir(this.bodyOf(thief), this.bodyOf(victim)));
+      let progress = (thief.stealShares.get(victim.sessionId) ?? 0) + deltaTime * INHALE.STEAL_RATE * budget * (weight / total) * this.stealStrength(thief, victim) * drainRamp(thief.heldFor.get(victim.sessionId) ?? 0) * pressureBuild(thief.heldFor.get(victim.sessionId) ?? 0, thief.width) * (LATCH.OVERLAP_DRAIN_MIN + (1 - LATCH.OVERLAP_DRAIN_MIN) * cleanAir(this.bodyOf(thief), this.bodyOf(victim)));
       while (progress >= 1 && victim.gems > 0) {
         progress -= 1;
         victim.setGems(victim.gems - 1, this.worldWidth, this.worldHeight);

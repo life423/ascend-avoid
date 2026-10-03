@@ -386,7 +386,31 @@ export const LATCH = {
   BEAM_EFFICIENT_FROM: 0.4, // breath use falls from this beam quality...
   BEAM_NEUTRAL_AT: 0.75, // ...to nothing here...
   BEAM_RECHARGE_MS: 9000, // ...and above, it refills (at best empty to full in this long; out of combat it's INHALE.REFILL_MS)...
+  DANGER_SHARE: 0.5, // only the inner share of an inhale's reach is lethal: gem drain fades to nothing over the outer part (range catches, closeness kills)
+  PRESSURE_BUILD_S: 0.35, // drain on a newly caught creature builds from nothing over this long for a newborn...
+  PRESSURE_SIZE_GROWTH: 0.35, // ...longer as (width / newborn) ^ this for bigger inhalers (about 0.7s at 100 gems); the pull lock too
   BEAM_RECHARGE_CAP: 0.8, // ...but never past this share of a full breath while inhaling
+} as const;
+
+/**
+ * The camera (see game/camera): a soft-follow rig. It follows you on a critically damped spring,
+ * leading your movement a little (and your facing, more while inhaling), never far off you; and
+ * it zooms by how big you should look on screen, but never so close that a bigger creature could
+ * reach the lethal part of its airflow before you'd have seen it coming (the threat horizon).
+ */
+export const CAMERA = {
+  SIZE_SHARE: 0.06, // a newborn would fill this share of the screen's short side...
+  SIZE_SHARE_GROWTH: 0.37, // ...growing as (width / a newborn's) ^ this (about 10% at 25 gems, 16% at 400: you still become a monster)...
+  SIZE_SHARE_MAX: 0.18,
+  THREAT_RATIO: 1.5, // ...but the view always shows a creature this many times wider coming...
+  REACTION_S: 0.9, // ...this long before the lethal part of its airflow could reach you (this wins at small sizes)
+  LOOK_AHEAD_S: 0.22, // the camera leads your movement by this much of your velocity...
+  FACING: 0.02, // ...plus a little toward where you face (a share of the view's short side)...
+  INHALE_FACING: 0.06, // ...more while inhaling, where the fight is...
+  MAX_OFFSET: 0.12, // ...never more than this share of the view off you
+  LOOK_SMOOTH: 3, // look-ahead changes smoothed at this rate a second (no jitter from the stick)
+  FOLLOW_OMEGA: 7, // position follows on a critically damped spring this stiff (settles in about half a second)...
+  ZOOM_OMEGA: 2.5, // ...zoom on a softer one
 } as const;
 
 export const SHIFT = {
@@ -553,6 +577,7 @@ export const DESKTOP_SETTINGS = DEVICE_SETTINGS.DESKTOP;
 export const GAME_CONSTANTS = {
   CORE,
   LATCH,
+  CAMERA,
   CANVAS,
   PLAYER,
   OBSTACLE,

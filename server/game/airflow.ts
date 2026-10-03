@@ -1,4 +1,5 @@
 import { INHALE, LATCH } from "../constants/gameConstants.js";
+import { moveSpeed } from "./movement.js";
 
 /**
  * Player-vs-player airflow, shared by the server and browsers: one airflow quality from geometry,
@@ -73,4 +74,32 @@ export function breathRate(beamQuality: number, stamina: number): number {
   }
   if (stamina >= LATCH.BEAM_RECHARGE_CAP) return 0;
   return (beamQuality - LATCH.BEAM_NEUTRAL_AT) / (1 - LATCH.BEAM_NEUTRAL_AT) / LATCH.BEAM_RECHARGE_MS;
+}
+
+/** How much of a creature's gem drain survives at this share of its reach (0 at the mouth, 1 at the tip): all of it in the lethal inner part, fading to none at the tip */
+export function lethalShare(reachShare: number): number {
+  const v = Math.max(0, Math.min(1, (1 - reachShare) / LATCH.DANGER_SHARE));
+  return v * v * (3 - 2 * v);
+}
+
+/** How long (seconds) an inhaler this wide takes to build full pressure on a newly caught creature */
+export function pressureBuildSeconds(width: number): number {
+  return LATCH.PRESSURE_BUILD_S * Math.pow(Math.max(1, width / 20), LATCH.PRESSURE_SIZE_GROWTH);
+}
+
+/** How built-up an inhale's pressure on a creature is after holding it this long (0 to 1, smooth) */
+export function pressureBuild(heldSeconds: number, width: number): number {
+  const v = Math.max(0, Math.min(1, heldSeconds / pressureBuildSeconds(width)));
+  return v * v * (3 - 2 * v);
+}
+
+/** From a creature's middle, how far out its airflow is lethal (the inner LATCH.DANGER_SHARE of its reach, past its mouth) */
+export function dangerRadius(width: number): number {
+  return width * 0.8 + LATCH.DANGER_SHARE * (INHALE.REACH + width * INHALE.REACH_PER_SIZE);
+}
+
+/** How far around a creature this wide must be visible to see a bigger one (CAMERA.THREAT_RATIO) coming in time (CAMERA.REACTION_S) */
+export function threatHorizon(width: number, ratio: number, reactionSeconds: number): number {
+  const predator = width * ratio;
+  return dangerRadius(predator) + moveSpeed(predator) * reactionSeconds;
 }

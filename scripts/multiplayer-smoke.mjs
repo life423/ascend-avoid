@@ -475,22 +475,23 @@ try {
     const besideAt = (gap) => ({ x: 700 + (me().width - bobState().width) / 2, y: 1750 + me().height + gap });
     bob.send('test:moveTo', besideAt(30));
     await sleep(300);
-    let besideHad = bobState().gems;
+    const bobMiddle = () => ({ x: bobState().x + bobState().width / 2, y: bobState().y + bobState().height / 2 });
+    let besideFrom = bobMiddle();
     alice.send('inhale');
     await sleep(800);
     alice.send('exhale');
     await sleep(150);
-    const apartLost = besideHad - bobState().gems;
+    const apartMoved = Math.hypot(bobMiddle().x - besideFrom.x, bobMiddle().y - besideFrom.y);
     await sleep(1200);
     bob.send('test:moveTo', besideAt(1));
     await sleep(300);
-    besideHad = bobState().gems;
+    besideFrom = bobMiddle();
     alice.send('inhale');
     await sleep(800);
     alice.send('exhale');
     await sleep(150);
-    const touchingLost = besideHad - bobState().gems;
-    check(apartLost === 0 && touchingLost >= 2, `touching your side, a creature is caught by your inhale with no aiming; a little gap away, it isn't (${touchingLost} vs ${apartLost} stolen)`);
+    const touchingMoved = Math.hypot(bobMiddle().x - besideFrom.x, bobMiddle().y - besideFrom.y);
+    check(apartMoved < 3 && touchingMoved > 3, `touching your side, a creature is caught by your inhale with no aiming and drawn toward your mouth; a little gap away, it isn't (moved ${Math.round(touchingMoved)} vs ${Math.round(apartMoved)})`);
     await sleep(1300);
 
     // Gravity theft: inhale up close at anyone too big to swallow and their gems stream into you
