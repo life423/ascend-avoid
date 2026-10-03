@@ -969,6 +969,138 @@ try {
     await dave.leave();
 
     // Turbines, in a world of their own (placed by hand)
+    // ----- Cores: heavy objects inhales push around (force -> velocity -> position) -----
+    const kai = await new Client(URL).create('game_room', { name: 'Kai', testBots: 0, testFieldGems: 0, testCalm: true, testTurbines: false, testCores: 1 });
+    kai.onMessage('*', () => {});
+    const lea = await new Client(URL).joinById(kai.roomId, { name: 'Lea' });
+    lea.onMessage('*', () => {});
+    await sleep(1800);
+    const kaiMe = () => kai.state.players.get(kai.sessionId);
+    const leaMe = () => kai.state.players.get(lea.sessionId);
+    const core = () => kai.state.cores[0];
+    const middleOf = (p) => ({ x: p.x + p.width / 2, y: p.y + p.height / 2 });
+    const coreAt = (x, y, vx = 0, vy = 0) => kai.send('test:core', { x, y, vx, vy });
+    const coreSpeed = () => Math.hypot(core().vx, core().vy);
+    const park = (client, x, y, angle) => {
+        client.send('test:moveTo', { x, y });
+        client.send('test:face', { angle });
+    };
+    park(lea, 3400, 3400, 0);
+    park(kai, 1000, 1000, 0);
+    await sleep(300);
+    check(kai.state.cores.length === 1, 'a Core sits in the arena');
+    // A newborn's inhale moves it
+    let k = middleOf(kaiMe());
+    coreAt(k.x + 110, k.y);
+    await sleep(250);
+    let coreFrom = core().x;
+    kai.send('inhale');
+    await sleep(1500);
+    kai.send('exhale');
+    await sleep(100);
+    const newbornMoved = coreFrom - core().x;
+    const newbornHolds = core().x - middleOf(kaiMe()).x;
+    check(newbornMoved > 12 && newbornHolds > 50 && newbornHolds < 100, `a newborn's inhale draws a Core in and holds it off in front (${Math.round(newbornMoved)} units in, held ${Math.round(newbornHolds)} out)`);
+    await sleep(1200);
+    // A giant pulls it harder, and from farther away than a newborn can reach
+    kai.send('test:setGems', { count: 100 });
+    await sleep(300);
+    park(kai, 1000, 1000, 0);
+    await sleep(250);
+    k = middleOf(kaiMe());
+    coreAt(k.x + kaiMe().width / 2 + 230, k.y);
+    await sleep(250);
+    coreFrom = core().x;
+    kai.send('inhale');
+    await sleep(1000);
+    const giantMoved = coreFrom - core().x;
+    check(giantMoved > newbornMoved, `a giant pulls a Core harder, from farther away (${Math.round(giantMoved)} units, from 230 out)`);
+    // Held in a long inhale, it's never pinned against you: the air holds it off
+    let closest = Infinity;
+    for (let i = 0; i < 25; i++) {
+        await sleep(100);
+        const at = middleOf(kaiMe());
+        closest = Math.min(closest, Math.hypot(core().x - at.x, core().y - at.y));
+    }
+    const touchingAt = kaiMe().width / 2 + core().radius;
+    check(closest > touchingAt, `a long inhale never pins a Core against you (closest ${Math.round(closest)}, touching at ${Math.round(touchingAt)})`);
+    // Letting go adds nothing: the suction just stops
+    const beforeLetGo = coreSpeed();
+    kai.send('exhale');
+    await sleep(80);
+    check(coreSpeed() <= beforeLetGo + 5, `letting go adds no speed (${Math.round(beforeLetGo)} then ${Math.round(coreSpeed())})`);
+    // A moving Core keeps its momentum, slowing gently; and it has its own top speed, whoever moved it
+    coreAt(2600, 2400, 400, 0);
+    await sleep(500);
+    check(coreSpeed() > 250 && coreSpeed() < 400, `a moving Core keeps its momentum, slowing gently (${Math.round(coreSpeed())} from 400 after 0.5s)`);
+    coreAt(2000, 2400, 5000, 0);
+    await sleep(150);
+    check(coreSpeed() <= 760, `a Core has its own top speed (${Math.round(coreSpeed())})`);
+    await sleep(1200);
+    // Two inhaling at once: their forces add up, so pulling from opposite sides cancels out
+    lea.send('test:setGems', { count: 100 });
+    await sleep(300);
+    park(kai, 1000, 1000, 0);
+    await sleep(200);
+    k = middleOf(kaiMe());
+    lea.send('test:moveTo', { x: k.x + 2 * (kaiMe().width / 2 + 230) - leaMe().width / 2, y: k.y - leaMe().height / 2 });
+    lea.send('test:face', { angle: Math.PI });
+    coreAt(k.x + kaiMe().width / 2 + 230, k.y);
+    await sleep(300);
+    coreFrom = core().x;
+    kai.send('inhale');
+    lea.send('inhale');
+    await sleep(1000);
+    kai.send('exhale');
+    lea.send('exhale');
+    const tugMoved = Math.abs(core().x - coreFrom);
+    check(tugMoved < giantMoved * 0.5, `two inhaling one Core add their forces: pulling from opposite sides, it barely moves (${Math.round(tugMoved)} vs ${Math.round(giantMoved)} alone)`);
+    await sleep(1500);
+    // Sideways momentum survives near the air's balance point, and turning swings it round you
+    park(kai, 1000, 1000, 0);
+    await sleep(200);
+    k = middleOf(kaiMe());
+    coreAt(k.x + (kaiMe().width / 2 + 34) * 1.7, k.y, 0, 300);
+    kai.send('inhale');
+    await sleep(250);
+    check(Math.abs(core().vy) > 150, `sideways momentum survives near the air's balance point (${Math.round(core().vy)} of 300 after 0.25s)`);
+    coreAt(k.x + (kaiMe().width / 2 + 34) * 1.7, k.y);
+    await sleep(700);
+    const angleFrom = Math.atan2(core().y - k.y, core().x - k.x);
+    for (const angle of [0.5, 1.0, 1.5]) {
+        kai.send('test:face', { angle });
+        await sleep(300);
+    }
+    const swung = Math.atan2(core().y - k.y, core().x - k.x) - angleFrom;
+    kai.send('exhale');
+    check(swung > 0.4, `turning while inhaling swings the Core round you (${swung.toFixed(2)} radians)`);
+    await sleep(1200);
+    // Bumping into a Core slowly just nudges; a fast one stuns (no gems lost), and there's no stun-lock
+    lea.send('test:setGems', { count: 10 });
+    await sleep(300);
+    park(lea, 2600, 1000, 0);
+    await sleep(250);
+    let l = middleOf(leaMe());
+    coreAt(l.x - leaMe().width / 2 - 34 - 20, l.y, 60, 0);
+    await sleep(900);
+    check(!leaMe().stunned, 'a Core drifting into you only nudges you');
+    park(lea, 2600, 1500, 0);
+    await sleep(250);
+    l = middleOf(leaMe());
+    lea.send('inhale');
+    await sleep(100);
+    coreAt(l.x - 300, l.y, 650, 0);
+    await waitFor(() => leaMe().stunned, 1500, 'a fast Core stuns whoever it hits');
+    check(!leaMe().inhaling && leaMe().gems === 10, `a stun stops your inhale, and a Core hit takes no gems (${leaMe().gems} gems)`);
+    lea.send('exhale');
+    await waitFor(() => !leaMe().stunned, 1500, 'the stun wears off on its own');
+    l = middleOf(leaMe());
+    coreAt(l.x - 300, l.y, 650, 0);
+    await sleep(600);
+    check(!leaMe().stunned, 'no stun-lock: hit again straight after, you are not stunned again');
+    await kai.leave();
+    await lea.leave();
+
     const tia = await new Client(URL).create('game_room', { name: 'Tia', testBots: 0, testFieldGems: 0, testCalm: true, testTurbines: 'manual' });
     const tom = await new Client(URL).joinById(tia.roomId, { name: 'Tom' });
     for (const turbineRoom of [tia, tom]) turbineRoom.onMessage('*', () => {});

@@ -4,7 +4,7 @@ import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 import { turnStep, walk } from "../game/movement.js";
 import type { Box, Direction } from "../game/movement.js";
 
-const { ARENA_RULES, BOTS, GEMS, INHALE, PLAYER_STATE, PUSH, WORLD } = GAME_CONSTANTS;
+const { ARENA_RULES, BOTS, GEMS, INHALE, PLAYER_STATE, PUSH, WORLD, CORE } = GAME_CONSTANTS;
 
 
 /** A creature's size: small to start, growing with the square root of its gems, with no ceiling */
@@ -82,6 +82,11 @@ class PlayerSchema extends Schema {
   stealShares = new Map<string, number>();
   /** Server-only: how long each creature has been held in this one's inhale (0-1 of INHALE.LOCK_MS); fades fast once it's out */
   lockOn = new Map<string, number>();
+  /** Stunned by a Core: can't move or inhale until it wears off (synced, for drawing) */
+  stunned: boolean;
+  /** Server-only: when the stun wears off, and when another can land */
+  stunEndsAt = 0;
+  stunImmuneUntil = 0;
   /** Server-only: how long (seconds) each creature has been held in this one's airflow without a break (see INHALE.DRAIN_RAMP) */
   heldFor = new Map<string, number>();
   /** Server-only (bots): when its inhale last had nobody in it, so it can let go and save its breath */
@@ -110,6 +115,7 @@ class PlayerSchema extends Schema {
     this.gulping = "";
     this.gulpEndsAt = 0;
     this.stolenTotal = 0;
+    this.stunned = false;
     this.robbing = "";
     this.robbedTotal = 0;
     this.sessionId = sessionId;
@@ -307,6 +313,14 @@ class PlayerSchema extends Schema {
     }
   }
 
+  /** Hit hard by a Core: stunned for `ms` (no moving, no inhaling), then immune for a moment so it can't stun-lock */
+  stun(now: number, ms: number): void {
+    this.stunned = true;
+    this.stunEndsAt = now + ms;
+    this.stunImmuneUntil = now + ms + CORE.STUN_IMMUNE_MS;
+    this.stopInhale(now);
+  }
+
   /** How fast the player is moving right now: walking and sliding together */
   velocity(): { x: number; y: number } {
     return { x: this.walkX + this.vx, y: this.walkY + this.vy };
@@ -322,7 +336,7 @@ class PlayerSchema extends Schema {
 
   /** Start inhaling (for up to `forMs`, INHALE.MAX_MS for players): you move as usual, and your mouth turns toward your aim */
   startInhale(now: number, forMs: number = INHALE.MAX_MS): void {
-    if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering) return;
+    if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering || this.stunned) return;
     this.breathe(now);
     if (this.stamina < INHALE.MIN_BREATH) return;
     this.inhaling = true;
@@ -375,7 +389,9 @@ class PlayerSchema extends Schema {
       this.slide(deltaTime, worldWidth, worldHeight);
       return;
     }
-    const steer = this.recovering ? { x: 0, y: 0 } : { x: this.steerX, y: this.steerY };
+    if (this.stunned && now >= this.stunEndsAt) this.stunned = false;
+    // Stunned (like recovering), steering can't move you; your facing holds where it was
+    const steer = this.recovering || this.stunned ? { x: 0, y: 0 } : { x: this.steerX, y: this.steerY };
     const box = { x: this.x, y: this.y, width: this.width, height: this.height };
     const velocity = { x: this.walkX, y: this.walkY };
     walk(box, velocity, steer, deltaTime, worldWidth, worldHeight);
@@ -441,6 +457,7 @@ type("string")(PlayerSchema.prototype, "stealingFrom");
 type("string")(PlayerSchema.prototype, "gulping");
 type("number")(PlayerSchema.prototype, "gulpEndsAt");
 type("number")(PlayerSchema.prototype, "stolenTotal");
+type("boolean")(PlayerSchema.prototype, "stunned");
 type("string")(PlayerSchema.prototype, "robbing");
 type("number")(PlayerSchema.prototype, "robbedTotal");
 type("boolean")(PlayerSchema.prototype, "isBot");

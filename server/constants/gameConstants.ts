@@ -318,6 +318,42 @@ export const BOMBS = {
   SPIT_COOLDOWN_MS: 400,
 } as const;
 
+/**
+ * Cores (experimental): heavy objects anywhere in the arena that inhales push around (see
+ * game/corePhysics). Inhale only ever applies force; momentum, swings and tug-of-war come from the
+ * physics. Never swallowed, by anyone. A hard enough hit stuns (no gems lost).
+ */
+export const CORE = {
+  COUNT: 3, // how many are in a world
+  RADIUS: 34,
+  MASS: 6, // in newborns: a creature's mass is (its width / a newborn's) squared
+  DRAG: 0.5, // momentum fades by this share a second (exponentially): half its speed in about 1.4s
+  MAX_SPEED: 750, // the Core's own top speed, whoever moved it
+  WALL_RESTITUTION: 0.6, // share of its speed kept bouncing off the arena's edge
+  CORE_RESTITUTION: 0.8, // ...and off another Core
+  SUCTION: 2400, // pull toward the mouth (divided by MASS for acceleration): a newborn close up, about 400 a second each second...
+  PULL_GROWTH: 0.5, // ...times (width / a newborn's) ^ this for bigger creatures...
+  PULL_MAX: 4, // ...up to this
+  NEAR_ARC: 150, // near the body the airflow wraps wider: its arc grows from the inhale's own toward this many degrees either side
+  WRAP: 0.8, // ...and flows round the body toward the mouth: a Core beside you is swept toward your front this hard (a share of the suction), so turning swings it
+  NEAR_FIELD: 9000, // inside the equilibrium distance, compressed air pushes it back out this hard (times the same size factor)...
+  RADIAL_DAMPING: 4, // ...and its motion toward or away from the body (only that) is damped this much a second there, so the push adds no energy
+  SIDE_MULTIPLIER: 1.25, // equilibrium distance beside the body, as a multiple of (body radius + Core radius)...
+  FRONT_MULTIPLIER: 1.7, // ...and in front of the mouth
+  FALLOFF: 0.8, // the inward pull fades smoothly to nothing over this share of the equilibrium distance outside it
+  STUN_MOMENTUM: 1500, // a hit (MASS x the speed it comes at you) stuns from this momentum...
+  STUN_FULL_MOMENTUM: 3900, // ...for longer up to this one
+  STUN_MIN_MS: 300,
+  STUN_MAX_MS: 850,
+  STUN_IMMUNE_MS: 1200, // after a stun wears off, no more stuns for this long...
+  SEPARATE: 6, // ...and a Core has to come away by this much before it can stun the same player again
+  IMPACT_BOUNCE: 0.35, // how springy a Core is hitting a player (it loses speed, so it can't ricochet through everyone)
+  SPAWN_CLEAR: 600, // spawned at least this far from any player...
+  SPAWN_GAP: 1000, // ...from other Cores...
+  SPAWN_TURBINE_GAP: 500, // ...and from turbines
+  DEBUG: false, // development only: draw each Core's velocity, speed and equilibrium distances
+} as const;
+
 export const SHIFT = {
   ENABLED: false, // arena shifts (the red zone, the shrinking floor and its jackpot) are switched off for now; true brings them back (tests turn them on per world)
   GRID: 10, // shapes are drawn on a 10x10 grid of tiles (420 units each)
@@ -480,6 +516,7 @@ export const DESKTOP_SETTINGS = DEVICE_SETTINGS.DESKTOP;
 
 // Bundle all constants for convenient access
 export const GAME_CONSTANTS = {
+  CORE,
   CANVAS,
   PLAYER,
   OBSTACLE,

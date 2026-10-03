@@ -7,6 +7,8 @@ import { BallSchema } from "./BallSchema.js";
 import { CometSchema } from "./CometSchema.js";
 import { BombSchema } from "./BombSchema.js";
 import { TurbineFlightSchema, TurbineSchema } from "./TurbineSchema.js";
+import { CoreSchema } from "./CoreSchema.js";
+import { airflowOnCore, bodyMass, impactStunMs, stepCore } from "../game/corePhysics.js";
 import { BotBrain } from "../game/bots.js";
 import { closestFloorPoint, isFloor, jackpotSpot, layoutToString, pickLayout, randomFloorPoint } from "../game/layouts.js";
 import type { Layout } from "../game/layouts.js";
@@ -15,7 +17,7 @@ import { moveSpeed } from "../game/movement.js";
 import { exhaustAngle } from "../game/turbine.js";
 import type { Direction } from "../game/movement.js";
 
-const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS, COMETS, INHALE, BOMBS, TURBINE, SUCTION } = GAME_CONSTANTS;
+const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS, COMETS, INHALE, BOMBS, TURBINE, SUCTION, CORE } = GAME_CONSTANTS;
 /** Which way each of a bot's decisions steers it */
 const STEER: Record<Direction, { x: number; y: number }> = {
   up: { x: 0, y: -1 },
@@ -62,6 +64,11 @@ class GameState extends Schema {
   gems: schema.MapSchema<GemSchema>;
   /** Turbines, and the gems on their way through them (see updateTurbines) */
   turbines: schema.ArraySchema<TurbineSchema>;
+  /** Cores: heavy objects inhales push around (see game/corePhysics) */
+  cores: schema.ArraySchema<CoreSchema>;
+  /** Server-only: how many Cores this world keeps (test worlds ask for their own), and ids */
+  private coreCount: number = CORE.COUNT;
+  private nextCoreId = 1;
   flights: schema.MapSchema<TurbineFlightSchema>;
   worldWidth: number;
   worldHeight: number;
@@ -126,6 +133,7 @@ class GameState extends Schema {
     this.bombs = new ArraySchema<BombSchema>();
     this.gems = new MapSchema<GemSchema>();
     this.turbines = new ArraySchema<TurbineSchema>();
+    this.cores = new ArraySchema<CoreSchema>();
     this.flights = new MapSchema<TurbineFlightSchema>();
     this.worldWidth = WORLD.WIDTH;
     this.worldHeight = WORLD.HEIGHT;
@@ -249,6 +257,8 @@ class GameState extends Schema {
         if ((way.x || way.y) && !this.isFloorAt(bot.x + bot.width / 2 + way.x * reach, bot.y + bot.height / 2 + way.y * reach)) bot.steer(0, 0);
       }
     });
+
+    this.updateCores(now, deltaTime);
 
     this.players.forEach((player) => {
       if (player.state !== PLAYER_STATE.ALIVE) {
@@ -1288,6 +1298,135 @@ class GameState extends Schema {
     }
   }
 
+  /** How many Cores this world keeps (test worlds: their own number, 0 unless they ask) */
+  setCoreCount(count: number): void {
+    this.coreCount = Math.max(0, Math.floor(count));
+    while (this.cores.length > this.coreCount) this.cores.pop();
+  }
+
+  /** Test worlds: put a Core (adding it if need be) at a spot, moving at a velocity */
+  placeCore(index: number, x: number, y: number, vx: number, vy: number): void {
+    while (this.cores.length <= index) this.cores.push(new CoreSchema(`c${this.nextCoreId++}`, x, y, CORE.RADIUS));
+    const core = this.cores[index];
+    if (!core) return;
+    core.x = x;
+    core.y = y;
+    core.vx = vx;
+    core.vy = vy;
+    core.touching.clear();
+  }
+
+  /**
+   * Cores: every inhaling creature's airflow adds its force (no owner: two pulling at once is a
+   * tug-of-war), then each moves, bounces off the others, and runs into players: a soft push, or a
+   * stun if it hits hard enough (no gems lost). Kept stocked, away from players, turbines and each other.
+   */
+  private updateCores(now: number, deltaTime: number): void {
+    if (this.cores.length < this.coreCount) {
+      const spot = this.coreSpot();
+      if (spot) this.cores.push(new CoreSchema(`c${this.nextCoreId++}`, spot.x, spot.y, CORE.RADIUS));
+    }
+    this.cores.forEach((core) => {
+      let ax = 0;
+      let ay = 0;
+      this.players.forEach((player) => {
+        if (player.state !== PLAYER_STATE.ALIVE || player.stunned) return;
+        const pull = airflowOnCore({ x: player.x + player.width / 2, y: player.y + player.height / 2, width: player.width, facing: player.facing, inhaling: player.inhaling }, core);
+        ax += pull.ax;
+        ay += pull.ay;
+      });
+      stepCore(core, ax, ay, deltaTime, this.worldWidth, this.worldHeight);
+    });
+    // Cores bounce off each other
+    for (let i = 0; i < this.cores.length; i++) {
+      for (let j = i + 1; j < this.cores.length; j++) {
+        const a = this.cores[i];
+        const b = this.cores[j];
+        if (!a || !b) continue;
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const d = Math.hypot(dx, dy);
+        const overlap = a.radius + b.radius - d;
+        if (overlap <= 0 || d < 1e-6) continue;
+        const nx = dx / d;
+        const ny = dy / d;
+        a.x -= (nx * overlap) / 2;
+        a.y -= (ny * overlap) / 2;
+        b.x += (nx * overlap) / 2;
+        b.y += (ny * overlap) / 2;
+        const closing = (a.vx - b.vx) * nx + (a.vy - b.vy) * ny;
+        if (closing <= 0) continue;
+        const change = (closing * (1 + CORE.CORE_RESTITUTION)) / 2;
+        a.vx -= nx * change;
+        a.vy -= ny * change;
+        b.vx += nx * change;
+        b.vy += ny * change;
+      }
+    }
+    this.cores.forEach((core) => this.coreMeetsPlayers(core, now));
+  }
+
+  /** A Core running into players: they're pushed apart by mass, it loses some speed, and a hard enough hit stuns */
+  private coreMeetsPlayers(core: CoreSchema, now: number): void {
+    this.players.forEach((player) => {
+      const id = player.sessionId;
+      if (player.state !== PLAYER_STATE.ALIVE) {
+        core.touching.delete(id);
+        return;
+      }
+      const dx = core.x - (player.x + player.width / 2);
+      const dy = core.y - (player.y + player.height / 2);
+      const d = Math.hypot(dx, dy);
+      const overlap = player.width / 2 + core.radius - d;
+      if (overlap <= -CORE.SEPARATE) {
+        core.touching.delete(id);
+        return;
+      }
+      if (overlap <= 0) return;
+      const nx = d > 1e-6 ? dx / d : 1;
+      const ny = d > 1e-6 ? dy / d : 0;
+      // Pushed apart by mass: the lighter one moves more
+      const heft = bodyMass(player.width);
+      const coreShare = heft / (heft + CORE.MASS);
+      core.x += nx * overlap * coreShare;
+      core.y += ny * overlap * coreShare;
+      player.nudge(-nx * overlap * (1 - coreShare), -ny * overlap * (1 - coreShare), this.worldWidth, this.worldHeight);
+      const walking = player.velocity();
+      const closing = -((core.vx - walking.x) * nx + (core.vy - walking.y) * ny);
+      if (closing > 0) {
+        // It bounces off, losing speed, so a single Core can't ricochet through everyone at full strength
+        const change = closing * (1 + CORE.IMPACT_BOUNCE) * coreShare;
+        core.vx += nx * change;
+        core.vy += ny * change;
+        // A hard hit stuns; resting against someone never does (it has to come away first), and there's no stun-lock
+        const stunMs = impactStunMs(CORE.MASS * closing);
+        if (stunMs > 0 && !core.touching.has(id) && now >= player.stunImmuneUntil) player.stun(now, stunMs);
+      }
+      core.touching.add(id);
+    });
+  }
+
+  /** Somewhere for a new Core: away from players, other Cores and turbines (null if nowhere fits) */
+  private coreSpot(): { x: number; y: number } | null {
+    const margin = 300;
+    for (let tries = 0; tries < 40; tries++) {
+      const x = margin + Math.random() * (this.worldWidth - margin * 2);
+      const y = margin + Math.random() * (this.worldHeight - margin * 2);
+      let clear = true;
+      this.players.forEach((player) => {
+        if (Math.hypot(player.x + player.width / 2 - x, player.y + player.height / 2 - y) < CORE.SPAWN_CLEAR) clear = false;
+      });
+      this.cores.forEach((core) => {
+        if (Math.hypot(core.x - x, core.y - y) < CORE.SPAWN_GAP) clear = false;
+      });
+      this.turbines.forEach((turbine) => {
+        if (Math.hypot(turbine.x - x, turbine.y - y) < CORE.SPAWN_TURBINE_GAP) clear = false;
+      });
+      if (clear) return { x, y };
+    }
+    return null;
+  }
+
   /** Test worlds: "auto" runs turbines as usual, "manual" only has the ones placed by hand, "off" has none */
   setTurbines(mode: string): void {
     this.turbinesAuto = mode === "auto";
@@ -1621,6 +1760,7 @@ type([CometSchema])(GameState.prototype, "comets");
 type([BombSchema])(GameState.prototype, "bombs");
 type({ map: GemSchema })(GameState.prototype, "gems");
 type([TurbineSchema])(GameState.prototype, "turbines");
+type([CoreSchema])(GameState.prototype, "cores");
 type({ map: TurbineFlightSchema })(GameState.prototype, "flights");
 type("number")(GameState.prototype, "worldWidth");
 type("number")(GameState.prototype, "worldHeight");

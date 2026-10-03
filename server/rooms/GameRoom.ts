@@ -37,6 +37,10 @@ export class GameRoom extends Room<GameState> {
     if (!IS_PRODUCTION && options.testTraffic === "always") this.state.forceTraffic("always");
     // ...and one with bombs (switched off in live worlds)
     if (!IS_PRODUCTION && options.testBombs === true) this.state.enableBombs();
+    // Test worlds have no Cores unless they ask for some
+    if (!IS_PRODUCTION && (Number.isInteger(options.testCores) || Number.isInteger(options.testBots))) {
+      this.state.setCoreCount(Number.isInteger(options.testCores) ? options.testCores : 0);
+    }
     // Arena shifts are off in normal play (SHIFT.ENABLED); a test world can switch them on
     if (!IS_PRODUCTION && options.testShifts === true) this.state.enableShifts();
     // ...and one with no bots
@@ -124,6 +128,9 @@ export class GameRoom extends Room<GameState> {
       });
       this.onMessage("test:shift", (_client, data: any) => {
         this.state.forcePhase(String(data?.phase || "grace"), Number(data?.msLeft) || 5000, Date.now());
+      });
+      this.onMessage("test:core", (_client, data: any) => {
+        this.state.placeCore(Number(data?.index) || 0, Number(data?.x) || 0, Number(data?.y) || 0, Number(data?.vx) || 0, Number(data?.vy) || 0);
       });
       this.onMessage("test:jackpot", (client) => {
         const player = playerOf(client);
