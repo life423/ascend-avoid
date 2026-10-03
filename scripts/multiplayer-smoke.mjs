@@ -1145,7 +1145,7 @@ try {
     kai.send('inhale');
     await waitFor(() => kaiMe().latchTarget === lea.sessionId, 1500, 'a creature caught cleanly in your airflow is latched');
     await sleep(400);
-    check(kaiMe().beamFocus > 0.2, `a good latch focuses the airflow into a stream toward them (focus ${kaiMe().beamFocus.toFixed(2)})`);
+    check(kaiMe().beamFocus > 0.2 && kaiMe().latchQuality > 0.3, `a good latch focuses the airflow into a stream toward them (focus ${kaiMe().beamFocus.toFixed(2)}, quality ${kaiMe().latchQuality.toFixed(2)})`);
     const facingBefore = kaiMe().facing;
     lea.send('test:moveTo', { x: leaMe().x, y: leaMe().y + 45 });
     await sleep(700);

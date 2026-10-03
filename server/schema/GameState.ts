@@ -1389,14 +1389,22 @@ class GameState extends Schema {
     this.players.forEach((attacker) => {
       const target = attacker.latchTarget ? this.players.get(attacker.latchTarget) : undefined;
       attacker.focused = !!target && attacker.focusNext;
-      const quality = target && attacker.focused ? attacker.airQuality.get(target.sessionId) ?? 0 : 0;
+      const latchQuality = target ? attacker.airQuality.get(target.sessionId) ?? 0 : 0;
+      const quality = target && attacker.focused ? latchQuality : 0;
+      // A contested connection (inhaling each other) only saves breath as this side wins the counterflow
+      let contest = 1;
+      if (target && target.inhaling && target.latchTarget === attacker.sessionId) {
+        const total = attacker.latchScore + target.latchScore;
+        contest = total > 1e-6 ? Math.max(0, Math.min(1, (attacker.latchScore / total - 0.5) * 2)) : 0;
+      }
       const focus = target && attacker.focused ? Math.min(1, Math.max(0, (quality - LATCH.BEAM_FOCUS_FROM) / (LATCH.BEAM_FULL_AT - LATCH.BEAM_FOCUS_FROM))) : 0;
-      const beam = target && attacker.focused && now - attacker.latchSince >= LATCH.BEAM_STABLE_MS ? quality : 0;
+      const beam = target && attacker.focused && now - attacker.latchSince >= LATCH.BEAM_STABLE_MS ? quality * contest : 0;
       const pull = target && attacker.focused ? attacker.latchScore : 0;
       const round = (v: number) => Math.round(v * 100) / 100;
       if (attacker.beamFocus !== round(focus)) attacker.beamFocus = round(focus);
       if (attacker.beamQuality !== round(beam)) attacker.beamQuality = round(beam);
       if (attacker.latchPull !== round(pull)) attacker.latchPull = round(pull);
+      if (attacker.latchQuality !== round(latchQuality)) attacker.latchQuality = round(latchQuality);
       if (target && pull > 0) {
         const dx = target.x + target.width / 2 - (attacker.x + attacker.width / 2);
         const dy = target.y + target.height / 2 - (attacker.y + attacker.height / 2);

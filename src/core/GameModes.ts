@@ -8,7 +8,7 @@ import { getSprite } from '../utils/sprites'
 import { GameEvents } from '../constants/client-constants'
 import { ARENA_RULES, BOMBS, CORE, GEMS, INHALE, LATCH, PLAYER_COLORS, SHIFT, TURBINE, WORLD } from '../../server/constants/gameConstants'
 import { airflowOnCore } from '../../server/game/corePhysics'
-import { breathRate } from '../../server/game/airflow'
+import { breathRate, cleanAir, latchSizeFactor, streamLook } from '../../server/game/airflow'
 import { CameraRig } from '../../server/game/camera'
 import { moveSpeed, turnStep, walk } from '../../server/game/movement'
 import { exhaustAngle, launchDuration, launchPosition } from '../../server/game/turbine'
@@ -1017,7 +1017,7 @@ function suctionPower(width: number): number {
 }
 
 /** How a creature's airflow is moving (see drawAirflow) */
-type Airflow = { heading: number; along: number; x: number; y: number; at: number; inhaling: boolean; since: number; hookId: string; hookedAt: number }
+type Airflow = { heading: number; along: number; x: number; y: number; at: number; inhaling: boolean; since: number; hookId: string; hookedAt: number; coherence: number }
 
 /** A point on a quadratic curve from (ax, ay) through control (bx, by) to (cx, cy) */
 function onCurve(ax: number, ay: number, bx: number, by: number, cx: number, cy: number, t: number): { x: number; y: number } {
@@ -2779,7 +2779,7 @@ export class MultiplayerMode extends GameMode {
         const heft = Math.min(3, Math.sqrt(size / ARENA_RULES.PLAYER_SIZE))
         let flow = this.flows.get(id)
         if (!flow) {
-            flow = { heading: facing, along: 0, x, y, at: timestamp, inhaling: false, since: timestamp, hookId: '', hookedAt: timestamp }
+            flow = { heading: facing, along: 0, x, y, at: timestamp, inhaling: false, since: timestamp, hookId: '', hookedAt: timestamp, coherence: 0 }
             this.flows.set(id, flow)
         }
         if (!flow.inhaling) {
@@ -2829,7 +2829,16 @@ export class MultiplayerMode extends GameMode {
             flow.hookedAt = timestamp
         }
         // How focused the stream is: the latch's airflow quality, from the server (it frays back into a cone as that falls)
-        const straight = Math.min(1, Math.max(0, Number(player.beamFocus) || 0))
+        // The cone's own streaks stay a cone; the connection to a latched creature is its own stream (drawStream)
+        const straight = 0
+        // Coherence follows the latch's real airflow quality; it rises smoothly but falls fast, so a broken latch frays straight back into the cone
+        const latchedQuality = player.latchTarget ? Math.max(0, Math.min(1, Number(player.latchQuality) || 0)) : 0
+        flow.coherence = latchedQuality >= flow.coherence
+            ? flow.coherence + (latchedQuality - flow.coherence) * Math.min(1, dt * 8)
+            : Math.max(latchedQuality, flow.coherence - dt * 4)
+        const fraying = Math.max(0, flow.coherence - latchedQuality)
+        const coherent = Math.min(1, flow.coherence / 0.6)
+        const beamShare = coherent * coherent * (3 - 2 * coherent)
         // ...pinching tighter the longer the hold (as the drain escalates)
         const pinch = 1 - 0.5 * straight
         ctx.save()
@@ -2852,7 +2861,8 @@ export class MultiplayerMode extends GameMode {
         ctx.setLineDash([])
         // The streaks, each riding a curved line from far out into the mouth
         const far = flow.heading + lean
-        const streaks = Math.max(3, Math.round((8 + 5 * heft + 3 * power) * (1 - 0.6 * weak)))
+        // (as the stream forms, the cone gives its air to it)
+        const streaks = Math.max(3, Math.round((8 + 5 * heft + 3 * power) * (1 - 0.6 * weak) * (1 - 0.7 * beamShare)))
         const period = (length / (INHALE_LOOK.STREAK_SPEED * power * (1.6 / heft))) * 1000
         const turbulence = 0.06 * heft * (1 - 0.5 * tight) + 0.12 * weak
         const segment = 0.1 + 0.04 * power
@@ -2887,6 +2897,11 @@ export class MultiplayerMode extends GameMode {
             ctx.moveTo(from.x, from.y)
             ctx.quadraticCurveTo(mid.x, mid.y, to.x, to.y)
             ctx.stroke()
+        }
+        // The stream to a latched creature, drawn from the real airflow numbers
+        const streamTarget = player.latchTarget ? world?.players?.get(player.latchTarget) : null
+        if (streamTarget && flow.coherence > 0.02) {
+            this.drawStream(ctx, id, player, streamTarget, mouthX, mouthY, facing, timestamp, flow.coherence, fraying, power, heft)
         }
         // Side streams peeling off to each creature it's robbing and each gem in its pull
         const pulled: { x: number; y: number; color: string }[] = []
@@ -3085,6 +3100,97 @@ export class MultiplayerMode extends GameMode {
             ctx.restore()
         })
         for (const id of [...this.coresDrawn.keys()]) if (!present.has(id)) this.coresDrawn.delete(id)
+    }
+
+    /**
+     * The stream between an inhaler and its latched creature, drawn only from the airflow numbers
+     * (game/airflow streamLook): it narrows and smooths as quality rises, bends as the creature slips
+     * off your facing (the air leaves your mouth along it and curves to them), runs continuous when the
+     * beam is efficient on breath and breaks up when it's wasteful, churns where bodies press together,
+     * and, between two inhaling each other, the flows meet in a turbulent pressure zone pushed toward
+     * whichever side is losing. Coherence, not brightness, says how strong it is.
+     */
+    private drawStream(ctx: CanvasRenderingContext2D, id: string, player: any, target: any, mouthX: number, mouthY: number, facing: number, timestamp: number, coherence: number, fraying: number, power: number, heft: number): void {
+        const at = this.drawnPositions.get(player.latchTarget) ?? target
+        const tx = at.x + target.width / 2
+        const ty = at.y + target.height / 2
+        const dx = tx - mouthX
+        const dy = ty - mouthY
+        const dist = Math.hypot(dx, dy)
+        if (dist < 1) return
+        const nx = -dy / dist
+        const ny = dx / dist
+        const me = this.drawnPositions.get(id) ?? player
+        const mutual = Boolean(target.inhaling) && target.latchTarget === id
+        const mine = coherence * latchSizeFactor(player.width, target.width)
+        const theirs = mutual ? (Number(target.latchQuality) || 0) * latchSizeFactor(target.width, player.width) : 0
+        const look = streamLook({
+            quality: coherence,
+            beamQuality: Number(player.beamQuality) || 0,
+            clean: cleanAir({ x: me.x + player.width / 2, y: me.y + player.height / 2, width: player.width }, { x: tx, y: ty, width: target.width }),
+            mine,
+            theirs,
+            fraying,
+        })
+        // Where my air comes from: the creature, or (inhaling each other) where our flows meet
+        const sourceX = mouthX + dx * look.boundary
+        const sourceY = mouthY + dy * look.boundary
+        const span = dist * look.boundary
+        // The air leaves the mouth along your facing and curves to them: off your facing, it bends
+        const bendX = mouthX + Math.cos(facing) * span * 0.5
+        const bendY = mouthY + Math.sin(facing) * span * 0.5
+        const width = target.width * 0.5 * (1 - 0.65 * look.coherence) + 2
+        const lanes = Math.round(4 + 8 * look.efficiency + 2 * heft)
+        const segment = 0.1 + 0.3 * look.efficiency * look.coherence
+        const period = (Math.max(30, span) / (INHALE_LOOK.STREAK_SPEED * Math.max(1, power) * (0.8 + 0.6 * look.coherence))) * 1000
+        ctx.save()
+        ctx.lineCap = 'round'
+        ctx.strokeStyle = look.recharging ? 'rgba(190, 255, 235, 1)' : 'rgba(220, 245, 255, 1)'
+        ctx.lineWidth = 1.1 + 1.3 * look.coherence
+        const pointAt = (u: number, lane: number, phase: number) => {
+            const k = 1 - u
+            const px = k * k * sourceX + 2 * k * u * bendX + u * u * mouthX
+            const py = k * k * sourceY + 2 * k * u * bendY + u * u * mouthY
+            const offset = width * lane * (1 - u * 0.8) + Math.sin(timestamp / 70 + phase + u * 6) * look.turbulence * width * 0.8
+            return { x: px + nx * offset, y: py + ny * offset }
+        }
+        for (let i = 0; i < lanes; i++) {
+            // A wasteful beam is broken up; an efficient one runs unbroken
+            if (look.efficiency < 0.5 && (i + Math.floor(timestamp / 90)) % 3 === 0) continue
+            const lane = lanes > 1 ? (i / (lanes - 1)) * 2 - 1 : 0
+            const t = (((timestamp / period + i * 0.37) % 1) + 1) % 1
+            const end = Math.min(1, t + segment)
+            const from = pointAt(t, lane, i * 2.1)
+            const mid = pointAt((t + end) / 2, lane, i * 2.1)
+            const to = pointAt(end, lane, i * 2.1)
+            ctx.globalAlpha = (0.3 + 0.5 * look.coherence) * Math.min(1, t * 4)
+            ctx.beginPath()
+            ctx.moveTo(from.x, from.y)
+            ctx.quadraticCurveTo(mid.x, mid.y, to.x, to.y)
+            ctx.stroke()
+        }
+        // Smothered: where the bodies press together, the air bunches up and churns
+        const churn = (cx: number, cy: number, radius: number, strength: number, seed: number) => {
+            ctx.lineWidth = 1.5
+            ctx.strokeStyle = 'rgba(220, 240, 255, 1)'
+            const count = Math.round(4 + 6 * strength)
+            for (let j = 0; j < count; j++) {
+                const a = timestamp / (160 + 40 * (j % 3)) + j * 1.7 + seed
+                const r = radius * (0.4 + 0.6 * ((j * 0.618) % 1))
+                ctx.globalAlpha = 0.25 + 0.45 * strength
+                ctx.beginPath()
+                ctx.arc(cx + Math.cos(a * 0.7) * r * 0.5, cy + Math.sin(a * 0.9) * r * 0.5, r * 0.45, a, a + 1.6 + strength)
+                ctx.stroke()
+            }
+        }
+        const smother = 1 - cleanAir({ x: me.x + player.width / 2, y: me.y + player.height / 2, width: player.width }, { x: tx, y: ty, width: target.width })
+        if (smother > 0.02) churn((mouthX + tx) / 2, (mouthY + ty) / 2, Math.min(player.width, target.width) * 0.6, smother, 0)
+        // Inhaling each other: a turbulent pressure zone where the flows meet (drawn once per pair), bigger the more even the contest
+        if (mutual && look.boundary < 0.98 && id < player.latchTarget) {
+            const balance = 1 - Math.abs(mine - theirs) / Math.max(1e-6, mine + theirs)
+            churn(sourceX, sourceY, Math.min(player.width, target.width) * (0.5 + 0.7 * balance), 0.4 + 0.6 * balance, 1.3)
+        }
+        ctx.restore()
     }
 
     /** Phones and tablets: the score in a pill at the top middle, and how many are playing beside the menu button */

@@ -7,7 +7,7 @@ import { airflowQuality, breathRate, cleanAir, latchSizeFactor } from "../game/a
 import { turnRate, turnStep } from "../game/movement.js";
 import { CAMERA, CORE, INHALE, LATCH } from "../constants/gameConstants.js";
 import { CameraRig, lookAhead, springStep, viewShort } from "../game/camera.js";
-import { dangerRadius, lethalShare, pressureBuild } from "../game/airflow.js";
+import { dangerRadius, lethalShare, pressureBuild, streamLook } from "../game/airflow.js";
 import { moveSpeed } from "../game/movement.js";
 
 let failed = 0;
@@ -84,6 +84,14 @@ check(Math.abs(giantTurn.facing) <= turnRate(143, true) * step + 1e-9 && newborn
 // Range catches, closeness kills; pressure builds
 check(lethalShare(0.3) === 1 && lethalShare(1) === 0 && lethalShare(0.75) > 0 && lethalShare(0.75) < 1, "the outer part of an inhale's reach isn't lethal: drain fades to nothing toward the tip");
 check(pressureBuild(0, 20) === 0 && pressureBuild(0.35, 20) === 1 && pressureBuild(0.35, 143) < 1 && pressureBuild(0.8, 143) === 1, "an inhale's pressure builds from nothing, more slowly for a giant");
+
+// The stream's look comes only from the airflow numbers
+const steady = { quality: 0.9, beamQuality: 0, clean: 1, mine: 0.9, theirs: 0, fraying: 0 };
+check(streamLook({ ...steady, quality: 0.3 }).coherence < streamLook(steady).coherence && streamLook({ ...steady, quality: 0.3 }).turbulence > streamLook(steady).turbulence, "a weak connection looks broad and noisy; a strong one narrow and smooth");
+check(streamLook({ ...steady, clean: 0.4 }).turbulence > streamLook(steady).turbulence, "overlapping bodies make the stream churn");
+check(streamLook({ ...steady, fraying: 0.3 }).turbulence > streamLook(steady).turbulence, "a connection falling apart frays");
+check(streamLook({ ...steady, beamQuality: 0 }).efficiency === 0 && streamLook({ ...steady, beamQuality: LATCH.BEAM_NEUTRAL_AT }).efficiency === 1 && streamLook({ ...steady, beamQuality: 0.95 }).recharging, "its density follows breath: wasteful, neutral, recharging");
+check(streamLook({ ...steady, theirs: 0.9 }).boundary === 0.5 && streamLook({ ...steady, mine: 1.2, theirs: 0.4 }).boundary > 0.5 && streamLook(steady).boundary === 1, "inhaling each other, the flows meet in the middle when even, pushed toward the losing side, and an uncontested stream reaches all the way");
 
 // Camera
 let spring = { value: 0, velocity: 0 };

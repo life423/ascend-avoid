@@ -103,3 +103,32 @@ export function threatHorizon(width: number, ratio: number, reactionSeconds: num
   const predator = width * ratio;
   return dangerRadius(predator) + moveSpeed(predator) * reactionSeconds;
 }
+
+/** What a latch's stream looks like comes only from these airflow numbers */
+export interface StreamState {
+  quality: number; // the latch's airflow quality
+  beamQuality: number; // the beam quality that counts for breath (0 unless owned, stable, uncontested)
+  clean: number; // how clear the air between the bodies is (overlap smothers it)
+  mine: number; // this side's latch score
+  theirs: number; // the other side's, when they're inhaling this one back (0 otherwise)
+  fraying: number; // how fast the connection is falling apart (0 when steady)
+}
+
+/**
+ * The stream's look, straight from the airflow (so the picture can't lie): coherence is the airflow
+ * quality; turbulence comes from poor quality, fraying and overlap; density from how efficient the
+ * beam is on breath (recharging when it refills); and between two inhaling each other, the share of
+ * the way across where their flows meet (1: this side's stream reaches all the way).
+ */
+export function streamLook(state: StreamState): { coherence: number; turbulence: number; efficiency: number; recharging: boolean; boundary: number } {
+  const coherence = clamp01(state.quality);
+  const rate = breathRate(state.beamQuality, 0) * INHALE.MAX_MS;
+  const total = state.mine + state.theirs;
+  return {
+    coherence,
+    turbulence: clamp01(1 - coherence + state.fraying * 1.5 + (1 - state.clean) * 0.8),
+    efficiency: clamp01(1 + rate),
+    recharging: rate > 0,
+    boundary: state.theirs <= 0 ? 1 : total > 1e-6 ? state.mine / total : 0.5,
+  };
+}

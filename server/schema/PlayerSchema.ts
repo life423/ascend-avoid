@@ -93,6 +93,8 @@ class PlayerSchema extends Schema {
   beamFocus: number;
   beamQuality: number;
   latchPull: number;
+  /** The airflow quality on the latched creature (synced, owned or not, so its stream is drawn as it really is) */
+  latchQuality: number;
   /** Server-only: smoothed airflow quality on each creature, when the latch began and when it last slipped, its score, whether it owns the focused connection, and the aim it adds */
   airQuality = new Map<string, number>();
   latchSince = 0;
@@ -135,6 +137,7 @@ class PlayerSchema extends Schema {
     this.beamFocus = 0;
     this.beamQuality = 0;
     this.latchPull = 0;
+    this.latchQuality = 0;
     this.robbing = "";
     this.robbedTotal = 0;
     this.sessionId = sessionId;
@@ -338,6 +341,7 @@ class PlayerSchema extends Schema {
     if (this.beamFocus) this.beamFocus = 0;
     if (this.beamQuality) this.beamQuality = 0;
     if (this.latchPull) this.latchPull = 0;
+    if (this.latchQuality) this.latchQuality = 0;
     this.focused = false;
     this.focusNext = false;
     this.latchScore = 0;
@@ -503,6 +507,7 @@ type("string")(PlayerSchema.prototype, "latchTarget");
 type("number")(PlayerSchema.prototype, "beamFocus");
 type("number")(PlayerSchema.prototype, "beamQuality");
 type("number")(PlayerSchema.prototype, "latchPull");
+type("number")(PlayerSchema.prototype, "latchQuality");
 type("string")(PlayerSchema.prototype, "robbing");
 type("number")(PlayerSchema.prototype, "robbedTotal");
 type("boolean")(PlayerSchema.prototype, "isBot");
