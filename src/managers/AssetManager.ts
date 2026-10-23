@@ -107,10 +107,9 @@ export default class AssetManager {
     
     return new Promise((resolve) => {
       const img = new Image();
-      let timeoutId: number;
       
       // Set up timeout
-      timeoutId = window.setTimeout(() => {
+      const timeoutId = window.setTimeout(() => {
         console.warn(`Loading image timed out: ${pathToTry}, retrying (${retryCount + 1}/${this.maxRetries})`);
         
         // If we haven't hit max retries, try again
@@ -164,10 +163,9 @@ export default class AssetManager {
     
     return new Promise((resolve, reject) => {
       const audio = new Audio();
-      let timeoutId: number;
       
       // Set up timeout
-      timeoutId = window.setTimeout(() => {
+      const timeoutId = window.setTimeout(() => {
         console.warn(`Loading audio timed out: ${src}, retrying (${retryCount + 1}/${this.maxRetries})`);
         
         // If we haven't hit max retries, try again

@@ -36,6 +36,9 @@ jobs:
         npm run type-check
         cd server && npm run type-check
     
+    - name: Lint
+      run: npm run lint
+
     - name: Build application
       run: npm run build
     

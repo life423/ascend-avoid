@@ -473,7 +473,8 @@ export class DrawerUI {
     }
 
     public toggle(): void {
-        this.isOpen ? this.close() : this.open();
+        if (this.isOpen) this.close();
+        else this.open();
     }
 
     public open(): void {
