@@ -8,8 +8,7 @@ import { CometSchema } from "./CometSchema.js";
 import { BombSchema } from "./BombSchema.js";
 import { TurbineFlightSchema, TurbineSchema } from "./TurbineSchema.js";
 import { CoreSchema } from "./CoreSchema.js";
-import { airflowOnCore, bodyMass, impactStunMs, stepCore } from "../game/corePhysics.js";
-import { airflowQuality, cleanAir, latchSizeFactor, lethalShare, pressureBuild, pressureBuildSeconds, scaleDrain } from "../game/airflow.js";
+import { airflowQuality, cleanAir, lethalShare, pressureBuild, pressureBuildSeconds, scaleDrain } from "../game/airflow.js";
 import { BotBrain } from "../game/bots.js";
 import { closestFloorPoint, isFloor, jackpotSpot, layoutToString, pickLayout, randomFloorPoint } from "../game/layouts.js";
 import type { Layout } from "../game/layouts.js";
@@ -17,8 +16,12 @@ import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 import { moveSpeed } from "../game/movement.js";
 import { exhaustAngle } from "../game/turbine.js";
 import type { Direction } from "../game/movement.js";
+import { updateCores } from "../systems/cores.js";
+import { updateLatches } from "../systems/latches.js";
+import { updateTurbines, moveTurbinesOntoFloor, clearanceAt } from "../systems/turbines.js";
+import { updateTraffic, reshuffleLanes, launchObstacle } from "../systems/traffic.js";
 
-const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS, COMETS, INHALE, BOMBS, TURBINE, SUCTION, CORE, LATCH } = GAME_CONSTANTS;
+const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS, COMETS, INHALE, BOMBS, TURBINE, CORE, LATCH } = GAME_CONSTANTS;
 /** Which way each of a bot's decisions steers it */
 const STEER: Record<Direction, { x: number; y: number }> = {
   up: { x: 0, y: -1 },
@@ -27,20 +30,8 @@ const STEER: Record<Direction, { x: number; y: number }> = {
   right: { x: 1, y: 0 },
 };
 
-/** How strongly suction moves a body: the puller's width over the target's, softened and kept in bounds (see SUCTION) */
-function suctionScale(pullerWidth: number, targetWidth: number): number {
-  return Math.min(SUCTION.MAX, Math.max(SUCTION.MIN, Math.pow(pullerWidth / Math.max(1, targetWidth), SUCTION.SOFTEN)));
-}
-
 /** How many random spots to try when looking for a safe place to (re)spawn */
 const SPAWN_TRIES = 24;
-
-/** Distance from a point to a rectangle (0 when the point is inside it) */
-function distanceToRect(px: number, py: number, x: number, y: number, width: number, height: number): number {
-  const dx = Math.max(x - px, 0, px - (x + width));
-  const dy = Math.max(y - py, 0, py - (y + height));
-  return Math.hypot(dx, dy);
-}
 
 /** How much harder gems come off someone held in an airflow this long without a break (INHALE.DRAIN_RAMP) */
 function drainRamp(held: number): number {
@@ -68,8 +59,8 @@ class GameState extends Schema {
   /** Cores: heavy objects inhales push around (see game/corePhysics) */
   cores: schema.ArraySchema<CoreSchema>;
   /** Server-only: how many Cores this world keeps (test worlds ask for their own), and ids */
-  private coreCount: number = CORE.COUNT;
-  private nextCoreId = 1;
+  coreCount: number = CORE.COUNT;
+  nextCoreId = 1;
   flights: schema.MapSchema<TurbineFlightSchema>;
   worldWidth: number;
   worldHeight: number;
@@ -96,8 +87,8 @@ class GameState extends Schema {
   /** Server-only: never calm (the automated test), and when the next traffic wave is due */
   alwaysTraffic = false;
   /** Server-only: whether this world has traffic at all (TRAFFIC.ENABLED; the test can switch it on) */
-  private trafficOn: boolean = TRAFFIC.ENABLED;
-  private nextWaveAt = 0;
+  trafficOn: boolean = TRAFFIC.ENABLED;
+  nextWaveAt = 0;
   /** Traffic comes in waves: "calm", "warning" (a chip counts down) or "wave"; waveAt is when that part ends */
   trafficWave: string;
   waveAt: number;
@@ -107,7 +98,7 @@ class GameState extends Schema {
   private nextBotId = 1;
   private startedAt = 0;
   /** Server-only: each traffic lane's direction (1 or -1) and speed; across lanes first, then down */
-  private lanes: { direction: number; speed: number }[] = [];
+  lanes: { direction: number; speed: number }[] = [];
   private layout: Layout | null = null;
   private lastLayoutName = "";
   private nextShowerAt = 0;
@@ -115,14 +106,14 @@ class GameState extends Schema {
   /** Called with moments worth telling everyone about (who shoved whom off the edge, who took the jackpot) */
   onEvent: ((type: string, data: any) => void) | null = null;
   private nextPlayerIndex = 0;
-  private nextGemId = 0;
+  nextGemId = 0;
   /** Loose gems the field keeps topped up to, and how many are out there now */
   private fieldGemTarget: number;
   private fieldGems = 0;
   /** Server-only: whether turbines come and go on their own (test worlds ask), when the next ones are due, and ids */
-  private turbinesAuto: boolean = TURBINE.ENABLED;
-  private turbineDue: number[] = [];
-  private nextTurbineId = 1;
+  turbinesAuto: boolean = TURBINE.ENABLED;
+  turbineDue: number[] = [];
+  nextTurbineId = 1;
   private nextFlightId = 1;
 
   constructor(fieldGemTarget: number = GEMS.FIELD_COUNT) {
@@ -150,10 +141,10 @@ class GameState extends Schema {
     this.jackpotHolder = "";
     this.jackpotProgress = 0;
     this.fieldGemTarget = fieldGemTarget;
-    this.reshuffleLanes();
+    reshuffleLanes(this);
     for (let i = 0; i < WORLD.OBSTACLE_COUNT; i++) {
       const obstacle = new ObstacleSchema();
-      if (!this.launchObstacle(obstacle, true)) obstacle.park();
+      if (!launchObstacle(this, obstacle, true)) obstacle.park();
       this.obstacles.push(obstacle);
     }
     for (let i = 0; i < BALLS.COUNT; i++) this.balls.push(new BallSchema(this.worldWidth, this.worldHeight));
@@ -199,15 +190,15 @@ class GameState extends Schema {
     this.time = Math.round(now - this.startedAt);
     this.players.forEach((player) => player.markTick());
     this.updateShift(deltaTime, now);
-    this.updateTraffic();
+    updateTraffic(this);
     this.updateInhales(now, deltaTime);
-    this.updateLatches(now, deltaTime);
+    updateLatches(this, now, deltaTime);
     this.updateBombs(now, deltaTime);
-    this.updateTurbines(now, deltaTime);
+    updateTurbines(this, now, deltaTime);
     this.obstacles.forEach((obstacle) => {
       if (!obstacle.update(deltaTime, this.worldWidth, this.worldHeight)) {
         // Between waves, traffic that leaves stays out of the world
-        if (this.trafficWave !== "wave" || !this.launchObstacle(obstacle, false)) obstacle.park();
+        if (this.trafficWave !== "wave" || !launchObstacle(this, obstacle, false)) obstacle.park();
       }
     });
     this.balls.forEach((ball) => {
@@ -260,7 +251,7 @@ class GameState extends Schema {
       }
     });
 
-    this.updateCores(now, deltaTime);
+    updateCores(this, now, deltaTime);
 
     this.players.forEach((player) => {
       if (player.state !== PLAYER_STATE.ALIVE) {
@@ -579,7 +570,7 @@ class GameState extends Schema {
   }
 
   /** Lost their last gem (robbed, or fed to a turbine): they shrink away to nothing and are out until they respawn */
-  private drain(victim: PlayerSchema, now: number, thief?: PlayerSchema): void {
+  drain(victim: PlayerSchema, now: number, thief?: PlayerSchema): void {
     this.onEvent?.("vanish", {
       id: victim.sessionId,
       x: Math.round(victim.x + victim.width / 2),
@@ -915,38 +906,8 @@ class GameState extends Schema {
     });
   }
 
-  /**
-   * The traffic cycle: calm, then (every minute or three) a "Traffic incoming" warning, then a wave
-   * that streams everything in for TRAFFIC.WAVE_MS before the arena clears again. A wave never
-   * runs alongside an arena shift: if one is due soon, the wave waits until it's over.
-   */
-  private updateTraffic(): void {
-    if (!this.trafficOn) return;
-    if (this.alwaysTraffic) {
-      if (this.trafficWave !== "wave") this.startWave();
-      return;
-    }
-    const t = this.time;
-    if (this.trafficWave === "wave" && t >= this.waveAt) {
-      this.trafficWave = "calm";
-      this.nextWaveAt = t + TRAFFIC.WAVE_GAP_MIN_MS + Math.random() * (TRAFFIC.WAVE_GAP_MAX_MS - TRAFFIC.WAVE_GAP_MIN_MS);
-    } else if (this.trafficWave === "calm" && t >= this.nextWaveAt) {
-      const clearOfShift =
-        this.shiftPhase === "normal" &&
-        this.phaseEndsAt - t > TRAFFIC.WAVE_WARNING_MS + TRAFFIC.WAVE_MS + TRAFFIC.WAVE_SHIFT_MARGIN_MS;
-      if (clearOfShift) {
-        this.trafficWave = "warning";
-        this.waveAt = t + TRAFFIC.WAVE_WARNING_MS;
-      } else {
-        this.nextWaveAt = t + 5000;
-      }
-    } else if (this.trafficWave === "warning" && t >= this.waveAt) {
-      this.startWave();
-    }
-  }
-
   /** A traffic wave begins: comets and balls stream in (lane traffic enters as its lanes allow) */
-  private startWave(): void {
+  startWave(): void {
     this.trafficWave = "wave";
     this.waveAt = this.time + TRAFFIC.WAVE_MS;
     this.comets.forEach((comet, index) => comet.launch(this.worldWidth, this.worldHeight, index >= COMETS.STRAIGHT));
@@ -969,60 +930,6 @@ class GameState extends Schema {
     } else if (phase === "wave" || phase === "always") {
       this.startWave();
     }
-  }
-
-  /** Give every traffic lane a new direction and speed */
-  private reshuffleLanes(): void {
-    this.lanes = [];
-    for (let i = 0; i < 2 * TRAFFIC.LANES; i++) {
-      this.lanes.push({
-        direction: Math.random() < 0.5 ? 1 : -1,
-        speed: ARENA_RULES.OBSTACLE_SPEED * (0.8 + Math.random() * 0.4),
-      });
-    }
-  }
-
-  /**
-   * Send an obstacle into a lane where it keeps a fair distance from the rest of the traffic:
-   * entering at the lane's edge (or, with `spread`, anywhere along it when the world starts).
-   * Returns false if no lane is safe to enter right now.
-   */
-  private launchObstacle(obstacle: ObstacleSchema, spread: boolean): boolean {
-    const { OBSTACLE_MIN_LENGTH, OBSTACLE_MAX_LENGTH } = ARENA_RULES;
-    const laneWidth = this.worldWidth / TRAFFIC.LANES;
-    for (let attempt = 0; attempt < 12; attempt++) {
-      const lane = Math.floor(Math.random() * this.lanes.length);
-      const horizontal = lane < TRAFFIC.LANES;
-      const { direction, speed } = this.lanes[lane];
-      const length = Math.round(OBSTACLE_MIN_LENGTH + Math.random() * (OBSTACLE_MAX_LENGTH - OBSTACLE_MIN_LENGTH));
-      const span = horizontal ? this.worldWidth : this.worldHeight;
-      const start = spread ? Math.random() * (span - length) : direction > 0 ? -length : span;
-      if (!this.laneIsClear(obstacle, lane, start, length)) continue;
-      // Anywhere across the lane's width, so traffic reaches every spot over time
-      const across = ((lane % TRAFFIC.LANES) + 0.5) * laneWidth + (Math.random() - 0.5) * (laneWidth - ARENA_RULES.OBSTACLE_THICKNESS);
-      obstacle.enter(lane, horizontal, direction, speed, start, length, across);
-      return true;
-    }
-    return false;
-  }
-
-  /**
-   * Whether an obstacle spanning `start`..`start + length` along a lane keeps its distance:
-   * TRAFFIC.MIN_GAP from others in the same lane, TRAFFIC.STAGGER from those in the lanes beside it
-   */
-  private laneIsClear(self: ObstacleSchema, lane: number, start: number, length: number): boolean {
-    const horizontal = lane < TRAFFIC.LANES;
-    let clear = true;
-    this.obstacles.forEach((o) => {
-      if (!clear || o === self || o.lane < 0 || (o.lane < TRAFFIC.LANES) !== horizontal) return;
-      const apart = Math.abs(o.lane - lane);
-      if (apart > 1) return;
-      const oStart = horizontal ? o.x : o.y;
-      const oLength = horizontal ? o.width : o.height;
-      const distance = Math.max(oStart - (start + length), start - (oStart + oLength));
-      if (distance < (apart === 0 ? TRAFFIC.MIN_GAP : TRAFFIC.STAGGER)) clear = false;
-    });
-    return clear;
   }
 
   /** Whether a point is on the floor: always outside a shift; during one (or its grace period), the new floor */
@@ -1063,7 +970,7 @@ class GameState extends Schema {
   /** Show the new shape. Nobody can be hurt while everyone gets onto it, and gems drop there to lead the way */
   private startGrace(now: number): void {
     // New traffic patterns too, so nobody memorizes them
-    this.reshuffleLanes();
+    reshuffleLanes(this);
     const people: { x: number; y: number }[] = [];
     this.players.forEach((player) => {
       if (player.state === PLAYER_STATE.ALIVE) people.push({ x: player.x + player.width / 2, y: player.y + player.height / 2 });
@@ -1075,7 +982,7 @@ class GameState extends Schema {
     this.shiftPhase = "grace";
     this.phaseEndsAt = this.time + SHIFT.GRACE_MS;
     this.dropGems(SHIFT.GRACE_GEMS, 1, now);
-    this.moveTurbinesOntoFloor();
+    moveTurbinesOntoFloor(this);
   }
 
   /** The rest of the arena drops away; gems lying out there move onto the floor */
@@ -1312,127 +1219,13 @@ class GameState extends Schema {
   }
 
   /** A creature's middle and width, for the airflow (see game/airflow) */
-  private bodyOf(player: PlayerSchema): { x: number; y: number; width: number } {
+  bodyOf(player: PlayerSchema): { x: number; y: number; width: number } {
     return { x: player.x + player.width / 2, y: player.y + player.height / 2, width: player.width };
   }
 
   /** ...and which way its mouth faces */
-  private mouthed(player: PlayerSchema): { x: number; y: number; width: number; facing: number } {
+  mouthed(player: PlayerSchema): { x: number; y: number; width: number; facing: number } {
     return { ...this.bodyOf(player), facing: player.facing };
-  }
-
-  /**
-   * Player airflow connections: each inhaler's airflow quality on every creature, smoothed for
-   * stability. A clean enough one catches a latch, held through brief slips (a little sideways step
-   * doesn't lose it), broken by turning well away, distance or a stun. Between two inhaling each
-   * other only one side owns the focused connection (hysteresis; from a near tie, neither). The owner
-   * gets a gentle aim toward its target (through its own turning), its cone focuses into a stream,
-   * and once that holds cleanly, its breath is used less, then refilled (game/airflow breathRate).
-   */
-  private updateLatches(now: number, deltaTime: number): void {
-    const smoothing = Math.min(1, deltaTime * LATCH.SMOOTHING);
-    this.players.forEach((attacker) => {
-      if (!attacker.inhaling || attacker.state !== PLAYER_STATE.ALIVE || attacker.stunned) {
-        attacker.dropLatch();
-        attacker.airQuality.clear();
-        return;
-      }
-      const from = this.mouthed(attacker);
-      let best: PlayerSchema | null = null;
-      let bestQuality = 0;
-      this.players.forEach((target) => {
-        const id = target.sessionId;
-        if (target === attacker || target.state !== PLAYER_STATE.ALIVE || target.spawnProtected) {
-          attacker.airQuality.delete(id);
-          return;
-        }
-        // (the latched creature is judged along the beam, which can bend the more focused it is)
-        const raw = airflowQuality(from, this.bodyOf(target), id === attacker.latchTarget ? LATCH.CURVE_ARC * attacker.beamFocus : 0);
-        const was = attacker.airQuality.get(id) ?? 0;
-        const quality = was + (raw - was) * smoothing;
-        if (quality < 0.005 && raw === 0) attacker.airQuality.delete(id);
-        else attacker.airQuality.set(id, quality);
-        if (quality > bestQuality) {
-          bestQuality = quality;
-          best = target;
-        }
-      });
-      const current = attacker.latchTarget ? this.players.get(attacker.latchTarget) : undefined;
-      if (attacker.latchTarget && (!current || current.state !== PLAYER_STATE.ALIVE)) attacker.dropLatch();
-      else if (current) {
-        const holds = (attacker.airQuality.get(current.sessionId) ?? 0) >= LATCH.KEEP_QUALITY && this.latchInRange(attacker, current);
-        if (holds) attacker.latchLostAt = 0;
-        else if (!attacker.latchLostAt) attacker.latchLostAt = now;
-        else if (now - attacker.latchLostAt > LATCH.MEMORY_MS) attacker.dropLatch();
-      }
-      const chosen = best as PlayerSchema | null;
-      if (chosen && bestQuality >= LATCH.ACQUIRE_QUALITY && chosen.sessionId !== attacker.latchTarget) {
-        // A new latch, or a clearly better one
-        const held = attacker.latchTarget ? attacker.airQuality.get(attacker.latchTarget) ?? 0 : 0;
-        if (!attacker.latchTarget || bestQuality > held * (1 + LATCH.HYSTERESIS)) {
-          attacker.dropLatch();
-          attacker.latchTarget = chosen.sessionId;
-          attacker.latchSince = now;
-        }
-      }
-      const target = attacker.latchTarget ? this.players.get(attacker.latchTarget) : undefined;
-      attacker.latchScore = target ? (attacker.airQuality.get(target.sessionId) ?? 0) * latchSizeFactor(attacker.width, target.width) : 0;
-    });
-    // Who owns the focused connection (decided on last tick's owners, so the order doesn't matter)
-    this.players.forEach((attacker) => {
-      const target = attacker.latchTarget ? this.players.get(attacker.latchTarget) : undefined;
-      let owns = !!target;
-      if (target && target.latchTarget === attacker.sessionId) {
-        const mine = attacker.latchScore;
-        const theirs = target.latchScore;
-        if (attacker.focused) owns = theirs <= mine * (1 + LATCH.HYSTERESIS);
-        else if (target.focused) owns = mine > theirs * (1 + LATCH.HYSTERESIS);
-        else owns = mine > theirs * (1 + LATCH.TIE);
-      }
-      attacker.focusNext = owns;
-    });
-    this.players.forEach((attacker) => {
-      const target = attacker.latchTarget ? this.players.get(attacker.latchTarget) : undefined;
-      attacker.focused = !!target && attacker.focusNext;
-      const latchQuality = target ? attacker.airQuality.get(target.sessionId) ?? 0 : 0;
-      const quality = target && attacker.focused ? latchQuality : 0;
-      // A contested connection (inhaling each other) only saves breath as this side wins the counterflow
-      let contest = 1;
-      if (target && target.inhaling && target.latchTarget === attacker.sessionId) {
-        const total = attacker.latchScore + target.latchScore;
-        contest = total > 1e-6 ? Math.max(0, Math.min(1, (attacker.latchScore / total - 0.5) * 2)) : 0;
-      }
-      const focus = target && attacker.focused ? Math.min(1, Math.max(0, (quality - LATCH.BEAM_FOCUS_FROM) / (LATCH.BEAM_FULL_AT - LATCH.BEAM_FOCUS_FROM))) : 0;
-      const beam = target && attacker.focused && now - attacker.latchSince >= LATCH.BEAM_STABLE_MS ? quality * contest : 0;
-      const pull = target && attacker.focused ? attacker.latchScore : 0;
-      const round = (v: number) => Math.round(v * 100) / 100;
-      if (attacker.beamFocus !== round(focus)) attacker.beamFocus = round(focus);
-      if (attacker.beamQuality !== round(beam)) attacker.beamQuality = round(beam);
-      if (attacker.latchPull !== round(pull)) attacker.latchPull = round(pull);
-      if (attacker.latchQuality !== round(latchQuality)) attacker.latchQuality = round(latchQuality);
-      if (target && pull > 0) {
-        const dx = target.x + target.width / 2 - (attacker.x + attacker.width / 2);
-        const dy = target.y + target.height / 2 - (attacker.y + attacker.height / 2);
-        const d = Math.max(1e-6, Math.hypot(dx, dy));
-        attacker.assistX = (dx / d) * LATCH.ASSIST * pull;
-        attacker.assistY = (dy / d) * LATCH.ASSIST * pull;
-      } else {
-        attacker.assistX = 0;
-        attacker.assistY = 0;
-      }
-    });
-  }
-
-  /** Whether a latch can still hold: the target within LATCH.BREAK_ANGLE of the attacker's facing and LATCH.RANGE of its reach */
-  private latchInRange(attacker: PlayerSchema, target: PlayerSchema): boolean {
-    const dx = target.x + target.width / 2 - (attacker.x + attacker.width / 2);
-    const dy = target.y + target.height / 2 - (attacker.y + attacker.height / 2);
-    const d = Math.hypot(dx, dy);
-    const reach = INHALE.REACH + attacker.width * INHALE.REACH_PER_SIZE;
-    if (d - (attacker.width + target.width) / 2 > reach * LATCH.RANGE) return false;
-    if (d < 1e-6) return true;
-    const angle = Math.min(170, LATCH.BREAK_ANGLE + LATCH.CURVE_ARC * attacker.beamFocus);
-    return (dx * Math.cos(attacker.facing) + dy * Math.sin(attacker.facing)) / d >= Math.cos((angle * Math.PI) / 180);
   }
 
   /** How many Cores this world keeps (test worlds: their own number, 0 unless they ask) */
@@ -1451,118 +1244,6 @@ class GameState extends Schema {
     core.vx = vx;
     core.vy = vy;
     core.touching.clear();
-  }
-
-  /**
-   * Cores: every inhaling creature's airflow adds its force (no owner: two pulling at once is a
-   * tug-of-war), then each moves, bounces off the others, and runs into players: a soft push, or a
-   * stun if it hits hard enough (no gems lost). Kept stocked, away from players, turbines and each other.
-   */
-  private updateCores(now: number, deltaTime: number): void {
-    if (this.cores.length < this.coreCount) {
-      const spot = this.coreSpot();
-      if (spot) this.cores.push(new CoreSchema(`c${this.nextCoreId++}`, spot.x, spot.y, CORE.RADIUS));
-    }
-    this.cores.forEach((core) => {
-      let ax = 0;
-      let ay = 0;
-      this.players.forEach((player) => {
-        if (player.state !== PLAYER_STATE.ALIVE || player.stunned) return;
-        const moving = player.velocity();
-        const pull = airflowOnCore({ x: player.x + player.width / 2, y: player.y + player.height / 2, width: player.width, facing: player.facing, inhaling: player.inhaling, vx: moving.x, vy: moving.y }, core);
-        ax += pull.ax;
-        ay += pull.ay;
-      });
-      stepCore(core, ax, ay, deltaTime, this.worldWidth, this.worldHeight);
-    });
-    // Cores bounce off each other
-    for (let i = 0; i < this.cores.length; i++) {
-      for (let j = i + 1; j < this.cores.length; j++) {
-        const a = this.cores[i];
-        const b = this.cores[j];
-        if (!a || !b) continue;
-        const dx = b.x - a.x;
-        const dy = b.y - a.y;
-        const d = Math.hypot(dx, dy);
-        const overlap = a.radius + b.radius - d;
-        if (overlap <= 0 || d < 1e-6) continue;
-        const nx = dx / d;
-        const ny = dy / d;
-        a.x -= (nx * overlap) / 2;
-        a.y -= (ny * overlap) / 2;
-        b.x += (nx * overlap) / 2;
-        b.y += (ny * overlap) / 2;
-        const closing = (a.vx - b.vx) * nx + (a.vy - b.vy) * ny;
-        if (closing <= 0) continue;
-        const change = (closing * (1 + CORE.CORE_RESTITUTION)) / 2;
-        a.vx -= nx * change;
-        a.vy -= ny * change;
-        b.vx += nx * change;
-        b.vy += ny * change;
-      }
-    }
-    this.cores.forEach((core) => this.coreMeetsPlayers(core, now));
-  }
-
-  /** A Core running into players: they're pushed apart by mass, it loses some speed, and a hard enough hit stuns */
-  private coreMeetsPlayers(core: CoreSchema, now: number): void {
-    this.players.forEach((player) => {
-      const id = player.sessionId;
-      if (player.state !== PLAYER_STATE.ALIVE) {
-        core.touching.delete(id);
-        return;
-      }
-      const dx = core.x - (player.x + player.width / 2);
-      const dy = core.y - (player.y + player.height / 2);
-      const d = Math.hypot(dx, dy);
-      const overlap = player.width / 2 + core.radius - d;
-      if (overlap <= -CORE.SEPARATE) {
-        core.touching.delete(id);
-        return;
-      }
-      if (overlap <= 0) return;
-      const nx = d > 1e-6 ? dx / d : 1;
-      const ny = d > 1e-6 ? dy / d : 0;
-      // Pushed apart by mass: the lighter one moves more
-      const heft = bodyMass(player.width);
-      const coreShare = heft / (heft + CORE.MASS);
-      core.x += nx * overlap * coreShare;
-      core.y += ny * overlap * coreShare;
-      player.nudge(-nx * overlap * (1 - coreShare), -ny * overlap * (1 - coreShare), this.worldWidth, this.worldHeight);
-      const walking = player.velocity();
-      const closing = -((core.vx - walking.x) * nx + (core.vy - walking.y) * ny);
-      if (closing > 0) {
-        // It bounces off, losing speed, so a single Core can't ricochet through everyone at full strength
-        const change = closing * (1 + CORE.IMPACT_BOUNCE) * coreShare;
-        core.vx += nx * change;
-        core.vy += ny * change;
-        // A hard hit stuns; resting against someone never does (it has to come away first), and there's no stun-lock
-        const stunMs = impactStunMs(CORE.MASS * closing);
-        if (stunMs > 0 && !core.touching.has(id) && now >= player.stunImmuneUntil) player.stun(now, stunMs);
-      }
-      core.touching.add(id);
-    });
-  }
-
-  /** Somewhere for a new Core: away from players, other Cores and turbines (null if nowhere fits) */
-  private coreSpot(): { x: number; y: number } | null {
-    const margin = 300;
-    for (let tries = 0; tries < 40; tries++) {
-      const x = margin + Math.random() * (this.worldWidth - margin * 2);
-      const y = margin + Math.random() * (this.worldHeight - margin * 2);
-      let clear = true;
-      this.players.forEach((player) => {
-        if (Math.hypot(player.x + player.width / 2 - x, player.y + player.height / 2 - y) < CORE.SPAWN_CLEAR) clear = false;
-      });
-      this.cores.forEach((core) => {
-        if (Math.hypot(core.x - x, core.y - y) < CORE.SPAWN_GAP) clear = false;
-      });
-      this.turbines.forEach((turbine) => {
-        if (Math.hypot(turbine.x - x, turbine.y - y) < CORE.SPAWN_TURBINE_GAP) clear = false;
-      });
-      if (clear) return { x, y };
-    }
-    return null;
   }
 
   /** Test worlds: "auto" runs turbines as usual, "manual" only has the ones placed by hand, "off" has none */
@@ -1592,142 +1273,13 @@ class GameState extends Schema {
     });
   }
 
-  /**
-   * Turbines appear (after a warning) in open spots, run for a minute or so, power down and come
-   * back somewhere else. While on, each pulls in loose gems and nearby players, rips gems out of
-   * anyone in its inner zone, fires every gem it takes in out of its exhaust, and blows players
-   * around with the exhaust's wind.
-   */
-  private updateTurbines(now: number, deltaTime: number): void {
-    const t = this.time;
-    for (let i = this.turbines.length - 1; i >= 0; i--) {
-      const turbine = this.turbines[i];
-      if (!turbine) continue;
-      if (t < turbine.phaseEndsAt) continue;
-      if (turbine.phase === "warning") {
-        turbine.phase = "active";
-        turbine.phaseEndsAt = t + TURBINE.LIFE_MIN_MS + Math.random() * (TURBINE.LIFE_MAX_MS - TURBINE.LIFE_MIN_MS);
-      } else if (turbine.phase === "active") {
-        turbine.phase = "ending";
-        turbine.phaseEndsAt = t + TURBINE.POWER_DOWN_MS;
-      } else if (!this.turbineBusy(turbine.id)) {
-        // Every gem inside has been fired: it's gone, and another comes somewhere else
-        this.turbines.splice(i, 1);
-        if (this.turbinesAuto) this.turbineDue.push(t + TURBINE.RESPAWN_MIN_MS + Math.random() * (TURBINE.RESPAWN_MAX_MS - TURBINE.RESPAWN_MIN_MS));
-      }
-    }
-    if (this.turbinesAuto) {
-      // The first ones arrive one at a time over the first few seconds
-      while (this.turbines.length + this.turbineDue.length < TURBINE.COUNT) this.turbineDue.push(t + Math.random() * 4000);
-      for (let i = this.turbineDue.length - 1; i >= 0; i--) {
-        if (t < this.turbineDue[i]) continue;
-        const spot = this.turbineSpot();
-        if (!spot) {
-          this.turbineDue[i] = t + 1000;
-          continue;
-        }
-        this.turbineDue.splice(i, 1);
-        this.turbines.push(new TurbineSchema(`t${this.nextTurbineId++}`, spot.x, spot.y, spot.intake, t));
-      }
-    }
-    this.turbines.forEach((turbine) => {
-      if (turbine.phase === "active") this.runTurbine(turbine, now, deltaTime);
-    });
-    this.fireFlights(now);
-  }
-
   /** Where a turbine's exhaust points at world time `time` */
-  private exhaustOf(turbine: TurbineSchema, time: number): number {
+  exhaustOf(turbine: TurbineSchema, time: number): number {
     return turbine.still ? turbine.intake + Math.PI : exhaustAngle(turbine.intake, turbine.sweepFrom, time);
   }
 
-  /** One tick of a running turbine: its solid body, the intake's pull and grip, and the exhaust's wind */
-  private runTurbine(turbine: TurbineSchema, now: number, deltaTime: number): void {
-    const r = TURBINE.BODY_RADIUS;
-    const ix = Math.cos(turbine.intake);
-    const iy = Math.sin(turbine.intake);
-    const mouthX = turbine.x + ix * r;
-    const mouthY = turbine.y + iy * r;
-    const intakeCos = Math.cos(TURBINE.INTAKE_ARC);
-    const out = this.exhaustOf(turbine, this.time);
-    const ex = Math.cos(out);
-    const ey = Math.sin(out);
-    const nozzleX = turbine.x + ex * r;
-    const nozzleY = turbine.y + ey * r;
-    const windCos = Math.cos(TURBINE.EXHAUST_ARC);
-    this.players.forEach((player) => {
-      if (player.state !== PLAYER_STATE.ALIVE) return;
-      const radius = player.width / 2;
-      const px = player.x + radius;
-      const py = player.y + radius;
-      // The turbine is solid
-      const bx = px - turbine.x;
-      const by = py - turbine.y;
-      const bd = Math.hypot(bx, by);
-      if (bd < r + radius && bd > 1e-6) player.nudge((bx / bd) * (r + radius - bd), (by / bd) * (r + radius - bd), this.worldWidth, this.worldHeight);
-      if (player.spawnProtected) return;
-      // In front of the intake: pulled in, and close up, gems ripped out of you one by one
-      const dx = px - mouthX;
-      const dy = py - mouthY;
-      const d = Math.hypot(dx, dy);
-      const gap = Math.max(0, d - radius);
-      if (d > 1e-6 && gap < TURBINE.INTAKE_REACH && (dx * ix + dy * iy) / d >= intakeCos) {
-        const closeness = 1 - gap / TURBINE.INTAKE_REACH;
-        const pull = Math.min(gap, TURBINE.PLAYER_PULL * suctionScale(TURBINE.SUCTION_SIZE, player.width) * closeness * closeness * deltaTime);
-        player.nudge((-dx / d) * pull, (-dy / d) * pull, this.worldWidth, this.worldHeight);
-        if (gap < TURBINE.DANGER_REACH && player.gems > 0) {
-          player.turbineStrip += deltaTime * (TURBINE.STRIP_RATE + TURBINE.STRIP_PER_ROOT * Math.sqrt(player.weight()));
-          while (player.turbineStrip >= 1 && player.gems > 0) {
-            player.turbineStrip -= 1;
-            player.setGems(player.gems - 1, this.worldWidth, this.worldHeight);
-            // Out of their body, on the side facing the intake
-            this.addFlight(turbine, player.sessionId, px - (dx / d) * radius, py - (dy / d) * radius, 1, false, mouthX, mouthY);
-          }
-          if (player.gems <= 0) {
-            // Its last gem: gone
-            player.turbineStrip = 0;
-            this.drain(player, now);
-            return;
-          }
-        } else {
-          player.turbineStrip = 0;
-        }
-      }
-      // In the exhaust's wind: pushed along it, small creatures most
-      const wx = px - nozzleX;
-      const wy = py - nozzleY;
-      const wd = Math.hypot(wx, wy);
-      const wgap = Math.max(0, wd - radius);
-      if (wd > 1e-6 && wgap < TURBINE.EXHAUST_REACH && (wx * ex + wy * ey) / wd >= windCos) {
-        const push = (TURBINE.WIND * (1 - wgap / TURBINE.EXHAUST_REACH) * deltaTime) / Math.sqrt(player.weight());
-        player.nudge(ex * push, ey * push, this.worldWidth, this.worldHeight);
-      }
-    });
-    // Loose gems in front of the intake are pulled in; any that reach it (or lie under it) go inside
-    const taken: string[] = [];
-    this.gems.forEach((gem, id) => {
-      if (gem.falling || gem.inFlight()) return;
-      const dx = gem.x - mouthX;
-      const dy = gem.y - mouthY;
-      const d = Math.hypot(dx, dy);
-      if (d < 20 || Math.hypot(gem.x - turbine.x, gem.y - turbine.y) < r) {
-        taken.push(id);
-        return;
-      }
-      if (d > TURBINE.INTAKE_REACH || (dx * ix + dy * iy) / d < intakeCos) return;
-      const step = Math.min(d, TURBINE.GEM_PULL * (0.25 + 0.75 * (1 - d / TURBINE.INTAKE_REACH)) * deltaTime);
-      gem.moveTo(gem.x - (dx / d) * step, gem.y - (dy / d) * step);
-    });
-    for (const id of taken) {
-      const gem = this.gems.get(id);
-      if (!gem) continue;
-      this.gems.delete(id);
-      this.addFlight(turbine, "", gem.x, gem.y, gem.value, !gem.sprayed, mouthX, mouthY);
-    }
-  }
-
   /** A gem on its way through a turbine: into the intake (from a player, or off the ground), across, and out of the exhaust */
-  private addFlight(turbine: TurbineSchema, victim: string, fromX: number, fromY: number, value: number, counted: boolean, mouthX: number, mouthY: number): void {
+  addFlight(turbine: TurbineSchema, victim: string, fromX: number, fromY: number, value: number, counted: boolean, mouthX: number, mouthY: number): void {
     const t = this.time;
     const travel = victim ? Math.max(TURBINE.MIN_TRAVEL_MS, (Math.hypot(mouthX - fromX, mouthY - fromY) / TURBINE.TRAVEL_SPEED) * 1000) : 0;
     const flight = new TurbineFlightSchema(turbine.id, victim, fromX, fromY, value, t, t + travel, t + travel + TURBINE.INSIDE_MS);
@@ -1735,32 +1287,7 @@ class GameState extends Schema {
     this.flights.set(`f${this.nextFlightId++}`, flight);
   }
 
-  /** Gems whose time has come fire out of their turbine's exhaust and fly 400-700 units, landing as ordinary gems */
-  private fireFlights(now: number): void {
-    const t = this.time;
-    const due: string[] = [];
-    this.flights.forEach((flight, id) => {
-      if (t >= flight.fireAt) due.push(id);
-    });
-    for (const id of due) {
-      const flight = this.flights.get(id);
-      if (!flight) continue;
-      this.flights.delete(id);
-      const turbine = this.turbineById(flight.turbine);
-      const gem = new GemSchema(flight.fromX, flight.fromY, flight.value);
-      if (turbine) {
-        const angle = this.exhaustOf(turbine, flight.fireAt) + (Math.random() * 2 - 1) * TURBINE.EXHAUST_SPREAD;
-        const speed = TURBINE.EXHAUST_SPEED_MIN + Math.random() * (TURBINE.EXHAUST_SPEED_MAX - TURBINE.EXHAUST_SPEED_MIN);
-        const nozzle = TURBINE.BODY_RADIUS + GEMS.RADIUS;
-        gem.launch(turbine.x + Math.cos(angle) * nozzle, turbine.y + Math.sin(angle) * nozzle, angle, speed, now, t, flight.counted);
-      } else {
-        gem.launch(flight.fromX, flight.fromY, 0, 0, now, t, flight.counted);
-      }
-      this.gems.set(`g${this.nextGemId++}`, gem);
-    }
-  }
-
-  private turbineById(id: string): TurbineSchema | null {
+  turbineById(id: string): TurbineSchema | null {
     let found: TurbineSchema | null = null;
     this.turbines.forEach((turbine) => {
       if (turbine.id === id) found = turbine;
@@ -1768,17 +1295,8 @@ class GameState extends Schema {
     return found;
   }
 
-  /** Whether gems are still on their way through a turbine */
-  private turbineBusy(id: string): boolean {
-    let busy = false;
-    this.flights.forEach((flight) => {
-      if (flight.turbine === id) busy = true;
-    });
-    return busy;
-  }
-
   /** A spot for a new turbine: away from the edge, other turbines and players, and on the floor during a shift */
-  private turbineSpot(): { x: number; y: number; intake: number } | null {
+  turbineSpot(): { x: number; y: number; intake: number } | null {
     const margin = TURBINE.EDGE_MARGIN;
     for (let attempt = 0; attempt < 40; attempt++) {
       const x = margin + Math.random() * (this.worldWidth - 2 * margin);
@@ -1797,7 +1315,7 @@ class GameState extends Schema {
   }
 
   /** Whether a turbine at (x, y) stands on floor (it always does, unless the arena is shifting) */
-  private turbineFits(x: number, y: number): boolean {
+  turbineFits(x: number, y: number): boolean {
     if (this.shiftPhase === "normal" || !this.layout) return true;
     const reach = TURBINE.BODY_RADIUS + 60;
     for (let i = 0; i < 8; i++) {
@@ -1805,22 +1323,6 @@ class GameState extends Schema {
       if (!this.isFloorAt(x + Math.cos(a) * reach, y + Math.sin(a) * reach)) return false;
     }
     return this.isFloorAt(x, y);
-  }
-
-  /** A new floor is coming: turbines that won't stand on it power down now, and come back on it */
-  private moveTurbinesOntoFloor(): void {
-    for (let i = this.turbines.length - 1; i >= 0; i--) {
-      const turbine = this.turbines[i];
-      if (!turbine) continue;
-      if (this.turbineFits(turbine.x, turbine.y)) continue;
-      if (turbine.phase === "warning") {
-        this.turbines.splice(i, 1);
-        if (this.turbinesAuto) this.turbineDue.push(this.time + 500);
-      } else if (turbine.phase === "active") {
-        turbine.phase = "ending";
-        turbine.phaseEndsAt = this.time + TURBINE.POWER_DOWN_MS;
-      }
-    }
   }
 
   /** The player with the most gems, once anyone has one */
@@ -1852,7 +1354,7 @@ class GameState extends Schema {
       const onFloor = this.layout ? randomFloorPoint(this.layout, size / 2 + 10) : null;
       const x = onFloor ? onFloor.x - size / 2 : margin + Math.random() * (this.worldWidth - size - 2 * margin);
       const y = onFloor ? onFloor.y - size / 2 : margin + Math.random() * (this.worldHeight - size - 2 * margin);
-      const clearance = this.clearanceAt(x + size / 2, y + size / 2, player, leader);
+      const clearance = clearanceAt(this, x + size / 2, y + size / 2, player, leader);
       if (clearance > bestClearance) {
         best = { x, y };
         bestClearance = clearance;
@@ -1862,32 +1364,6 @@ class GameState extends Schema {
     player.spawnAt(Math.round(best.x), Math.round(best.y), now);
   }
 
-  /** How far a point is from the nearest danger: traffic over the next second, other players, the leader */
-  private clearanceAt(cx: number, cy: number, self: PlayerSchema, leader: PlayerSchema | null): number {
-    let nearest = Infinity;
-    this.obstacles.forEach((o) => {
-      for (const t of [0, 0.5, 1]) {
-        nearest = Math.min(nearest, distanceToRect(cx, cy, o.x + o.vx * t, o.y + o.vy * t, o.width, o.height));
-      }
-    });
-    this.comets.forEach((comet) => {
-      for (const t of [0, 0.5, 1]) {
-        nearest = Math.min(nearest, Math.hypot(comet.x + comet.vx * t - cx, comet.y + comet.vy * t - cy) - comet.radius);
-      }
-    });
-    this.balls.forEach((ball) => {
-      for (const t of [0, 0.5, 1]) {
-        nearest = Math.min(nearest, Math.hypot(ball.x + ball.vx * t - cx, ball.y + ball.vy * t - cy) - ball.radius);
-      }
-    });
-    this.players.forEach((other) => {
-      if (other === self || other.state !== PLAYER_STATE.ALIVE) return;
-      const distance = Math.hypot(other.x + other.width / 2 - cx, other.y + other.height / 2 - cy);
-      // Another player 300 units away counts like traffic 150 away; the leader, like traffic 75 away
-      nearest = Math.min(nearest, other === leader ? distance / 4 : distance / 2);
-    });
-    return nearest;
-  }
 }
 
 // Fields sent to clients
