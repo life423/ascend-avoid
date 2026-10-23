@@ -277,7 +277,7 @@ export default class InputManager {
      * @param inputName - The input to activate ('up', 'down', etc.)
      */
     registerTouchButton(element: HTMLElement, inputName: string): void {
-        if (element && (this.keys as any).hasOwnProperty(inputName)) {
+        if (element && Object.prototype.hasOwnProperty.call(this.keys, inputName)) {
             // Add touch listeners to the button
             element.addEventListener('touchstart', e => {
                 e.preventDefault()

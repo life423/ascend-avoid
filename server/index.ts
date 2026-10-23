@@ -5,6 +5,8 @@ import { monitor } from "@colyseus/monitor";
 import { createServer } from "http";
 import express from "express";
 import cors from "cors";
+import compression from "compression";
+import helmet from "helmet";
 import { GameRoom } from "./rooms/GameRoom";
 import { GAME_CONSTANTS } from "./constants/serverConstants";
 import config from "./config";
@@ -14,6 +16,28 @@ import logger from "./utils/logger";
 const app = express();
 
 // Enable CORS to allow connections from your game client
+// Security headers (HSTS, no sniffing, no framing, a content security policy for the game) and no
+// advertising the stack. The policy allows only this site's scripts, Google Fonts, inline styles (the
+// menu injects a <style>) and websocket connections for the game.
+app.disable("x-powered-by");
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        "script-src": ["'self'"],
+        "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        "font-src": ["'self'", "https://fonts.gstatic.com", "data:"],
+        "img-src": ["'self'", "data:", "blob:"],
+        "connect-src": ["'self'", "wss:", "ws:"],
+        "worker-src": ["'self'", "blob:"],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+  }),
+);
+// Compress responses (the game bundle shrinks to about a third)
+app.use(compression());
 app.use(cors());
 
 // Parse JSON bodies for any REST endpoints you might add later
@@ -22,7 +46,16 @@ app.use(express.json());
 // Serve static files from the client build directory
 // In Docker, the dist folder is at /app/dist, in dev it's at ../dist
 const distPath = process.env.NODE_ENV === 'production' ? './dist' : '../dist';
-app.use(express.static(distPath));
+// Vite's content-hashed bundles never change, so browsers keep them a year; everything else
+// (index.html) is always rechecked, so a new deploy shows up at once
+app.use(
+  express.static(distPath, {
+    setHeaders: (res, filePath) => {
+      if (/[\\/]assets[\\/]/.test(filePath)) res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      else res.setHeader("Cache-Control", "no-cache");
+    },
+  }),
+);
 
 // Create the HTTP server using our Express app
 const httpServer = createServer(app);

@@ -195,15 +195,15 @@ export const globalEventBus = new EventBus();
 
 // Common event types for type safety
 export interface GameEvents {
-    'engine:started': {};
-    'engine:stopped': {};
-    'engine:paused': {};
-    'engine:resumed': {};
+    'engine:started': Record<string, never>;
+    'engine:stopped': Record<string, never>;
+    'engine:paused': Record<string, never>;
+    'engine:resumed': Record<string, never>;
     'engine:update': { deltaTime: number; timestamp: number };
     'engine:render': { deltaTime: number; timestamp: number };
-    'game:reset': {};
-    'game:paused': {};
-    'game:resumed': {};
+    'game:reset': Record<string, never>;
+    'game:paused': Record<string, never>;
+    'game:resumed': Record<string, never>;
     'game:over': { score: number; reason: string };
     'state:updated': { state: any };
     'system:error': { system: string; error: Error };

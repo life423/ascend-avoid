@@ -1,50 +1,38 @@
-import globals from "globals";
-import tseslint from "typescript-eslint";
-import { defineConfig } from "eslint/config";
+import js from '@eslint/js';
+import globals from 'globals';
+import tseslint from 'typescript-eslint';
 
-export default defineConfig([
+/**
+ * Lint: correctness, not formatting (the client and server have different, consistent styles;
+ * formatting would be Prettier's job). Existing debt that isn't a bug (any, non-null assertions,
+ * console calls) is reported as warnings so it stays visible without blocking; errors fail CI.
+ */
+export default tseslint.config(
   {
-    files: ["**/*.{js,mjs,cjs,ts,mts,cts}"],
-    languageOptions: { 
-      globals: {
-        ...globals.browser,
-        ...globals.node
-      },
-      ecmaVersion: 2022,
-      sourceType: "module"
-    }
+    ignores: ['dist/**', 'server/dist/**', 'node_modules/**', 'server/node_modules/**', 'coverage/**', 'public/**', 'scripts/**', '**/*.js', '**/*.cjs', '**/*.mjs'],
   },
+  js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    ignores: [
-      "dist/**",
-      "build/**", 
-      "node_modules/**",
-      "**/*.js.map",
-      "src/constants/*.js",
-      "src/constants/*.d.ts",
-      "coverage/**"
-    ]
+    files: ['src/**/*.ts', 'server/**/*.ts'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: { ...globals.browser, ...globals.node },
+    },
+    rules: {
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-non-null-assertion': 'warn',
+      'no-console': ['warn', { allow: ['warn', 'error'] }],
+      'prefer-const': 'error',
+      'no-var': 'error',
+      eqeqeq: ['error', 'always', { null: 'ignore' }],
+    },
   },
   {
-    files: ["**/*.ts"],
-    rules: {
-      // Error prevention
-      "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
-      "@typescript-eslint/no-explicit-any": "error",
-      "@typescript-eslint/explicit-function-return-type": ["error", { "allowExpressions": true }],
-      "@typescript-eslint/no-non-null-assertion": "error",
-      
-      // Code quality
-      "no-console": ["warn", { "allow": ["warn", "error"] }],
-      "prefer-const": "error",
-      "no-var": "error",
-      "eqeqeq": ["error", "always"],
-      
-      // Style consistency
-      "semi": ["error", "always"],
-      "quotes": ["error", "single", { "avoidEscape": true }],
-      "indent": ["error", 2]
-    }
-  }
-]);
+    // The server logs to its console on purpose (it has no other output)
+    files: ['server/**/*.ts'],
+    rules: { 'no-console': 'off' },
+  },
+);

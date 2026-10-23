@@ -18,6 +18,7 @@ export function playerName(): string {
 
 /** Save a name you picked (cleaned up the way the server does); returns it, or null if nothing was left */
 export function setPlayerName(raw: string): string | null {
+    // eslint-disable-next-line no-control-regex -- stripping control characters is the point
     const name = raw.replace(/[\u0000-\u001f\u007f<>]/g, '').trim().slice(0, 20)
     if (!name) return null
     remember(name)

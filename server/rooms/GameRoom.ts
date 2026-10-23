@@ -15,6 +15,7 @@ interface JoinOptions {
 /** Clean up a player-supplied name: printable characters only, at most 20. Returns null if unusable. */
 export function sanitizeName(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
+  // eslint-disable-next-line no-control-regex -- stripping control characters is the point
   const name = raw.replace(/[\u0000-\u001f\u007f<>]/g, "").trim().slice(0, 20);
   return name || null;
 }
