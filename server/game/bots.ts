@@ -78,6 +78,11 @@ export class BotBrain {
   private readonly aggression: number;
   /** Some bots go for the jackpot however many gems they have */
   private readonly reckless = Math.random() < 0.3;
+  /** A taste of its own, so bots don't all rank the same creature first */
+  private readonly taste = Math.random();
+  /** The chase it's on (who, since when), and creatures it has given up on for a while (until when) */
+  private hunt: { id: string; since: number } | null = null;
+  private readonly shunned = new Map<string, number>();
 
   constructor() {
     this.thinkMs = BOTS.THINK_MS_MIN + Math.random() * (BOTS.THINK_MS_MAX - BOTS.THINK_MS_MIN);
@@ -112,6 +117,8 @@ export class BotBrain {
       // Staying clear of traffic comes first (the later a hit would come, the better); then
       // getting closer to the goal
       let score = (impact === Infinity ? 10000 : impact * 1000) + (here - distanceFrom(box)) + Math.random() * 5;
+      // Crowds: a hop that lands it among other creatures (not the one it's after) counts against it, so bots spread out
+      score -= BOTS.CROWD_PENALTY * this.crowding(bot, box, world);
       // Never hop over the edge during a shift, and keep to the new floor during its grace period
       if (world.shiftsOn && world.shiftPhase !== "normal") {
         const x = box.x + box.width / 2;
@@ -153,23 +160,56 @@ export class BotBrain {
       if (distance < TURBINE.DANGER_REACH + 160 && distance < threat.distance) Object.assign(threat, { x: mx, y: my, distance });
     });
     if (threat.distance < BOTS.FLEE_RANGE) return { x: cx + (cx - threat.x) * 3, y: cy + (cy - threat.y) * 3 };
+    // Robbed by someone it couldn't out-inhale: slip sideways out of their cone and back out of reach, the way
+    // people do, instead of standing in it trading breath (the mouth only inhales back at a smaller robber)
+    const robber = this.robberOf(bot, world);
+    if (robber && robber.width * BOTS.FIGHT_BACK_RATIO > bot.width) {
+      const rx = robber.x + robber.width / 2;
+      const ry = robber.y + robber.height / 2;
+      const fx = Math.cos(robber.facing);
+      const fy = Math.sin(robber.facing);
+      const side = Math.sign((cx - rx) * -fy + (cy - ry) * fx) || 1;
+      return { x: cx - fy * side * 220 - fx * 60, y: cy + fx * side * 220 - fy * 60 };
+    }
     // Low on gems (or just reckless): go for the jackpot
     if (world.jackpotOn && (bot.gems < 20 || this.reckless)) return { x: world.jackpotX, y: world.jackpotY };
-    // Someone to rob or swallow: go after them (the bot inhales once they are in reach)
-    const victim = this.huntTarget(bot, world);
+    // Someone to rob or catch: go after them (the bot inhales once they are in reach). One it can't catch that
+    // is facing it could inhale back, so it goes round to its side and back first
+    const victim = this.huntTarget(bot, world, now);
     this.victim = victim;
-    if (victim) return { x: victim.x + victim.width / 2, y: victim.y + victim.height / 2 };
+    if (victim) {
+      const vx = victim.x + victim.width / 2;
+      const vy = victim.y + victim.height / 2;
+      const catchable = victim.width * INHALE.EAT_RATIO <= bot.width;
+      const fx = Math.cos(victim.facing);
+      const fy = Math.sin(victim.facing);
+      const d = Math.hypot(cx - vx, cy - vy) || 1;
+      const facingMe = ((cx - vx) * fx + (cy - vy) * fy) / d > 0.5;
+      if (facingMe && !catchable) {
+        const side = Math.sign((cx - vx) * -fy + (cy - vy) * fx) || 1;
+        return { x: vx - fy * side * (victim.width + 90) - fx * victim.width * 0.6, y: vy + fx * side * (victim.width + 90) - fy * victim.width * 0.6 };
+      }
+      return { x: vx, y: vy };
+    }
 
     // A bot with plenty of gems stops hunting them, so people can outgrow it (except during a shift)
     const hungry = bot.gems < BOTS.CONTENT_AT || (world.shiftsOn && world.shiftPhase === "shift");
     if (hungry && this.goal?.gemId && now < this.goal.until && world.gems.has(this.goal.gemId)) return this.goal;
 
-    // The most attractive gem in sight: bigger and closer is better
+    // The most attractive gem in sight: bigger and closer is better, and less so for every other bot already
+    // heading for that spot (a spill draws a crowd for a moment, then the latecomers pick other gems)
+    const headings: { x: number; y: number }[] = [];
+    if (hungry) world.brains.forEach((brain, id) => {
+      const heading = id === bot.sessionId ? null : brain.heading();
+      if (heading) headings.push(heading);
+    });
     const pick: { goal: Goal | null; worth: number } = { goal: null, worth: 0 };
     if (hungry) world.gems.forEach((gem, id) => {
       const distance = Math.hypot(gem.x - cx, gem.y - cy);
       if (distance > BOTS.GEM_SIGHT) return;
-      const worth = gem.value / (distance + 60);
+      let crowd = 0;
+      for (const heading of headings) if (Math.hypot(heading.x - gem.x, heading.y - gem.y) < BOTS.SPILL_CROWD_RANGE) crowd++;
+      const worth = gem.value / ((distance + 60) * (1 + BOTS.SPILL_CROWD_PENALTY * crowd));
       if (worth > pick.worth) {
         pick.goal = { x: gem.x, y: gem.y, until: now + 6000, gemId: id };
         pick.worth = worth;
@@ -188,31 +228,88 @@ export class BotBrain {
     return this.goal;
   }
 
+  /** The gem this bot is heading for right now, if any (so other bots can see where the crowd is going) */
+  heading(): { x: number; y: number } | null {
+    return this.goal?.gemId ? { x: this.goal.x, y: this.goal.y } : null;
+  }
+
   /**
    * Someone worth going after: a creature in sight with gems to rob, better still one small enough
-   * to catch, and the leader most of all; richer and closer is better.
-   * Never one big enough to swallow the bot. Bolder bots hunt farther.
+   * to catch, and (for the bolder bots) the leader; richer and closer is better, less so for every
+   * other bot already after them, and every bot has tastes of its own, so they don't all pick the same
+   * one. Never one big enough to swallow the bot. Bolder bots hunt farther. A chase that hasn't closed
+   * in HUNT_GIVE_UP_MS is dropped and that creature left alone for SHUN_MS (it was faster).
    */
-  private huntTarget(bot: PlayerSchema, world: GameState): PlayerSchema | null {
+  private huntTarget(bot: PlayerSchema, world: GameState, now: number): PlayerSchema | null {
     const cx = bot.x + bot.width / 2;
     const cy = bot.y + bot.height / 2;
     const leader = world.leader();
     const range = BOTS.HUNT_RANGE * (0.6 + this.aggression);
+    const reach = INHALE.REACH + bot.width * INHALE.REACH_PER_SIZE;
+    if (this.hunt && now - this.hunt.since > BOTS.HUNT_GIVE_UP_MS) {
+      this.shunned.set(this.hunt.id, now + BOTS.SHUN_MS);
+      this.hunt = null;
+    }
     let best: PlayerSchema | null = null;
     let bestAppeal = 0;
     world.players.forEach((other) => {
-      if (other === bot || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected) return;
+      if (other === bot || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected || other.capturedBy) return;
       if (other.width >= bot.width * INHALE.EAT_RATIO) return;
+      if ((this.shunned.get(other.sessionId) ?? 0) > now) return;
       const distance = Math.hypot(other.x + other.width / 2 - cx, other.y + other.height / 2 - cy) - other.width / 2;
       if (distance > range) return;
       const edible = other.width * INHALE.EAT_RATIO <= bot.width;
       if (!edible && other.gems < 3) return;
-      const appeal = ((edible ? 2 : 1) * (other === leader ? 1.5 : 1) * (other.gems + 5)) / (distance + 100);
+      let pursuers = 0;
+      world.brains.forEach((brain, id) => {
+        if (id !== bot.sessionId && brain.victim === other) pursuers++;
+      });
+      const appeal = ((edible ? 2 : 1) * (other === leader && this.aggression > 0.15 ? 1.2 : 1) * (other.gems + 5) * (0.8 + 0.4 * this.liking(other))) / ((distance + 100) * (1 + BOTS.PURSUIT_PENALTY * pursuers));
       if (appeal > bestAppeal) {
         bestAppeal = appeal;
         best = other;
       }
     });
-    return best as PlayerSchema | null;
+    const pick = best as PlayerSchema | null;
+    if (!pick) {
+      this.hunt = null;
+    } else if (!this.hunt || this.hunt.id !== pick.sessionId) {
+      this.hunt = { id: pick.sessionId, since: now };
+    } else if (Math.hypot(pick.x + pick.width / 2 - cx, pick.y + pick.height / 2 - cy) - pick.width / 2 <= reach) {
+      this.hunt.since = now; // within reach: the chase has closed, the mouth takes it from here
+    }
+    return pick;
+  }
+
+  /** How much this bot fancies that creature, 0 to 1: fixed for the pair, different for every bot */
+  private liking(other: PlayerSchema): number {
+    const v = Math.sin((other.playerIndex + 1) * 12.9898 + this.taste * 78.233) * 43758.5453;
+    return v - Math.floor(v);
+  }
+
+  /** Whoever is robbing this bot right now, if anyone */
+  private robberOf(bot: PlayerSchema, world: GameState): PlayerSchema | null {
+    let robber: PlayerSchema | null = null;
+    world.players.forEach((other) => {
+      if (other !== bot && other.state === PLAYER_STATE.ALIVE && other.robbing.split(",").includes(bot.sessionId)) robber = other;
+    });
+    return robber as PlayerSchema | null;
+  }
+
+  /**
+   * How much a box would be crowding other creatures (not its quarry): 1 for each one it's touching, fading to
+   * nothing at CROWD_SPACE beyond touching, so every hop away from a crowd scores a little better than staying
+   */
+  private crowding(bot: PlayerSchema, box: Box, world: GameState): number {
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    let crowd = 0;
+    world.players.forEach((other) => {
+      if (other === bot || other === this.victim || other.state !== PLAYER_STATE.ALIVE) return;
+      const touching = (box.width + other.width) / 2;
+      const d = Math.hypot(other.x + other.width / 2 - x, other.y + other.height / 2 - y);
+      crowd += Math.max(0, 1 - Math.max(0, d - touching) / BOTS.CROWD_SPACE);
+    });
+    return crowd;
   }
 }
