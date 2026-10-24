@@ -22,6 +22,8 @@ export function updateFlights(state: GameState, now: number, deltaTime: number):
       if (!captor || captor.gulping !== player.sessionId || captor.state !== PLAYER_STATE.ALIVE || player.state !== PLAYER_STATE.ALIVE) {
         player.capturedBy = "";
         player.struggle = 0;
+        player.swallowable = false;
+        player.swallowing = 0;
       }
     }
     if (!player.flying) continue;

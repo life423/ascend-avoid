@@ -101,6 +101,9 @@ class PlayerSchema extends Schema {
   capturedBy: string;
   /** How close a captive is to breaking free, 0 to 1 (synced) */
   struggle: number;
+  /** Caught by a captor big enough to swallow it, and how far that swallow has got, 0 to 1 (synced, for the arc both players see) */
+  swallowable: boolean;
+  swallowing: number;
   /** Server-only: smoothed airflow quality on each creature, when the latch began and when it last slipped, its score, whether it owns the focused connection, and the aim it adds */
   airQuality = new Map<string, number>();
   latchSince = 0;
@@ -132,6 +135,8 @@ class PlayerSchema extends Schema {
   swallowHeld = 0;
   /** How far from its captor's mouth this creature was when caught (escaping means getting out past it) */
   captureDistance = 0;
+  /** When the button was last let go (a deliberate release: the only one that launches a captive) */
+  releasedAt = 0;
   /** This flight has already hit someone (one damaging hit per launch); hit by a flier, immune to another until then */
   flightHit = false;
   impactImmuneUntil = 0;
@@ -163,6 +168,8 @@ class PlayerSchema extends Schema {
     this.flying = false;
     this.capturedBy = "";
     this.struggle = 0;
+    this.swallowable = false;
+    this.swallowing = 0;
     this.robbing = "";
     this.robbedTotal = 0;
     this.sessionId = sessionId;
@@ -386,6 +393,8 @@ class PlayerSchema extends Schema {
     this.flightHit = false;
     this.capturedBy = "";
     this.struggle = 0;
+    this.swallowable = false;
+    this.swallowing = 0;
     this.stopInhale(now);
     this.dropLatch();
     this.vx = 0;
@@ -568,6 +577,8 @@ type("number")(PlayerSchema.prototype, "latchQuality");
 type("boolean")(PlayerSchema.prototype, "flying");
 type("string")(PlayerSchema.prototype, "capturedBy");
 type("number")(PlayerSchema.prototype, "struggle");
+type("boolean")(PlayerSchema.prototype, "swallowable");
+type("number")(PlayerSchema.prototype, "swallowing");
 type("string")(PlayerSchema.prototype, "robbing");
 type("number")(PlayerSchema.prototype, "robbedTotal");
 type("boolean")(PlayerSchema.prototype, "isBot");

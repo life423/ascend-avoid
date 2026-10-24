@@ -1335,8 +1335,74 @@ try {
     check(caughtNearSize && !mine(kid).capturedBy && mine(kid).state === 'alive', `a captive near its captor's size can struggle free (caught ${caughtNearSize}, still caught: ${Boolean(mine(kid).capturedBy)})`);
     kid.send('steer', { x: 0, y: 0 });
     captor.send('exhale');
-    await captor.leave();
+
+    // ---- Only letting go of the button launches; anything else drops the captive harmlessly
+    const catchKid = async (captorGems, kidGems) => {
+        captor.send('exhale');
+        kid.send('steer', { x: 0, y: 0 });
+        captor.send('test:setGems', { count: captorGems });
+        kid.send('test:setGems', { count: kidGems });
+        captor.send('test:breath', { stamina: 1 });
+        await sleep(1700); // any immunity from the last capture runs out
+        captor.send('test:moveTo', { x: 500, y: lineY - mine(captor).width / 2 });
+        captor.send('test:face', { angle: 0 });
+        await sleep(250);
+        kid.send('test:moveTo', { x: 500 + mine(captor).width + 4, y: lineY - mine(kid).width / 2 });
+        await sleep(250);
+        captor.send('inhale');
+        for (let i = 0; i < 40; i++) {
+            if (mine(kid).capturedBy === captor.sessionId) return true;
+            await sleep(25);
+        }
+        return false;
+    };
+    const droppedHarmlessly = () => !mine(kid).capturedBy && !mine(kid).flying && mine(kid).state === 'alive';
+    let caughtNow = await catchKid(60, 0);
+    const arcShown = mine(kid).swallowable === true;
+    captor.send('test:stun', { ms: 400 });
+    await sleep(200);
+    check(caughtNow && arcShown && droppedHarmlessly(), `stunned mid-capture, the captor drops its captive harmlessly, no launch (caught ${caughtNow}, swallow arc ${arcShown})`);
+    await sleep(500);
+    caughtNow = await catchKid(60, 0);
+    captor.send('test:breath', { stamina: 0 });
+    await sleep(300);
+    check(caughtNow && droppedHarmlessly(), `out of breath mid-capture, the captor drops its captive harmlessly, no launch (caught ${caughtNow}, still inhaling ${mine(captor).inhaling})`);
+    caughtNow = await catchKid(30, 10);
+    const arcHidden = mine(kid).swallowable === false;
+    await sleep(1600);
+    check(caughtNow && arcHidden && droppedHarmlessly(), `too small to swallow, a captor holds its captive until the hold runs out, then it goes free, with no swallow arc (caught ${caughtNow}, arc hidden ${arcHidden})`);
+    caughtNow = await catchKid(0, 0);
+    check(!caughtNow, 'an empty creature can only be caught by a bigger one, never one its own size');
+    // Struggling matters: a small captive that slips sideways (reacting at phone speed, 350 ms) survives a
+    // much bigger captor even while it keeps re-aiming at it; one that just freezes is swallowed
+    caughtNow = await catchKid(100, 4);
+    let slipping = false;
+    const slipAfter = setTimeout(() => { slipping = true; }, 350);
+    const tracking = setInterval(() => {
+        const c = mine(captor);
+        const v = mine(kid);
+        if (!c || !v) return;
+        const ax = v.x + v.width / 2 - (c.x + c.width / 2);
+        const ay = v.y + v.height / 2 - (c.y + c.height / 2);
+        const d = Math.hypot(ax, ay) || 1;
+        captor.send('aim', { x: ax / d, y: ay / d });
+        if (!slipping) return;
+        const sx = (-ay / d) * 0.9 + (ax / d) * 0.45;
+        const sy = (ax / d) * 0.9 + (ay / d) * 0.45;
+        const n = Math.hypot(sx, sy);
+        kid.send('steer', { x: sx / n, y: sy / n });
+    }, 40);
+    await sleep(1800);
+    clearTimeout(slipAfter);
+    clearInterval(tracking);
+    check(caughtNow && mine(kid).state === 'alive' && !mine(kid).capturedBy, `a small captive slipping sideways (reacting at phone speed) survives a captor 4x its size that keeps re-aiming at it (caught ${caughtNow}, ${mine(kid).state})`);
+    caughtNow = await catchKid(60, 4);
     await kid.leave();
+    await sleep(200);
+    captor.send('exhale');
+    await sleep(200);
+    check(caughtNow && mine(captor).state === 'alive' && !mine(captor).gulping, 'a captive leaving mid-capture leaves its captor unharmed and free');
+    await captor.leave();
     await mark.leave();
 
     // A client that floods messages is cut off (every other check here plays normally under the same limit)

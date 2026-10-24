@@ -8,9 +8,10 @@ export function holdFirmness(captorWidth: number, captiveWidth: number): number 
   return clamp(CANNON.HOLD_MIN + CANNON.HOLD_PER_DOUBLING * Math.log2(Math.max(1, ratio / INHALE.EAT_RATIO)), CANNON.HOLD_MIN, CANNON.HOLD_MAX);
 }
 
-/** Whether a captor this wide can swallow a captive this wide holding this many gems: it must be SWALLOW_RATIO wider, unless the captive is empty (nothing to gain, so anyone that caught it can) */
+/** Whether a captor this wide can swallow a captive this wide holding this many gems: it must be SWALLOW_RATIO wider, unless the captive is empty (nothing to gain), when being bigger at all is enough; never a smaller or same-size captor */
 export function canSwallowWhole(captorWidth: number, captiveWidth: number, captiveGems: number): boolean {
-  return captiveGems <= 0 || captorWidth >= captiveWidth * CANNON.SWALLOW_RATIO;
+  if (captiveGems <= 0) return captorWidth > captiveWidth;
+  return captorWidth >= captiveWidth * CANNON.SWALLOW_RATIO;
 }
 
 /** How fast a captor this wide launches its captive (units a second) */

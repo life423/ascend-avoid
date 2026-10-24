@@ -9,8 +9,9 @@ const lastSeen = new Map<string, { x: number; y: number; t: number }>()
 
 /**
  * The living cannonball, and the turbines' danger: each turbine's point of no return (a faint dashed
- * arc across its intake), a gold ring filling around a creature caught in a mouth as it struggles,
- * and speed streaks behind a flying one
+ * arc across its intake); around a creature caught in a mouth, a gold ring filling as it slips toward
+ * freedom and, only if its captor can swallow it, a red arc closing as the swallow builds; and speed
+ * streaks behind a flying one
  */
 export function drawCannon(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state: SyncedGameState, timestamp: number): void {
     ctx.save()
@@ -39,6 +40,18 @@ export function drawCannon(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
             ctx.beginPath()
             ctx.arc(cx, cy, radius + 7, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * player.struggle)
             ctx.stroke()
+            // Only when its captor can swallow it: a red arc outside the gold one, closing as the swallow builds
+            if (player.swallowable) {
+                ctx.lineWidth = 4
+                ctx.strokeStyle = 'rgba(255, 70, 70, 0.22)'
+                ctx.beginPath()
+                ctx.arc(cx, cy, radius + 14, 0, Math.PI * 2)
+                ctx.stroke()
+                ctx.strokeStyle = 'rgba(255, 70, 70, 0.95)'
+                ctx.beginPath()
+                ctx.arc(cx, cy, radius + 14, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * player.swallowing)
+                ctx.stroke()
+            }
         }
         if (!player.flying) {
             lastSeen.delete(id)

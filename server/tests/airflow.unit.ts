@@ -127,7 +127,7 @@ check(scaleDrain(20, 548) === LATCH.SCALE_MIN && scaleDrain(60, 120) === 1 && sc
 
 // The living cannonball
 check(holdFirmness(80, 56) < 1 && holdFirmness(300, 20) === CANNON.HOLD_MAX && holdFirmness(300, 20) < 1.5, "a near-size captive can push straight out of a hold; a giant holds a tiny one firmly, but never so firmly that slipping round its side can't break it");
-check(!canSwallowWhole(80, 56, 5) && canSwallowWhole(120, 56, 5) && canSwallowWhole(80, 56, 0), "swallowing needs a real size advantage, not just a catch (an empty creature has nothing to gain from, so anyone can)");
+check(!canSwallowWhole(80, 56, 5) && canSwallowWhole(120, 56, 5) && canSwallowWhole(24, 20, 0) && !canSwallowWhole(20, 20, 0) && !canSwallowWhole(20, 56, 0), "swallowing needs a real size advantage (an empty creature only needs a bigger captor; never a smaller or same-size one)");
 check(Math.abs(launchAngle(0, 0, 1) - CANNON.LAUNCH_INFLUENCE) < 1e-9 && launchAngle(0, 1, 0) === 0, "the captive can shift its launch a little sideways, never turn it around");
 check(launchSpeed(200) > launchSpeed(40), "a bigger captor launches harder");
 check(impactGems(1000, 900, 20) > impactGems(120, 900, 20) && impactGems(1000, 900, 20) / 1000 < impactGems(120, 900, 20) / 120 && impactGems(10, 900, 20) <= 3 && impactGems(120, 900, 60) > impactGems(120, 900, 20) && impactGems(120, 450, 20) < impactGems(120, 900, 20), `a cannonball's damage grows with speed and the flier's mass, with diminishing returns against giants (${impactGems(120, 900, 20)} of 120, ${impactGems(1000, 900, 20)} of 1000)`);

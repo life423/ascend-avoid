@@ -124,6 +124,8 @@ export function updateInhales(state: GameState, now: number, deltaTime: number) 
           eater.gulping = "";
           captive.capturedBy = "";
           captive.struggle = 0;
+          captive.swallowable = false;
+          captive.swallowing = 0;
           swallow(state, eater, captive, now);
         } else if (state.time >= eater.gulpEndsAt) {
           // The hold is over without a swallow: the captive goes free
@@ -142,6 +144,8 @@ export function updateInhales(state: GameState, now: number, deltaTime: number) 
         caught.capturedBy = eater.sessionId;
         caught.captureDistance = heldAt;
         caught.struggle = 0;
+        caught.swallowable = canSwallowWhole(eater.width, caught.width, caught.gems);
+        caught.swallowing = 0;
         caught.stopInhale(now);
         caught.dropLatch();
       }
@@ -169,7 +173,7 @@ export function fadeLocks(_state: GameState, eater: PlayerSchema, keep: Set<stri
 /** Whether `eater` is big enough to swallow `prey` whole: INHALE.EAT_RATIO times as wide */
 export function canSwallow(_state: GameState, eater: PlayerSchema, prey: PlayerSchema) : boolean {
   // ...or it has no gems left to hold it together: then anyone can suck it up
-  return prey.gems <= 0 || prey.width * INHALE.EAT_RATIO <= eater.width;
+  return (prey.gems <= 0 && eater.width > prey.width) || prey.width * INHALE.EAT_RATIO <= eater.width;
 }
 
 /**
@@ -340,16 +344,23 @@ function holdCaptive(state: GameState, eater: PlayerSchema, captive: PlayerSchem
   const steer = captive.steerInput();
   const speed = moveSpeed(captive.width);
   const side = steer.x * -fy + steer.y * fx;
-  eater.facing += deltaTime * CANNON.AIM_TWIST * side * Math.min(1, (captive.width / eater.width) * 2);
+  // (twisting it away from the side the captive pushes to, so the captive slips round to where the hold is weak)
+  eater.facing -= deltaTime * CANNON.AIM_TWIST * side * Math.min(1, (captive.width / eater.width) * 2);
   let dx = steer.x * speed * deltaTime;
   let dy = steer.y * speed * deltaTime;
   const ox = hx - (cx + dx);
   const oy = hy - (cy + dy);
   const od = Math.hypot(ox, oy);
-  const pull = Math.min(od, speed * CANNON.HOLD_RATIO * holdFirmness(eater.width, captive.width) * squarely * deltaTime);
+  // The grip pulls it back along the captor's facing at full strength, but only HOLD_SIDEWAYS as hard
+  // across it (suction holds you in the stream, not beside it): slipping sideways is how you get out
+  const grip = speed * CANNON.HOLD_RATIO * holdFirmness(eater.width, captive.width) * squarely * deltaTime;
   if (od > 1e-6) {
-    dx += (ox / od) * pull;
-    dy += (oy / od) * pull;
+    const along = ox * fx + oy * fy;
+    const across = ox * -fy + oy * fx;
+    const alongPull = Math.sign(along) * Math.min(Math.abs(along), grip);
+    const acrossPull = Math.sign(across) * Math.min(Math.abs(across), grip * CANNON.HOLD_SIDEWAYS);
+    dx += fx * alongPull - fy * acrossPull;
+    dy += fy * alongPull + fx * acrossPull;
   }
   captive.nudge(dx, dy, state.worldWidth, state.worldHeight);
   // Free once it's pushed out far enough (BREAK_GAP, BREAK_MARGIN); pinned within SUBDUED of the hold point
@@ -366,6 +377,8 @@ function holdCaptive(state: GameState, eater: PlayerSchema, captive: PlayerSchem
     return false;
   }
   if (Math.hypot(nx - hx, ny - hy) <= Math.max(8, captive.width * CANNON.SUBDUED)) eater.swallowHeld += deltaTime * 1000;
+  captive.swallowable = canSwallowWhole(eater.width, captive.width, captive.gems);
+  captive.swallowing = captive.swallowable ? Math.min(1, eater.swallowHeld / CANNON.SWALLOW_MS) : 0;
   return true;
 }
 
@@ -373,16 +386,24 @@ function holdCaptive(state: GameState, eater: PlayerSchema, captive: PlayerSchem
 function free(captive: PlayerSchema, ax: number, ay: number, now: number): void {
   captive.capturedBy = "";
   captive.struggle = 0;
+  captive.swallowable = false;
+  captive.swallowing = 0;
   captive.recaptureAfter = now + CANNON.RECAPTURE_MS;
   captive.skid(ax, ay, CANNON.BREAK_PUSH);
 }
 
-/** Its captor stopped inhaling: held long enough (and not stunned), the captive is launched along its facing (shifted by the captive's own push); otherwise it's just let go */
+/**
+ * Its captor stopped inhaling. Only a deliberate release (the button let go after the capture began,
+ * held at least LAUNCH_MIN_MS, the captor still alive and not stunned) launches the captive, along its
+ * facing shifted by the captive's own push; breath running out, a stun, being caught or knocked out
+ * itself, all just let it go, harmlessly.
+ */
 export function letGo(state: GameState, eater: PlayerSchema, now: number): void {
   const captive = state.players.get(eater.gulping);
   eater.gulping = "";
   if (!captive || captive.capturedBy !== eater.sessionId) return;
-  if (eater.state === PLAYER_STATE.ALIVE && !eater.stunned && captive.state === PLAYER_STATE.ALIVE && now - eater.captureStartedAt >= CANNON.LAUNCH_MIN_MS) {
+  const deliberate = eater.releasedAt >= eater.captureStartedAt;
+  if (deliberate && eater.state === PLAYER_STATE.ALIVE && !eater.stunned && !eater.capturedBy && captive.state === PLAYER_STATE.ALIVE && now - eater.captureStartedAt >= CANNON.LAUNCH_MIN_MS) {
     const steer = captive.steerInput();
     const angle = launchAngle(eater.facing, steer.x, steer.y);
     const speed = launchSpeed(eater.width);
