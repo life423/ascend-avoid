@@ -481,6 +481,7 @@ export const CANNON = {
   EXPEL_PUSH: 110, // ...pushed this much farther...
   EXPEL_PROTECT_MS: 2500, // ...and can't be caught again (by a mouth or a turbine) for this long
   RECAPTURE_MS: 1500, // launched (after landing), let go or broken free: can't be caught by a mouth or a turbine for this long
+  LAND_SAFE_MS: 3000, // after any flight, ignore incoming suction and captures while moving clear
   LAUNCH_INFLUENCE: 0.35, // the captive's sideways push as it's launched shifts its direction up to this many radians
   LAUNCH_SPEED_MIN: 1250, // launch speed (units a second) for a captor just big enough to catch its captive (CAPTURE_RATIO wider)...
   LAUNCH_SPEED_PER_DOUBLING: 300, // ...plus this every time the captor is twice as wide again, relative to its captive...
@@ -598,7 +599,8 @@ export const EXHALE = {
   DEFENSE_PUSH: 150,
   COOLDOWN_MS: 1800, // a deliberate defense, not repeated knockback
   BREAK_MS: 1000, // a successful puff breaks suction on its user for a short escape window
-  PARRY_MS: 350, // the caught inhale stops briefly; no movement stun
+  PARRY_MS: 350, // minimum restart lock on a broken inhale
+  STUN_MS: 800, // a gust hit disables steering and inhaling; knockback still carries the target away
 } as const;
 
 /** Short, announced resource contests in the continuous world. */

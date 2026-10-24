@@ -1,6 +1,6 @@
 import type { MultiplayerMode } from '../core/GameModes'
 import { CANNON, GEMS, INHALE, PLAYER_COLORS } from '../../server/constants/gameConstants'
-import { drawBreath, drawCreature, drawProjectile, mouthOf } from './creatures'
+import { drawBreath, drawCreature, drawDizzy, drawProjectile, mouthOf } from './creatures'
 import { FONT, GOLD, drawCrown, drawRobot, roundedRect } from './style'
 import { SMOOTHING, SNAP_DISTANCE } from './shared'
 import { drawAirflow } from './stream'
@@ -101,6 +101,29 @@ export function drawPlayer(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
     const centerX = drawn.x + player.width / 2
     const centerY = drawn.y + player.height / 2
     const world = mode.multiplayerManager?.getState() as SyncedGameState | undefined
+    const shieldLeft = world ? player.launchSafeUntil - mode.worldNow(world, timestamp) : 0
+    if (shieldLeft > 0 && !player.flying) {
+        const u = 1 / Math.max(0.001, Math.abs(ctx.getTransform().a))
+        const radius = size / 2 + 8 * u
+        ctx.save()
+        ctx.strokeStyle = 'rgba(115, 244, 216, 0.15)'
+        ctx.lineWidth = 5 * u
+        ctx.beginPath()
+        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2)
+        ctx.stroke()
+        ctx.strokeStyle = '#86edce'
+        ctx.lineWidth = 2 * u
+        ctx.beginPath()
+        ctx.arc(centerX, centerY, radius, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, shieldLeft / CANNON.LAND_SAFE_MS))
+        ctx.stroke()
+        if (isLocal) {
+            ctx.font = `700 ${10 * u}px ${FONT}`
+            ctx.textAlign = 'center'
+            ctx.fillStyle = '#acffe4'
+            ctx.fillText('SUCTION SAFE', centerX, centerY + radius + 16 * u)
+        }
+        ctx.restore()
+    }
     if (player.inhaling) {
         // Draining someone (harder the bigger it is next to them) or holding someone to swallow: the inhale looks stronger
         const victim = player.stealingFrom ? world?.players.get(player.stealingFrom) : null
@@ -157,6 +180,11 @@ export function drawPlayer(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
     const puffed = puff ? 1 + 0.14 * Math.sin(Math.PI * Math.min(1, (timestamp - puff.at) / 260)) : 1
     const bulge = (swallowedInside(world, sessionId) ? 1 + 0.05 * (0.6 + 0.4 * Math.sin(timestamp / 90)) : 1) * quiver * puffed
     ctx.save()
+    if (player.stunned) {
+        ctx.translate(centerX, centerY)
+        ctx.rotate(0.045 * Math.sin(timestamp / 55))
+        ctx.translate(-centerX, -centerY)
+    }
     if (squash.amount > 0 || bulge !== 1) {
         ctx.translate(left + size / 2, top + size / 2)
         if (bulge !== 1) ctx.scale(bulge, bulge)
@@ -173,30 +201,20 @@ export function drawPlayer(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
     const cheekProgress = holding ? Math.max(0, Math.min(1, heldFor / SUCK_MS)) : 0
     const cheeks = 1 - Math.pow(1 - cheekProgress, 3)
     if (player.flying) drawProjectile(ctx, left + size / 2, top + size / 2, size, color, heading, timestamp)
-    else drawCreature(ctx, left + size / 2, top + size / 2, size, color, facing, timestamp, player.mouth ?? '', Boolean(player.inhaling), cheeks)
+    else drawCreature(ctx, left + size / 2, top + size / 2, size, color, facing, timestamp, player.mouth ?? '', Boolean(player.inhaling), cheeks, Boolean(player.stunned))
     ctx.restore()
     // The loading badge stays beneath the puffed cheeks and clear eyes.
     if (player.gulping) drawMouthful(mode, ctx, player, left + size / 2, top + size / 2, size, facing, timestamp)
-    // Stunned by a Core: a few little stars wheeling over its head
+    // Dazed: spiral pupils, a slight wobble, and a halo outside the face.
     if (player.stunned) {
+        drawDizzy(ctx, centerX, centerY, size, timestamp)
         ctx.save()
-        ctx.fillStyle = 'rgba(255, 228, 130, 0.95)'
-        for (let i = 0; i < 3; i++) {
-            const a = timestamp / 220 + (i * Math.PI * 2) / 3
-            const sx = left + size / 2 + Math.cos(a) * size * 0.42
-            const sy = top - 4 + Math.sin(a) * size * 0.12
-            const star = 2.5 + size * 0.025
-            ctx.beginPath()
-            ctx.moveTo(sx, sy - star * 1.6)
-            ctx.lineTo(sx + star * 0.5, sy - star * 0.5)
-            ctx.lineTo(sx + star * 1.6, sy)
-            ctx.lineTo(sx + star * 0.5, sy + star * 0.5)
-            ctx.lineTo(sx, sy + star * 1.6)
-            ctx.lineTo(sx - star * 0.5, sy + star * 0.5)
-            ctx.lineTo(sx - star * 1.6, sy)
-            ctx.lineTo(sx - star * 0.5, sy - star * 0.5)
-            ctx.closePath()
-            ctx.fill()
+        if (isLocal) {
+            const u = 1 / Math.max(0.001, Math.abs(ctx.getTransform().a))
+            ctx.font = `800 ${10 * u}px ${FONT}`
+            ctx.textAlign = 'center'
+            ctx.fillStyle = '#ffe29b'
+            ctx.fillText('STUNNED', centerX, centerY + size / 2 + 26 * u)
         }
         ctx.restore()
     }

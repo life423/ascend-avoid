@@ -10,6 +10,36 @@ const mine = page => page.evaluate(() => {
   return { capturedBy: p.capturedBy, escapeKeys: p.escapeKeys, escapeStep: p.escapeStep, x: p.x, y: p.y, flying: p.flying, inhaling: p.inhaling };
 });
 
+test('gust stun blocks real keyboard input and shows a readable dizzy face', async ({ page }) => {
+  await page.route('**/matchmake/joinOrCreate/game_room', route => route.continue({
+    url: route.request().url().replace('/joinOrCreate/', '/create/'),
+    postData: JSON.stringify({ ...route.request().postDataJSON(), testBots: 0, testFieldGems: 0, testCores: 0 }),
+  }));
+  await page.goto('/');
+  await page.waitForFunction(() => window.game?.currentGameMode?.multiplayerManager?.room?.state?.players?.size === 1);
+  await expect.poll(() => page.evaluate(() => document.body.classList.contains('intro-playing'))).toBe(false);
+  const send = (type, data) => page.evaluate(({ type, data }) => window.game.currentGameMode.multiplayerManager.room.send(type, data), { type, data });
+  await send('test:setGems', { count: 300 });
+  await send('test:moveTo', { x: 1500, y: 1500 });
+  await send('test:protect', { ms: 0 });
+  // An actual peer gust is covered in the network suite; this fixture holds the visual state long
+  // enough to check input and capture screenshots on both fast desktops and slower phone projects.
+  await send('test:stun', { ms: 1200 });
+  await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getLocalPlayer().stunned);
+  const before = await mine(page);
+  await page.keyboard.down('ArrowDown');
+  await page.keyboard.down('Space');
+  await page.waitForTimeout(200);
+  const after = await mine(page);
+  expect(after.inhaling).toBe(false);
+  expect(Math.hypot(after.x - before.x, after.y - before.y)).toBeLessThan(1);
+  await page.screenshot({ path: test.info().outputPath('gust-stunned.png') });
+  await page.keyboard.up('Space');
+  await page.waitForFunction(() => !window.game.currentGameMode.multiplayerManager.getLocalPlayer().stunned);
+  await expect.poll(async () => (await mine(page)).y).toBeGreaterThan(before.y + 5);
+  await page.keyboard.up('ArrowDown');
+});
+
 test('WASD and arrow taps free a real captive; focus loss cancels movement and inhale', async ({ page, baseURL, hasTouch }) => {
   await page.route('**/matchmake/joinOrCreate/game_room', route => route.continue({
     url: route.request().url().replace('/joinOrCreate/', '/create/'),

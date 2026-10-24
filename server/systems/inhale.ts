@@ -315,8 +315,8 @@ function clashStrength(state: GameState, thief: PlayerSchema, victim: PlayerSche
 
 /**
  * Exhaling: the button tapped with nothing in your mouth. A short puff out of the mouth: loose gems in
- * front of it are blown away, and creatures in it are shoved back (hard if they're lighter than you,
- * barely if they're much heavier), which pushes a robber out of its own inhale's reach. Free, with a
+ * front of it are blown away, and creatures in it are shoved back and briefly stunned,
+ * which pushes a robber out of its own inhale's reach. Free, with a
  * pause before the next one (EXHALE.COOLDOWN_MS).
  */
 export function exhale(state: GameState, player: PlayerSchema, now: number) : void {
@@ -357,6 +357,7 @@ export function exhale(state: GameState, player: PlayerSchema, now: number) : vo
     }
     const ratio = Math.min(EXHALE.PUSH_RATIO_MAX, Math.max(EXHALE.PUSH_RATIO_MIN, player.weight() / other.weight()));
     const distance = Math.min(EXHALE.PUSH_MAX, EXHALE.BODY_PUSH * ratio * (1 - gap / reach));
+    if (now >= other.stunImmuneUntil) other.stun(now, EXHALE.STUN_MS);
     other.skid(ox / d, oy / d, parried ? Math.max(EXHALE.DEFENSE_PUSH, distance) : distance);
   });
 }

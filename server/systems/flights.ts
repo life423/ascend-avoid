@@ -41,12 +41,12 @@ export function updateFlights(state: GameState, now: number, deltaTime: number):
     player.nudge(next.vx * deltaTime, next.vy * deltaTime, state.worldWidth, state.worldHeight);
     // Stopped by the edge of the world
     if (Math.hypot(player.x - fromX, player.y - fromY) < speed * deltaTime * 0.5) {
-      land(player, now);
+      land(state, player, now);
       continue;
     }
     const target = player.flightHit ? null : struck(everyone, player, now, fromX, fromY);
     if (target) impact(state, player, target, speed, now);
-    else if (speed < CANNON.STOP_SPEED || now >= player.flightEndsAt) land(player, now);
+    else if (speed < CANNON.STOP_SPEED || now >= player.flightEndsAt) land(state, player, now);
   }
 }
 
@@ -95,7 +95,9 @@ function impact(state: GameState, flier: PlayerSchema, target: PlayerSchema, spe
 }
 
 /** A flight ends: no catching it again (by a mouth or a turbine) for a moment */
-function land(player: PlayerSchema, now: number): void {
+function land(state: GameState, player: PlayerSchema, now: number): void {
   player.land();
-  player.recaptureAfter = now + CANNON.RECAPTURE_MS;
+  player.recaptureAfter = Math.max(player.recaptureAfter, now + CANNON.LAND_SAFE_MS);
+  player.suctionSafeUntil = Math.max(player.suctionSafeUntil, now + CANNON.LAND_SAFE_MS);
+  player.launchSafeUntil = state.time + CANNON.LAND_SAFE_MS;
 }

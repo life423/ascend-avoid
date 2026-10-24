@@ -25,7 +25,7 @@ export function mouthRadius(size: number): number {
 }
 
 /** A round creature with eyes toward where it faces, so everyone can see which side is its back */
-export function drawCreature(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string, facing: number, timestamp = 0, mouth = '', inhaling = false, cheeks = 0): void {
+export function drawCreature(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string, facing: number, timestamp = 0, mouth = '', inhaling = false, cheeks = 0, dizzy = false): void {
     const r = size / 2
     const fullness = Math.max(0, Math.min(1, cheeks))
     ctx.fillStyle = color
@@ -116,10 +116,56 @@ export function drawCreature(ctx: CanvasRenderingContext2D, x: number, y: number
         ctx.stroke()
         ctx.fillStyle = '#10151f'
         ctx.beginPath()
-        ctx.arc(ex, ey, r * 0.13, 0, Math.PI * 2)
-        ctx.fill()
+        if (dizzy) {
+            // Spiral pupils stay inside the whites; the face remains readable.
+            const spin = timestamp / 180 + side
+            for (let i = 0; i <= 36; i++) {
+                const t = i / 36
+                const a = spin + t * Math.PI * 3.6
+                const px = ex + Math.cos(a) * r * 0.18 * t
+                const py = ey + Math.sin(a) * r * 0.18 * t
+                if (i === 0) ctx.moveTo(px, py)
+                else ctx.lineTo(px, py)
+            }
+            ctx.strokeStyle = '#35405b'
+            ctx.lineWidth = Math.max(1, size * 0.018)
+            ctx.lineCap = 'round'
+            ctx.stroke()
+        } else {
+            ctx.arc(ex, ey, r * 0.13, 0, Math.PI * 2)
+            ctx.fill()
+        }
     }
 
+}
+
+/** A wind halo and orbiting sparks make a brief stun readable around the body. */
+export function drawDizzy(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, timestamp: number): void {
+    const u = 1 / Math.max(0.001, Math.abs(ctx.getTransform().a))
+    const radius = size / 2 + 10 * u
+    ctx.save()
+    ctx.strokeStyle = 'rgba(172, 231, 244, 0.65)'
+    ctx.lineWidth = 2 * u
+    ctx.lineCap = 'round'
+    const spin = timestamp / 210
+    for (let i = 0; i < 3; i++) {
+        const a = spin + i * Math.PI * 2 / 3
+        ctx.beginPath()
+        ctx.arc(x, y, radius, a + 0.2, a + 0.9)
+        ctx.stroke()
+        const sx = x + Math.cos(a) * radius
+        const sy = y + Math.sin(a) * radius
+        const star = (3.5 + 0.6 * Math.sin(timestamp / 70 + i)) * u
+        ctx.fillStyle = '#ffe29b'
+        ctx.beginPath()
+        ctx.moveTo(sx, sy - star * 1.5)
+        ctx.quadraticCurveTo(sx + star * 0.3, sy - star * 0.3, sx + star * 1.2, sy)
+        ctx.quadraticCurveTo(sx + star * 0.3, sy + star * 0.3, sx, sy + star * 1.5)
+        ctx.quadraticCurveTo(sx - star * 0.3, sy + star * 0.3, sx - star * 1.2, sy)
+        ctx.quadraticCurveTo(sx - star * 0.3, sy - star * 0.3, sx, sy - star * 1.5)
+        ctx.fill()
+    }
+    ctx.restore()
 }
 
 /**
