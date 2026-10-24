@@ -113,17 +113,85 @@ assert.equal(captureLoadMs(5), 1600);
   assert(stealWeight(state, big, small) > 0);
   exhale(state, small, NOW);
   assert.equal(big.inhaling, false, 'a puff into an incoming inhale breaks it');
+  assert.equal(big.stunned, true, 'a gust stuns its target');
   assert.equal(small.puffReadyAt, EXHALE.COOLDOWN_MS);
   big.placeAt(1080, 938.5); // end the puff's skid before testing the inhale restart timer
-  big.startInhale(NOW + EXHALE.PARRY_MS - 1);
-  assert.equal(big.inhaling, false, 'the broken inhale has a brief restart lock');
-  big.startInhale(NOW + EXHALE.PARRY_MS);
+  big.steer(1, 0);
+  const x = big.x;
+  big.updateMovement(state.worldWidth, state.worldHeight, NOW + EXHALE.STUN_MS - 1, 0.1);
+  assert.equal(big.x, x, 'steering cannot move a stunned target after its skid ends');
+  big.startInhale(NOW + EXHALE.STUN_MS - 1);
+  assert.equal(big.inhaling, false, 'cannot inhale while stunned');
+  big.updateMovement(state.worldWidth, state.worldHeight, NOW + EXHALE.STUN_MS, 0.001);
+  assert.equal(big.stunned, false, 'the stun expires at its deadline');
+  big.startInhale(NOW + EXHALE.STUN_MS);
+  assert(big.inhaling, 'inhaling returns after the stun');
   assert.equal(stealWeight(state, big, small), 0, 'the defender has an escape window');
   state.now = NOW + EXHALE.BREAK_MS;
   assert(stealWeight(state, big, small) > 0, 'the escape window ends');
   const ready = small.exhaleReadyAt;
   exhale(state, small, NOW + 100);
   assert.equal(small.exhaleReadyAt, ready, 'puffs cannot be spammed');
+}
+{
+  const state = world();
+  const source = player(state, 'gust', 16);
+  source.facing = 0;
+  const target = player(state, 'hit', 16, 1100, 1000);
+  const protectedPlayer = player(state, 'protected', 16, 1120, 1000);
+  const behind = player(state, 'behind', 16, 800, 1000);
+  protectedPlayer.protectFor(2000, NOW);
+  exhale(state, source, NOW);
+  assert(target.stunned && target.sliding, 'a non-inhaling target is stunned and knocked back too');
+  assert(!protectedPlayer.stunned && !behind.stunned, 'protection and the gust cone still apply');
+  target.steer(-1, 0);
+  target.updateMovement(state.worldWidth, state.worldHeight, NOW + EXHALE.STUN_MS, 0.01);
+  assert.equal(target.stunned, false, 'stun expires even while knockback is still sliding');
+  const endsAt = target.stunEndsAt;
+  target.placeAt(1100, 1000);
+  source.exhaleReadyAt = 0;
+  exhale(state, source, NOW + EXHALE.STUN_MS + 100);
+  assert.equal(target.stunEndsAt, endsAt, 'brief immunity prevents repeated stun extensions');
+}
+for (const ending of ['impact', 'wall', 'timeout']) {
+  const state = world();
+  const flier = player(state, 'flier', 4);
+  if (ending === 'impact') player(state, 'impact-target', 100, 1190, 950);
+  if (ending === 'wall') flier.placeAt(state.worldWidth - flier.width - 10, 1000);
+  flier.launch(NOW, 1400, 0, 'old-captor', ending === 'timeout' ? 50 : CANNON.FLIGHT_MS);
+  let elapsed = 0;
+  while (flier.flying && elapsed < 3000) {
+    elapsed += 50;
+    state.time = elapsed;
+    state.now = NOW + elapsed;
+    updateFlights(state, NOW + elapsed, 0.05);
+  }
+  assert(!flier.flying, `${ending}: flight ends`);
+  if (ending === 'impact') assert(flier.flightHit, 'the regression actually hits another player');
+  const landedAt = NOW + elapsed;
+  assert.equal(flier.suctionSafeUntil, landedAt + CANNON.LAND_SAFE_MS);
+  assert.equal(flier.recaptureAfter, landedAt + CANNON.LAND_SAFE_MS);
+  assert.equal(flier.launchSafeUntil, state.time + CANNON.LAND_SAFE_MS);
+  if (state.players.has('impact-target')) state.players.delete('impact-target');
+  const hunter = player(state, 'new-captor', 100);
+  hunter.facing = 0;
+  flier.placeAt(hunter.x + hunter.width, hunter.y + (hunter.height - flier.height) / 2);
+  hunter.startInhale(landedAt);
+  const x = flier.x, gems = flier.gems;
+  state.now = landedAt + CANNON.LAND_SAFE_MS - 1;
+  updateInhales(state, state.now, 0.1);
+  assert.equal(flier.capturedBy, '', `${ending}: nobody can immediately recycle the flier`);
+  assert.equal(flier.x, x, `${ending}: immunity also prevents suction movement`);
+  assert.equal(flier.gems, gems, `${ending}: immunity prevents inhale drain`);
+  assert.equal(stealWeight(state, hunter, flier), 0);
+  flier.steer(0, 1);
+  const y = flier.y;
+  flier.updateMovement(state.worldWidth, state.worldHeight, state.now, 0.05);
+  assert(flier.y > y, 'a protected flier can move clear');
+  flier.placeAt(hunter.x + hunter.width, hunter.y + (hunter.height - flier.height) / 2);
+  state.now += 1;
+  updateInhales(state, state.now, 0.01);
+  assert.equal(flier.capturedBy, hunter.sessionId, 'normal capture returns when recovery ends');
 }
 {
   const state = world();

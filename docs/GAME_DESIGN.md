@@ -34,6 +34,10 @@ The captor's facing and captive's lateral input determine launch direction. Capt
 
 Tap with an empty mouth to puff in a 110-degree cone. Knockback scales gently by mass with a meaningful minimum ratio and a maximum distance. A successful puff into an incoming inhale creates at least 150 units of intended separation, clears that suction connection, and protects its user from suction for one second. The puff cooldown is 1.8 seconds. Protection ends when a creature inhales, puffs or fires.
 
+A gust hit stuns its target for 800ms: no steering or inhaling, while knockback still carries it away. Spiral pupils, a slight wobble and orbiting sparks show the stun. Existing 1.2-second immunity after a stun prevents repeated extensions. Spawn protection still blocks gust hits.
+
+Every flight ends with three seconds of protection from incoming suction, inhale drain and recapture by any player or turbine. This applies after an impact, hitting the arena edge or simply landing, and starts after the flight finishes so the full window is usable. The creature can move and act; a draining mint ring shows the window. Normal collision damage still applies.
+
 ## Turbines, Cores and gem surges
 
 Turbine intakes strip and transport gems; exhausts fling gems and creatures across the arena. Cores can be swung by airflow and stun on hard impacts.

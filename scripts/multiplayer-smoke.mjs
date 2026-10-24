@@ -132,6 +132,24 @@ scenario('quick keyboard escape presses work; releasing inhale keeps the capture
   assert.equal(me(a).gulping, '');
   assert.equal(me(kid).state, 'alive');
 });
+scenario('a real gust stuns a non-inhaling target and the target recovers', async (a, join) => {
+  const target = await join('Gust target');
+  a.send('test:moveTo', { x: 1000, y: 1000 });
+  a.send('test:face', { angle: 0 });
+  target.send('test:moveTo', { x: 1100, y: 1000 });
+  target.send('test:protect', { ms: 0 });
+  await sleep(100);
+  a.send('tap');
+  await until(() => me(target).stunned, 'the gust stuns the target');
+  target.send('test:moveTo', { x: 1300, y: 1000 });
+  target.send('steer', { x: 0, y: 1 });
+  target.send('inhale');
+  await sleep(150);
+  assert.equal(me(target).inhaling, false);
+  assert(Math.abs(me(target).y - 1000) < 1, 'movement inputs cannot override a gust stun');
+  await until(() => !me(target).stunned, 'stun ends');
+  await until(() => me(target).y > 1010, 'steering works again');
+});
 scenario('an armed shot emits launch, impact and shooter/projectile attribution', async (a, join) => {
   const kid = await capture(a, join);
   const target = await join('Target');
@@ -149,6 +167,17 @@ scenario('an armed shot emits launch, impact and shooter/projectile attribution'
   await until(() => a.messages.some(m => m.type === 'impact' && m.data.projectileId === kid.sessionId), 'impact event arrives');
   assert(a.messages.some(m => m.type === 'credit' && m.data.how === 'cannon' && m.data.byId === a.sessionId));
   assert.equal(me(kid).state, 'alive');
+  await until(() => !me(kid).flying && me(kid).launchSafeUntil > kid.state.time, 'landing shield arrives over the network');
+  target.send('test:moveTo', { x: 2500, y: 2500 });
+  a.send('test:breath', { stamina: 1 });
+  a.send('test:moveTo', { x: 800, y: 1000 });
+  a.send('test:face', { angle: 0 });
+  kid.send('test:moveTo', { x: 860, y: 1012.75 });
+  await sleep(100);
+  a.send('inhale');
+  await sleep(300);
+  assert.equal(me(kid).capturedBy, '', 'the original captor cannot immediately reuse the same bullet');
+  assert(Math.abs(me(kid).x - 860) < 2, 'landing protection prevents suction as well as capture');
 });
 scenario('a captor disconnecting releases the captive', async (a, join) => {
   const kid = await capture(a, join);

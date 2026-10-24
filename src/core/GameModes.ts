@@ -785,7 +785,7 @@ export class MultiplayerMode extends GameMode {
             this.inhaleHeld = false
             this.multiplayerManager?.sendMessage(event, {})
         }
-        // Stunned (by a Core), you can't steer, just like on the server
+        // Stunned by a gust or impact: no steering or action prediction.
         const keyX = Number(input.right) - Number(input.left)
         const keyY = Number(input.down) - Number(input.up)
         const keyLength = Math.hypot(keyX, keyY)
@@ -802,13 +802,14 @@ export class MultiplayerMode extends GameMode {
         }
         if (!this.predicted) this.predicted = { x: me.x, y: me.y }
         // (caught in a mouth or flying, the server moves you too)
-        if (me.sliding || me.recovering || me.flying || me.capturedBy) {
+        if (me.sliding || me.recovering || me.flying || me.capturedBy || me.stunned) {
             // Shoved or knocked into a skid: go where the server says, no steering until you've recovered
             this.predicted = {
                 x: this.predicted.x + (me.x - this.predicted.x) * 0.5,
                 y: this.predicted.y + (me.y - this.predicted.y) * 0.5,
             }
             this.resetMotion()
+            if (me.stunned) this.inhaleHeld = false
             return
         }
 

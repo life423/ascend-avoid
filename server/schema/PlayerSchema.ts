@@ -84,7 +84,7 @@ class PlayerSchema extends Schema {
   stealShares = new Map<string, number>();
   /** Server-only: how long each creature has been held in this one's inhale (0-1 of INHALE.LOCK_MS); fades fast once it's out */
   lockOn = new Map<string, number>();
-  /** Stunned by a Core: can't move or inhale until it wears off (synced, for drawing) */
+  /** Stunned by a gust or impact: can't steer or inhale until it wears off (synced, for drawing) */
   stunned: boolean;
   /** Server-only: when the stun wears off, and when another can land */
   stunEndsAt = 0;
@@ -93,6 +93,8 @@ class PlayerSchema extends Schema {
   suctionSafeUntil = 0;
   inhaleBlockedUntil = 0;
   puffReadyAt = 0;
+  /** World time when the visible post-flight suction shield ends. */
+  launchSafeUntil = 0;
   fireReadyAt = 0;
   fireQueued = false;
   /** The creature this one's airflow is latched on ("" for none), how focused the stream is (0-1, for drawing), the beam's quality when it saves breath (0 unless held cleanly), and how strongly it draws your aim (all synced) */
@@ -225,6 +227,9 @@ class PlayerSchema extends Schema {
     this.recovering = false;
     this.stopSliding();
     this.protectFor(WORLD.SPAWN_PROTECTION_MS, now);
+    this.stunned = false;
+    this.stunEndsAt = this.stunImmuneUntil = 0;
+    this.launchSafeUntil = this.suctionSafeUntil = this.recaptureAfter = 0;
     this.inhaling = false;
     this.steerX = this.steerY = this.walkX = this.walkY = 0;
   }
@@ -474,13 +479,14 @@ class PlayerSchema extends Schema {
     return { x: this.steerX, y: this.steerY };
   }
 
-  /** Hit hard by a Core: stunned for `ms` (no moving, no inhaling), then immune for a moment so it can't stun-lock */
+  /** Stunned for `ms` (no steering or inhaling), then briefly immune to another stun. */
   stun(now: number, ms: number): void {
     this.stunned = true;
     this.stunEndsAt = now + ms;
     this.stunImmuneUntil = now + ms + CORE.STUN_IMMUNE_MS;
     this.stopInhale(now);
     this.dropLatch();
+    this.walkX = this.walkY = this.spin = 0;
   }
 
   /** How fast the player is moving right now: walking and sliding together */
@@ -553,13 +559,14 @@ class PlayerSchema extends Schema {
       if (this.stamina <= 0) this.stopInhale(now);
     }
     if (this.inhaling && now >= this.inhaleStopAt) this.stopInhale(now);
+    if (this.stunned && now >= this.stunEndsAt) this.stunned = false;
     if (this.sliding) {
       this.walkX = 0;
       this.walkY = 0;
       this.slide(deltaTime, worldWidth, worldHeight);
       return;
     }
-    if (this.stunned && now >= this.stunEndsAt) this.stunned = false;
+    if (this.stunned) return;
     // Stunned (like recovering), steering can't move you; your facing holds where it was
     // (caught in a mouth or flying, the stick struggles or steers the flight instead: see game/cannon)
     const steer = this.recovering || this.stunned || this.flying || this.capturedBy ? { x: 0, y: 0 } : { x: this.steerX, y: this.steerY };
@@ -651,5 +658,6 @@ type("boolean")(PlayerSchema.prototype, "isBot");
 type("number")(PlayerSchema.prototype, "puffReadyAt");
 type("number")(PlayerSchema.prototype, "fireReadyAt");
 type("boolean")(PlayerSchema.prototype, "fireQueued");
+type("number")(PlayerSchema.prototype, "launchSafeUntil");
 
 export { PlayerSchema };

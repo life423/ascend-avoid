@@ -23,3 +23,5 @@ Later feedback: labeled Help & settings/Focus view/Show controls buttons; explic
 Follow-up to PR #27: remove the filled black mouth from ordinary inhaling too. Use a small curved mouth while airflow expresses suction; keep the capture badge below the body.
 
 Accepted capture appearance: puffed cheeks. Inflate two soft cheek bulges during the gulp, with a subtle blush and highlights. Keep both eyes fully visible; cheeks disappear when the captive escapes or is fired. Retain the below-body loading badge and existing firing delay.
+
+Accepted combat follow-up: gust hits briefly stun (800ms) with no steering or inhaling, plus a dizzy animation. Knockback continues and repeated stuns respect the existing immunity window. After a fired creature lands, grant three seconds without incoming suction, drain or recapture by anyone, with a visible recovery ring. Keep capture loading unchanged.

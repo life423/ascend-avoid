@@ -155,6 +155,7 @@ export interface SyncedPlayer {
     puffReadyAt: number
     fireReadyAt: number
     fireQueued: boolean
+    launchSafeUntil: number
 }
 
 /** TurbineSchema, as synced to the browser */
