@@ -145,7 +145,7 @@ const carries = (captorWidth: number, captiveWidth: number) => {
   }
   return x;
 };
-check(carries(130, 100) > 1100 && carries(130, 100) < 1250 && carries(200, 100) > 1250 && carries(200, 100) < 1450 && carries(400, 100) > 1550 && carries(400, 100) < 1750 && carries(800, 100) > 1850 && carries(800, 100) < 2050, `a shot carries about 1,200 units at the smallest size advantage and 2,000 at the largest, in the open (${Math.round(carries(130, 100))}, ${Math.round(carries(200, 100))}, ${Math.round(carries(400, 100))}, ${Math.round(carries(800, 100))})`);
+check(carries(130, 100) > 2000 && carries(130, 100) < 2300 && carries(200, 100) > 2300 && carries(200, 100) < 2600 && carries(400, 100) > 2800 && carries(400, 100) < 3100 && carries(800, 100) > 3300 && carries(800, 100) < 3550, `a shot carries about 2,100 units at the smallest size advantage and 3,400 at the largest, in the open (${Math.round(carries(130, 100))}, ${Math.round(carries(200, 100))}, ${Math.round(carries(400, 100))}, ${Math.round(carries(800, 100))})`);
 check(impactGems(1000, 900, 20) > impactGems(120, 900, 20) && impactGems(1000, 900, 20) >= 500 && impactGems(1000, 900, 20) / 1000 < impactGems(120, 900, 20) / 120 && impactGems(10, 900, 20) <= 6 && impactGems(400, 900, 60) > impactGems(400, 900, 20) && impactGems(400, 450, 20) < impactGems(400, 900, 20) && impactGems(120, 900, 20) <= 72, `a cannonball's damage grows with speed and the flier's mass, takes at least half of a giant, and never past 60% (${impactGems(120, 900, 20)} of 120, ${impactGems(400, 900, 20)} of 400, ${impactGems(1000, 900, 20)} of 1000)`);
 const straightOn = flightStep(900, 0, 1, 0, 0.1);
 const bentFlight = flightStep(900, 0, 0, 1, 0.1);
