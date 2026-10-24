@@ -3,7 +3,7 @@ import { Client } from 'colyseus.js';
 
 test.skip(process.env.E2E_TEST_HOOKS !== '1', 'requires an isolated local test server');
 
-test('collect and place a Pulsar Array; compact mobile progress and visible pulses', async ({ page, hasTouch, baseURL }) => {
+test('collect and place a Pulsar Array with a quiet HUD and visible pulses', async ({ page, hasTouch, baseURL }) => {
   const errors = []; page.on('pageerror', error => errors.push(error.message));
   await page.route('**/matchmake/joinOrCreate/game_room', route => route.continue({
     url: route.request().url().replace('/joinOrCreate/', '/create/'),
@@ -35,6 +35,7 @@ test('collect and place a Pulsar Array; compact mobile progress and visible puls
   await page.keyboard.down('Space');
   await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.room.state.pinwheel.phase === 'carried');
   await page.keyboard.up('Space');
+  await expect.poll(() => page.evaluate(() => window.game.currentGameMode.notices.filter(n => n.category === 'weapon').length)).toBe(1);
   const button = page.getByRole('button', { name: 'Place weapon', exact: true });
   await expect(button).toBeVisible();
   await page.keyboard.down('ArrowDown'); await page.waitForTimeout(250); await page.keyboard.up('ArrowDown');

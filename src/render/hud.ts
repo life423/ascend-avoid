@@ -130,12 +130,6 @@ export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
     ctx.font = `600 11px ${FONT}`
     ctx.textAlign = 'right'
     ctx.textBaseline = 'bottom'
-    if (state.pinwheel?.phase === 'waiting') {
-        ctx.font = `600 9px ${FONT}`;
-        ctx.fillStyle = '#ffa8be';
-        ctx.fillText(`Parts in ${Math.max(0, Math.ceil((state.pinwheel.at - mode.worldNow(state, performance.now())) / 1000))}s`, x + width, y + 12, width - 6);
-        ctx.font = `600 11px ${FONT}`; ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-    }
     if (!COMPACT.matches) ctx.fillText(`${playing} playing`, x + width, y - 8)
     ctx.restore()
 }

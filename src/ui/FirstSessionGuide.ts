@@ -1,11 +1,12 @@
 import type { SyncedPlayer } from '../types/synced';
 
-/** A small, dismissible first-visit hint. It never blocks controls or a capture prompt. */
+/** A first-visit hint expires after four seconds, or sooner when dismissed. */
 export class FirstSessionGuide {
     private element = document.createElement('div');
     private text = document.createElement('span');
     private step = 0;
     private dismissed = false;
+    private shownAt: number | null = null;
     constructor() {
         try { this.dismissed = localStorage.getItem('ascend.guideSeen') === 'true'; } catch { /* optional storage */ }
         this.element.className = 'first-session-guide';
@@ -26,6 +27,10 @@ export class FirstSessionGuide {
         if (me?.gulping) this.step = Math.max(3, this.step);
         if (this.step === 4) this.dismiss();
         this.element.hidden = this.dismissed || intro || !me || me.state !== 'alive' || !!me.capturedBy || !!me.gulping || me.flying;
+        if (!this.element.hidden) {
+            this.shownAt ??= performance.now();
+            if (performance.now() - this.shownAt >= 4000) this.dismiss();
+        }
         const tip = this.step === 0 ? 'Move with WASD, arrows or the left stick. Grab a gem to grow.'
             : this.step === 1 ? 'Hold Space or the right button to inhale gems and steal from creatures ahead.'
             : this.step === 2 ? 'Catch someone smaller, then tap FIRE when loaded. Caught yourself? Follow the arrows to escape.'
@@ -37,7 +42,7 @@ export class FirstSessionGuide {
         this.element.hidden = true;
         try { localStorage.setItem('ascend.guideSeen', 'true'); } catch { /* optional storage */ }
     }
-    private replay = (): void => { this.dismissed = false; this.step = 0; };
+    private replay = (): void => { this.dismissed = false; this.step = 0; this.shownAt = null; };
     dispose(): void {
         window.removeEventListener('ascend:replay-guide', this.replay);
         this.element.remove();

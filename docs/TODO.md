@@ -2,7 +2,7 @@
 
 - [x] Replace the Drum with a space-themed Pulsar Array: plasma cell/field coil/emitter, visible inward charging and four damaging plasma waves. Double knockback, spill 25% of gems (minimum six), and allow low-mass knockouts. Preserve shared claims/carry/place controls and alternate with Pinwheel.
 - [x] Keep compact/mobile views filled with playable map at all edges, during knockouts, rotation and extreme zoom. Wide desktops retain their centered camera and decorative surround.
-- [x] Replace the large mobile weapon panel with a compact 36px progress pill; preserve minimap part markers and contextual placement in portrait/landscape. Suppress duplicate floating weapon labels on phones.
+- [x] Remove persistent weapon panels/pills, floating completed-weapon labels and waiting countdowns from every screen. Keep minimap markers, physical cargo and contextual placement; local collection gets one brief coalesced notice. Starter tips auto-close after four seconds.
 
 - [x] Touch or inhale weapon parts into persistent carried cargo; releasing inhale or turning must not drop them. Preserve claims and the approved collection feel.
 - [x] Mark each loose weapon part on the minimap and guide players to the nearest missing part.
