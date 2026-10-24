@@ -98,8 +98,9 @@ export function updateInhales(state: GameState, now: number, deltaTime: number) 
       const px = prey.x + prey.width / 2;
       const py = prey.y + prey.height / 2;
       const d = Math.hypot(px - mouthX, py - mouthY);
-      // A swallow needs the size, the prey at the mouth, and clean airflow (sitting on top of it isn't enough)
-      if (now >= prey.recaptureAfter && canSwallow(state, eater, prey) && d <= eater.width * INHALE.GULP_REACH + prey.width / 2 && d < heldAt && airflowQuality(state.mouthed(eater), state.bodyOf(prey)) >= LATCH.SWALLOW_MIN_QUALITY) {
+      // A capture needs the size and the prey at the mouth, in front of it: pressed against the mouth counts
+      // (body contact smothers the airflow, but it mustn't stop a catch; swallowing has its own test)
+      if (now >= prey.recaptureAfter && canSwallow(state, eater, prey) && d <= eater.width * INHALE.GULP_REACH + prey.width / 2 && d < heldAt && inFrontOf(eater, px, py)) {
         held = prey;
         heldAt = d;
       }
@@ -111,7 +112,17 @@ export function updateInhales(state: GameState, now: number, deltaTime: number) 
       const close = Math.max(0, 1 - gap / (reach * INHALE.CLOSE_RANGE));
       const lockPull = INHALE.LOCK_START + (1 - INHALE.LOCK_START) * lock * lock;
       const strength = INHALE.BODY_PULL * mass * near * near * (1 + INHALE.CLOSE_BOOST * close) * alignment * lockPull;
-      const pull = Math.min(strength, INHALE.PREY_PULL_CAP * moveSpeed(prey.width)) * deltaTime;
+      // It never outpaces the creature's own top speed (react early, or slip out of the cone, and you get
+      // away)... except close to a mouth big enough to catch it: there the suction rises past its top speed
+      // (PREY_PULL_CLOSE at the mouth), so running straight away doesn't save it; still only for what's in
+      // front, so slipping sideways out of the airflow does
+      const speed = moveSpeed(prey.width);
+      let pullSpeed = Math.min(strength, INHALE.PREY_PULL_CAP * speed);
+      if (close > 0 && canSwallow(state, eater, prey)) {
+        const overpower = speed * (INHALE.PREY_PULL_CAP + (INHALE.PREY_PULL_CLOSE - INHALE.PREY_PULL_CAP) * Math.sqrt(close)) * alignment;
+        pullSpeed = Math.max(pullSpeed, overpower);
+      }
+      const pull = pullSpeed * deltaTime;
       prey.nudge(((mouthX - px) / d) * pull, ((mouthY - py) / d) * pull, state.worldWidth, state.worldHeight);
     });
     fadeLocks(state, eater, locked, deltaTime);
@@ -248,7 +259,8 @@ export function stealStrength(_state: GameState, thief: PlayerSchema, victim: Pl
 export function steal(state: GameState, thief: PlayerSchema, now: number, deltaTime: number) : void {
   const victims: { victim: PlayerSchema; weight: number }[] = [];
   state.players.forEach((other) => {
-    if (other === thief || other.gems <= 0) return;
+    // (a captive isn't drained: the capture decides what happens to it)
+    if (other === thief || other.gems <= 0 || other.capturedBy) return;
     const weight = stealWeight(state, thief, other);
     if (weight > 0) victims.push({ victim: other, weight });
   });
@@ -266,6 +278,9 @@ export function steal(state: GameState, thief: PlayerSchema, now: number, deltaT
   // Catching several at once pays more than one, though far less than one each
   const budget = Math.sqrt(victims.length);
   for (const { victim, weight } of victims) {
+    // Whether the thief could catch this victim at its real size, before its last gem goes (drained empty it
+    // shrinks to a newborn; that mustn't turn a near-equal into prey)
+    const catchable = canSwallow(state, thief, victim);
     let progress = (thief.stealShares.get(victim.sessionId) ?? 0) + deltaTime * INHALE.STEAL_RATE * budget * (weight / total) * stealStrength(state, thief, victim) * drainRamp(thief.heldFor.get(victim.sessionId) ?? 0) * pressureBuild(thief.heldFor.get(victim.sessionId) ?? 0, thief.width) * scaleDrain(thief.width, victim.width) * (LATCH.OVERLAP_DRAIN_MIN + (1 - LATCH.OVERLAP_DRAIN_MIN) * cleanAir(state.bodyOf(thief), state.bodyOf(victim)));
     while (progress >= 1 && victim.gems > 0) {
       progress -= 1;
@@ -276,7 +291,8 @@ export function steal(state: GameState, thief: PlayerSchema, now: number, deltaT
       if (victim.sessionId === thief.stealingFrom) thief.stolenRun += 1;
     }
     thief.stealShares.set(victim.sessionId, progress);
-    if (victim.gems <= 0 && victim.state === PLAYER_STATE.ALIVE) drain(state, victim, now, thief);
+    // Drained empty by something that could catch it, it isn't knocked out: the physical capture decides
+    if (victim.gems <= 0 && victim.state === PLAYER_STATE.ALIVE && !catchable) drain(state, victim, now, thief);
   }
 }
 
@@ -411,4 +427,12 @@ export function letGo(state: GameState, eater: PlayerSchema, now: number): void 
   } else {
     free(captive, Math.cos(eater.facing), Math.sin(eater.facing), now);
   }
+}
+
+/** Whether a point is in front of a creature (within about 70 degrees of its facing), as a catch needs */
+function inFrontOf(eater: PlayerSchema, px: number, py: number): boolean {
+  const dx = px - (eater.x + eater.width / 2);
+  const dy = py - (eater.y + eater.height / 2);
+  const d = Math.hypot(dx, dy);
+  return d < 1e-6 || (dx * Math.cos(eater.facing) + dy * Math.sin(eater.facing)) / d >= 0.35;
 }
