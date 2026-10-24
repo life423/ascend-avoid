@@ -5,7 +5,7 @@
 import Player from '../entities/Player'
 import { InputState } from '../types'
 import { GameEvents } from '../constants/client-constants'
-import { ARENA_RULES, BOMBS, GEMS, INHALE, LATCH, PLAYER_COLORS, SHIFT, WORLD } from '../../server/constants/gameConstants'
+import { ARENA_RULES, BOMBS, CAMERA, GEMS, INHALE, LATCH, PLAYER_COLORS, SHIFT, WORLD } from '../../server/constants/gameConstants'
 import { breathRate } from '../../server/game/airflow'
 import { CameraRig } from '../../server/game/camera'
 import { turnStep, walk } from '../../server/game/movement'
@@ -1055,11 +1055,12 @@ export class MultiplayerMode extends GameMode {
         this.camera = this.cameraRig.short ? { x: this.cameraRig.x, y: this.cameraRig.y } : (this.camera ?? { x: state.worldWidth / 2, y: state.worldHeight / 2 })
         this.lastRenderAt = timestamp
 
-        // Keep the view inside the world
-        const x = width >= state.worldWidth
+        // Locked on you, the view goes with you right up to the edge and past it (beyond the floor there's
+        // only the void, as in Agar.io), so you're always in the middle; otherwise it stays inside the world
+        const x = CAMERA.LOCKED ? this.camera.x : width >= state.worldWidth
             ? state.worldWidth / 2
             : Math.min(Math.max(this.camera.x, width / 2), state.worldWidth - width / 2)
-        const y = height >= state.worldHeight
+        const y = CAMERA.LOCKED ? this.camera.y : height >= state.worldHeight
             ? state.worldHeight / 2
             : Math.min(Math.max(this.camera.y, height / 2), state.worldHeight - height / 2)
         return { x, y, width, height, scale }
