@@ -5,7 +5,7 @@
 import { airflowQuality, breathRate, cleanAir, latchSizeFactor } from "../game/airflow.js";
 import { turnRate, turnStep } from "../game/movement.js";
 import { CAMERA, CANNON, INHALE, LATCH } from "../constants/gameConstants.js";
-import { canCatch, canSwallowWhole, flightStep, holdFirmness, impactGems, launchSpeed, swallowPenalty, sweptHit } from "../game/cannon.js";
+import { canCatch, flightStep, impactGems, launchSpeed, sweptHit } from "../game/cannon.js";
 import { intakePull, noReturnGap } from "../game/turbine.js";
 import { CameraRig, constrainArenaView, lookAhead, springStep, viewShort } from "../game/camera.js";
 import { dangerRadius, lethalShare, pressureBuild, scaleDrain, streamLook } from "../game/airflow.js";
@@ -23,7 +23,7 @@ const clean = airflowQuality(attacker, { x: 92 / 2 + 15 + 40, y: 0, width: 80 })
 const squished = airflowQuality(attacker, { x: 92 / 2 + 40 - 14, y: 0, width: 80 });
 const deep = airflowQuality(attacker, { x: 20, y: 0, width: 80 });
 check(clean > 0.8, `clean, centered, in front: airflow quality near 1 (${clean.toFixed(2)})`);
-check(squished < clean && deep < LATCH.SWALLOW_MIN_QUALITY && deep < LATCH.RAMP_MIN_QUALITY, `overlap smothers the airflow: squished ${squished.toFixed(2)}, deep ${deep.toFixed(2)} (too smothered to ramp or swallow)`);
+check(squished < clean && deep < LATCH.RAMP_MIN_QUALITY, `overlap smothers the airflow: squished ${squished.toFixed(2)}, deep ${deep.toFixed(2)} (too smothered to ramp)`);
 check(airflowQuality(attacker, { x: -100, y: 0, width: 80 }) === 0, "behind you, no airflow at all");
 const roundTheBend = { x: Math.cos(1.05) * 140, y: Math.sin(1.05) * 140, width: 40 };
 check(airflowQuality(attacker, roundTheBend) === 0 && airflowQuality(attacker, roundTheBend, LATCH.CURVE_ARC) > 0.2, "a focused beam can hold its creature round a curve the plain cone couldn't reach");
@@ -95,10 +95,7 @@ check(lateGame / viewShort(lateGame) > 0.24 && (20 / lateGame) * (lateGame / vie
 check(scaleDrain(20, 548) === LATCH.SCALE_MIN && scaleDrain(60, 120) === 1 && scaleDrain(20, 100) > LATCH.SCALE_MIN && scaleDrain(20, 100) < 1, "a tiny attacker on a giant is a mosquito: its drain fades with the size gap");
 
 // The living cannonball
-check(holdFirmness(80, 56) < 1 && holdFirmness(300, 20) === CANNON.HOLD_MAX && holdFirmness(300, 20) < 1.5, "a near-size captive can push straight out of a hold; a giant holds a tiny one firmly, but never so firmly that slipping round its side can't break it");
-check(!canSwallowWhole(80, 56) && canSwallowWhole(120, 56) && !canSwallowWhole(24, 20) && !canSwallowWhole(20, 20) && canSwallowWhole(40, 20), "swallowing needs a captor SWALLOW_RATIO (2x) wider, whatever the captive holds: an empty one is no exception");
 check(canCatch(26.5, 20) && !canCatch(25.5, 20) && !canCatch(20, 20), "catching needs a mouth INHALE.EAT_RATIO (1.3x) wider, gems or none");
-check(swallowPenalty(0) === 0 && swallowPenalty(1) === 1 && swallowPenalty(20) === 5 && swallowPenalty(40) === 10 && swallowPenalty(100) === 15 && swallowPenalty(1000) === 15, "a swallow costs a quarter of the captive's gems (rounded up), never more than 15, nothing when it has none");
 check(launchSpeed(200) > launchSpeed(40), "a bigger captor launches harder");
 check(launchSpeed(130, 100) === CANNON.LAUNCH_SPEED_MIN && launchSpeed(200, 100) > launchSpeed(130, 100) && launchSpeed(400, 100) > launchSpeed(200, 100) && launchSpeed(800, 100) > launchSpeed(400, 100) && launchSpeed(1600, 100) === launchSpeed(800, 100), "launch speed grows with the captor's size advantage and caps at LAUNCH_RATIO_CAP");
 // How far a captive's shot carries in the open: flightStep integrated with the shot's drag for FLIGHT_MS, from each launch speed

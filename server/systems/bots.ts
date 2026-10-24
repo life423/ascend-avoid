@@ -8,7 +8,7 @@ import { escapePress, fireCaptive } from "./inhale.js";
 const { PLAYER_STATE, BOTS, INHALE, BOMBS } = GAME_CONSTANTS;
 
 /**
- * Bots swallow smaller creatures, pick up bombs, and spit them at a good target: someone big,
+ * Bots capture smaller creatures, pick up bombs, and spit them at a good target: someone big,
  * slow, or rooted while inhaling. A lit bomb in the mouth goes straight back out.
  */
 export function botMouth(state: GameState, bot: PlayerSchema, now: number) : void {
@@ -48,7 +48,7 @@ export function botMouth(state: GameState, bot: PlayerSchema, now: number) : voi
     bot.stopInhale(now);
     return;
   }
-  // Inhaling: keep the mouth on whoever it's robbing or swallowing for as long as its breath lasts,
+  // Inhaling: keep the mouth on whoever it's robbing or capturing for as long as its breath lasts,
   // and let go once nobody has been in its inhale for a moment (saving its breath)
   if (bot.inhaling) {
     const held = bot.stealingFrom ? state.players.get(bot.stealingFrom) : undefined;
@@ -168,36 +168,30 @@ export function addBot(state: GameState, now: number) : void {
 }
 
 /**
- * Holding someone (its mouth full, button or no button): the bot heads for the best target in range (bigger is
- * better, nearer is better), which turns it to face them, and fires once it's lined up; with nobody to aim at
- * for a while, it fires straight ahead
+ * Read targets periodically during loading, commit to imperfect aim, then allow reaction time before firing.
  */
 function botFire(state: GameState, bot: PlayerSchema, cx: number, cy: number, now: number) : void {
   const captive = state.players.get(bot.gulping);
-  if (!captive) return;
-  let target: PlayerSchema | null = null;
-  let best = -Infinity;
-  state.players.forEach((other) => {
-    if (other === bot || other === captive || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected || other.capturedBy || other.flying) return;
-    const d = Math.hypot(other.x + other.width / 2 - cx, other.y + other.height / 2 - cy);
-    if (d > BOTS.FIRE_RANGE) return;
-    const score = other.width - d * 0.05;
-    if (score > best) {
-      best = score;
-      target = other;
-    }
+  const brain = state.brains.get(bot.sessionId);
+  if (!captive || !brain) return;
+  const shot = brain.cannonAim.update(`${bot.gulping}:${bot.captureStartedAt}`, bot.captureStartedAt + captureLoadMs(captive.escapeKeys.length), now, bot.facing, () => {
+    let target: PlayerSchema | null = null;
+    let best = -Infinity;
+    state.players.forEach((other) => {
+      if (other === bot || other === captive || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected || other.capturedBy || other.flying) return;
+      const d = Math.hypot(other.x + other.width / 2 - cx, other.y + other.height / 2 - cy);
+      if (d > BOTS.FIRE_RANGE) return;
+      const score = other.width - d * 0.05;
+      if (score > best) {
+        best = score;
+        target = other;
+      }
+    });
+    const aim = target as PlayerSchema | null;
+    return aim ? Math.atan2(aim.y + aim.height / 2 - cy, aim.x + aim.width / 2 - cx) : null;
   });
-  const aim = target as PlayerSchema | null;
-  const held = now - bot.captureStartedAt;
-  if (aim) {
-    const dx = aim.x + aim.width / 2 - cx;
-    const dy = aim.y + aim.height / 2 - cy;
-    const d = Math.hypot(dx, dy) || 1;
-    bot.steer(dx / d, dy / d);
-    if (held >= captureLoadMs(captive.escapeKeys.length) && Math.abs(angleGap(bot.facing, Math.atan2(dy, dx))) <= BOTS.FIRE_AIM) fireCaptive(state, bot, now);
-  } else if (held >= captureLoadMs(captive.escapeKeys.length)) {
-    fireCaptive(state, bot, now);
-  }
+  bot.steer(Math.cos(shot.angle), Math.sin(shot.angle));
+  if (shot.ready && Math.abs(angleGap(bot.facing, shot.angle)) <= BOTS.FIRE_AIM) fireCaptive(state, bot, now);
 }
 
 /** Caught: dazed at first, then it tries a direction every ESCAPE_EVERY_MS, the right one ESCAPE_SKILL of the time */

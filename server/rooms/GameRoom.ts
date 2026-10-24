@@ -133,6 +133,7 @@ export class GameRoom extends Room<GameState> {
       // The press cut short (slid off the button, Esc, a cancelled touch): stop, but it isn't a release
       const player = this.state.players.get(client.sessionId);
       player?.stopInhale();
+      player?.aimAt(0, 0);
       player?.steer(0, 0);
       if (player) player.fireQueued = false;
     });

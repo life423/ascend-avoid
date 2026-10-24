@@ -5,6 +5,7 @@ import { EXHALE, INHALE, PINWHEEL, SHOCKWAVE, type WeaponKind } from '../constan
 import { sweptHit } from '../game/cannon.js';
 import { sprayGems } from './gems.js';
 import { updateShockwave } from './shockwave.js';
+import { knockOutWithGems } from './inhale.js';
 
 export function spawnWeapon(state: GameState, x = state.worldWidth / 2, y = state.worldHeight / 2, kind: WeaponKind = 'pinwheel'): void {
   const w = state.pinwheel;
@@ -186,9 +187,17 @@ export function updateWeapons(state: GameState, dt: number, now: number): void {
     for (const p of state.players.values()) {
       if (p.sessionId === w.owner || p.state !== 'alive' || p.spawnProtected || p.capturedBy || p.flying || state.time < (w.hitAt.get(p.sessionId) ?? 0)) continue;
       if (!sweptHit(x, y, bolt.x, bolt.y, p.x + p.width / 2, p.y + p.height / 2, p.width / 2 + PINWHEEL.BOLT_RADIUS)) continue;
-      const lost = Math.min(Math.max(0, p.gems - 1), PINWHEEL.HIT_MAX_GEMS, Math.ceil(p.gems * 0.06));
-      if (lost > 0) { p.setGems(p.gems - lost, state.worldWidth, state.worldHeight); sprayGems(state, p.x + p.width / 2, p.y + p.height / 2, lost, now, p.sessionId); }
-      p.skid(Math.cos(bolt.angle), Math.sin(bolt.angle), PINWHEEL.HIT_PUSH);
+      const hitX = p.x + p.width / 2, hitY = p.y + p.height / 2, size = p.width;
+      // Stronger bolts, but a giant has more staying power than a newcomer.
+      let lost = Math.min(p.gems, Math.ceil(p.gems * PINWHEEL.HIT_SHARE), Math.max(PINWHEEL.HIT_MIN_GEMS, Math.ceil(Math.sqrt(p.gems) * PINWHEEL.HIT_PER_ROOT)));
+      const out = p.gems - lost < PINWHEEL.KO_GEMS;
+      if (out) { lost = p.gems; knockOutWithGems(state, p, now); }
+      else {
+        p.setGems(p.gems - lost, state.worldWidth, state.worldHeight);
+        sprayGems(state, hitX, hitY, lost, now, p.sessionId);
+        p.skid(Math.cos(bolt.angle), Math.sin(bolt.angle), PINWHEEL.HIT_PUSH);
+      }
+      state.credit(p, 'pinwheel', now, w.owner, { gems: lost, out, x: hitX, y: hitY, size });
       w.hitAt.set(p.sessionId, state.time + PINWHEEL.HIT_IMMUNE_MS); w.bolts.delete(id); break;
     }
   }

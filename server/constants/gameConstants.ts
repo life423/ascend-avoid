@@ -67,7 +67,6 @@ export const STATE = {
 export const PLAYER_STATE = {
   ALIVE: "alive",
   DEAD: "dead",
-  GULPED: "gulped",
   SPECTATING: "spectating",
 } as const;
 
@@ -153,7 +152,7 @@ export const BOTS = {
   SAFETY_MARGIN: 10, // ...and keeping this far clear of it
   MISTAKE_CHANCE: 0.07, // how often a bot hops at random instead (varies by bot, up to 1.5x this)
   MAX_AGGRESSION: 0.35, // how keen the keenest bot is to shove whoever is next to it
-  HUNT_RANGE: 700, // bots go after creatures they can rob or swallow within about this far (more for bolder bots)...
+  HUNT_RANGE: 700, // bots go after creatures they can rob or capture within about this far (more for bolder bots)...
   GEM_SIGHT: 1000, // bots go for gems within this distance...
   FLEE_RATIO: 1.5, // bots run from anyone this many times their size who comes within FLEE_RANGE
   FLEE_RANGE: 420, // (a giant's inhale reaches about 400)
@@ -177,7 +176,12 @@ export const BOTS = {
   ESCAPE_SKILL: 0.65,
   FIRE_RANGE: 1100, // holding someone, a bot looks for another creature within this far to fire them at...
   FIRE_AIM: 0.18, // ...and fires once its facing is within this many radians of it...
-  FIRE_WAIT_MS: 1600, // ...or straight ahead after holding this long with nobody to aim at
+  FIRE_REACT_MIN_MS: 400,
+  FIRE_REACT_MAX_MS: 650,
+  FIRE_READ_MS: 250,
+  FIRE_OBSERVE_MS: 450,
+  FIRE_ERROR_MIN: 0.12,
+  FIRE_ERROR_MAX: 0.24,
 } as const;
 
 /**
@@ -279,8 +283,8 @@ export const INHALE = {
   BODY_PULL_MAX: 3, // ...times your width over its (mass, with pull and resistance each growing as the square root of mass), up to this...
   PREY_PULL_CAP: 0.9, // ...but never more than this share of its own top speed: react early, or slip out of the cone sideways, and it can get away...
   PREY_PULL_CLOSE: 1.6, // ...except in the close range of a mouth big enough to catch it, where the suction rises past its top speed, to this share at the mouth: running straight away from right in front of a bigger mouth, you're pulled in (sideways out of the cone still escapes)
-  EAT_RATIO: 1.3, // you can catch a creature 1.3 times narrower (swallowing it takes CANNON.SWALLOW_RATIO) (about 1.7 times lighter)...
-  GULP_REACH: 0.35, // ...held this close to your mouth (times your width, plus its radius)...
+  EAT_RATIO: 1.3, // you can catch a creature 1.3 times narrower (about 1.7 times lighter)...
+  CAPTURE_REACH: 0.35, // ...held this close to your mouth (times your width, plus its radius)...
   LOCK_MS: 1500, // holding a creature in your inhale builds a lock to full over this long...
   LOCK_DECAY_MS: 350, // ...that fades this fast once it's out of the cone (or you stop), so breaking the cone frees it
   LOCK_START: 0.25, // body pull starts at this share and grows with the lock squared: a warning, then dangerous, then full
@@ -343,7 +347,7 @@ export const BOMBS = {
 /**
  * Player airflow connections (see game/airflow): one airflow quality (0-1) from shared geometry
  * drives the soft latch, its gentle aim assist, the cone focusing into a stream, drain, the drain
- * ramp, swallowing and breath. Deep body overlap smothers the air: worse, not better.
+ * drain ramp and breath. Deep body overlap smothers the air: worse, not better.
  */
 export const LATCH = {
   ACQUIRE_QUALITY: 0.3, // airflow this clean on a creature catches it (the latch)...
@@ -366,7 +370,6 @@ export const LATCH = {
   SCALE_MIN: 0.08, // smothered air still drains this share of gems
   RAMP_MIN_QUALITY: 0.35, // the drain ramp builds only on airflow at least this clean; below, it fades...
   RAMP_FADE: 1.5, // ...this many times as fast as it built
-  SWALLOW_MIN_QUALITY: 0.5, // a swallow needs airflow at least this clean (size alone isn't enough)
   BEAM_FOCUS_FROM: 0.25, // the cone starts focusing into a stream at this quality...
   BEAM_FULL_AT: 0.6, // ...and is a tight stream by this (qualities a real fight reaches)
   BEAM_STABLE_MS: 400, // a focused connection has to hold this long before it saves breath
@@ -408,7 +411,7 @@ export const CAMERA = {
  * depending on the captor's size advantage. A new action press fires it after loading; an early press
  * queues the shot. Releasing inhale leaves the capture intact. Shots follow the captor's aim and deal
  * one damaging hit. After landing, LAND_SAFE_MS blocks incoming suction and recapture; ordinary
- * release/escape uses RECAPTURE_MS. Whole-swallow constants remain for the older implementation.
+ * release/escape uses ESCAPE_SAFE_MS.
  */
 export const CANNON = {
   HOLD_MS: 4500, // a brief capture, then automatic release
@@ -416,28 +419,10 @@ export const CANNON = {
   ESCAPE_KEYS: 3, // rises to four at a 2x width advantage, five at 4x
   ESCAPE_PRESS: 0.6, // a push counts once the stick goes past this...
   ESCAPE_NEUTRAL: 0.3, // ...after coming back within this, so holding a direction is one push, not many
-  ESCAPE_PUSH: 110, // out, it pops from the mouth this hard (and can't be caught again for RECAPTURE_MS)
-  LAUNCH_MIN_MS: 120, // (the old release rule; firing is gated by ARM_MS now)
+  ESCAPE_PUSH: 110, // out, it pops from the mouth this hard before the escape shield starts
   ARM_MS: 2800, // base loading includes the 600ms daze; each extra escape input adds 300ms, up to 3.4s
-  HOLD_RATIO: 1, // the captor pulls its captive back to its mouth at this times the captive's own top speed...
-  HOLD_MIN: 0.5, // ...times its firmness: this when just big enough to catch it (a near-size captive can simply push out)...
-  HOLD_PER_DOUBLING: 0.35, // ...rising this much every time the captor is twice as big again...
-  HOLD_MAX: 1.4, // ...up to this; and times how squarely it faces its captive (sideways slips weaken it)...
-  HOLD_SIDEWAYS: 0.5, // ...and across its facing it grips only this hard: pushing straight out of a much bigger mouth fails, slipping sideways works
-  AIM_TWIST: 1.4, // pushing sideways twists the captor's aim up to this many radians a second (less for a much smaller captive)
-  BREAK_GAP: 0.7, // pushed out this share of its own width past the hold point (or past where it was caught, if further)...
-  BREAK_MARGIN: 12, // ...plus this many units, the captive breaks free...
   BREAK_PUSH: 70, // ...pushed this far clear
-  SWALLOW_RATIO: 2, // swallowing needs the captor this many times wider, whatever the captive holds (an empty one is no exception)...
-  SWALLOW_MS: 900, // ...and the captive pinned (within SUBDUED) this long in all during the hold
-  SUBDUED: 0.25, // pinned: within this share of its width of the hold point (8 units at least)
-  SWALLOW_PENALTY_SHARE: 0.25, // swallowed, a creature is gulped, not knocked out: it pops back out alive, this share of its gems lighter (rounded up)...
-  SWALLOW_PENALTY_MAX: 15, // ...never more than this many, scattered where it pops out for anyone (itself only after a moment)
-  GULP_MS: 900, // how long it rides inside its swallower before popping back out (the swallower's mouth is full meanwhile: no inhaling)
-  EXPEL_GAP: 6, // it pops out behind its swallower, this far clear of its body...
-  EXPEL_PUSH: 110, // ...pushed this much farther...
-  EXPEL_PROTECT_MS: 2500, // ...and can't be caught again (by a mouth or a turbine) for this long
-  RECAPTURE_MS: 1500, // let go or broken free: can't be caught by a mouth or a turbine for this long
+  ESCAPE_SAFE_MS: 2000, // after escape/release, block incoming suction, drain and capture
   LAND_SAFE_MS: 3000, // after any flight, ignore incoming suction and captures while moving clear
   LAUNCH_SPEED_MIN: 1250, // launch speed (units a second) for a captor just big enough to catch its captive (CAPTURE_RATIO wider)...
   LAUNCH_SPEED_PER_DOUBLING: 300, // ...plus this every time the captor is twice as wide again, relative to its captive...
@@ -557,13 +542,16 @@ export const PINWHEEL = {
   GUST_SPEED: 600,
   CHARGE_MS: 1200,
   ACTIVE_MS: 8000,
-  SHOT_MS: 600,
+  SHOT_MS: 140,
   SPIN: Math.PI * 0.65,
   BOLT_SPEED: 620,
-  BOLT_RANGE: 650,
+  BOLT_RANGE: 900,
   BOLT_RADIUS: 8,
   HIT_PUSH: 65,
-  HIT_MAX_GEMS: 6,
+  HIT_SHARE: 0.30,
+  HIT_PER_ROOT: 1.6,
+  HIT_MIN_GEMS: 8,
+  KO_GEMS: 8,
   HIT_IMMUNE_MS: 500,
 } as const;
 
@@ -580,7 +568,7 @@ export const SHOCKWAVE = {
   MIN_PUSH: 220,
   DAMAGE_SHARE: 0.25,
   DAMAGE_MIN_GEMS: 6,
-  KO_GEMS: 3,
+  KO_GEMS: 8,
 } as const;
 
 export const WEAPON_RECIPES = {

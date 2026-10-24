@@ -105,11 +105,37 @@ function setup() {
   const bolt = new WeaponBoltSchema(); bolt.x = 2090; bolt.y = 2000; bolt.bornAt = s.time; bolt.angle = 0;
   w.bolts.set('test', bolt);
   updateWeapons(s, 0.4, NOW);
-  assert(b.gems < 100 && b.gems >= 94, 'swept collision hits a target across a long tick with bounded damage');
+  assert.equal(b.gems, 84, 'a swept bolt removes 16 gems from a 100-gem target');
   assert.equal(a.gems, 0, 'the builder is not hit by their weapon');
   assert(!b.stunned, 'weapon bolts do not repeatedly stun targets');
   assert(!w.bolts.has('test'), 'each bolt hits once');
   s.time = w.at; updateWeapons(s, 0.01, NOW);
   assert.equal(w.phase, 'waiting'); assert.equal(w.bolts.size, 0);
 }
-console.log('Pinwheel regressions passed: claims, disruption, expiry, assembly ownership, firing and bounded hits.');
+for (const gems of [0, 7, 10, 20, 100, 1000]) {
+  const { s, w, a, b } = setup();
+  a.placeAt(1500, 1500); b.setGems(gems, s.worldWidth, s.worldHeight); b.placeAt(2200, 2000 - b.width / 2);
+  w.owner = a.sessionId; w.phase = 'active'; w.at = s.time + 8000; w.nextShotAt = s.time + 10000;
+  const bolt = new WeaponBoltSchema(); bolt.x = 2090; bolt.y = 2000; bolt.angle = 0; bolt.bornAt = s.time;
+  w.bolts.set('damage', bolt);
+  const credit: Record<string, unknown>[] = []; s.onEvent = (type, data) => { if (type === 'credit') credit.push(data); };
+  updateWeapons(s, .4, NOW);
+  const lost = Math.min(gems, Math.ceil(gems * .3), Math.max(8, Math.ceil(Math.sqrt(gems) * 1.6)));
+  const out = gems - lost < 8;
+  assert.equal(b.state, out ? 'dead' : 'alive'); assert.equal(b.gems, out ? 0 : gems - lost);
+  assert(credit.some(c => c.how === 'pinwheel' && c.out === out && c.byId === a.sessionId));
+  assert.equal([...s.gems.values()].reduce((sum, g) => sum + g.value, 0), gems - b.gems, 'bolt losses spill once, including knockouts');
+  if (out) { s.weaponsOn = false; s.update(0, b.respawnAt); assert(b.spawnProtected && b.width === 20 && b.state === 'alive'); }
+}
+{
+  const { s, w, a, b } = setup(); a.placeAt(100, 100); b.placeAt(100, 400);
+  w.owner = a.sessionId; w.phase = 'active'; w.at = s.time + 8000; w.nextShotAt = s.time + PINWHEEL.SHOT_MS;
+  const angles = new Map<string, number>();
+  for (let i = 0; i < 200; i++) {
+    s.time += 20; updateWeapons(s, .02, NOW + s.time);
+    for (const [id, bolt] of w.bolts) angles.set(id, bolt.angle);
+  }
+  assert(angles.size >= 27, 'rapid spinning fire launches at least 27 bolts in four seconds');
+  assert(new Set([...angles.values()].map(a => Math.floor(a * 10))).size > 20, 'successive straight bullets fan into an outward spiral');
+}
+console.log('Pinwheel regressions passed: claims, carrying, rapid spiral fire, mass-scaled damage, knockout credit and respawn.');

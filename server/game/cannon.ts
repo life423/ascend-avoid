@@ -11,26 +11,9 @@ export function captureLoadMs(keys: number): number {
   return CANNON.ARM_MS + Math.max(0, Math.min(2, keys - 3)) * 300;
 }
 
-/** How firmly a captor this wide holds a captive this wide: HOLD_MIN when just big enough to catch it, more each time it's twice as big again, up to HOLD_MAX */
-export function holdFirmness(captorWidth: number, captiveWidth: number): number {
-  const ratio = captorWidth / Math.max(1, captiveWidth);
-  return clamp(CANNON.HOLD_MIN + CANNON.HOLD_PER_DOUBLING * Math.log2(Math.max(1, ratio / INHALE.EAT_RATIO)), CANNON.HOLD_MIN, CANNON.HOLD_MAX);
-}
-
 /** Whether a mouth this wide can catch (hold at its mouth) a creature this wide: INHALE.EAT_RATIO times as wide, whatever the creature holds (an empty one is no exception) */
 export function canCatch(captorWidth: number, preyWidth: number): boolean {
   return preyWidth * INHALE.EAT_RATIO <= captorWidth;
-}
-
-/** Whether a captor this wide can swallow a captive this wide: it must be SWALLOW_RATIO wider, whatever the captive holds (an empty one is no exception; never a smaller or same-size captor) */
-export function canSwallowWhole(captorWidth: number, captiveWidth: number): boolean {
-  return captorWidth >= captiveWidth * CANNON.SWALLOW_RATIO;
-}
-
-/** The gems a swallowed creature loses as it pops back out: SWALLOW_PENALTY_SHARE of them (rounded up), never more than SWALLOW_PENALTY_MAX, nothing if it has none */
-export function swallowPenalty(gems: number): number {
-  if (gems <= 0) return 0;
-  return Math.min(CANNON.SWALLOW_PENALTY_MAX, Math.ceil(gems * CANNON.SWALLOW_PENALTY_SHARE));
 }
 
 /**

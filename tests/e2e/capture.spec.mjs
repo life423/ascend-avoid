@@ -95,7 +95,7 @@ test('WASD and arrow taps free a real captive; focus loss cancels movement and i
       }
       await expect.poll(async () => (await mine(page)).capturedBy).toBe('');
       expect((await mine(page)).flying).toBe(false);
-      await page.waitForTimeout(1750); // post-escape protection/slide ends before the next trial
+      await page.waitForTimeout(2250); // two-second escape shield ends before the next trial
     }
     await page.keyboard.down('ArrowRight');
     await page.keyboard.down('Space');

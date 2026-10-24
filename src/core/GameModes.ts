@@ -5,7 +5,7 @@
 import Player from '../entities/Player'
 import { InputState } from '../types'
 import { GameEvents } from '../constants/client-constants'
-import { ARENA_RULES, BOMBS, CAMERA, EXHALE, GEMS, INHALE, LATCH, PLAYER_COLORS, SHIFT, WORLD } from '../../server/constants/gameConstants'
+import { ARENA_RULES, BOMBS, CAMERA, EXHALE, GEMS, INHALE, LATCH, SHIFT, WORLD } from '../../server/constants/gameConstants'
 import { sound } from './Sound'
 import { FirstSessionGuide } from '../ui/FirstSessionGuide'
 import { WeaponPlacement } from '../ui/WeaponPlacement'
@@ -24,7 +24,7 @@ import { COMPACT, GOLD } from '../render/style'
 import { drawBall, drawBomb, drawComet, drawGem, drawLaunchPuff, gemColor } from '../render/world'
 import { SMOOTHING, SNAP_DISTANCE, View } from '../render/shared'
 import { drawTopBar, drawLeaderboard, drawMinimap, drawBanner, drawShiftChip, drawTrafficChip, drawNotices, drawKnockedOut, drawMessage, drawCapturePrompt } from '../render/hud'
-import { drawGemBursts, drawVanishes, drawBlasts, drawBursts, drawPuffs, drawTheft } from '../render/effects'
+import { drawGemBursts, drawBlasts, drawBursts, drawPuffs, drawTheft } from '../render/effects'
 import { drawTurbines, drawTurbineFlights } from '../render/turbines'
 import { drawFloor, drawShiftFloor, drawJackpot } from '../render/floor'
 import { captorOf, drawPlayer } from '../render/players'
@@ -494,6 +494,7 @@ let introPlayed = false
  */
 export class MultiplayerMode extends GameMode {
     private firstGuide: FirstSessionGuide | null = null
+    surgeNotice: { key: string; at: number } | null = null
     private wasLoaded = false
     private wasCaptured = false
     private releaseControls = (): void => {
@@ -504,7 +505,7 @@ export class MultiplayerMode extends GameMode {
     }
     private visibilityChanged = (): void => { if (document.hidden) this.releaseControls() }
     private textFocused = (event: FocusEvent): void => {
-        if ((event.target as HTMLElement | null)?.matches('input, textarea, [contenteditable="true"]')) this.releaseControls()
+        if ((event.target as HTMLElement | null)?.closest('input, textarea, [contenteditable="true"], .drawer')) this.releaseControls()
     }
     multiplayerManager: MultiplayerManager | null = null
     private status: ConnectionStatus = 'connecting'
@@ -538,7 +539,7 @@ export class MultiplayerMode extends GameMode {
     private introSparks: IntroSpark[] = []
     /** When your player was knocked out, for the "back in" countdown */
     knockedOutAt: number | null = null
-    /** The last time someone got you (and how), for the knocked-out screen: "Swallowed by Drew" */
+    /** The last time someone got you (and how), for the knocked-out screen: "Blasted by Drew" */
     knockoutCause: { how: string; by: string; at: number } | null = null
     /** Messages at the top right: who joined, who shoved whom off the edge, who took the jackpot */
     notices: { text: string; at: number; strong: boolean; category?: 'weapon' }[] = []
@@ -595,8 +596,6 @@ export class MultiplayerMode extends GameMode {
     puffs: { by: string; x: number; y: number; facing: number; reach: number; at: number }[] = []
     /** Gravity theft on screen: each victim's gems last frame, and the stolen gems in flight */
     theftGems = new Map<string, number>()
-    /** Swallowed creatures sliding down the throat, shrinking away (see drawVanishes) */
-    vanishes: { id: string; x: number; y: number; size: number; color: string; facing: number; at: number }[] = []
     theftParticles: { from: string; to: string; at: number; angle: number; flight: number; power: number }[] = []
     pickups: { amount: number; at: number }[] = []
     private shakeUntil = 0
@@ -644,18 +643,6 @@ export class MultiplayerMode extends GameMode {
         })
         eventBus.on('multiplayer:credit', (data: any) => this.noteCredit(data))
         eventBus.on('multiplayer:burst', (data: any) => this.noteBurst(data))
-        eventBus.on('multiplayer:vanish', (data: any) => {
-            const local = data?.id === this.multiplayerManager?.localSessionId
-            this.vanishes.push({
-                id: String(data?.id ?? ''),
-                x: Number(data?.x) || 0,
-                y: Number(data?.y) || 0,
-                size: Number(data?.size) || 20,
-                color: local ? '#ffffff' : PLAYER_COLORS[(Number(data?.index) || 0) % PLAYER_COLORS.length],
-                facing: Number(data?.facing) || 0,
-                at: performance.now(),
-            })
-        })
         eventBus.on('multiplayer:impact', (data: any) => this.noteImpact(data))
         eventBus.on('multiplayer:launch', (data: { byId?: string; id?: string }) => {
             const id = this.multiplayerManager?.localSessionId
@@ -777,6 +764,8 @@ export class MultiplayerMode extends GameMode {
         // The button: hold to inhale (taken every frame, so nothing waits for later)
         const events = this.controls?.takeEvents() ?? []
         const escapeKeys = this.controls?.takeEscapeKeys() ?? []
+        const editing = !!document.activeElement?.matches('input, textarea, [contenteditable="true"]') || !!document.querySelector('.drawer.active')
+        if (editing) { events.length = 0; escapeKeys.length = 0 }
         if (this.introPlaying) events.length = 0
         const deltaTime = this.lastMoveAt ? Math.min(0.1, (now - this.lastMoveAt) / 1000) : 0
         this.lastMoveAt = now
@@ -797,7 +786,7 @@ export class MultiplayerMode extends GameMode {
         const keyX = Number(input.right) - Number(input.left)
         const keyY = Number(input.down) - Number(input.up)
         const keyLength = Math.hypot(keyX, keyY)
-        const steer = this.introPlaying || me.stunned ? { x: 0, y: 0 } : me.capturedBy && keyLength > 0 ? { x: keyX / keyLength, y: keyY / keyLength } : this.steerVector(input, me)
+        const steer = this.introPlaying || me.stunned || editing ? { x: 0, y: 0 } : me.capturedBy && keyLength > 0 ? { x: keyX / keyLength, y: keyY / keyLength } : this.steerVector(input, me)
         if (me.capturedBy && !this.introPlaying) {
             for (const key of escapeKeys) this.multiplayerManager?.sendMessage('escape', { key })
         }
@@ -824,8 +813,8 @@ export class MultiplayerMode extends GameMode {
         const steering = Math.hypot(steer.x, steer.y)
         if (steering > 0.2) this.facing = { x: steer.x / steering, y: steer.y / steering }
         // Your mouth points where you're going (the joystick, mouse and keys all aim directly)
-        this.aim = steering > 0.2 ? { x: steer.x / steering, y: steer.y / steering } : { ...this.facing }
-        if (this.inhaleHeld && Math.hypot(this.aim.x - this.sentAim.x, this.aim.y - this.sentAim.y) > 0.1) {
+        this.aim = this.controls?.aimVector() ?? (steering > 0.2 ? { x: steer.x / steering, y: steer.y / steering } : { ...this.facing })
+        if ((this.inhaleHeld || me.gulping) && Math.hypot(this.aim.x - this.sentAim.x, this.aim.y - this.sentAim.y) > 0.1) {
             // You turn to face your aim, for everyone to see
             this.sentAim = { ...this.aim }
             this.multiplayerManager?.sendMessage('aim', { x: this.aim.x, y: this.aim.y })
@@ -852,7 +841,7 @@ export class MultiplayerMode extends GameMode {
         // Move exactly the way the server does
         const box = { x: this.predicted.x, y: this.predicted.y, width: me.width, height: me.height }
         // Facing, worked out like the server does: the aim while inhaling, else where you steer
-        const intent = this.inhaleHeld ? this.aim : steer
+        const intent = this.inhaleHeld || me.gulping ? this.aim : steer
         // A focused latch adds a little aim toward its target, as on the server (your turning does the rest)
         const latched = me.latchTarget && me.latchPull > 0 && me.inhaling ? this.multiplayerManager?.getState()?.players?.get(me.latchTarget) : null
         let aimed = intent
@@ -1056,7 +1045,6 @@ export class MultiplayerMode extends GameMode {
 
         drawTheft(this, ctx, state, timestamp)
         drawTurbineFlights(this, ctx, state, timestamp)
-        drawVanishes(this, ctx, timestamp)
         drawBlasts(this, ctx, timestamp)
         drawPuffs(this, ctx, timestamp)
         drawBursts(this, ctx, timestamp)
@@ -1093,8 +1081,7 @@ export class MultiplayerMode extends GameMode {
             }
             this.firstGuide?.update(me, this.introPlaying)
             this.controls?.draw(ctx, timestamp, this.breath)
-            if (me && me.state === 'gulped') drawMessage(this, ctx, canvas, `Gulped by ${this.nameOf(me.insideOf, 'someone')}`, 'Hang on: you pop back out in a moment')
-            else if (me && me.state !== 'alive') drawKnockedOut(this, ctx, canvas)
+            if (me && me.state !== 'alive') drawKnockedOut(this, ctx, canvas)
             ctx.globalAlpha = 1
         }
         ctx.restore()
@@ -1202,30 +1189,30 @@ export class MultiplayerMode extends GameMode {
             else this.addNotice(`${String(data?.by ?? 'Someone')} landed a cannonball hit on ${target}!`)
             return
         }
-        if (how === 'pulsar') {
+        if (how === 'pulsar' || how === 'pinwheel') {
             this.noteImpact(data)
+            const weapon = how === 'pulsar' ? 'Pulsar' : 'Pinwheel'
             if (targetIsYou && data?.out) this.knockoutCause = { how, by: String(data?.by ?? 'Someone'), at: performance.now() }
-            if (data?.byId === localId) this.banner = { title: data?.out ? 'Pulsar knockout!' : 'Pulsar hit!', sub: `${Number(data?.gems) || 0} GEMS BLASTED LOOSE`, at: performance.now() }
-            else this.addNotice(`${this.nameOf(data?.byId, data?.by)} blasted ${target} with a pulsar wave!`, data?.out === true)
+            if (data?.byId === localId) this.banner = { title: `${weapon} ${data?.out ? 'knockout!' : 'hit!'}`, sub: `${Number(data?.gems) || 0} GEMS BLASTED LOOSE`, at: performance.now() }
+            else this.addNotice(`${this.nameOf(data?.byId, data?.by)} blasted ${target} with ${how === 'pulsar' ? 'a pulsar wave' : 'a Pinwheel bolt'}!`, data?.out === true)
             return
         }
-        if (targetIsYou && how !== 'stole' && how !== 'gulped') {
+        if (targetIsYou && how !== 'stole') {
             this.knockoutCause = { how, by: String(data?.by ?? 'Someone'), at: performance.now() }
         }
-        const verb = how === 'stole' ? 'robbed' : how === 'gulped' ? 'gulped' : how === 'turbine' ? 'fed' : how === 'bomb' ? 'blew up' : 'shoved'
-        const where = how === 'stole' ? `of ${Number(data?.gems) || 0} gems` : how === 'gulped' ? (Number(data?.gems) > 0 ? `(${Number(data?.gems)} gems spilled)` : '') : how === 'turbine' ? 'to a turbine' : how === 'edge' ? 'off the edge' : how === 'traffic' ? 'into traffic' : ''
+        const verb = how === 'stole' ? 'robbed' : how === 'turbine' ? 'fed' : how === 'bomb' ? 'blew up' : 'shoved'
+        const where = how === 'stole' ? `of ${Number(data?.gems) || 0} gems` : how === 'turbine' ? 'to a turbine' : how === 'edge' ? 'off the edge' : how === 'traffic' ? 'into traffic' : ''
         if (data?.byId === localId) {
             const name = String(data?.target ?? 'someone')
-            const title = how === 'stole' ? `You stole ${Number(data?.gems) || 0} gems from ${name}!` : how === 'gulped' ? `You gulped ${name}!` : how === 'turbine' ? `You fed ${name} to a turbine!` : how === 'bomb' ? `You blew up ${name}!` : `You wrecked ${name}!`
+            const title = how === 'stole' ? `You stole ${Number(data?.gems) || 0} gems from ${name}!` : how === 'turbine' ? `You fed ${name} to a turbine!` : how === 'bomb' ? `You blew up ${name}!` : `You wrecked ${name}!`
             const parts =
                 how === 'stole' ? []
-                : how === 'gulped' ? (Number(data?.gems) > 0 ? [`${Number(data?.gems)} gems spilled`] : [])
                 : how === 'bomb' ? [data?.out ? 'knocked out' : `${Number(data?.gems) || 0} gems knocked loose`]
                 : [where, data?.out ? 'knocked out' : '']
             this.banner = { title, sub: parts.filter(Boolean).join(' · ').toUpperCase(), at: performance.now() }
             return
         }
-        const out = how !== 'gulped' && how !== 'turbine' && data?.out ? (targetIsYou ? ' and knocked you out' : ' and knocked them out') : ''
+        const out = how !== 'turbine' && data?.out ? (targetIsYou ? ' and knocked you out' : ' and knocked them out') : ''
         this.addNotice(`${this.nameOf(data?.byId, data?.by)} ${verb} ${target}${where ? ' ' + where : ''}${out}!`, data?.out === true)
     }
 
@@ -1451,9 +1438,14 @@ export class MultiplayerMode extends GameMode {
     }
 
     private trackKnockout(me: SyncedPlayer): void {
-        if (me && me.state !== 'alive' && me.state !== 'gulped') {
+        if (me && me.state !== 'alive') {
             if (this.knockedOutAt === null) this.knockedOutAt = performance.now()
         } else {
+            if (this.knockedOutAt !== null) {
+                this.cameraRig = new CameraRig()
+                this.cameraFrom = null
+                this.cameraVelocity = { x: 0, y: 0 }
+            }
             this.knockedOutAt = null
         }
     }

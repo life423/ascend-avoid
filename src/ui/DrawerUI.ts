@@ -15,6 +15,7 @@ export class DrawerUI {
     private drawer!: HTMLDivElement;
     private overlay!: HTMLDivElement;
     private isOpen: boolean = false;
+    private returnFocus: HTMLElement | null = null;
 
     constructor() {
         this.container = document.body;
@@ -41,9 +42,14 @@ export class DrawerUI {
         // Create drawer
         this.drawer = document.createElement('div');
         this.drawer.className = 'drawer';
+        this.drawer.setAttribute('role', 'dialog');
+        this.drawer.setAttribute('aria-modal', 'true');
+        this.drawer.setAttribute('aria-hidden', 'true');
+        this.drawer.setAttribute('aria-labelledby', 'game-menu-title');
+        this.drawer.inert = true;
         this.drawer.innerHTML = `
             <div class="drawer-header">
-                <h2>Game Menu</h2>
+                <h2 id="game-menu-title">Game Menu</h2>
                 <button type="button" class="drawer-close" aria-label="Close">&times;</button>
             </div>
             <div class="drawer-content">
@@ -94,6 +100,13 @@ export class DrawerUI {
 
         // Close drawer on ESC key
         document.addEventListener('keydown', (e: KeyboardEvent) => {
+            if (!this.isOpen) return;
+            if (e.key === 'Tab') {
+                const targets = [...this.drawer.querySelectorAll<HTMLElement>('button, input, [tabindex="0"]')];
+                const first = targets[0], last = targets[targets.length - 1];
+                if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
+                else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
+            }
             if (e.key === 'Escape' && this.isOpen) {
                 this.close();
             }
@@ -477,13 +490,17 @@ export class DrawerUI {
     }
 
     public open(): void {
+        this.returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
         this.isOpen = true;
+        this.drawer.inert = false;
+        this.drawer.setAttribute('aria-hidden', 'false');
         this.hamburgerBtn.classList.add('active');
         this.drawer.classList.add('active');
         this.overlay.classList.add('active');
         this.showName();
         this.fitToScreen();
         document.body.style.overflow = 'hidden';
+        this.drawer.querySelector<HTMLButtonElement>('.drawer-close')?.focus();
     }
 
     public close(): void {
@@ -492,6 +509,9 @@ export class DrawerUI {
         this.drawer.classList.remove('active');
         this.overlay.classList.remove('active');
         document.body.style.overflow = '';
+        this.returnFocus?.focus();
+        this.drawer.inert = true;
+        this.drawer.setAttribute('aria-hidden', 'true');
     }
 
     public destroy(): void {
