@@ -558,6 +558,7 @@ export class MultiplayerMode extends GameMode {
     private aim = { x: 0, y: -1 }
     /** The aim last sent (your eyes turn toward it for everyone), and which way you face */
     private sentAim = { x: 0, y: 0 }
+    private aimedCaptive = ''
     localFacing = -Math.PI / 2
     /** How fast your creature is turning (radians a second; see turnStep) */
     private localSpin = 0
@@ -811,6 +812,10 @@ export class MultiplayerMode extends GameMode {
         }
 
         const steering = Math.hypot(steer.x, steer.y)
+        if (me.gulping !== this.aimedCaptive) {
+            this.aimedCaptive = me.gulping
+            this.sentAim = { x: 0, y: 0 } // capture stops the server inhale and clears its previous aim
+        }
         if (steering > 0.2) this.facing = { x: steer.x / steering, y: steer.y / steering }
         // Your mouth points where you're going (the joystick, mouse and keys all aim directly)
         this.aim = this.controls?.aimVector() ?? (steering > 0.2 ? { x: steer.x / steering, y: steer.y / steering } : { ...this.facing })

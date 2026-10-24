@@ -1,8 +1,8 @@
 # Ascend Avoid — ordered work and idea inventory
 
-Updated October 24, 2026. This is the durable list of the user's requests and decisions. Current code and later feedback override historical tuning. “Branch” means implemented locally on `feature/fair-escapes-and-cleanup`, not yet a verified production release. Proposed ideas are not silently implemented.
+Updated October 24, 2026. This is the durable list of the user's requests and decisions. Current code and later feedback override historical tuning. Items 1–5 and the legacy cleanup shipped in PR #38; the follow-up preserves held touch aim across capture. The next new balance work is item 6. Proposed ideas are not silently implemented.
 
-## Next work, in order
+## Delivery order and next work
 
 1. **Finish the current controls, fairness and UI pass.** Verify mouse-follow without holding a button; retain WASD/arrows; add independent right-thumb aiming to the existing action control. Hold inhales, tap fires; aiming a loaded shot must not fire it accidentally. Keep phone controls clean and usable in both orientations.
 2. **Remove persistent interruptions.** The old weapon card is already removed on main; confirm fresh production clients. Pickup notices coalesce and expire. Gem-surge notices disappear after three seconds while the event continues. No replacement pinned pill. Help is at most one quarter its former length and remains readable, keyboard accessible and touch friendly.
@@ -19,7 +19,7 @@ Updated October 24, 2026. This is the durable list of the user's requests and de
 13. **Complete maintenance and documentation.** Remove obsolete whole-swallow behavior, visuals, script and tests while preserving harmless wire-field positions for compatibility. Keep current rules, this list, validation and the best-ideas archive accurate.
 14. **Evaluate further assembled weapons after the core loop feels right.** The user requested five more weapon concepts; the selected Drum became the space-themed Pulsar Array. Do not add every brainstormed weapon at once.
 
-Items 1–5 and the legacy cleanup in 13 are on the current branch. Items 6–10 contain new tuning/prototype work; no claim they are completed.
+Items 1–5 and the legacy cleanup in 13 are implemented. Items 6–10 contain pending tuning/prototype work; no claim they are completed. Fresh performance measurement in 12 and ongoing device/accessibility review in 11 remain follow-ups.
 
 ## Established decisions and shipped requests to preserve
 
