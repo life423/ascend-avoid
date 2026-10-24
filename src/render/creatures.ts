@@ -36,13 +36,21 @@ export function drawCreature(ctx: CanvasRenderingContext2D, x: number, y: number
     ctx.stroke()
     const fx = Math.cos(facing)
     const fy = Math.sin(facing)
-    // The mouth: wide open while inhaling (drawn where the server has it, so a captive held there is really in it), bulging with a rock when full
+    // A small curved mouth reads as a face; the airflow carries the inhale effect.
     const m = mouthOf(x, y, size, facing)
     if (inhaling) {
-        ctx.fillStyle = '#10151f'
+        ctx.save()
+        ctx.translate(m.x, m.y)
+        ctx.rotate(facing)
+        ctx.strokeStyle = 'rgba(24, 47, 61, 0.8)'
+        ctx.lineWidth = Math.max(1.2, size * 0.012)
+        ctx.lineCap = 'round'
+        const pulse = 1 + 0.06 * Math.sin(timestamp / 100)
         ctx.beginPath()
-        ctx.arc(m.x, m.y, mouthRadius(size) * (1 + 0.12 * Math.sin(timestamp / 60)), 0, Math.PI * 2)
-        ctx.fill()
+        ctx.moveTo(r * 0.04, -r * 0.12 * pulse)
+        ctx.quadraticCurveTo(r * 0.17, 0, r * 0.04, r * 0.12 * pulse)
+        ctx.stroke()
+        ctx.restore()
     } else if (mouth) {
         // A bomb held in the mouth (sparking if its fuse is running)
         const bx = x + fx * r * 0.82

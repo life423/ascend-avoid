@@ -19,3 +19,5 @@ Validation: production build, type checks, lint, generated schema check, physics
 Additional accepted requirements: preserve exact player centering during hits and launches; verify WASD/arrow escape presses in a browser; improve PageSpeed scores by removing layout shifts, correcting heading order and description metadata, and checking console/network failures. Record measured local Lighthouse results separately from the live-site report.
 
 Later feedback: labeled Help & settings/Focus view/Show controls buttons; explicit Save name plus Enter; lighter blue decorative surround beyond thin blue boundaries; bots fill to 20, cap pursuers and disengage from dense fights. Save the ten best ideas and record weapon-piece assembly separately as an exploratory prototype.
+
+Follow-up to PR #27: remove the filled black mouth from ordinary inhaling too. Use a small curved mouth while airflow expresses suction; keep the capture badge below the body.
