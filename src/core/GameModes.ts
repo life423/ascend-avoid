@@ -19,12 +19,12 @@ import { INTRO, IntroSpark, drawIntro, makeIntroSparks } from '../render/intro'
 import { COMPACT, GOLD } from '../render/style'
 import { drawBall, drawBomb, drawComet, drawGem, drawLaunchPuff, gemColor } from '../render/world'
 import { SMOOTHING, SNAP_DISTANCE, View } from '../render/shared'
-import { drawTopBar, drawLeaderboard, drawMinimap, drawBanner, drawShiftChip, drawTrafficChip, drawNotices, drawKnockedOut, drawMessage } from '../render/hud'
-import { drawGemBursts, drawGulps, drawVanishes, drawBlasts, drawBursts, drawTheft } from '../render/effects'
+import { drawTopBar, drawLeaderboard, drawMinimap, drawBanner, drawShiftChip, drawTrafficChip, drawNotices, drawKnockedOut, drawMessage, drawCapturePrompt } from '../render/hud'
+import { drawGemBursts, drawVanishes, drawBlasts, drawBursts, drawTheft } from '../render/effects'
 import { drawCores } from '../render/cores'
 import { drawTurbines, drawTurbineFlights } from '../render/turbines'
 import { drawFloor, drawShiftFloor, drawJackpot } from '../render/floor'
-import { drawPlayer } from '../render/players'
+import { captorOf, drawPlayer } from '../render/players'
 import { drawObstacle } from '../render/obstacles'
 import { drawPickups } from '../render/pickups'
 import type { SyncedGameState, SyncedGem, SyncedObstacle, SyncedPlayer } from '../types/synced'
@@ -503,6 +503,10 @@ export class MultiplayerMode extends GameMode {
     drawnSizes = new Map<string, { size: number; speed: number }>()
     /** Each creature's growth pop: when it last gained a gem and how big the pop was (see drawPlayer) */
     gemPops = new Map<string, { at: number; amount: number }>()
+    /** Creatures caught in a mouth: when and where each was caught, so it can be seen sliding in (see drawPlayer) */
+    captures = new Map<string, { at: number; x: number; y: number }>()
+    /** Creatures just back out of a mouth: when each came out, so it can be seen swelling back to size (see drawPlayer) */
+    emerges = new Map<string, number>()
     /** The camera rig, and the creature's last middle and smoothed velocity it follows */
     private cameraRig = new CameraRig()
     private cameraFrom: { x: number; y: number } | null = null
@@ -572,8 +576,8 @@ export class MultiplayerMode extends GameMode {
     blasts: { x: number; y: number; radius: number; at: number }[] = []
     /** Gravity theft on screen: each victim's gems last frame, and the stolen gems in flight */
     theftGems = new Map<string, number>()
-    /** Drained creatures shrinking away to nothing */
-    vanishes: { x: number; y: number; size: number; color: string; facing: number; at: number }[] = []
+    /** Swallowed creatures sliding down the throat, shrinking away (see drawVanishes) */
+    vanishes: { id: string; x: number; y: number; size: number; color: string; facing: number; at: number }[] = []
     theftParticles: { from: string; to: string; at: number; angle: number; flight: number; power: number }[] = []
     pickups: { amount: number; at: number }[] = []
     private shakeUntil = 0
@@ -620,6 +624,7 @@ export class MultiplayerMode extends GameMode {
         eventBus.on('multiplayer:vanish', (data: any) => {
             const local = data?.id === this.multiplayerManager?.localSessionId
             this.vanishes.push({
+                id: String(data?.id ?? ''),
                 x: Number(data?.x) || 0,
                 y: Number(data?.y) || 0,
                 size: Number(data?.size) || 20,
@@ -772,8 +777,11 @@ export class MultiplayerMode extends GameMode {
                 this.inhaleHeld = true
                 this.sentAim = { x: 0, y: 0 }
                 this.multiplayerManager?.sendMessage('inhale', {})
+            } else if (event === 'tap') {
+                // A quick tap, never an inhale: fires a captive, or spits a bomb
+                this.multiplayerManager?.sendMessage('tap', {})
             } else if (event === 'exhale' && this.inhaleHeld) {
-                // Let go: stop inhaling (holding a captive, this launches it)
+                // Let go: stop inhaling (someone caught stays inside; the next press fires them)
                 this.inhaleHeld = false
                 this.multiplayerManager?.sendMessage('exhale', {})
             } else if (event === 'cancel' && this.inhaleHeld) {
@@ -804,6 +812,10 @@ export class MultiplayerMode extends GameMode {
         const myId = this.multiplayerManager?.localSessionId
         state.players.forEach((other: SyncedPlayer, id: string) => {
             if (id === myId || other.state !== 'alive') return
+            // Your captive is held where your mouth puts it (inside you), and a captor you're in isn't a wall:
+            // no separation between those two, exactly as on the server (bodies.ts), or you'd be shoved out of
+            // your own captive here and dragged back by the server every frame
+            if (other.capturedBy === myId || me.capturedBy === id) return
             const at = this.drawnPositions.get(id) ?? { x: other.x, y: other.y }
             const dx = box.x + box.width / 2 - (at.x + other.width / 2)
             const dy = box.y + box.height / 2 - (at.y + other.height / 2)
@@ -958,6 +970,7 @@ export class MultiplayerMode extends GameMode {
         const present = new Set<string>()
         state.players.forEach((player: SyncedPlayer, sessionId: string) => {
             present.add(sessionId)
+            if (captorOf(state, player, sessionId)) return // held in a mouth: its captor draws it there (see drawPlayer)
             drawPlayer(this, ctx, player, sessionId, sessionId === localId, sessionId === leaderId, timestamp)
         })
         for (const id of this.drawnPositions.keys()) {
@@ -972,10 +985,15 @@ export class MultiplayerMode extends GameMode {
         for (const id of this.gemPops.keys()) {
             if (!present.has(id)) this.gemPops.delete(id)
         }
+        for (const id of this.captures.keys()) {
+            if (!present.has(id)) this.captures.delete(id)
+        }
+        for (const id of this.emerges.keys()) {
+            if (!present.has(id)) this.emerges.delete(id)
+        }
 
         drawTheft(this, ctx, state, timestamp)
         drawTurbineFlights(this, ctx, state, timestamp)
-        drawGulps(this, ctx, state, timestamp)
         drawVanishes(this, ctx, timestamp)
         drawBlasts(this, ctx, timestamp)
         drawBursts(this, ctx, timestamp)
@@ -994,6 +1012,7 @@ export class MultiplayerMode extends GameMode {
             drawShiftChip(this, ctx, canvas, state, timestamp)
             drawTrafficChip(this, ctx, canvas, state, timestamp)
             drawBanner(this, ctx, canvas)
+            drawCapturePrompt(this, ctx, canvas, state, me, timestamp)
             this.controls?.draw(ctx, timestamp, this.breath)
             if (me && me.state === 'gulped') drawMessage(this, ctx, canvas, `Gulped by ${this.nameOf(me.insideOf, 'someone')}`, 'Hang on: you pop back out in a moment')
             else if (me && me.state !== 'alive') drawKnockedOut(this, ctx, canvas)

@@ -2,6 +2,7 @@ import { Room, Client } from "colyseus";
 import { GAME_CONSTANTS } from "../constants/serverConstants";
 import logger from "../utils/logger";
 import { GameState } from "../schema/GameState";
+import { fireCaptive } from "../systems/inhale";
 
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
@@ -77,15 +78,29 @@ export class GameRoom extends Room<GameState> {
       if (!this.allowMessage(client)) return;
       this.state.players.get(client.sessionId)?.aimAt(Number(data?.x) || 0, Number(data?.y) || 0);
     });
-    // Hold the button to inhale, release to stop; tap with something in your mouth to spit it
+    // Hold the button to inhale, release to stop; tap with something in your mouth to spit it, or with
+    // someone caught inside to fire them (a full mouth can't inhale until it's empty)
     this.onMessage("inhale", (client) => {
       if (!this.allowMessage(client)) return;
-      this.state.players.get(client.sessionId)?.startInhale(Date.now());
+      const player = this.state.players.get(client.sessionId);
+      if (!player) return;
+      if (player.gulping) fireCaptive(this.state, player, Date.now());
+      else player.startInhale(Date.now());
+    });
+    // A quick tap (the button let go within the browser's tap window, so never an inhale): fires a
+    // captive, or spits a bomb, along the creature's facing
+    this.onMessage("tap", (client) => {
+      if (!this.allowMessage(client)) return;
+      const player = this.state.players.get(client.sessionId);
+      if (!player) return;
+      const now = Date.now();
+      if (player.gulping) fireCaptive(this.state, player, now);
+      else if (player.mouth) this.state.spit(player, Math.cos(player.facing), Math.sin(player.facing), now);
     });
     this.onMessage("exhale", (client) => {
       if (!this.allowMessage(client)) return;
-      // The button let go: the only release that can launch a captive (see letGo). Breath running
-      // out, a stun or a lost captive stop the inhale too, but never through here.
+      // The button let go: the inhale stops. Someone caught during it stays inside (the mouth is full);
+      // the next press fires them (see fireCaptive).
       const player = this.state.players.get(client.sessionId);
       if (!player) return;
       player.releasedAt = Date.now();

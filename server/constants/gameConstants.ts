@@ -46,7 +46,7 @@ export const PROJECTILE = {
 // Game settings
 export const GAME = {
   WINNING_LINE: 40,
-  MAX_PLAYERS: 30,
+  MAX_PLAYERS: 48,
   STATE_UPDATE_RATE: 1000 / 30, // 30 updates per second
   ROOM_NAME: "game_room",
   MAX_OBSTACLES: 12,
@@ -100,7 +100,7 @@ export const WORLD = {
  * you bigger, with longer hops and a slower rhythm when holding a direction.
  */
 export const GEMS = {
-  FIELD_COUNT: 240, // loose gems lying around the world
+  FIELD_COUNT: 1900, // loose gems lying around the world (one every ~95 units in a 4200-wide arena: a carpet of them; MAX_GEMS leaves room for sprays on top)
   RADIUS: 9,
   /**
    * Size = PLAYER_SIZE + this x the square root of your gems, with no ceiling: area grows with gems,
@@ -120,7 +120,7 @@ export const GEMS = {
   OWNER_PICKUP_DELAY_MS: 1500, // your own spilled gems wait this long for you, so whoever caused it gets first crack
   DECAY_START: 300, // gems above this slowly shed (late game: a strong player can hold about 1500, see CAMERA)
   DECAY_RATE: 0.001, // ...this share of the excess a second (about 1.2 a second at 1500)
-  MAX_GEMS: 1400, // cap on gems in the world at once
+  MAX_GEMS: 2600, // cap on gems in the world at once (the field, plus about 700 for sprays)
 } as const;
 
 /**
@@ -144,8 +144,8 @@ export const PUSH = {
  * faster), dodge the traffic they see coming, chase gems and shove now and then.
  */
 export const BOTS = {
-  FILL_TO: 11, // bots fill in until this many are playing, and leave as people arrive
-  NAMES: ["Bolt", "Pixel", "Zippy", "Nova", "Sprocket", "Blip", "Widget", "Gizmo", "Rivet", "Chip", "Pebble", "Comet", "Fizz", "Mochi", "Dot"],
+  FILL_TO: 36, // bots fill in until this many are playing, and leave as people arrive (GAME.MAX_PLAYERS leaves room for people on top)
+  NAMES: ["Bolt", "Pixel", "Zippy", "Nova", "Sprocket", "Blip", "Widget", "Gizmo", "Rivet", "Chip", "Pebble", "Comet", "Fizz", "Mochi", "Dot", "Tangle", "Scoot", "Bubble", "Ziggy", "Pogo", "Nibble", "Quark", "Jinx", "Wisp", "Flick", "Dizzy", "Tumble", "Pip", "Zoom", "Waffle", "Sprout", "Gadget", "Fidget", "Noodle", "Sizzle", "Bumble", "Twig", "Pixie", "Rocket", "Dash"],
   THINK_MS_MIN: 200, // each bot decides on a hop every 200-320 ms (it varies by bot)...
   THINK_MS_MAX: 320,
   LOOK_AHEAD: 0.7, // ...watching the next 0.7 seconds of traffic...
@@ -159,6 +159,11 @@ export const BOTS = {
   CONTENT_AT: 30, // ...until they have this many; then they just wander, dodge and shove
   DECAY_START: 20, // bots shed gems above this, and faster (people: GEMS.DECAY_*), so people can outgrow them...
   DECAY_RATE: 0.02, // ...this share of what's above DECAY_START each second (1 a second at 70)
+  ESCAPE_EVERY_MS: 320, // caught, a bot tries a direction this often once its daze ends...
+  ESCAPE_SKILL: 0.75, // ...and gets the right one this share of the time (a wrong one starts it over, so about 4 seconds in all to get out)
+  FIRE_RANGE: 1100, // holding someone, a bot looks for another creature within this far to fire them at...
+  FIRE_AIM: 0.18, // ...and fires once its facing is within this many radians of it...
+  FIRE_WAIT_MS: 1600, // ...or straight ahead after holding this long with nobody to aim at
 } as const;
 
 /**
@@ -291,6 +296,7 @@ export const INHALE = {
   STEAL_ESCAPE_AWAY: 0.6, // ...counting speed straight away at this share, and speed across the cone in full (strafing escapes best)...
   STEAL_POINT_BLANK: 0.25, // ...but less and less within this share of the reach: right at the mouth there's no getting away
   DRAIN_FLOOR: 1, // stealing never takes a creature's last gem: draining weakens, it never kills (an empty creature has nothing to take, and is fine)
+  CLASH_MARGIN: 0.15, // two creatures inhaling each other never both siphon: only the stronger pull does, once it's ahead by this share (closer than that, whoever has held the other longer keeps the flow), so a clash has a winner, not an endless exchange
   STOLE_NOTICE: 5, // a theft this big gets a banner and a line in the feed
 } as const;
 
@@ -434,7 +440,12 @@ export const CAMERA = {
  * or broken free can't be caught (by a mouth or a turbine) again for RECAPTURE_MS.
  */
 export const CANNON = {
-  HOLD_MS: 1250, // a capture lasts at most this long; a captive not swallowed by then goes free
+  HOLD_MS: 6000, // a capture lasts at most this long (a safety net): until then the captive is out of sight inside, and ammunition, until it escapes or is fired
+  CAPTIVE_STUN_MS: 1250, // caught, the captive is dazed this long before it can start working its way out...
+  ESCAPE_KEYS: 4, // ...by pushing the stick (or WASD) in this many directions, in the order shown; a wrong one starts the sequence over
+  ESCAPE_PRESS: 0.6, // a push counts once the stick goes past this...
+  ESCAPE_NEUTRAL: 0.3, // ...after coming back within this, so holding a direction is one push, not many
+  ESCAPE_PUSH: 110, // out, it pops from the mouth this hard (and can't be caught again for RECAPTURE_MS)
   LAUNCH_MIN_MS: 120, // let go after holding at least this long to launch (sooner: just released)
   HOLD_RATIO: 1, // the captor pulls its captive back to its mouth at this times the captive's own top speed...
   HOLD_MIN: 0.5, // ...times its firmness: this when just big enough to catch it (a near-size captive can simply push out)...
@@ -463,10 +474,10 @@ export const CANNON = {
   MAX_MS: 1400, // ...or after this long
   STEER: 520, // a flier's sideways steering (units a second squared): it bends the path, never speeds it up, stops or reverses it
   LAUNCHER_GRACE_MS: 300, // a projectile can't hit its launcher this soon
-  IMPACT_BASE: 2, // a hit knocks this many of the target's gems loose...
-  IMPACT_PER_ROOT: 1.4, // ...plus this times the square root of its gems (diminishing against giants), times the hit's speed against IMPACT_SPEED_REF and the flier's mass...
+  IMPACT_BASE: 10, // a hit knocks this many of the target's gems loose...
+  IMPACT_PER_ROOT: 7, // ...plus this times the square root of its gems (diminishing against giants), times the hit's speed against IMPACT_SPEED_REF and the flier's mass: a living cannonball is the big hit of the game (about 60 of 120, 150 of 400)...
   IMPACT_SPEED_REF: 900,
-  IMPACT_MAX_SHARE: 0.3, // ...never more than this share of them
+  IMPACT_MAX_SHARE: 0.5, // ...never more than this share of them (half: devastating, never deleting)
   IMPACT_IMMUNE_MS: 1200, // a creature just hit can't be hit by another flier for this long
   IMPACT_STUN_MS: 450, // the target is stunned this long...
   TARGET_SHOVE: 120, // ...and knocked up to this far along the hit (less the heavier it is than the flier)
@@ -511,7 +522,8 @@ export const SHIFT = {
  */
 export const TURBINE = {
   ENABLED: true,
-  COUNT: 3, // how many there are at once
+  COUNT_MIN: 3, // how many there are at once: between these two...
+  COUNT_MAX: 5, // ...rolled again every time one goes, so the number drifts; the only gap is a turbine on its way back (RESPAWN_*)
   BODY_RADIUS: 60, // the turbine itself is solid
   INTAKE_REACH: 520, // how far in front of the intake its suction reaches...
   INTAKE_ARC: 0.7, // ...within this angle (radians) either side of where it points
@@ -544,7 +556,7 @@ export const TURBINE = {
   RESPAWN_MIN_MS: 3000, // ...and comes back somewhere else this much later
   RESPAWN_MAX_MS: 7000,
   EDGE_MARGIN: 600, // never this close to the world's edge,
-  SPACING: 1300, // another turbine,
+  SPACING: 1150, // another turbine (five still fit comfortably),
   PLAYER_CLEARANCE: 450, // or a player
 } as const;
 

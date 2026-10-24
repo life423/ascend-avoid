@@ -76,7 +76,7 @@ export function explode(state: GameState, bomb: BombSchema, now: number) : void 
   bomb.vanish(state.time + BOMBS.RESPAWN_MS);
   state.onEvent?.("blast", { x: Math.round(x), y: Math.round(y), radius: BOMBS.BLAST_RADIUS });
   state.players.forEach((target) => {
-    if (target.state !== PLAYER_STATE.ALIVE || target.spawnProtected) return;
+    if (target.state !== PLAYER_STATE.ALIVE || target.spawnProtected || target.capturedBy) return; // (caught: inside a mouth, where nothing reaches it)
     const tx = target.x + target.width / 2;
     const ty = target.y + target.height / 2;
     const d = Math.hypot(tx - x, ty - y);

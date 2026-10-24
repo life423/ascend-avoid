@@ -2,16 +2,14 @@ import type { MultiplayerMode } from '../core/GameModes'
 import type { SyncedGameState } from '../types/synced'
 import { TURBINE } from '../../server/constants/gameConstants'
 import { noReturnGap } from '../../server/game/turbine'
-import { GOLD } from './style'
 
 /** Where each flying creature was last frame, for its speed streaks */
 const lastSeen = new Map<string, { x: number; y: number; t: number }>()
 
 /**
  * The living cannonball, and the turbines' danger: each turbine's point of no return (a faint dashed
- * arc across its intake); around a creature caught in a mouth, a gold ring filling as it slips toward
- * freedom and, only if its captor can swallow it, a red arc closing as the swallow builds; and speed
- * streaks behind a flying one
+ * arc across its intake), and speed streaks behind a flying creature. (A creature caught in a mouth is
+ * drawn in that mouth, with its own progress arc there: see drawPlayer.)
  */
 export function drawCannon(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state: SyncedGameState, timestamp: number): void {
     ctx.save()
@@ -26,37 +24,14 @@ export function drawCannon(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
     })
     ctx.setLineDash([])
     state.players.forEach((player, id) => {
-        const at = mode.drawnPositions.get(id) ?? player
-        const cx = at.x + player.width / 2
-        const cy = at.y + player.height / 2
-        const radius = player.width / 2
-        if (player.capturedBy) {
-            ctx.lineWidth = 3
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)'
-            ctx.beginPath()
-            ctx.arc(cx, cy, radius + 7, 0, Math.PI * 2)
-            ctx.stroke()
-            ctx.strokeStyle = GOLD
-            ctx.beginPath()
-            ctx.arc(cx, cy, radius + 7, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * player.struggle)
-            ctx.stroke()
-            // Only when its captor can swallow it: a red arc outside the gold one, closing as the swallow builds
-            if (player.swallowable) {
-                ctx.lineWidth = 4
-                ctx.strokeStyle = 'rgba(255, 70, 70, 0.22)'
-                ctx.beginPath()
-                ctx.arc(cx, cy, radius + 14, 0, Math.PI * 2)
-                ctx.stroke()
-                ctx.strokeStyle = 'rgba(255, 70, 70, 0.95)'
-                ctx.beginPath()
-                ctx.arc(cx, cy, radius + 14, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * player.swallowing)
-                ctx.stroke()
-            }
-        }
         if (!player.flying) {
             lastSeen.delete(id)
             return
         }
+        const at = mode.drawnPositions.get(id) ?? player
+        const cx = at.x + player.width / 2
+        const cy = at.y + player.height / 2
+        const radius = player.width / 2
         const last = lastSeen.get(id)
         lastSeen.set(id, { x: cx, y: cy, t: timestamp })
         if (!last || timestamp <= last.t) return

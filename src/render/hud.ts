@@ -1,5 +1,5 @@
 import type { MultiplayerMode } from '../core/GameModes'
-import { PLAYER_COLORS, SHIFT, WORLD } from '../../server/constants/gameConstants'
+import { CANNON, PLAYER_COLORS, SHIFT, WORLD } from '../../server/constants/gameConstants'
 import { drawCreature } from './creatures'
 import { COMPACT, FONT, GOLD, drawCrown, drawPeople, drawRobot, hudPanel, roundedRect } from './style'
 import { JOIN_NOTICE_MS, View } from './shared'
@@ -341,5 +341,129 @@ export function drawMessage(_mode: MultiplayerMode, ctx: CanvasRenderingContext2
     ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
     ctx.font = `500 ${Math.max(13, Math.round(canvas.height * 0.03))}px ${FONT}`
     ctx.fillText(subtitle, canvas.width / 2, canvas.height * 0.55, canvas.width * 0.9)
+    ctx.restore()
+}
+
+/**
+ * Caught, or holding someone: the prompt at the bottom of the screen. Caught: the directions to push, in
+ * order, lighting up as you get them (greyed while you're dazed; a wrong one flashes red and starts you
+ * over). Holding someone: who you've got, and that letting go fires them.
+ */
+export function drawCapturePrompt(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, state: SyncedGameState, me: SyncedPlayer | undefined, timestamp: number) : void {
+    if (!me || me.state !== 'alive') return
+    const compact = COMPACT.matches
+    const u = compact ? mode.cssScale : 1
+    const touch = Boolean(mode.controls?.touchDevice)
+    const centerX = canvas.width / 2
+    const bottom = canvas.height - (touch ? 124 : 36) * u
+    if (me.capturedBy) {
+        const captor = state.players.get(me.capturedBy)
+        const keys = String(me.escapeKeys ?? '').split('').filter(Boolean)
+        if (keys.length === 0) return
+        const now = mode.worldNow(state, timestamp)
+        const dazed = now < me.dazedUntil
+        const sinceMiss = now - me.escapeMissAt
+        const missed = me.escapeMissAt > 0 && sinceMiss < 380
+        const cell = 46 * u
+        const gap = 10 * u
+        const width = Math.max(240 * u, keys.length * (cell + gap) - gap + 48 * u)
+        const height = 120 * u
+        const x = centerX - width / 2
+        const y = bottom - height
+        ctx.save()
+        ctx.setTransform(1, 0, 0, 1, 0, 0)
+        hudPanel(ctx, x, y, width, height, 16 * u)
+        if (missed) {
+            ctx.strokeStyle = `rgba(255, 90, 90, ${0.9 * (1 - sinceMiss / 380)})`
+            ctx.lineWidth = 3 * u
+            roundedRect(ctx, x, y, width, height, 16 * u)
+            ctx.stroke()
+        }
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.font = `800 ${16 * u}px ${FONT}`
+        ctx.fillStyle = dazed ? '#cfd8dc' : GOLD
+        const who = captor ? String(captor.name ?? '') : 'someone'
+        ctx.fillText(dazed ? `Caught by ${who}!` : 'Wriggle out!', centerX, y + 22 * u, width - 24 * u)
+        ctx.font = `600 ${12 * u}px ${FONT}`
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.75)'
+        const hint = dazed ? 'Hang on…' : missed ? 'Wrong one: from the top' : touch ? 'Flick the stick these ways, in order' : 'Tap these, in order (WASD or arrows)'
+        ctx.fillText(hint, centerX, y + 42 * u, width - 24 * u)
+        // The directions, lit as they're got; the next one pulses
+        const rowY = y + 82 * u
+        const startX = centerX - (keys.length * (cell + gap) - gap) / 2
+        for (let i = 0; i < keys.length; i++) {
+            const kx = startX + i * (cell + gap)
+            const done = i < me.escapeStep
+            const current = i === me.escapeStep && !dazed
+            ctx.fillStyle = done ? GOLD : current ? 'rgba(255, 255, 255, 0.16)' : 'rgba(255, 255, 255, 0.07)'
+            roundedRect(ctx, kx, rowY - cell / 2, cell, cell, 10 * u)
+            ctx.fill()
+            if (current) {
+                ctx.strokeStyle = `rgba(255, 255, 255, ${0.55 + 0.45 * Math.sin(timestamp / 110)})`
+                ctx.lineWidth = 2 * u
+                roundedRect(ctx, kx, rowY - cell / 2, cell, cell, 10 * u)
+                ctx.stroke()
+            }
+            drawArrow(ctx, kx + cell / 2, rowY, cell * 0.5, keys[i], done ? '#2a2000' : dazed ? 'rgba(255, 255, 255, 0.35)' : current ? '#ffffff' : 'rgba(255, 255, 255, 0.6)')
+        }
+        // Dazed: a bar draining away along the bottom
+        if (dazed) {
+            const left = Math.max(0, Math.min(1, (me.dazedUntil - now) / CANNON.CAPTIVE_STUN_MS))
+            ctx.fillStyle = 'rgba(160, 230, 255, 0.85)'
+            roundedRect(ctx, x + 14 * u, y + height - 10 * u, Math.max(1, (width - 28 * u) * left), 4 * u, 2 * u)
+            ctx.fill()
+        }
+        ctx.restore()
+        return
+    }
+    if (me.gulping) {
+        const captive = state.players.get(me.gulping)
+        if (!captive || captive.capturedBy !== me.sessionId) return
+        const width = 270 * u
+        const height = 64 * u
+        const x = centerX - width / 2
+        const y = bottom - height
+        ctx.save()
+        ctx.setTransform(1, 0, 0, 1, 0, 0)
+        hudPanel(ctx, x, y, width, height, 14 * u)
+        // Loaded: the frame glows
+        ctx.strokeStyle = `rgba(255, 209, 102, ${0.5 + 0.4 * Math.sin(timestamp / 160)})`
+        ctx.lineWidth = 2 * u
+        roundedRect(ctx, x, y, width, height, 14 * u)
+        ctx.stroke()
+        ctx.fillStyle = PLAYER_COLORS[captive.playerIndex % PLAYER_COLORS.length]
+        ctx.beginPath()
+        ctx.arc(x + 26 * u, y + height / 2, 9 * u, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.textAlign = 'left'
+        ctx.textBaseline = 'middle'
+        ctx.font = `800 ${15 * u}px ${FONT}`
+        ctx.fillStyle = GOLD
+        ctx.fillText(`Loaded: ${String(captive.name ?? '')}`, x + 44 * u, y + 24 * u, width - 56 * u)
+        ctx.font = `600 ${12 * u}px ${FONT}`
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
+        ctx.fillText(touch ? 'Face your target, then tap the button to fire' : 'Face your target, then tap to fire', x + 44 * u, y + 44 * u, width - 56 * u)
+        ctx.restore()
+    }
+}
+
+/** An arrow pointing U, D, L or R: a stem and a head */
+function drawArrow(ctx: CanvasRenderingContext2D, cx: number, cy: number, size: number, key: string, color: string) : void {
+    const angle = key === 'U' ? -Math.PI / 2 : key === 'D' ? Math.PI / 2 : key === 'L' ? Math.PI : 0
+    ctx.save()
+    ctx.translate(cx, cy)
+    ctx.rotate(angle)
+    ctx.strokeStyle = color
+    ctx.lineWidth = Math.max(2, size * 0.16)
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    ctx.beginPath()
+    ctx.moveTo(-size * 0.45, 0)
+    ctx.lineTo(size * 0.45, 0)
+    ctx.moveTo(size * 0.1, -size * 0.35)
+    ctx.lineTo(size * 0.45, 0)
+    ctx.lineTo(size * 0.1, size * 0.35)
+    ctx.stroke()
     ctx.restore()
 }

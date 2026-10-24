@@ -111,6 +111,8 @@ class GameState extends Schema {
   /** Server-only: whether turbines come and go on their own (test worlds ask), when the next ones are due, and ids */
   turbinesAuto: boolean = TURBINE.ENABLED;
   turbineDue: number[] = [];
+  /** How many turbines there should be right now (TURBINE.COUNT_MIN to COUNT_MAX, rolled again each time one goes) */
+  turbineTarget: number = TURBINE.COUNT_MIN + Math.floor(Math.random() * (TURBINE.COUNT_MAX - TURBINE.COUNT_MIN + 1));
   nextTurbineId = 1;
   private nextFlightId = 1;
 
