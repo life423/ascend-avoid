@@ -1,7 +1,7 @@
 import * as schema from "@colyseus/schema";
 const { Schema, type } = schema;
 
-/** A Core (see game/corePhysics): a heavy object inhales push around. Its middle, velocity and radius */
+/** Retired wire shape only. The live world never creates, draws or simulates these objects. */
 export class CoreSchema extends Schema {
   id: string;
   x: number;
@@ -9,8 +9,6 @@ export class CoreSchema extends Schema {
   vx: number;
   vy: number;
   radius: number;
-  /** Server-only: who it's touching now (it has to come away before it can stun them again) */
-  touching = new Set<string>();
 
   constructor(id: string, x: number, y: number, radius: number) {
     super();

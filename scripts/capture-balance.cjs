@@ -9,7 +9,7 @@ for (const gems of [16, 60, 300]) {
   let early = 0, escaped = 0, timeout = 0, totalEscape = 0, keys = 0;
   for (let trial = 0; trial < trials; trial++) {
     const state = new GameState(0);
-    state.botFill = 0; state.surgesOn = false; state.setCoreCount(0); state.setTurbines('off');
+    state.botFill = 0; state.surgesOn = false; state.setTurbines('off');
     const start = 100000;
     state.update(0, start);
     const captor = state.addPlayer('captor', 'Captor', start);
