@@ -1,5 +1,6 @@
 import { BOTS, INHALE, PLAYER_STATE, TURBINE } from "../constants/gameConstants.js";
 import { hop } from "./movement.js";
+import { BotCannonAim } from './botAim.js';
 import type { Box, Direction } from "./movement.js";
 import type { GameState } from "../schema/GameState.js";
 import type { PlayerSchema } from "../schema/PlayerSchema.js";
@@ -68,6 +69,7 @@ function timeToImpact(box: Box, world: GameState): number {
  * carelessness and appetite for shoving.
  */
 export class BotBrain {
+  readonly cannonAim = new BotCannonAim();
   /** When the bot next decides (it keeps steering the same way until then) */
   nextThinkAt = 0;
   /** Who the bot is hunting, if anyone (it runs into them to shove them) */
@@ -147,7 +149,7 @@ export class BotBrain {
     if (this.isDisengaging(now)) return this.disperseGoal;
     // A new floor is coming: get onto it
     if (world.shiftsOn && world.shiftPhase !== "normal" && !world.isFloorAt(cx, cy)) return world.nearestFloorPoint(cx, cy);
-    // Something big enough to swallow it close by: get away (smaller, it's faster). Robbers get robbed back (see GameState)
+    // Something big enough to capture it close by: get away (smaller, it's faster). Robbers get robbed back (see GameState)
     const threat = { x: 0, y: 0, distance: BOTS.FLEE_RANGE };
     world.players.forEach((other) => {
       if (other === bot || other.state !== PLAYER_STATE.ALIVE || other.width < bot.width * BOTS.FLEE_RATIO) return;
@@ -242,7 +244,7 @@ export class BotBrain {
    * Someone worth going after: a creature in sight with gems to rob, better still one small enough
    * to catch, and (for the bolder bots) the leader; richer and closer is better, less so for every
    * other bot already after them, and every bot has tastes of its own, so they don't all pick the same
-   * one. Never one big enough to swallow the bot. Bolder bots hunt farther. A chase that hasn't closed
+   * one. Never one big enough to capture the bot. Bolder bots hunt farther. A chase that hasn't closed
    * in HUNT_GIVE_UP_MS is dropped and that creature left alone for SHUN_MS (it was faster).
    */
   private huntTarget(bot: PlayerSchema, world: GameState, now: number): PlayerSchema | null {

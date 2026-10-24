@@ -24,7 +24,10 @@ export function drawSurge(_mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
 
 /** Countdown plus a direction arrow; visible even when the contest is off screen. */
 export function drawSurgeHud(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, state: SyncedGameState, view: View, timestamp: number): void {
-    if (state.surgePhase === 'waiting' || !state.surgePhase) return;
+    if (state.surgePhase === 'waiting' || !state.surgePhase) { mode.surgeNotice = null; return; }
+    const key = `${state.surgePhase}:${state.surgeAt}:${state.jackpotOn}`;
+    if (mode.surgeNotice?.key !== key) mode.surgeNotice = { key, at: timestamp };
+    if (timestamp - mode.surgeNotice.at >= 3000) return;
     const u = COMPACT.matches ? mode.cssScale : 1;
     const width = Math.min(canvas.width - 24 * u, 290 * u);
     const x = (canvas.width - width) / 2;

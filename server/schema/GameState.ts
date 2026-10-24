@@ -28,6 +28,7 @@ import { updateSurges } from "../systems/surges.js";
 import { PinwheelSchema } from "./PinwheelSchema.js";
 import { updateWeapons } from "../systems/weapons.js";
 import { PINWHEEL } from "../constants/gameConstants.js";
+import { viewShort } from '../game/camera.js';
 
 const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS, COMETS, BOMBS, TURBINE, SURGE } = GAME_CONSTANTS;
 /** Which way each of a bot's decisions steers it */
@@ -272,8 +273,7 @@ class GameState extends Schema {
 
     this.players.forEach((player) => {
       if (player.state !== PLAYER_STATE.ALIVE) {
-        // (gulped, it isn't out: it pops back out of its swallower, see updateGulps)
-        if (player.state !== PLAYER_STATE.GULPED && now >= player.respawnAt) this.spawn(player, now);
+        if (now >= player.respawnAt) this.spawn(player, now);
         return;
       }
       const fromX = player.x;
@@ -589,16 +589,19 @@ class GameState extends Schema {
    * the leader.
    */
   spawn(player: PlayerSchema, now: number): void {
-    const margin = ARENA_RULES.EDGE_MARGIN + 40;
     const size = player.width;
+    // Keep a centered newborn view wholly on the map, including wide desktops.
+    const halfView = viewShort(ARENA_RULES.PLAYER_SIZE) * WORLD.MAX_VIEW_ASPECT / 2 + 120;
+    const marginX = Math.min(halfView, (this.worldWidth - size) / 3);
+    const marginY = Math.min(halfView, (this.worldHeight - size) / 3);
     const leader = this.leader();
     let best = { x: (this.worldWidth - size) / 2, y: (this.worldHeight - size) / 2 };
     let bestClearance = -Infinity;
     for (let attempt = 0; attempt < SPAWN_TRIES; attempt++) {
       // During a grace period or shift, only the (new) floor will do
       const onFloor = this.layout ? randomFloorPoint(this.layout, size / 2 + 10) : null;
-      const x = onFloor ? onFloor.x - size / 2 : margin + Math.random() * (this.worldWidth - size - 2 * margin);
-      const y = onFloor ? onFloor.y - size / 2 : margin + Math.random() * (this.worldHeight - size - 2 * margin);
+      const x = onFloor ? onFloor.x - size / 2 : marginX + Math.random() * (this.worldWidth - size - 2 * marginX);
+      const y = onFloor ? onFloor.y - size / 2 : marginY + Math.random() * (this.worldHeight - size - 2 * marginY);
       const clearance = clearanceAt(this, x + size / 2, y + size / 2, player, leader);
       if (clearance > bestClearance) {
         best = { x, y };

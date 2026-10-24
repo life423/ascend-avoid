@@ -16,7 +16,7 @@ export interface HeldPose {
 /** How long a caught creature takes to slide down the throat and out of sight */
 export const SUCK_MS = 280
 
-/** How long a creature takes to swell back to full size as it comes back out (let go, slipped free, fired or expelled) */
+/** How long a creature takes to swell back to full size as it comes back out (let go, slipped free, or fired) */
 export const EMERGE_MS = 220
 
 /** The captor holding this player at its mouth right now (both alive, and the captor's hold agrees), or null */
@@ -33,8 +33,6 @@ const headings = new Map<string, number>()
 
 export function drawPlayer(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, player: SyncedPlayer, sessionId: string, isLocal: boolean, isLeader: boolean, timestamp: number, held?: HeldPose) : void {
     if (player.state !== 'alive') {
-        // Gulped: riding inside its swallower, out of sight; it comes back out wherever the server puts it
-        if (player.state === 'gulped') mode.drawnPositions.delete(sessionId)
         return // knocked out: gone until they're back
     }
 
@@ -125,7 +123,7 @@ export function drawPlayer(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
         ctx.restore()
     }
     if (player.inhaling) {
-        // Draining someone (harder the bigger it is next to them) or holding someone to swallow: the inhale looks stronger
+        // Draining someone (harder the bigger it is next to them) or holding a captive: the inhale looks stronger
         const victim = player.stealingFrom ? world?.players.get(player.stealingFrom) : null
         const grip = victim ? Math.min(INHALE.BODY_PULL_MAX, Math.max(0.3, player.width / victim.width)) : 0
         const intensity = player.gulping ? 1.8 : victim ? 1 + 0.5 * grip : 1
@@ -172,13 +170,13 @@ export function drawPlayer(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
     const heading = headings.get(sessionId) ?? facing
     // Pressed against someone, the body gives a little along the line of contact
     const squash = squashFor(mode, sessionId, left + size / 2, top + size / 2, size)
-    // Holding someone inside: the body quivers with their struggle; someone swallowed whole riding inside: it bulges, pulsing, until they pop back out
+    // Holding someone inside: the body quivers with their struggle
     const holding = player.gulping ? world?.players.get(player.gulping) : undefined
     const quiver = holding ? 1 + 0.02 * Math.sin(timestamp / 45) * (0.4 + 0.6 * Math.min(1, holding.struggle)) : 1
     // Exhaling: the body puffs out as the air goes, then settles
     const puff = mode.puffs.find((p) => p.by === sessionId)
     const puffed = puff ? 1 + 0.14 * Math.sin(Math.PI * Math.min(1, (timestamp - puff.at) / 260)) : 1
-    const bulge = (swallowedInside(world, sessionId) ? 1 + 0.05 * (0.6 + 0.4 * Math.sin(timestamp / 90)) : 1) * quiver * puffed
+    const bulge = quiver * puffed
     ctx.save()
     if (player.stunned) {
         ctx.translate(centerX, centerY)
@@ -301,16 +299,6 @@ function drawMouthful(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, capt
         ctx.stroke()
     }
     ctx.restore()
-}
-
-/** Whether someone swallowed whole is riding inside this creature right now */
-function swallowedInside(state: SyncedGameState | undefined, sessionId: string): boolean {
-    if (!state) return false
-    let inside = false
-    state.players.forEach((other: SyncedPlayer) => {
-        if (other.state === 'gulped' && other.insideOf === sessionId) inside = true
-    })
-    return inside
 }
 
 /** Pressed against another creature: how much this one squishes, and along which line (lighter ones squish more) */

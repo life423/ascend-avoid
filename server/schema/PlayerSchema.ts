@@ -71,7 +71,7 @@ class PlayerSchema extends Schema {
   mouth: string;
   /** Whose gems are streaming into your mouth right now ("" when nobody's) */
   stealingFrom: string;
-  /** Who this creature is holding at its mouth to swallow, and when (world time) they go down unless they get away; "" when nobody */
+  /** Who this creature is holding as a captive, and when (world time) the hold expires; "" when nobody */
   gulping: string;
   gulpEndsAt: number;
   /** Every gem it has ever stolen (browsers draw each one flying over, even when gems go both ways at once) */
@@ -110,11 +110,11 @@ class PlayerSchema extends Schema {
   capturedBy: string;
   /** How close a captive is to breaking free, 0 to 1 (synced) */
   struggle: number;
-  /** Caught by a captor big enough to swallow it, and how far that swallow has got, 0 to 1 (synced, for the arc both players see) */
-  swallowable: boolean;
-  swallowing: number;
-  /** Gulped: whose insides it's riding in until it pops back out (synced; "" when it's out in the world) */
-  insideOf: string;
+  /** Retired whole-swallow wire slots: neutral forever; preserve later field indices for connected clients. */
+  readonly swallowable = false;
+  readonly swallowing = 0;
+  /** Retired whole-swallow wire slot. */
+  readonly insideOf = "";
   /** Caught: the directions to push, in order, to get out (U, D, L, R), how many it has got so far, when its daze ends and when it last got one wrong (world time; all synced, for the prompt) */
   escapeKeys: string;
   escapeStep: number;
@@ -153,17 +153,8 @@ class PlayerSchema extends Schema {
   /** When this creature caught its current captive, and when it can next be caught itself */
   captureStartedAt = 0;
   recaptureAfter = 0;
-  /** How long this captor has kept its current captive pinned (swallowing needs CANNON.SWALLOW_MS) */
-  swallowHeld = 0;
-  /** How far from its captor's mouth this creature was when caught (escaping means getting out past it) */
-  captureDistance = 0;
   /** When the button was last let go (a deliberate release: the only one that launches a captive) */
   releasedAt = 0;
-  /** Gulped: when it pops back out, and the gems it loses then (see CANNON.SWALLOW_PENALTY_SHARE) */
-  expelAt = 0;
-  gulpPenalty = 0;
-  /** Digesting a creature it gulped: its mouth is full until then (no inhaling) */
-  digestUntil = 0;
   /** This flight has already hit someone (one damaging hit per launch); hit by a flier, immune to another until then */
   flightHit = false;
   impactImmuneUntil = 0;
@@ -196,14 +187,11 @@ class PlayerSchema extends Schema {
     this.latchQuality = 0;
     this.flying = false;
     this.capturedBy = "";
-    this.insideOf = "";
     this.struggle = 0;
     this.escapeKeys = "";
     this.escapeStep = 0;
     this.dazedUntil = 0;
     this.escapeMissAt = 0;
-    this.swallowable = false;
-    this.swallowing = 0;
     this.robbing = "";
     this.robbedTotal = 0;
     this.sessionId = sessionId;
@@ -433,40 +421,11 @@ class PlayerSchema extends Schema {
     this.flightHit = false;
     this.capturedBy = "";
     this.struggle = 0;
-    this.swallowable = false;
-    this.swallowing = 0;
     this.stopInhale(now);
     this.dropLatch();
     this.vx = 0;
     this.vy = 0;
     this.sliding = false;
-  }
-
-  /** Swallowed whole: gulped into `by` (riding along inside it, out of the world) until `expelAt`; it loses `penalty` gems when it pops back out */
-  gulp(by: string, now: number, forMs: number, penalty: number): void {
-    this.state = PLAYER_STATE.GULPED;
-    this.insideOf = by;
-    this.expelAt = now + forMs;
-    this.gulpPenalty = penalty;
-    this.capturedBy = "";
-    this.struggle = 0;
-    this.swallowable = false;
-    this.swallowing = 0;
-    this.recovering = false;
-    this.stopInhale(now);
-    this.dropLatch();
-    this.stopSliding();
-  }
-
-  /** Popped back out, alive, centred at (cx, cy), and safe from being caught again for `protectMs` */
-  expel(cx: number, cy: number, now: number, protectMs: number, worldWidth: number, worldHeight: number): void {
-    this.state = PLAYER_STATE.ALIVE;
-    this.insideOf = "";
-    this.expelAt = 0;
-    this.gulpPenalty = 0;
-    this.x = Math.max(0, Math.min(worldWidth - this.width, cx - this.width / 2));
-    this.y = Math.max(0, Math.min(worldHeight - this.height, cy - this.height / 2));
-    this.recaptureAfter = now + protectMs;
   }
 
   /** The flight is over */
@@ -498,18 +457,19 @@ class PlayerSchema extends Schema {
     return { x: this.walkX + this.vx, y: this.walkY + this.vy };
   }
 
-  /** Where an inhale is aimed (only while inhaling): the creature turns to face it */
+  /** Inhale or loaded-cannon aim, independent of walking. A zero vector returns to movement aiming. */
   aimAt(x: number, y: number): void {
     const length = Math.hypot(x, y);
-    if (!this.inhaling || !Number.isFinite(length) || length < 1e-6) return;
+    if ((!this.inhaling && !this.gulping) || !Number.isFinite(length)) return;
+    if (length < 1e-6) { this.aimX = this.aimY = 0; return; }
     this.aimX = x / length;
     this.aimY = y / length;
   }
 
   /** Start inhaling (for up to `forMs`, INHALE.MAX_MS for players): you move as usual, and your mouth turns toward your aim */
   startInhale(now: number, forMs: number = Infinity): void {
-    // (a full mouth can't inhale: holding someone caught, a press fires them instead (GameRoom); someone gulped has to pop back out first)
-    if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering || this.stunned || this.flying || this.capturedBy || this.gulping || now < this.digestUntil || now < this.inhaleBlockedUntil) return;
+    // Holding a captive blocks inhale; another press queues or fires the shot (GameRoom).
+    if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering || this.stunned || this.flying || this.capturedBy || this.gulping || now < this.inhaleBlockedUntil) return;
     this.breathe(now);
     if (this.stamina < INHALE.MIN_BREATH) return;
     this.dropProtection();
@@ -526,6 +486,7 @@ class PlayerSchema extends Schema {
     if (!this.inhaling) return;
     this.breathe(now);
     this.inhaling = false;
+    this.aimX = this.aimY = 0;
   }
 
   /** Spend a fixed share of the full meter, after applying any elapsed recharge. */
@@ -589,7 +550,7 @@ class PlayerSchema extends Schema {
     this.walkY = velocity.y;
     // Facing: toward the aim while inhaling, otherwise where you steer
     // A focused latch adds a little aim toward its target; your turning (rate, acceleration, size) does the rest
-    const intent = this.inhaling ? { x: this.aimX + this.assistX, y: this.aimY + this.assistY } : { x: this.steerX, y: this.steerY };
+    const intent = this.inhaling || (this.gulping && Math.hypot(this.aimX, this.aimY) > 0) ? { x: this.aimX + this.assistX, y: this.aimY + this.assistY } : { x: this.steerX, y: this.steerY };
     const aiming = Math.hypot(intent.x, intent.y) > 0.25;
     const turn = turnStep(this.facing, this.spin, aiming ? Math.atan2(intent.y, intent.x) : null, this.width, this.inhaling, deltaTime);
     this.spin = turn.spin;

@@ -70,7 +70,7 @@ function target(s: GameState, id: string, dx: number, dy = 0, gems = 100) {
   s.time = w.at; updateWeapons(s, 0.01, NOW + s.time);
   assert.equal(w.phase, 'parts'); assert.equal(w.kind, 'pinwheel', 'the next assembly is the existing Pinwheel');
 }
-for (const gems of [0, 3, 8, 9, 100, 1000]) {
+for (const gems of [0, 3, 8, 9, 13, 14, 100, 1000]) {
   const { s, w, owner } = setup();
   const p = target(s, 'damage-target', 100, 0, gems);
   const events: Array<{ type: string; data: Record<string, unknown> }> = [];
@@ -78,7 +78,7 @@ for (const gems of [0, 3, 8, 9, 100, 1000]) {
   w.owner = owner.sessionId; w.phase = 'active'; w.at = s.time + 8300; w.beatAt = s.time;
   updateWeapons(s, 0.02, NOW);
   s.time += 250; updateWeapons(s, .25, NOW + 250);
-  const out = gems < 9;
+  const out = gems < 14;
   assert.equal(p.state, out ? 'dead' : 'alive');
   assert.equal(p.gems, out ? 0 : gems - Math.max(6, Math.ceil(gems * .25)));
   assert(events.some(e => e.type === 'credit' && e.data.how === 'pulsar' && e.data.byId === owner.sessionId && e.data.out === out), 'wave damage/knockout credits its builder');

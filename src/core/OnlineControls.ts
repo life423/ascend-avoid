@@ -31,8 +31,8 @@ function isTyping(e: KeyboardEvent): boolean {
 /**
  * Touch and mouse controls for the online game, drawn on the canvas. On a touchscreen, a joystick
  * appears wherever your thumb lands on the left half, and the right half is the button: hold it to
- * inhale (slide off to stop). With a mouse, hold the mouse button and your
- * player heads for the cursor; space works like the on-screen button (Esc stops an inhale). The
+ * inhale (slide off to stop). With a mouse, move the cursor over the arena to steer without holding;
+ * space works like the on-screen button (Esc stops an inhale). The
  * arrow keys and WASD stay with the InputManager.
  */
 export class OnlineControls {
@@ -43,6 +43,7 @@ export class OnlineControls {
     readonly touchDevice: boolean
     private stick: { id: number; originX: number; originY: number; x: number; y: number } | null = null
     private mouse: { id: number; x: number; y: number } | null = null
+    private touchAim: { id: number; originX: number; originY: number; x: number; y: number } | null = null
     /** The button held down: by which pointer (or the space bar) */
     private press: { id: number | 'key'; at: number; held: boolean } | null = null
     private events: ControlEvent[] = []
@@ -55,6 +56,7 @@ export class OnlineControls {
         this.touchDevice = window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0
         canvas.style.touchAction = 'none'
         canvas.addEventListener('pointerdown', this.onDown)
+        canvas.addEventListener('pointerleave', this.onLeave)
         canvas.addEventListener('contextmenu', this.preventMenu)
         window.addEventListener('pointermove', this.onMove)
         window.addEventListener('pointerup', this.onUp)
@@ -66,6 +68,7 @@ export class OnlineControls {
     reset(): void {
         this.stick = null
         this.mouse = null
+        this.touchAim = null
         this.press = null
         this.events = []
         this.escapeKeys = []
@@ -74,6 +77,7 @@ export class OnlineControls {
     dispose(): void {
         this.canvas.style.touchAction = ''
         this.canvas.removeEventListener('pointerdown', this.onDown)
+        this.canvas.removeEventListener('pointerleave', this.onLeave)
         this.canvas.removeEventListener('contextmenu', this.preventMenu)
         window.removeEventListener('pointermove', this.onMove)
         window.removeEventListener('pointerup', this.onUp)
@@ -87,11 +91,19 @@ export class OnlineControls {
         // A press held past the tap window becomes an inhale (decided here, once a frame, button or key)
         if (this.press && !this.press.held && performance.now() - this.press.at >= TAP_MS) {
             this.press.held = true
-            this.events.push('inhale')
+            if (!(this.touchAim && this.action !== 'INHALE')) this.events.push('inhale')
         }
         const events = this.events
         this.events = []
         return events
+    }
+
+    /** Drag the existing action control to aim independently of walking. */
+    aimVector(): { x: number; y: number } | null {
+        if (!this.touchAim) return null
+        const x = this.touchAim.x - this.touchAim.originX, y = this.touchAim.y - this.touchAim.originY
+        const length = Math.hypot(x, y)
+        return length > 12 ? { x: x / length, y: y / length } : null
     }
 
     /**
@@ -199,6 +211,12 @@ export class OnlineControls {
             ctx.font = `600 10px ${FONT}`
             ctx.fillText(this.puffCooldown > 0 ? `PUFF ${this.puffCooldown.toFixed(1)}s` : this.puffNeedsBreath ? 'NEED 35% BREATH' : 'PUFF −35%', x, y + 24)
         }
+        const aim = this.aimVector()
+        if (aim) {
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = 3
+            ctx.beginPath(); ctx.moveTo(x + aim.x * (r + 8), y + aim.y * (r + 8))
+            ctx.lineTo(x + aim.x * (r + 24), y + aim.y * (r + 24)); ctx.stroke()
+        }
         ctx.restore()
     }
 
@@ -250,6 +268,7 @@ export class OnlineControls {
     /** The button let go: within the tap window it was a tap (never an inhale); past it, the inhale stops */
     private pressUp(id: number | 'key'): void {
         if (this.press?.id !== id) return
+        if (this.touchAim?.id === id && this.aimVector() && !this.press.held) { this.press = null; return }
         this.events.push(this.press.held ? 'exhale' : 'tap')
         this.press = null
     }
@@ -273,12 +292,19 @@ export class OnlineControls {
             this.stick = { id: e.pointerId, originX: point.x, originY: point.y, x: point.x, y: point.y }
         } else {
             this.touchedOnce = true
+            this.touchAim = { id: e.pointerId, originX: point.x, originY: point.y, ...point }
             this.pressDown(e.pointerId)
         }
         e.preventDefault()
     }
 
     private onMove = (e: PointerEvent): void => {
+        if (e.pointerType === 'mouse') {
+            const editing = document.activeElement?.matches('input, textarea, [contenteditable="true"]')
+            if (e.target !== this.canvas || editing || document.querySelector('.drawer.active')) { this.mouse = null; return }
+            this.mouse = { id: e.pointerId, ...this.toCanvas(e) }
+            return
+        }
         if (this.stick?.id === e.pointerId) {
             const point = this.toCanvas(e)
             this.stick.x = point.x
@@ -287,8 +313,9 @@ export class OnlineControls {
             const point = this.toCanvas(e)
             this.mouse.x = point.x
             this.mouse.y = point.y
-        } else if (this.press?.id === e.pointerId && this.toCanvas(e).x < this.canvas.width / 2 - 30) {
-            this.cancelPress()
+        } else if (this.touchAim?.id === e.pointerId) {
+            const point = this.toCanvas(e)
+            this.touchAim.x = point.x; this.touchAim.y = point.y
         }
     }
 
@@ -296,19 +323,25 @@ export class OnlineControls {
     private onCancel = (e: PointerEvent): void => {
         if (this.stick?.id === e.pointerId) this.stick = null
         if (this.mouse?.id === e.pointerId) this.mouse = null
+        if (this.touchAim?.id === e.pointerId) this.touchAim = null
         if (this.press?.id === e.pointerId) this.cancelPress()
     }
 
     private onUp = (e: PointerEvent): void => {
-        if (this.stick?.id === e.pointerId) this.stick = null
-        if (this.mouse?.id === e.pointerId) this.mouse = null
         this.pressUp(e.pointerId)
+        if (this.stick?.id === e.pointerId) this.stick = null
+        if (this.touchAim?.id === e.pointerId) this.touchAim = null
+    }
+
+    private onLeave = (e: PointerEvent): void => {
+        if (e.pointerType === 'mouse') this.mouse = null
     }
 
     private onKeyDown = (e: KeyboardEvent): void => {
-        if (isTyping(e)) return
+        if (isTyping(e) || document.querySelector('.drawer.active')) return
         sound.unlock()
         const direction: Record<string, string> = { KeyW: 'U', ArrowUp: 'U', KeyS: 'D', ArrowDown: 'D', KeyA: 'L', ArrowLeft: 'L', KeyD: 'R', ArrowRight: 'R' }
+        if (direction[e.code]) this.mouse = null // keyboard takes over until the mouse moves again
         if (!e.repeat && direction[e.code]) this.escapeKeys.push(direction[e.code])
         if (e.code === 'Escape') this.cancelPress()
         if (e.code !== 'Space') return

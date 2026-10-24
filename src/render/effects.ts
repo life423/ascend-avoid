@@ -1,7 +1,6 @@
 import type { MultiplayerMode } from '../core/GameModes'
 import { ARENA_RULES, EXHALE } from '../../server/constants/gameConstants'
 import { INHALE_LOOK, suctionPower } from './airflow'
-import { drawCreature, mouthOf, mouthRadius } from './creatures'
 import { BURST_MS } from './shared'
 import { wedge } from './style'
 import type { SyncedGameState, SyncedPlayer } from '../types/synced'
@@ -45,64 +44,6 @@ export function drawGemBursts(mode: MultiplayerMode, ctx: CanvasRenderingContext
         ctx.stroke()
     }
     ctx.restore()
-}
-
-/**
- * Gravity theft: every gem stolen pops out of the victim and arcs into the thief's mouth, so you
- * can watch them shrink, with a faint gold tether between the two while the stream runs
- */
-/**
- * Swallows: the captive is already out of sight inside its swallower, so the moment shows on the swallower
- * instead: its mouth snaps shut and the gulp ripples out from it. (A vanish with nobody to be inside of
- * shrinks away where it was, with a last ring of gold.)
- */
-export function drawVanishes(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, timestamp: number) : void {
-    const now = performance.now()
-    const VANISH_MS = 550
-    mode.vanishes = mode.vanishes.filter((v) => now - v.at < VANISH_MS)
-    const state = mode.multiplayerManager?.getState() as SyncedGameState | undefined
-    const localId = mode.multiplayerManager?.localSessionId ?? null
-    for (const v of mode.vanishes) {
-        const k = (now - v.at) / VANISH_MS
-        const prey = state?.players.get(v.id)
-        const eaterId = prey ? (prey.state === 'gulped' ? prey.insideOf : prey.capturedBy) : ''
-        const eater = eaterId ? state?.players.get(eaterId) : undefined
-        ctx.save()
-        if (eater && eaterId) {
-            const at = mode.centerOf(eaterId, eater)
-            const size = mode.drawnSizes.get(eaterId)?.size ?? eater.width
-            const facing = eaterId === localId ? mode.localFacing : (eater.facing ?? -Math.PI / 2)
-            const m = mouthOf(at.x, at.y, size, facing)
-            const open = Math.min(size * 0.21, mouthRadius(size) * 1.25)
-            // The mouth snapping shut...
-            const shut = Math.min(1, k / 0.4)
-            ctx.fillStyle = '#10151f'
-            ctx.beginPath()
-            ctx.arc(m.x, m.y, Math.max(0.1, open * (1 - shut)), 0, Math.PI * 2)
-            ctx.fill()
-            // ...and the gulp rippling out from it
-            for (const delay of [0, 0.25]) {
-                const q = (k - delay) / (1 - delay)
-                if (q <= 0) continue
-                ctx.globalAlpha = (1 - q) * 0.7
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)'
-                ctx.lineWidth = Math.max(1, size * 0.03 * (1 - q))
-                ctx.beginPath()
-                ctx.arc(m.x, m.y, open + size * 0.6 * q, 0, Math.PI * 2)
-                ctx.stroke()
-            }
-        } else {
-            ctx.globalAlpha = 1 - k * 0.6
-            drawCreature(ctx, v.x, v.y, Math.max(1, v.size * Math.pow(1 - k, 1.6)), v.color, v.facing, timestamp)
-            ctx.globalAlpha = (1 - k) * 0.8
-            ctx.strokeStyle = '#ffd166'
-            ctx.lineWidth = 2
-            ctx.beginPath()
-            ctx.arc(v.x, v.y, v.size * 0.5 + 30 * k, 0, Math.PI * 2)
-            ctx.stroke()
-        }
-        ctx.restore()
-    }
 }
 
 export function drawTheft(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state: SyncedGameState, timestamp: number) : void {
