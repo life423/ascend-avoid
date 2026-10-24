@@ -7,9 +7,32 @@ on:
   pull_request:
 
 jobs:
+  # A push to a branch that already has an open pull request is tested by that pull request's run (on the
+  # same commit), so it skips its own; a branch without one is still tested on every push
+  scope:
+    name: CI scope
+    runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.decide.outputs.skip }}
+    steps:
+    - id: decide
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        if [ "${{ github.event_name }}" = "push" ] && [ -n "$(gh pr list --repo '${{ github.repository }}' --head '${{ github.ref_name }}' --state open --json number --jq '.[].number')" ]; then
+          echo "A pull request is open for this branch: its run covers this commit"
+          echo "skip=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+        fi
+
   build-and-test:
-    # Unique across workflows: this is the check branch protection requires on pull requests
-    name: CI Build and Test
+    # Unique across workflows: CI Build and Test is the check branch protection requires, reported by the
+    # pull request run; a plain push to a branch reports under its own name, so one commit with an open pull
+    # request doesn't get two required checks
+    name: ${{ github.event_name == 'pull_request' && 'CI Build and Test' || 'CI Build and Test (branch push)' }}
+    needs: scope
+    if: needs.scope.outputs.skip != 'true'
     runs-on: ubuntu-latest
     
     steps:

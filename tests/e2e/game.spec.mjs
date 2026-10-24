@@ -97,25 +97,36 @@ test('the game loads, connects, draws, fits the screen, moves and inhales', asyn
   expect(view.canvasWidth, 'the canvas fills most of the screen').toBeGreaterThan(view.viewportWidth * 0.5);
   expect(view.overflow, 'nothing spills off the side of the screen').toBeLessThanOrEqual(1);
 
-  await waitUntilReady(page, { needBreath: false });
-  // You can move: the arrow keys on a desktop, the joystick (a thumb on the left half) on a touchscreen
-  const before = await me(page);
-  if (hasTouch) {
-    await touchDown(page, 1, 0.25, 0.6);
-    for (let i = 1; i <= 6; i++) {
-      await page.evaluate((dx) => window.__touches[1].move(dx), i * 10);
-      await page.waitForTimeout(16);
+  // You can move: the arrow keys on a desktop, the joystick (a thumb on the left half) on a touchscreen.
+  // It heads away from the nearer side of the world, so an edge can't stop it; if something disturbs it on
+  // the way (a bot catches, launches or stuns it), the move is tried again, at most twice more. A creature
+  // that stays ready and still doesn't move fails.
+  for (let attempt = 1; ; attempt++) {
+    await waitUntilReady(page, { needBreath: false });
+    const before = await me(page);
+    const worldWidth = await page.evaluate(() => window.game.currentGameMode.multiplayerManager.room.state.worldWidth);
+    const dir = before.x < worldWidth / 2 ? 1 : -1;
+    if (hasTouch) {
+      await touchDown(page, 1, 0.25, 0.6);
+      for (let i = 1; i <= 6; i++) {
+        await page.evaluate((dx) => window.__touches[1].move(dx), dir * i * 10);
+        await page.waitForTimeout(16);
+      }
+      await page.waitForTimeout(1200);
+      await page.evaluate((dx) => window.__touches[1].up(dx), dir * 60);
+    } else {
+      const key = dir > 0 ? 'ArrowRight' : 'ArrowLeft';
+      await page.keyboard.down(key);
+      await page.waitForTimeout(1200);
+      await page.keyboard.up(key);
     }
-    await page.waitForTimeout(1200);
-    await page.evaluate(() => window.__touches[1].up(60));
-  } else {
-    await page.keyboard.down('ArrowRight');
-    await page.waitForTimeout(1200);
-    await page.keyboard.up('ArrowRight');
+    await page.waitForTimeout(300);
+    const after = await me(page);
+    const disturbed = (await readiness(page, false)) !== 'ready';
+    if (disturbed && attempt < 3) continue;
+    expect(dir * (after.x - before.x), `your creature moves ${dir > 0 ? 'right' : 'left'}, away from the nearer edge`).toBeGreaterThan(30);
+    break;
   }
-  await page.waitForTimeout(300);
-  const after = await me(page);
-  expect(after.x - before.x, 'your creature moves right').toBeGreaterThan(30);
 
   await waitUntilReady(page, { needBreath: true });
   // You can inhale: space on a desktop, holding the right half of a touchscreen; letting go stops it
