@@ -125,6 +125,9 @@ export interface SyncedPinwheel {
     progress: number
     parts: SyncedArray<SyncedWeaponPart>
     bolts: SyncedMap<SyncedWeaponBolt>
+    kind: string
+    beatAt: number
+    pulseAt: number
 }
 
 /** PlayerSchema, as synced to the browser */

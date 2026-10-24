@@ -26,7 +26,7 @@ import { collectGems, sprayGems, topUpField } from "../systems/gems.js";
 import { keepApart, pruneBodyContacts } from "../systems/bodies.js";
 import { updateSurges } from "../systems/surges.js";
 import { PinwheelSchema } from "./PinwheelSchema.js";
-import { updatePinwheel } from "../systems/pinwheel.js";
+import { updateWeapons } from "../systems/weapons.js";
 import { PINWHEEL } from "../constants/gameConstants.js";
 
 const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS, COMETS, BOMBS, TURBINE, SURGE } = GAME_CONSTANTS;
@@ -208,7 +208,7 @@ class GameState extends Schema {
     updateSurges(this, deltaTime, now);
     updateTraffic(this);
     updateInhales(this, now, deltaTime);
-    updatePinwheel(this, deltaTime, now);
+    updateWeapons(this, deltaTime, now);
     updateFlights(this, now, deltaTime);
     updateLatches(this, now, deltaTime);
     updateBombs(this, now, deltaTime);

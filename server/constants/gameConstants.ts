@@ -567,6 +567,25 @@ export const PINWHEEL = {
   HIT_IMMUNE_MS: 500,
 } as const;
 
+/** Shared assembly controls; the drum spends its short lifetime dispersing crowds, without stuns. */
+export const SHOCKWAVE = {
+  CHARGE_MS: 1200,
+  ACTIVE_MS: 8300,
+  BEAT_MS: 2200,
+  WINDUP_MS: 700,
+  WAVE_MS: 900,
+  START_RADIUS: 44,
+  RANGE: 360,
+  PUSH: 210,
+  MIN_PUSH: 110,
+} as const;
+
+export const WEAPON_RECIPES = {
+  pinwheel: { name: 'Pinwheel', title: 'PINWHEEL CANNON', parts: ['HUB', 'ROTOR', 'BARREL'], letters: ['H', 'R', 'B'] },
+  drum: { name: 'Shockwave Drum', title: 'SHOCKWAVE DRUM', parts: ['DRUM', 'SPRING', 'PISTON'], letters: ['D', 'S', 'P'] },
+} as const;
+export type WeaponKind = keyof typeof WEAPON_RECIPES;
+
 export const EXHALE = {
   REACH: 160, // the puff reaches this far from the mouth, plus REACH_PER_SIZE times your width (about 200 for a newborn, 450 at 100 gems)
   REACH_PER_SIZE: 2,

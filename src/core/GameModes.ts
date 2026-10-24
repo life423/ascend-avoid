@@ -32,7 +32,7 @@ import { drawObstacle } from '../render/obstacles'
 import { drawPickups } from '../render/pickups'
 import type { SyncedGameState, SyncedGem, SyncedObstacle, SyncedPlayer } from '../types/synced'
 import { drawCannon } from '../render/cannon'
-import { drawPinwheel, drawPinwheelHud } from '../render/pinwheel'
+import { drawWeapons, drawWeaponHud } from '../render/weapons'
 
 // Forward reference for the Game type to avoid circular dependencies
 interface Game {
@@ -1026,7 +1026,7 @@ export class MultiplayerMode extends GameMode {
             if (x + reach < left || x - reach > right || y + reach < top || y - reach > bottom) return
             drawComet(ctx, x, y, comet.radius, comet.vx ?? 0, comet.vy ?? 0)
         })
-        drawPinwheel(this, ctx, state, timestamp)
+        drawWeapons(this, ctx, state, timestamp)
         const present = new Set<string>()
         state.players.forEach((player: SyncedPlayer, sessionId: string) => {
             present.add(sessionId)
@@ -1077,7 +1077,7 @@ export class MultiplayerMode extends GameMode {
             drawBanner(this, ctx, canvas)
             drawCapturePrompt(this, ctx, canvas, state, me, timestamp)
             drawSurgeHud(this, ctx, canvas, state, view, timestamp)
-            drawPinwheelHud(this, ctx, canvas, state, timestamp)
+            drawWeaponHud(this, ctx, canvas, state, timestamp)
             const loaded = Boolean(me?.gulping) && this.worldNow(state, timestamp) >= me.fireReadyAt
             if (loaded && !this.wasLoaded) sound.play('ready')
             this.wasLoaded = loaded

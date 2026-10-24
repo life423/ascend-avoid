@@ -4,7 +4,7 @@ import logger from "../utils/logger";
 import { GameState } from "../schema/GameState";
 import { exhale, fireCaptive, escapePress, escapeSteer } from "../systems/inhale";
 import { beginSurge } from "../systems/surges";
-import { spawnPinwheel, deployPinwheel } from "../systems/pinwheel";
+import { spawnWeapon, deployWeapon } from "../systems/weapons";
 
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
@@ -126,7 +126,7 @@ export class GameRoom extends Room<GameState> {
     this.onMessage("placeWeapon", (client) => {
       if (!this.allowMessage(client)) return;
       const player = this.state.players.get(client.sessionId);
-      if (player) deployPinwheel(this.state, player);
+      if (player) deployWeapon(this.state, player);
     });
     this.onMessage("cancel", (client) => {
       if (!this.allowMessage(client)) return;
@@ -150,9 +150,9 @@ export class GameRoom extends Room<GameState> {
 
     // Hooks for the automated test; never available in production
     if (!IS_PRODUCTION) {
-      this.onMessage("test:pinwheel", (_client, data: { x?: number; y?: number }) => {
+      this.onMessage("test:pinwheel", (_client, data: { x?: number; y?: number; kind?: string }) => {
         this.state.weaponsOn = true;
-        spawnPinwheel(this.state, Number(data?.x) || 2100, Number(data?.y) || 2100);
+        spawnWeapon(this.state, Number(data?.x) || 2100, Number(data?.y) || 2100, data?.kind === 'drum' ? 'drum' : 'pinwheel');
       });
       const playerOf = (client: Client) => this.state.players.get(client.sessionId);
       const { worldWidth, worldHeight } = this.state;

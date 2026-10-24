@@ -9,7 +9,7 @@ import { canCatch, launchSpeed, swallowPenalty, escapeLength, captureLoadMs } fr
 
 const { PLAYER_STATE, INHALE, LATCH, BOTS } = GAME_CONSTANTS;
 import { sprayGems } from "./gems.js";
-import { puffWeaponParts } from "./pinwheel.js";
+import { puffWeaponParts } from "./weapons.js";
 
 /** Knocked out: any last gems burst out where the player was */
 export function knockOutWithGems(state: GameState, player: PlayerSchema, now: number) : void {

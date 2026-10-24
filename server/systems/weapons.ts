@@ -1,13 +1,15 @@
 import type { GameState } from '../schema/GameState.js';
 import type { PlayerSchema } from '../schema/PlayerSchema.js';
 import { WeaponPartSchema, WeaponBoltSchema } from '../schema/PinwheelSchema.js';
-import { EXHALE, INHALE, PINWHEEL } from '../constants/gameConstants.js';
+import { EXHALE, INHALE, PINWHEEL, SHOCKWAVE, type WeaponKind } from '../constants/gameConstants.js';
 import { sweptHit } from '../game/cannon.js';
 import { sprayGems } from './gems.js';
+import { updateShockwave } from './shockwave.js';
 
-export function spawnPinwheel(state: GameState, x = state.worldWidth / 2, y = state.worldHeight / 2): void {
+export function spawnWeapon(state: GameState, x = state.worldWidth / 2, y = state.worldHeight / 2, kind: WeaponKind = 'pinwheel'): void {
   const w = state.pinwheel;
   w.parts.clear(); w.bolts.clear(); w.hitAt.clear();
+  w.kind = kind; w.beatAt = w.pulseAt = 0; w.pulseHits.clear(); w.pulseDistances.clear();
   w.phase = 'parts'; w.at = state.time + PINWHEEL.PARTS_MS;
   w.owner = ''; w.claimUntil = 0; w.progress = 0;
   w.x = Math.max(400, Math.min(state.worldWidth - 400, x));
@@ -46,27 +48,27 @@ export function puffWeaponParts(state: GameState, player: PlayerSchema): void {
   }
 }
 
-export function deployPinwheel(state: GameState, player: PlayerSchema): boolean {
+export function deployWeapon(state: GameState, player: PlayerSchema): boolean {
   const w = state.pinwheel;
   if (w.phase !== 'carried' || w.owner !== player.sessionId || player.state !== 'alive' || player.stunned || player.capturedBy || player.flying) return false;
   const radius = player.width / 2 + 72;
   w.x = Math.max(56, Math.min(state.worldWidth - 56, player.x + player.width / 2 + Math.cos(player.facing) * radius));
   w.y = Math.max(56, Math.min(state.worldHeight - 56, player.y + player.height / 2 + Math.sin(player.facing) * radius));
-  w.phase = 'charging'; w.at = state.time + PINWHEEL.CHARGE_MS; w.angle = player.facing;
+  w.phase = 'charging'; w.at = state.time + (w.kind === 'drum' ? SHOCKWAVE.CHARGE_MS : PINWHEEL.CHARGE_MS); w.angle = player.facing;
   return true;
 }
 
-export function updatePinwheel(state: GameState, dt: number, now: number): void {
+export function updateWeapons(state: GameState, dt: number, now: number): void {
   if (!state.weaponsOn) return;
   const w = state.pinwheel;
   if (w.phase === 'waiting') {
-    if (state.time >= w.at && state.players.size > 0 && !state.shiftsOn) spawnPinwheel(state);
+    if (state.time >= w.at && state.players.size > 0 && !state.shiftsOn) spawnWeapon(state, undefined, undefined, w.kind);
     return;
   }
   if (w.owner && (!state.players.has(w.owner) || (w.phase === 'parts' && state.time >= w.claimUntil))) {
     w.owner = ''; w.claimUntil = 0; w.progress = 0;
     for (const p of w.parts) p.owner = '';
-    if (w.phase !== 'parts') { w.phase = 'waiting'; w.at = state.time + PINWHEEL.RESPAWN_MS; w.bolts.clear(); return; }
+    if (w.phase !== 'parts') { retireWeapon(state); return; }
   }
   if (w.phase === 'parts') {
     for (const part of w.parts) {
@@ -147,7 +149,7 @@ export function updatePinwheel(state: GameState, dt: number, now: number): void 
         w.angle = state.players.get(w.owner)?.facing ?? 0;
       }
     }
-    if (w.phase === 'parts' && state.time >= w.at) { w.parts.clear(); w.phase = 'waiting'; w.at = state.time + PINWHEEL.RESPAWN_MS; }
+    if (w.phase === 'parts' && state.time >= w.at) retireWeapon(state);
     return;
   }
   if (w.phase === 'carried') {
@@ -157,15 +159,20 @@ export function updatePinwheel(state: GameState, dt: number, now: number): void 
       w.x = Math.max(56, Math.min(state.worldWidth - 56, carrier.x + carrier.width / 2 - Math.cos(carrier.facing) * radius));
       w.y = Math.max(56, Math.min(state.worldHeight - 56, carrier.y + carrier.height / 2 - Math.sin(carrier.facing) * radius));
       w.angle = carrier.facing;
-    } else { w.phase = 'charging'; w.at = state.time + PINWHEEL.CHARGE_MS; }
+    } else { w.phase = 'charging'; w.at = state.time + (w.kind === 'drum' ? SHOCKWAVE.CHARGE_MS : PINWHEEL.CHARGE_MS); }
     return;
   }
   if (w.phase === 'charging' && state.time >= w.at) {
-    w.phase = 'active'; w.at = state.time + PINWHEEL.ACTIVE_MS; w.nextShotAt = state.time + PINWHEEL.SHOT_MS;
+    w.phase = 'active'; w.at = state.time + (w.kind === 'drum' ? SHOCKWAVE.ACTIVE_MS : PINWHEEL.ACTIVE_MS);
+    w.nextShotAt = state.time + PINWHEEL.SHOT_MS; w.beatAt = state.time + SHOCKWAVE.WINDUP_MS;
+  }
+  if (w.phase === 'active' && state.time >= w.at) { retireWeapon(state); return; }
+  if (w.kind === 'drum') {
+    if (w.phase === 'active') updateShockwave(state, dt, now);
+    return;
   }
   if (w.phase === 'active') {
     w.angle = (w.angle + PINWHEEL.SPIN * dt) % (Math.PI * 2);
-    if (state.time >= w.at) { w.phase = 'waiting'; w.at = state.time + PINWHEEL.RESPAWN_MS; w.bolts.clear(); w.owner = ''; return; }
     if (state.time >= w.nextShotAt) {
       const bolt = new WeaponBoltSchema(); bolt.angle = w.angle; bolt.bornAt = state.time;
       bolt.x = w.x + Math.cos(w.angle) * 48; bolt.y = w.y + Math.sin(w.angle) * 48;
@@ -185,4 +192,13 @@ export function updatePinwheel(state: GameState, dt: number, now: number): void 
       w.hitAt.set(p.sessionId, state.time + PINWHEEL.HIT_IMMUNE_MS); w.bolts.delete(id); break;
     }
   }
+}
+
+function retireWeapon(state: GameState): void {
+  const w = state.pinwheel;
+  w.kind = w.kind === 'drum' ? 'pinwheel' : 'drum';
+  w.phase = 'waiting'; w.at = state.time + PINWHEEL.RESPAWN_MS;
+  w.owner = ''; w.claimUntil = 0; w.progress = 0;
+  w.parts.clear(); w.bolts.clear(); w.pulseHits.clear(); w.pulseDistances.clear();
+  w.pulseAt = w.beatAt = 0;
 }
