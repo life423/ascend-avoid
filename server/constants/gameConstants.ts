@@ -100,7 +100,7 @@ export const WORLD = {
  * you bigger, with longer hops and a slower rhythm when holding a direction.
  */
 export const GEMS = {
-  FIELD_COUNT: 1900, // loose gems lying around the world (one every ~95 units in a 4200-wide arena: a carpet of them; MAX_GEMS leaves room for sprays on top)
+  FIELD_COUNT: 1270, // loose gems lying around the world (one every ~118 units in a 4200-wide arena; MAX_GEMS leaves room for sprays on top)
   RADIUS: 9,
   /**
    * Size = PLAYER_SIZE + this x the square root of your gems, with no ceiling: area grows with gems,
@@ -120,7 +120,7 @@ export const GEMS = {
   OWNER_PICKUP_DELAY_MS: 1500, // your own spilled gems wait this long for you, so whoever caused it gets first crack
   DECAY_START: 300, // gems above this slowly shed (late game: a strong player can hold about 1500, see CAMERA)
   DECAY_RATE: 0.001, // ...this share of the excess a second (about 1.2 a second at 1500)
-  MAX_GEMS: 2600, // cap on gems in the world at once (the field, plus about 700 for sprays)
+  MAX_GEMS: 2000, // cap on gems in the world at once (the field, plus about 700 for sprays)
 } as const;
 
 /**
