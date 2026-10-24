@@ -168,10 +168,14 @@ export function drawPlayer(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
         ctx.translate(-(left + size / 2), -(top + size / 2))
     }
     const color = isLocal ? '#ffffff' : PLAYER_COLORS[player.playerIndex % PLAYER_COLORS.length]
+    // Cheeks inflate during the gulp, then stay full until firing or escape.
+    const heldFor = world && holding ? mode.worldNow(world, timestamp) - (player.gulpEndsAt - CANNON.HOLD_MS) : 0
+    const cheekProgress = holding ? Math.max(0, Math.min(1, heldFor / SUCK_MS)) : 0
+    const cheeks = 1 - Math.pow(1 - cheekProgress, 3)
     if (player.flying) drawProjectile(ctx, left + size / 2, top + size / 2, size, color, heading, timestamp)
-    else drawCreature(ctx, left + size / 2, top + size / 2, size, color, facing, timestamp, player.mouth ?? '', Boolean(player.inhaling))
+    else drawCreature(ctx, left + size / 2, top + size / 2, size, color, facing, timestamp, player.mouth ?? '', Boolean(player.inhaling), cheeks)
     ctx.restore()
-    // Holding someone: they're sucked in, out of sight, and show as a lump and an arc at the mouth (see drawMouthful)
+    // The loading badge stays beneath the puffed cheeks and clear eyes.
     if (player.gulping) drawMouthful(mode, ctx, player, left + size / 2, top + size / 2, size, facing, timestamp)
     // Stunned by a Core: a few little stars wheeling over its head
     if (player.stunned) {

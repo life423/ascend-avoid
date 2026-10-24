@@ -25,24 +25,67 @@ export function mouthRadius(size: number): number {
 }
 
 /** A round creature with eyes toward where it faces, so everyone can see which side is its back */
-export function drawCreature(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string, facing: number, timestamp = 0, mouth = '', inhaling = false): void {
+export function drawCreature(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string, facing: number, timestamp = 0, mouth = '', inhaling = false, cheeks = 0): void {
     const r = size / 2
+    const fullness = Math.max(0, Math.min(1, cheeks))
     ctx.fillStyle = color
     ctx.beginPath()
-    ctx.arc(x, y, r, 0, Math.PI * 2)
+    if (fullness > 0) {
+        // One continuous silhouette: two soft cheek bulges, with no seams across the face.
+        ctx.save()
+        ctx.translate(x, y)
+        ctx.rotate(facing)
+        ctx.scale(r, r)
+        ctx.moveTo(-1, 0)
+        ctx.bezierCurveTo(-1, -0.552, -0.552, -1, 0, -1)
+        ctx.bezierCurveTo(0.22, -1 - 0.22 * fullness, 0.63, -0.91 - 0.28 * fullness, 0.74, -0.67 - 0.06 * fullness)
+        ctx.bezierCurveTo(0.91, -0.5, 1, -0.28, 1, 0)
+        ctx.bezierCurveTo(1, 0.28, 0.91, 0.5, 0.74, 0.67 + 0.06 * fullness)
+        ctx.bezierCurveTo(0.63, 0.91 + 0.28 * fullness, 0.22, 1 + 0.22 * fullness, 0, 1)
+        ctx.bezierCurveTo(-0.552, 1, -1, 0.552, -1, 0)
+        ctx.closePath()
+        ctx.restore()
+    } else ctx.arc(x, y, r, 0, Math.PI * 2)
     ctx.fill()
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)'
     ctx.lineWidth = Math.max(1.5, size * 0.06)
     ctx.stroke()
     const fx = Math.cos(facing)
     const fy = Math.sin(facing)
-    // The mouth: wide open while inhaling (drawn where the server has it, so a captive held there is really in it), bulging with a rock when full
+    if (fullness > 0) {
+        ctx.save()
+        ctx.translate(x, y)
+        ctx.rotate(facing)
+        for (const side of [-1, 1]) {
+            // Blush sits outside the eye circles, even on the smallest creature.
+            ctx.fillStyle = `rgba(255, 153, 153, ${0.32 * fullness})`
+            ctx.beginPath()
+            ctx.ellipse(r * 0.22, side * r * 0.81, r * 0.22, r * 0.105, side * 0.15, 0, Math.PI * 2)
+            ctx.fill()
+            ctx.strokeStyle = `rgba(255, 255, 255, ${0.65 * fullness})`
+            ctx.lineWidth = Math.max(1, size * 0.012)
+            ctx.lineCap = 'round'
+            ctx.beginPath()
+            ctx.ellipse(r * 0.24, side * r * 0.82, r * 0.28, r * 0.19, 0, side < 0 ? Math.PI * 1.15 : Math.PI * 0.15, side < 0 ? Math.PI * 1.65 : Math.PI * 0.65)
+            ctx.stroke()
+        }
+        ctx.restore()
+    }
+    // A small curved mouth reads as a face; the airflow carries the inhale effect.
     const m = mouthOf(x, y, size, facing)
-    if (inhaling) {
-        ctx.fillStyle = '#10151f'
+    if (inhaling || fullness > 0) {
+        ctx.save()
+        ctx.translate(m.x, m.y)
+        ctx.rotate(facing)
+        ctx.strokeStyle = 'rgba(24, 47, 61, 0.8)'
+        ctx.lineWidth = Math.max(1.2, size * 0.012)
+        ctx.lineCap = 'round'
+        const pulse = fullness > 0 ? 0.7 : 1 + 0.06 * Math.sin(timestamp / 100)
         ctx.beginPath()
-        ctx.arc(m.x, m.y, mouthRadius(size) * (1 + 0.12 * Math.sin(timestamp / 60)), 0, Math.PI * 2)
-        ctx.fill()
+        ctx.moveTo(r * 0.04, -r * 0.12 * pulse)
+        ctx.quadraticCurveTo(r * 0.17, 0, r * 0.04, r * 0.12 * pulse)
+        ctx.stroke()
+        ctx.restore()
     } else if (mouth) {
         // A bomb held in the mouth (sparking if its fuse is running)
         const bx = x + fx * r * 0.82
