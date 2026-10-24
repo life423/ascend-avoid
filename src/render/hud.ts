@@ -3,9 +3,10 @@ import { PLAYER_COLORS, SHIFT, WORLD } from '../../server/constants/gameConstant
 import { drawCreature } from './creatures'
 import { COMPACT, FONT, GOLD, drawCrown, drawPeople, drawRobot, hudPanel, roundedRect } from './style'
 import { JOIN_NOTICE_MS, View } from './shared'
+import type { SyncedGameState, SyncedPlayer, SyncedTurbine } from '../types/synced'
 
 /** The whole world in a corner: everyone in it, and the part your screen shows */
-export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, state: any, view: View, localId: string | null, leaderId: string | null) : void {
+export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, state: SyncedGameState, view: View, localId: string | null, leaderId: string | null) : void {
     const size = Math.round(Math.min(150, Math.max(84, Math.min(canvas.width, canvas.height) * 0.24)))
     const scale = size / Math.max(state.worldWidth, state.worldHeight)
     const width = state.worldWidth * scale
@@ -40,7 +41,7 @@ export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
         view.height * scale
     )
     let playing = 0
-    state.players.forEach((player: any, sessionId: string) => {
+    state.players.forEach((player: SyncedPlayer, sessionId: string) => {
         playing++
         if (player.state !== 'alive') return
         const isLocal = sessionId === localId
@@ -60,7 +61,7 @@ export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
             drawCrown(ctx, x + (position.x + player.width / 2) * scale, y + (position.y + player.height / 2) * scale - (3.5 + (player.width / 2) * scale * 2.5), 10)
         }
     })
-    state.turbines?.forEach((turbine: any) => {
+    state.turbines?.forEach((turbine: SyncedTurbine) => {
         // Turbines: a ring, with a tick for where the intake points (gold while one is about to switch on)
         const tx = x + turbine.x * scale
         const ty = y + turbine.y * scale
@@ -127,7 +128,7 @@ export function drawBanner(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
 }
 
 /** A chip at the top: a shift coming up, its grace period, or how long until the arena returns */
-export function drawShiftChip(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, state: any, timestamp: number) : void {
+export function drawShiftChip(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, state: SyncedGameState, timestamp: number) : void {
     // Arena shifts switched off: no countdown, no warnings
     if (!state.shiftsOn) return
     const left = Math.max(0, Math.ceil((state.phaseEndsAt - mode.worldNow(state, timestamp)) / 1000))
@@ -156,7 +157,7 @@ export function drawShiftChip(mode: MultiplayerMode, ctx: CanvasRenderingContext
 }
 
 /** "Traffic incoming 3" just before a traffic wave */
-export function drawTrafficChip(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, state: any, timestamp: number) : void {
+export function drawTrafficChip(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, state: SyncedGameState, timestamp: number) : void {
     if (state.trafficWave !== 'warning') return
     const left = Math.max(1, Math.ceil((state.waveAt - mode.worldNow(state, timestamp)) / 1000))
     const text = `Traffic incoming ${left}`
@@ -178,9 +179,9 @@ export function drawTrafficChip(mode: MultiplayerMode, ctx: CanvasRenderingConte
 }
 
 /** The top five by gems, top left, with you added below if you're further down */
-export function drawLeaderboard(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, _canvas: HTMLCanvasElement, state: any, localId: string | null, leaderId: string | null) : void {
+export function drawLeaderboard(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, _canvas: HTMLCanvasElement, state: SyncedGameState, localId: string | null, leaderId: string | null) : void {
     const ranked: { id: string; name: string; gems: number; isBot: boolean }[] = []
-    state.players.forEach((player: any, id: string) => {
+    state.players.forEach((player: SyncedPlayer, id: string) => {
         ranked.push({ id, name: String(player.name), gems: player.gems, isBot: player.isBot === true })
     })
     ranked.sort((a, b) => b.gems - a.gems)
@@ -242,7 +243,7 @@ export function drawLeaderboard(mode: MultiplayerMode, ctx: CanvasRenderingConte
 }
 
 /** Phones and tablets: the score in a pill at the top middle, and how many are playing beside the menu button */
-export function drawTopBar(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, state: any, me: any) : void {
+export function drawTopBar(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, state: SyncedGameState, me: SyncedPlayer) : void {
     const u = mode.cssScale
     ctx.save()
     ctx.textBaseline = 'middle'

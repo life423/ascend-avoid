@@ -27,6 +27,7 @@ import { drawFloor, drawShiftFloor, drawJackpot } from '../render/floor'
 import { drawPlayer } from '../render/players'
 import { drawObstacle } from '../render/obstacles'
 import { drawPickups } from '../render/pickups'
+import type { SyncedGameState, SyncedGem, SyncedObstacle, SyncedPlayer } from '../types/synced'
 
 // Forward reference for the Game type to avoid circular dependencies
 interface Game {
@@ -607,7 +608,7 @@ export class MultiplayerMode extends GameMode {
             }
         })
         eventBus.on(GameEvents.MULTIPLAYER_DISCONNECTED, () => this.reconnectSoon())
-        eventBus.on(GameEvents.MULTIPLAYER_STATE_UPDATE, (state: any) => {
+        eventBus.on(GameEvents.MULTIPLAYER_STATE_UPDATE, (state: SyncedGameState) => {
             if (typeof state?.time !== 'number') return
             const gap = performance.now() - state.time
             // Keep the quickest arrival, drifting up slowly in case the clocks wander
@@ -670,7 +671,7 @@ export class MultiplayerMode extends GameMode {
     }
 
     /** Where you're steering: the joystick or mouse if in use (analog), otherwise the keys (eight ways) */
-    private steerVector(input: InputState, me: any): { x: number; y: number } {
+    private steerVector(input: InputState, me: SyncedPlayer): { x: number; y: number } {
         const view = this.lastView
         const canvas = this.game.canvas
         if (this.controls && view && canvas) {
@@ -795,7 +796,7 @@ export class MultiplayerMode extends GameMode {
         walk(box, this.velocity, steer, deltaTime, state.worldWidth, state.worldHeight)
         // Creatures are solid: stop at anyone you walk into and slide along them, as the server does
         const myId = this.multiplayerManager?.localSessionId
-        state.players.forEach((other: any, id: string) => {
+        state.players.forEach((other: SyncedPlayer, id: string) => {
             if (id === myId || other.state !== 'alive') return
             const at = this.drawnPositions.get(id) ?? { x: other.x, y: other.y }
             const dx = box.x + box.width / 2 - (at.x + other.width / 2)
@@ -915,7 +916,7 @@ export class MultiplayerMode extends GameMode {
         drawGemBursts(this, ctx)
         drawJackpot(this, ctx, state, localId, timestamp)
         const lead = this.trafficLead(timestamp)
-        state.obstacles.forEach((obstacle: any) => {
+        state.obstacles.forEach((obstacle: SyncedObstacle) => {
             const x = obstacle.x + (obstacle.vx ?? 0) * lead
             const y = obstacle.y + (obstacle.vy ?? 0) * lead
             if (x > right || x + obstacle.width < left || y > bottom || y + obstacle.height < top) return
@@ -948,7 +949,7 @@ export class MultiplayerMode extends GameMode {
             drawComet(ctx, x, y, comet.radius, comet.vx ?? 0, comet.vy ?? 0)
         })
         const present = new Set<string>()
-        state.players.forEach((player: any, sessionId: string) => {
+        state.players.forEach((player: SyncedPlayer, sessionId: string) => {
             present.add(sessionId)
             drawPlayer(this, ctx, player, sessionId, sessionId === localId, sessionId === leaderId, timestamp)
         })
@@ -997,7 +998,7 @@ export class MultiplayerMode extends GameMode {
      * Follow your player. Every screen sees the same amount of world (WORLD.VIEW_AREA), shaped
      * to the screen within the aspect limits; a screen outside them sees less, never more.
      */
-    private updateCamera(canvas: HTMLCanvasElement, state: any, me: any, timestamp: number): View {
+    private updateCamera(canvas: HTMLCanvasElement, state: SyncedGameState, me: SyncedPlayer, timestamp: number): View {
         const aspect = Math.min(WORLD.MAX_VIEW_ASPECT, Math.max(WORLD.MIN_VIEW_ASPECT, canvas.width / canvas.height))
         // The soft-follow rig (game/camera): it leads your movement a little (and your facing, more while
         // inhaling), follows on a spring, and zooms by how big you should look and the threat horizon
@@ -1047,7 +1048,7 @@ export class MultiplayerMode extends GameMode {
     }
 
     /** Our best guess at the world's clock right now */
-    worldNow(state: any, timestamp: number): number {
+    worldNow(state: SyncedGameState, timestamp: number): number {
         return Number.isFinite(this.clockGap) ? timestamp - this.clockGap : state.time
     }
 
@@ -1127,16 +1128,16 @@ export class MultiplayerMode extends GameMode {
     }
 
     /** Where a player is drawn this frame (its center) */
-    centerOf(id: string, player: any): { x: number; y: number } {
+    centerOf(id: string, player: SyncedPlayer): { x: number; y: number } {
         const at = this.drawnPositions.get(id) ?? player
         return { x: at.x + player.width / 2, y: at.y + player.height / 2 }
     }
 
     /** Whoever has the most gems (nobody, until someone has one) */
-    private leaderId(state: any): string | null {
+    private leaderId(state: SyncedGameState): string | null {
         let leader: string | null = null
         let most = 0
-        state.players.forEach((player: any, id: string) => {
+        state.players.forEach((player: SyncedPlayer, id: string) => {
             if (player.state === 'alive' && player.gems > most) {
                 most = player.gems
                 leader = id
@@ -1146,9 +1147,9 @@ export class MultiplayerMode extends GameMode {
     }
 
     /** Spot hits and pickups by comparing each player with the last frame */
-    private trackEvents(state: any, localId: string | null, timestamp: number): void {
+    private trackEvents(state: SyncedGameState, localId: string | null, timestamp: number): void {
         const seen = new Set<string>()
-        state.players.forEach((player: any, id: string) => {
+        state.players.forEach((player: SyncedPlayer, id: string) => {
             seen.add(id)
             const before = this.lastSeen.get(id)
             const alive = player.state === 'alive'
@@ -1199,7 +1200,7 @@ export class MultiplayerMode extends GameMode {
 
     private drawGems(
         ctx: CanvasRenderingContext2D,
-        state: any,
+        state: SyncedGameState,
         left: number,
         right: number,
         top: number,
@@ -1209,7 +1210,7 @@ export class MultiplayerMode extends GameMode {
         const present = new Set<string>()
         const localId = this.multiplayerManager?.localSessionId
         const clock = this.worldNow(state, timestamp)
-        state.gems?.forEach((gem: any, id: string) => {
+        state.gems?.forEach((gem: SyncedGem, id: string) => {
             present.add(id)
             let drawn = this.drawnGems.get(id)
             const flying = gem.launchAt > 0 ? clock - gem.launchAt : -1
@@ -1265,9 +1266,9 @@ export class MultiplayerMode extends GameMode {
     }
 
     /** Whether anyone is stealing gems from this player right now */
-    private beingRobbed(state: any, id: string): boolean {
+    private beingRobbed(state: SyncedGameState, id: string): boolean {
         let robbed = false
-        state.players.forEach((other: any) => {
+        state.players.forEach((other: SyncedPlayer) => {
             if (String(other.robbing ?? '').split(',').includes(id)) robbed = true
         })
         return robbed
@@ -1304,7 +1305,7 @@ export class MultiplayerMode extends GameMode {
         return this.introStart !== null && this.introSparks.length > 0
     }
 
-    private trackKnockout(me: any): void {
+    private trackKnockout(me: SyncedPlayer): void {
         if (me && me.state !== 'alive') {
             if (this.knockedOutAt === null) this.knockedOutAt = performance.now()
         } else {

@@ -4,6 +4,7 @@ import { cleanAir, latchSizeFactor, streamLook } from '../../server/game/airflow
 import { moveSpeed } from '../../server/game/movement'
 import { Airflow, INHALE_LOOK, onCurve, suctionPower } from './airflow'
 import { gemColor } from './world'
+import type { SyncedGem, SyncedPlayer } from '../types/synced'
 
 /**
  * An inhale drawn as moving air rather than a fixed cone: streaks flowing into the mouth along
@@ -14,7 +15,7 @@ import { gemColor } from './world'
  * ones a quick narrow stream; low on breath it thins, flickers and breaks up; and little side
  * streams peel off to each gem and creature it's pulling.
  */
-export function drawAirflow(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, id: string, player: any, x: number, y: number, size: number, facing: number, timestamp: number, intensity: number, isLocal: boolean) : void {
+export function drawAirflow(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, id: string, player: SyncedPlayer, x: number, y: number, size: number, facing: number, timestamp: number, intensity: number, isLocal: boolean) : void {
     const reach = INHALE.REACH + size * INHALE.REACH_PER_SIZE
     const arc = (INHALE.ARC * Math.PI) / 180
     const power = Math.min(6, suctionPower(size) * intensity)
@@ -153,7 +154,7 @@ export function drawAirflow(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
         const victim = victimId ? world?.players?.get(victimId) : null
         if (victim) pulled.push({ x: victim.x + victim.width / 2, y: victim.y + victim.height / 2, color: 'rgba(220, 245, 255, 1)' })
     }
-    world?.gems?.forEach((gem: any, gemId: string) => {
+    world?.gems?.forEach((gem: SyncedGem, gemId: string) => {
         if (pulled.length >= 8) return
         const dx = gem.x - mouthX
         const dy = gem.y - mouthY
@@ -203,7 +204,7 @@ export function drawAirflow(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
  * and, between two inhaling each other, the flows meet in a turbulent pressure zone pushed toward
  * whichever side is losing. Coherence, not brightness, says how strong it is.
  */
-export function drawStream(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, id: string, player: any, target: any, mouthX: number, mouthY: number, facing: number, timestamp: number, coherence: number, fraying: number, power: number, heft: number, flow: Airflow, dt: number) : void {
+export function drawStream(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, id: string, player: SyncedPlayer, target: SyncedPlayer, mouthX: number, mouthY: number, facing: number, timestamp: number, coherence: number, fraying: number, power: number, heft: number, flow: Airflow, dt: number) : void {
     const at = mode.drawnPositions.get(player.latchTarget) ?? target
     const tx = at.x + target.width / 2
     const ty = at.y + target.height / 2

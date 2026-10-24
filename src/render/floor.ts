@@ -3,9 +3,10 @@ import { SHIFT } from '../../server/constants/gameConstants'
 import { FONT, GOLD } from './style'
 import { drawCrystal } from './world'
 import { GRID, View } from './shared'
+import type { SyncedGameState } from '../types/synced'
 
 /** The arena floor: a faint grid, and the wall around the world */
-export function drawFloor(_mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state: any, view: View) : void {
+export function drawFloor(_mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state: SyncedGameState, view: View) : void {
     const left = Math.max(0, view.x - view.width / 2)
     const right = Math.min(state.worldWidth, view.x + view.width / 2)
     const top = Math.max(0, view.y - view.height / 2)
@@ -33,7 +34,7 @@ export function drawFloor(_mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
  * The shift on the floor: during the grace period the tiles about to drop away pulse red,
  * faster as time runs out; during the shift they're a dark void. The floor's edge is outlined.
  */
-export function drawShiftFloor(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state: any, view: View, timestamp: number) : void {
+export function drawShiftFloor(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state: SyncedGameState, view: View, timestamp: number) : void {
     const floor: string = state.floor
     if (!floor) return
     const grid = SHIFT.GRID
@@ -77,7 +78,7 @@ export function drawShiftFloor(mode: MultiplayerMode, ctx: CanvasRenderingContex
 }
 
 /** The jackpot crystal: a shadow while it drops, then a big crystal with a ring showing the claim */
-export function drawJackpot(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state: any, localId: string | null, timestamp: number) : void {
+export function drawJackpot(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state: SyncedGameState, localId: string | null, timestamp: number) : void {
     if (!state.jackpotOn) return
     const x = state.jackpotX
     const y = state.jackpotY

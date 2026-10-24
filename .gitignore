@@ -71,3 +71,7 @@ setup-github-secrets.ps1
 setup-*.ps1
 COMPLETE_DEPLOYMENT_SUMMARY.md
 *.secrets
+
+# Playwright
+test-results/
+playwright-report/

@@ -2,13 +2,14 @@ import type { MultiplayerMode } from '../core/GameModes'
 import { GEMS, TURBINE } from '../../server/constants/gameConstants'
 import { exhaustAngle } from '../../server/game/turbine'
 import { drawExhaustWind, drawGem, drawIntakeWind, drawTurbineBody, drawTurbineWarning } from './world'
+import type { SyncedGameState, SyncedTurbine, SyncedTurbineFlight } from '../types/synced'
 
 /** Gems lying around, and sprayed ones sliding to a stop (eased, like other players) */
 /** Turbines, under the gems and players: warnings, the intake's suction, the exhaust's wind, and the machines */
-export function drawTurbines(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state: any, timestamp: number) : void {
+export function drawTurbines(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state: SyncedGameState, timestamp: number) : void {
     if (!state.turbines?.length) return
     const now = mode.worldNow(state, timestamp)
-    state.turbines.forEach((turbine: any) => {
+    state.turbines.forEach((turbine: SyncedTurbine) => {
         if (turbine.phase === 'warning') {
             const progress = Math.max(0, Math.min(1, 1 - (turbine.phaseEndsAt - now) / TURBINE.WARNING_MS))
             drawTurbineWarning(ctx, turbine.x, turbine.y, turbine.intake, progress, timestamp)
@@ -27,13 +28,13 @@ export function drawTurbines(mode: MultiplayerMode, ctx: CanvasRenderingContext2
  * leaves), rushing into the intake, then across the machine to the exhaust. Everyone sees the
  * same ones, timed by the server; once fired, the gem itself takes over (see drawGems).
  */
-export function drawTurbineFlights(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state: any, timestamp: number) : void {
+export function drawTurbineFlights(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state: SyncedGameState, timestamp: number) : void {
     if (!state.flights?.size) return
     const now = mode.worldNow(state, timestamp)
     const turbines = new Map<string, any>()
-    state.turbines?.forEach((turbine: any) => turbines.set(turbine.id, turbine))
+    state.turbines?.forEach((turbine: SyncedTurbine) => turbines.set(turbine.id, turbine))
     const r = TURBINE.BODY_RADIUS
-    state.flights.forEach((flight: any) => {
+    state.flights.forEach((flight: SyncedTurbineFlight) => {
         const turbine = turbines.get(flight.turbine)
         if (!turbine || now >= flight.fireAt) return
         const mouthX = turbine.x + Math.cos(turbine.intake) * r

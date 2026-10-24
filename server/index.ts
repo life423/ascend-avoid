@@ -7,6 +7,28 @@ import express from "express";
 import cors from "cors";
 import compression from "compression";
 import helmet from "helmet";
+import { readFileSync } from "fs";
+import { createHash } from "crypto";
+import path from "path";
+
+/**
+ * The built page carries a few small inline scripts (the legacy-browser loader Vite's plugin adds).
+ * The content security policy allows exactly those, by their hashes, read from the build at startup,
+ * so nothing else inline can run and a new build's scripts are allowed automatically.
+ */
+function inlineScriptHashes(indexFile: string): string[] {
+  try {
+    const html = readFileSync(indexFile, "utf8");
+    const hashes: string[] = [];
+    for (const match of html.matchAll(/<script(?![^>]*\ssrc=)[^>]*>([\s\S]*?)<\/script>/gi)) {
+      const body = match[1] ?? "";
+      if (body.trim()) hashes.push(`'sha256-${createHash("sha256").update(body).digest("base64")}'`);
+    }
+    return hashes;
+  } catch {
+    return [];
+  }
+}
 import { GameRoom } from "./rooms/GameRoom";
 import { GAME_CONSTANTS } from "./constants/serverConstants";
 import config from "./config";
@@ -25,12 +47,14 @@ app.use(
     contentSecurityPolicy: {
       useDefaults: true,
       directives: {
-        "script-src": ["'self'"],
+        "script-src": ["'self'", ...inlineScriptHashes(path.join(process.env.NODE_ENV === "production" ? "./dist" : "../dist", "index.html"))],
         "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         "font-src": ["'self'", "https://fonts.gstatic.com", "data:"],
         "img-src": ["'self'", "data:", "blob:"],
         "connect-src": ["'self'", "wss:", "ws:"],
         "worker-src": ["'self'", "blob:"],
+        // The live site is HTTPS-only anyway; upgrading would break local production testing over plain HTTP
+        "upgrade-insecure-requests": null,
       },
     },
     crossOriginEmbedderPolicy: false,

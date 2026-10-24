@@ -39,6 +39,9 @@ jobs:
     - name: Lint
       run: npm run lint
 
+    - name: Synced types match the server schema
+      run: node scripts/gen-synced-types.mjs --check
+
     - name: Build application
       run: npm run build
     
