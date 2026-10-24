@@ -95,6 +95,15 @@ class PlayerSchema extends Schema {
   latchPull: number;
   /** The airflow quality on the latched creature (synced, owned or not, so its stream is drawn as it really is) */
   latchQuality: number;
+  /** Flying: launched out of a captor's mouth or a turbine's exhaust (synced) */
+  flying: boolean;
+  /** Caught in this creature's mouth: its session id (synced) */
+  capturedBy: string;
+  /** How close a captive is to breaking free, 0 to 1 (synced) */
+  struggle: number;
+  /** Caught by a captor big enough to swallow it, and how far that swallow has got, 0 to 1 (synced, for the arc both players see) */
+  swallowable: boolean;
+  swallowing: number;
   /** Server-only: smoothed airflow quality on each creature, when the latch began and when it last slipped, its score, whether it owns the focused connection, and the aim it adds */
   airQuality = new Map<string, number>();
   latchSince = 0;
@@ -113,6 +122,24 @@ class PlayerSchema extends Schema {
   stolenRun = 0;
   /** Server-only: how far along the next gem a turbine is ripping out of this player is (0-1) */
   turbineStrip = 0;
+  /** In flight: its velocity, when it started and must end, and who launched it (it can't hit them straight away) */
+  flightVx = 0;
+  flightVy = 0;
+  flightStartedAt = 0;
+  flightEndsAt = 0;
+  launchedBy = "";
+  /** When this creature caught its current captive, and when it can next be caught itself */
+  captureStartedAt = 0;
+  recaptureAfter = 0;
+  /** How long this captor has kept its current captive pinned (swallowing needs CANNON.SWALLOW_MS) */
+  swallowHeld = 0;
+  /** How far from its captor's mouth this creature was when caught (escaping means getting out past it) */
+  captureDistance = 0;
+  /** When the button was last let go (a deliberate release: the only one that launches a captive) */
+  releasedAt = 0;
+  /** This flight has already hit someone (one damaging hit per launch); hit by a flier, immune to another until then */
+  flightHit = false;
+  impactImmuneUntil = 0;
   /** Server-only: when this breath runs out, and when you can spit again */
   inhaleStopAt = 0;
   /** Server-only: how much breath is left (0-1) as of staminaAt: it drains while inhaling and refills from wherever it is */
@@ -138,6 +165,11 @@ class PlayerSchema extends Schema {
     this.beamQuality = 0;
     this.latchPull = 0;
     this.latchQuality = 0;
+    this.flying = false;
+    this.capturedBy = "";
+    this.struggle = 0;
+    this.swallowable = false;
+    this.swallowing = 0;
     this.robbing = "";
     this.robbedTotal = 0;
     this.sessionId = sessionId;
@@ -350,6 +382,39 @@ class PlayerSchema extends Schema {
     this.assistY = 0;
   }
 
+  /** Launched (out of a captor's mouth, or a turbine's exhaust): flying at this velocity until it slows down or `maxMs` passes, steering a little on the way */
+  launch(now: number, vx: number, vy: number, by: string, maxMs: number): void {
+    this.flying = true;
+    this.flightVx = vx;
+    this.flightVy = vy;
+    this.flightStartedAt = now;
+    this.flightEndsAt = now + maxMs;
+    this.launchedBy = by;
+    this.flightHit = false;
+    this.capturedBy = "";
+    this.struggle = 0;
+    this.swallowable = false;
+    this.swallowing = 0;
+    this.stopInhale(now);
+    this.dropLatch();
+    this.vx = 0;
+    this.vy = 0;
+    this.sliding = false;
+  }
+
+  /** The flight is over */
+  land(): void {
+    this.flying = false;
+    this.flightVx = 0;
+    this.flightVy = 0;
+    this.launchedBy = "";
+  }
+
+  /** The stick's direction (kept while caught or flying, when it struggles or steers instead of walking) */
+  steerInput(): { x: number; y: number } {
+    return { x: this.steerX, y: this.steerY };
+  }
+
   /** Hit hard by a Core: stunned for `ms` (no moving, no inhaling), then immune for a moment so it can't stun-lock */
   stun(now: number, ms: number): void {
     this.stunned = true;
@@ -374,7 +439,7 @@ class PlayerSchema extends Schema {
 
   /** Start inhaling (for up to `forMs`, INHALE.MAX_MS for players): you move as usual, and your mouth turns toward your aim */
   startInhale(now: number, forMs: number = Infinity): void {
-    if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering || this.stunned) return;
+    if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering || this.stunned || this.flying || this.capturedBy) return;
     this.breathe(now);
     if (this.stamina < INHALE.MIN_BREATH) return;
     this.inhaling = true;
@@ -435,7 +500,8 @@ class PlayerSchema extends Schema {
     }
     if (this.stunned && now >= this.stunEndsAt) this.stunned = false;
     // Stunned (like recovering), steering can't move you; your facing holds where it was
-    const steer = this.recovering || this.stunned ? { x: 0, y: 0 } : { x: this.steerX, y: this.steerY };
+    // (caught in a mouth or flying, the stick struggles or steers the flight instead: see game/cannon)
+    const steer = this.recovering || this.stunned || this.flying || this.capturedBy ? { x: 0, y: 0 } : { x: this.steerX, y: this.steerY };
     const box = { x: this.x, y: this.y, width: this.width, height: this.height };
     const velocity = { x: this.walkX, y: this.walkY };
     walk(box, velocity, steer, deltaTime, worldWidth, worldHeight);
@@ -508,6 +574,11 @@ type("number")(PlayerSchema.prototype, "beamFocus");
 type("number")(PlayerSchema.prototype, "beamQuality");
 type("number")(PlayerSchema.prototype, "latchPull");
 type("number")(PlayerSchema.prototype, "latchQuality");
+type("boolean")(PlayerSchema.prototype, "flying");
+type("string")(PlayerSchema.prototype, "capturedBy");
+type("number")(PlayerSchema.prototype, "struggle");
+type("boolean")(PlayerSchema.prototype, "swallowable");
+type("number")(PlayerSchema.prototype, "swallowing");
 type("string")(PlayerSchema.prototype, "robbing");
 type("number")(PlayerSchema.prototype, "robbedTotal");
 type("boolean")(PlayerSchema.prototype, "isBot");

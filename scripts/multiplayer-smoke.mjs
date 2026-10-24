@@ -404,10 +404,10 @@ try {
     alice.send('inhale');
     await sleep(150);
     const heldNotEaten = bobState().state === 'alive' && me().gulping === bob.sessionId;
-    await sleep(1100);
+    await sleep(1600); // held through the whole capture (CANNON.HOLD_MS); letting go sooner would launch Bob
     alice.send('exhale');
     check(heldNotEaten, 'a much smaller creature is pulled to your mouth and held there, not eaten at once');
-    check(bobState().state !== 'alive' && me().gems >= aliceBeforeGulp + 4, `held there a moment, it's swallowed whole (Alice ${aliceBeforeGulp} then ${me().gems}, Bob ${bobState().state})`);
+    check(bobState().state !== 'alive' && me().gems >= aliceBeforeGulp, `held there (and pinned), it's swallowed whole, the swallower keeping a share of its gems (Alice ${aliceBeforeGulp} then ${me().gems}, Bob ${bobState().state})`);
     await waitFor(() => bobState().state === 'alive' && !bobState().spawnProtected, 6000, 'Bob is back');
     // ...but running straight away breaks free (robbed on the way out, but not swallowed)
     bob.send('test:setGems', { count: 30 });
@@ -1277,6 +1277,218 @@ try {
     check(second.every((s) => first.every((f) => Math.hypot(s.x - f.x, s.y - f.y) > 50)), 'somewhere else');
     clearInterval(phases);
     await ann.leave();
+
+    // ---- Capture and the living cannonball
+    const mine = (room) => room.state.players.get(room.sessionId);
+    const captor = await join('Captor');
+    const kid = await join('Kid');
+    const mark = await join('Mark');
+    captor.send('test:setGems', { count: 60 });
+    kid.send('test:setGems', { count: 0 });
+    mark.send('test:setGems', { count: 120 });
+    // (fresh joiners are spawn-protected: cleared, so the capture starts when the test says, not half a second later)
+    for (const room of [captor, kid, mark]) room.send('test:protect', { ms: 0 });
+    await sleep(500);
+    const lineY = 2300;
+    captor.send('test:moveTo', { x: 500, y: lineY - mine(captor).width / 2 });
+    captor.send('test:face', { angle: 0 });
+    await sleep(250);
+    kid.send('test:moveTo', { x: 500 + mine(captor).width + 4, y: lineY - mine(kid).width / 2 });
+    mark.send('test:moveTo', { x: 500 + mine(captor).width + 380, y: lineY - mine(mark).width / 2 });
+    await sleep(300);
+    captor.send('inhale');
+    for (let i = 0; i < 40 && mine(kid).capturedBy !== captor.sessionId; i++) await sleep(25);
+    await sleep(300); // held long enough that letting go launches (CANNON.LAUNCH_MIN_MS), not just lets go
+    check(mine(kid).capturedBy === captor.sessionId, `a creature pulled to a big enough mouth is caught there (caught by ${mine(kid).capturedBy || 'nobody'})`);
+    const markHad = mine(mark).gems;
+    captor.send('exhale');
+    let launched = false;
+    for (let i = 0; i < 16 && !launched; i++) {
+        await sleep(25);
+        launched = mine(kid).flying === true;
+    }
+    check(launched, `letting go launches the captive: a living cannonball (flying ${mine(kid).flying}, caught by ${mine(kid).capturedBy || 'nobody'}, ${mine(kid).state}, captor stunned ${mine(captor).stunned})`);
+    await sleep(1000);
+    check(markHad - mine(mark).gems >= 10 && mine(kid).state === 'alive', `the cannonball knocks gems out of the creature it hits (${markHad} to ${mine(mark).gems}) and survives`);
+
+    // Held through the whole capture, the captive is swallowed; a captive near its captor's size can struggle free
+    kid.send('test:setGems', { count: 0 });
+    await sleep(300);
+    kid.send('test:moveTo', { x: 500 + mine(captor).width + 4, y: lineY - mine(kid).width / 2 });
+    captor.send('test:face', { angle: 0 });
+    await sleep(300);
+    const captorHad = mine(captor).gems;
+    captor.send('inhale');
+    await sleep(2000);
+    check(mine(kid).state !== 'alive' || mine(captor).gems > captorHad, `held through the whole capture, the captive is swallowed (${mine(kid).state})`);
+    captor.send('exhale');
+    await sleep(2600);
+    captor.send('test:setGems', { count: 30 });
+    kid.send('test:setGems', { count: 14 });
+    await sleep(500);
+    captor.send('test:moveTo', { x: 500, y: lineY - mine(captor).width / 2 });
+    captor.send('test:face', { angle: 0 });
+    await sleep(250);
+    kid.send('test:moveTo', { x: 500 + mine(captor).width + 4, y: lineY - mine(kid).width / 2 });
+    await sleep(300);
+    captor.send('inhale');
+    let caughtNearSize = false;
+    for (let i = 0; i < 20 && !caughtNearSize; i++) {
+        await sleep(50);
+        caughtNearSize = mine(kid).capturedBy === captor.sessionId;
+    }
+    kid.send('steer', { x: 1, y: 0 });
+    await sleep(1000);
+    check(caughtNearSize && !mine(kid).capturedBy && mine(kid).state === 'alive', `a captive near its captor's size can struggle free (caught ${caughtNearSize}, still caught: ${Boolean(mine(kid).capturedBy)})`);
+    kid.send('steer', { x: 0, y: 0 });
+    captor.send('exhale');
+
+    // ---- Only letting go of the button launches; anything else drops the captive harmlessly
+    const catchKid = async (captorGems, kidGems) => {
+        captor.send('exhale');
+        kid.send('steer', { x: 0, y: 0 });
+        // Both alive and unprotected first (a bot may have caught or eaten one in a step that left it small)
+        for (let i = 0; i < 120 && (mine(captor).state !== 'alive' || mine(kid).state !== 'alive'); i++) await sleep(50);
+        captor.send('test:protect', { ms: 0 });
+        kid.send('test:protect', { ms: 0 });
+        captor.send('test:setGems', { count: captorGems });
+        kid.send('test:setGems', { count: kidGems });
+        captor.send('test:breath', { stamina: 1 });
+        await sleep(1700); // any immunity from the last capture runs out
+        captor.send('test:moveTo', { x: 500, y: lineY - mine(captor).width / 2 });
+        captor.send('test:face', { angle: 0 });
+        await sleep(250);
+        kid.send('test:moveTo', { x: 500 + mine(captor).width + 4, y: lineY - mine(kid).width / 2 });
+        await sleep(250);
+        captor.send('inhale');
+        for (let i = 0; i < 40; i++) {
+            if (mine(kid).capturedBy === captor.sessionId) return true;
+            await sleep(25);
+        }
+        return false;
+    };
+    const droppedHarmlessly = () => !mine(kid).capturedBy && !mine(kid).flying && mine(kid).state === 'alive';
+    let caughtNow = await catchKid(60, 0);
+    const arcShown = mine(kid).swallowable === true;
+    captor.send('test:stun', { ms: 400 });
+    await sleep(200);
+    check(caughtNow && arcShown && droppedHarmlessly(), `stunned mid-capture, the captor drops its captive harmlessly, no launch (caught ${caughtNow}, swallow arc ${arcShown})`);
+    await sleep(500);
+    caughtNow = await catchKid(60, 0);
+    captor.send('test:breath', { stamina: 0 });
+    await sleep(300);
+    check(caughtNow && droppedHarmlessly(), `out of breath mid-capture, the captor drops its captive harmlessly, no launch (caught ${caughtNow}, still inhaling ${mine(captor).inhaling})`);
+    caughtNow = await catchKid(30, 10);
+    const arcHidden = mine(kid).swallowable === false;
+    await sleep(1600);
+    check(caughtNow && arcHidden && droppedHarmlessly(), `too small to swallow, a captor holds its captive until the hold runs out, then it goes free, with no swallow arc (caught ${caughtNow}, arc hidden ${arcHidden})`);
+    caughtNow = await catchKid(0, 0);
+    // (a stray gem picked up on the way makes the captor bigger, and then the catch is fair)
+    check(!caughtNow || mine(captor).width > mine(kid).width, `an empty creature can only be caught by a bigger one, never one its own size (caught ${caughtNow}, widths ${mine(captor).width.toFixed(1)} and ${mine(kid).width.toFixed(1)})`);
+    // A press cut short (slid off the button, Esc, a cancelled touch) never launches
+    caughtNow = await catchKid(60, 0);
+    await sleep(300);
+    captor.send('cancel');
+    await sleep(200);
+    check(caughtNow && droppedHarmlessly(), `a press cut short (slid off, Esc, a cancelled touch) drops the captive harmlessly, no launch (caught ${caughtNow})`);
+
+    // Struggling matters: a small captive that slips sideways (reacting at phone speed, 350 ms) survives a
+    // much bigger captor even while it keeps re-aiming at it; one that just freezes is swallowed
+    caughtNow = await catchKid(100, 4);
+    let slipping = false;
+    const slipAfter = setTimeout(() => { slipping = true; }, 350);
+    const tracking = setInterval(() => {
+        const c = mine(captor);
+        const v = mine(kid);
+        if (!c || !v) return;
+        const ax = v.x + v.width / 2 - (c.x + c.width / 2);
+        const ay = v.y + v.height / 2 - (c.y + c.height / 2);
+        const d = Math.hypot(ax, ay) || 1;
+        captor.send('aim', { x: ax / d, y: ay / d });
+        if (!slipping) return;
+        const sx = (-ay / d) * 0.9 + (ax / d) * 0.45;
+        const sy = (ax / d) * 0.9 + (ay / d) * 0.45;
+        const n = Math.hypot(sx, sy);
+        kid.send('steer', { x: sx / n, y: sy / n });
+    }, 40);
+    await sleep(1800);
+    clearTimeout(slipAfter);
+    clearInterval(tracking);
+    check(caughtNow && mine(kid).state === 'alive' && !mine(kid).capturedBy, `a small captive slipping sideways (reacting at phone speed) survives a captor 4x its size that keeps re-aiming at it (caught ${caughtNow}, ${mine(kid).state})`);
+    // ---- Physical suction: a bigger mouth pulls in a smaller creature that's running straight away, from
+    // close range, before draining can knock it out; slipping sideways from farther out still escapes
+    const flee = async (captorGems, kidGems, gap, steerX, steerY) => {
+        captor.send('exhale');
+        kid.send('steer', { x: 0, y: 0 });
+        // Both alive and unprotected first (a bot may have caught or eaten one in a step that left it small)
+        for (let i = 0; i < 120 && (mine(captor).state !== 'alive' || mine(kid).state !== 'alive'); i++) await sleep(50);
+        captor.send('test:protect', { ms: 0 });
+        kid.send('test:protect', { ms: 0 });
+        captor.send('test:setGems', { count: captorGems });
+        kid.send('test:setGems', { count: kidGems });
+        captor.send('test:breath', { stamina: 1 });
+        await sleep(1700);
+        captor.send('test:moveTo', { x: 500, y: lineY - mine(captor).width / 2 });
+        captor.send('test:face', { angle: 0 });
+        await sleep(250);
+        kid.send('test:moveTo', { x: 500 + mine(captor).width + gap, y: lineY - mine(kid).width / 2 });
+        await sleep(250);
+        const kidHad = mine(kid).gems;
+        const fromX = mine(kid).x;
+        kid.send('steer', { x: steerX, y: steerY });
+        captor.send('inhale');
+        let caught = false;
+        let knockedOut = false;
+        for (let i = 0; i < 70 && !caught; i++) {
+            await sleep(25);
+            if (mine(kid).state !== 'alive') knockedOut = true;
+            caught = mine(kid).capturedBy === captor.sessionId;
+        }
+        kid.send('steer', { x: 0, y: 0 });
+        return { caught, knockedOut, kidHad, kidLeft: mine(kid).gems, movedX: mine(kid).x - fromX };
+    };
+    let run = await flee(100, 4, 30, 1, 0);
+    check(run.caught && !run.knockedOut, `a much bigger mouth pulls in a small creature running straight away from close range, and drains it without knocking it out first (caught ${run.caught}, knocked out ${run.knockedOut}, gems ${run.kidHad} to ${run.kidLeft})`);
+    captor.send('exhale');
+    await sleep(200);
+    run = await flee(30, 10, 25, 1, 0);
+    check(run.caught && !run.knockedOut, `a mouth just big enough to catch a creature pulls it in from close range while it runs straight away (caught ${run.caught}, knocked out ${run.knockedOut})`);
+    captor.send('exhale');
+    await sleep(200);
+    run = await flee(100, 4, 150, 0, 1);
+    check(!run.caught && !run.knockedOut, `from farther out, slipping sideways out of the airflow escapes it (caught ${run.caught}, knocked out ${run.knockedOut})`);
+    captor.send('exhale');
+    await sleep(200);
+    run = await flee(100, 4, 230, 1, 0);
+    check(!run.caught && !run.knockedOut && run.movedX > 40, `from far out, running straight away early escapes the suction (caught ${run.caught}, moved ${Math.round(run.movedX)})`);
+    captor.send('exhale');
+    await sleep(200);
+
+    caughtNow = await catchKid(60, 4);
+    await kid.leave();
+    await sleep(200);
+    captor.send('exhale');
+    await sleep(200);
+    check(caughtNow && mine(captor).state === 'alive' && !mine(captor).gulping, 'a captive leaving mid-capture leaves its captor unharmed and free');
+    await captor.leave();
+    await mark.leave();
+
+    // A turbine pulls a creature on its last gem through and fires it out of the exhaust alive
+    const thru = await join('Thru');
+    thru.send('test:setGems', { count: 1 });
+    await sleep(300);
+    thru.send('test:placeTurbine', { x: 2000, y: 2000, intake: 0, still: true });
+    await sleep(3400);
+    thru.send('test:moveTo', { x: 2000 + 60 + 25, y: 2000 - mine(thru).width / 2 });
+    let flewOut = false;
+    for (let i = 0; i < 80 && !flewOut; i++) {
+        await sleep(50);
+        flewOut = mine(thru).flying === true;
+    }
+    await sleep(1500);
+    check(flewOut && mine(thru).state === 'alive', `a turbine pulls a creature on its last gem through and fires it out of the exhaust alive (flew ${flewOut}, ${mine(thru).state}, ${mine(thru).gems} gems)`);
+    thru.send('test:endTurbines');
+    await thru.leave();
 
     // A client that floods messages is cut off (every other check here plays normally under the same limit)
     const flooder = await join('Flood');

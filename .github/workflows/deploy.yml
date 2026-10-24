@@ -61,6 +61,8 @@ jobs:
   deploy:
     name: Deploy to Azure
     needs: build-and-test
+    # Only main ships (a manual run from another branch builds and tests, never deploys)
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     
     permissions:

@@ -135,6 +135,11 @@ export interface SyncedPlayer {
     beamQuality: number
     latchPull: number
     latchQuality: number
+    flying: boolean
+    capturedBy: string
+    struggle: number
+    swallowable: boolean
+    swallowing: number
     robbing: string
     robbedTotal: number
     isBot: boolean

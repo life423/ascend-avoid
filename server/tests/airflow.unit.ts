@@ -5,7 +5,9 @@
 import { airflowOnCore, stepCore, type CoreBody, type Inhaler } from "../game/corePhysics.js";
 import { airflowQuality, breathRate, cleanAir, latchSizeFactor } from "../game/airflow.js";
 import { turnRate, turnStep } from "../game/movement.js";
-import { CAMERA, CORE, INHALE, LATCH } from "../constants/gameConstants.js";
+import { CAMERA, CANNON, CORE, INHALE, LATCH } from "../constants/gameConstants.js";
+import { canSwallowWhole, flightStep, holdFirmness, impactGems, launchAngle, launchSpeed, sweptHit } from "../game/cannon.js";
+import { intakePull, noReturnGap } from "../game/turbine.js";
 import { CameraRig, lookAhead, springStep, viewShort } from "../game/camera.js";
 import { dangerRadius, lethalShare, pressureBuild, scaleDrain, streamLook } from "../game/airflow.js";
 import { moveSpeed } from "../game/movement.js";
@@ -122,6 +124,20 @@ check(Math.abs(behind) > 1 && Math.abs(behind) < CAMERA.MAX_OFFSET * viewShort(2
 const lateGame = 20 * Math.sqrt(1 + 1500 / 2);
 check(lateGame / viewShort(lateGame) > 0.24 && (20 / lateGame) * (lateGame / viewShort(lateGame)) < 0.015, `late game, a 1500-gem giant fills about a quarter of the screen and a newborn beside it looks trivial (${((lateGame / viewShort(lateGame)) * 100).toFixed(0)}% vs ${(((20 / lateGame) * lateGame) / viewShort(lateGame) * 100).toFixed(1)}%)`);
 check(scaleDrain(20, 548) === LATCH.SCALE_MIN && scaleDrain(60, 120) === 1 && scaleDrain(20, 100) > LATCH.SCALE_MIN && scaleDrain(20, 100) < 1, "a tiny attacker on a giant is a mosquito: its drain fades with the size gap");
+
+// The living cannonball
+check(holdFirmness(80, 56) < 1 && holdFirmness(300, 20) === CANNON.HOLD_MAX && holdFirmness(300, 20) < 1.5, "a near-size captive can push straight out of a hold; a giant holds a tiny one firmly, but never so firmly that slipping round its side can't break it");
+check(!canSwallowWhole(80, 56, 5) && canSwallowWhole(120, 56, 5) && canSwallowWhole(24, 20, 0) && !canSwallowWhole(20, 20, 0) && !canSwallowWhole(20, 56, 0), "swallowing needs a real size advantage (an empty creature only needs a bigger captor; never a smaller or same-size one)");
+check(Math.abs(launchAngle(0, 0, 1) - CANNON.LAUNCH_INFLUENCE) < 1e-9 && launchAngle(0, 1, 0) === 0, "the captive can shift its launch a little sideways, never turn it around");
+check(launchSpeed(200) > launchSpeed(40), "a bigger captor launches harder");
+check(impactGems(1000, 900, 20) > impactGems(120, 900, 20) && impactGems(1000, 900, 20) / 1000 < impactGems(120, 900, 20) / 120 && impactGems(10, 900, 20) <= 3 && impactGems(120, 900, 60) > impactGems(120, 900, 20) && impactGems(120, 450, 20) < impactGems(120, 900, 20), `a cannonball's damage grows with speed and the flier's mass, with diminishing returns against giants (${impactGems(120, 900, 20)} of 120, ${impactGems(1000, 900, 20)} of 1000)`);
+const straightOn = flightStep(900, 0, 1, 0, 0.1);
+const bentFlight = flightStep(900, 0, 0, 1, 0.1);
+check(Math.hypot(straightOn.vx, straightOn.vy) < 900 && Math.abs(straightOn.vy) < 1e-9 && bentFlight.vy > 0 && Math.hypot(bentFlight.vx, bentFlight.vy) <= Math.hypot(straightOn.vx, straightOn.vy) + 1e-6, "a flier can bend its path, never speed it up or stop it");
+// Turbines: past the point of no return nobody outwalks the intake; outside it everyone can
+check([20, 72, 143, 284].every((w) => intakePull(w, noReturnGap() - 5) > moveSpeed(w) && intakePull(w, noReturnGap() + 40) < moveSpeed(w)), `inside a turbine's point of no return (${noReturnGap().toFixed(0)} units) nobody, whatever its size, outwalks the intake; outside it everyone can`);
+
+check(sweptHit(0, 0, 60, 0, 30, 5, 20) && !sweptHit(0, 0, 60, 0, 30, 30, 20) && sweptHit(0, 0, 0, 0, 5, 0, 20), "a fast flier can't skip through a small target between ticks (its whole path is checked)");
 
 console.log(failed ? `${failed} unit check(s) failed` : "All unit checks passed");
 process.exit(failed ? 1 : 0);

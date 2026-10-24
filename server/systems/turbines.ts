@@ -2,9 +2,11 @@ import type { GameState } from "../schema/GameState.js";
 import { PlayerSchema } from "../schema/PlayerSchema.js";
 import { GemSchema } from "../schema/GemSchema.js";
 import { TurbineSchema } from "../schema/TurbineSchema.js";
-import { distanceToRect, suctionScale } from "../game/geometry.js";
+import { distanceToRect } from "../game/geometry.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
-import { drain } from "./inhale.js";
+
+import { CANNON } from "../constants/gameConstants.js";
+import { intakePull } from "../game/turbine.js";
 
 const { GEMS, PLAYER_STATE, TURBINE } = GAME_CONSTANTS;
 
@@ -77,28 +79,30 @@ export function runTurbine(state: GameState, turbine: TurbineSchema, now: number
     const bd = Math.hypot(bx, by);
     if (bd < r + radius && bd > 1e-6) player.nudge((bx / bd) * (r + radius - bd), (by / bd) * (r + radius - bd), state.worldWidth, state.worldHeight);
     if (player.spawnProtected) return;
+    // Already flying, or caught in a mouth: the turbine leaves it be
+    if (player.flying || player.capturedBy || now < player.recaptureAfter) return;
     // In front of the intake: pulled in, and close up, gems ripped out of you one by one
     const dx = px - mouthX;
     const dy = py - mouthY;
     const d = Math.hypot(dx, dy);
     const gap = Math.max(0, d - radius);
     if (d > 1e-6 && gap < TURBINE.INTAKE_REACH && (dx * ix + dy * iy) / d >= intakeCos) {
-      const closeness = 1 - gap / TURBINE.INTAKE_REACH;
-      const pull = Math.min(gap, TURBINE.PLAYER_PULL * suctionScale(TURBINE.SUCTION_SIZE, player.width) * closeness * closeness * deltaTime);
+      // Pulled in at a share of its own top speed: past the point of no return, nobody outwalks it
+      const pull = Math.min(gap, intakePull(player.width, gap) * deltaTime);
       player.nudge((-dx / d) * pull, (-dy / d) * pull, state.worldWidth, state.worldHeight);
+      // Reaching the intake: pulled through, losing a share of its gems, and fired out of the exhaust
+      if (gap <= TURBINE.THROUGH_GAP) {
+        pullThrough(state, turbine, player, mouthX, mouthY, nozzleX, nozzleY, ex, ey, radius, now);
+        return;
+      }
       if (gap < TURBINE.DANGER_REACH && player.gems > 0) {
         player.turbineStrip += deltaTime * (TURBINE.STRIP_RATE + TURBINE.STRIP_PER_ROOT * Math.sqrt(player.weight()));
-        while (player.turbineStrip >= 1 && player.gems > 0) {
+        // (never the last gem: reaching the intake takes that, and fires the creature out alive)
+        while (player.turbineStrip >= 1 && player.gems > 1) {
           player.turbineStrip -= 1;
           player.setGems(player.gems - 1, state.worldWidth, state.worldHeight);
           // Out of their body, on the side facing the intake
           state.addFlight(turbine, player.sessionId, px - (dx / d) * radius, py - (dy / d) * radius, 1, false, mouthX, mouthY);
-        }
-        if (player.gems <= 0) {
-          // Its last gem: gone
-          player.turbineStrip = 0;
-          drain(state, player, now);
-          return;
         }
       } else {
         player.turbineStrip = 0;
@@ -110,7 +114,7 @@ export function runTurbine(state: GameState, turbine: TurbineSchema, now: number
     const wd = Math.hypot(wx, wy);
     const wgap = Math.max(0, wd - radius);
     if (wd > 1e-6 && wgap < TURBINE.EXHAUST_REACH && (wx * ex + wy * ey) / wd >= windCos) {
-      const push = (TURBINE.WIND * (1 - wgap / TURBINE.EXHAUST_REACH) * deltaTime) / Math.sqrt(player.weight());
+      const push = (TURBINE.WIND * (1 - wgap / TURBINE.EXHAUST_REACH) * deltaTime) / Math.pow(player.weight(), TURBINE.WIND_WEIGHT_POWER);
       player.nudge(ex * push, ey * push, state.worldWidth, state.worldHeight);
     }
   });
@@ -212,4 +216,22 @@ export function clearanceAt(state: GameState, cx: number, cy: number, self: Play
     nearest = Math.min(nearest, other === leader ? distance / 4 : distance / 2);
   });
   return nearest;
+}
+
+/** A creature reached a turbine's intake: a share of its gems fly through on their own, and it's fired out of the exhaust, flying */
+function pullThrough(state: GameState, turbine: TurbineSchema, player: PlayerSchema, mouthX: number, mouthY: number, nozzleX: number, nozzleY: number, ex: number, ey: number, radius: number, now: number): void {
+  const lost = Math.min(player.gems, Math.max(TURBINE.THROUGH_MIN, Math.round(player.gems * TURBINE.THROUGH_SHARE)));
+  if (lost > 0) {
+    player.setGems(player.gems - lost, state.worldWidth, state.worldHeight);
+    const flights = Math.min(lost, 12);
+    for (let i = 0; i < flights; i++) {
+      const value = Math.floor(lost / flights) + (i < lost % flights ? 1 : 0);
+      state.addFlight(turbine, player.sessionId, mouthX, mouthY, value, false, mouthX, mouthY);
+    }
+  }
+  player.turbineStrip = 0;
+  const px = player.x + player.width / 2;
+  const py = player.y + player.height / 2;
+  player.nudge(nozzleX + ex * (radius + 6) - px, nozzleY + ey * (radius + 6) - py, state.worldWidth, state.worldHeight);
+  player.launch(now, ex * TURBINE.EXHAUST_LAUNCH, ey * TURBINE.EXHAUST_LAUNCH, "", CANNON.MAX_MS);
 }

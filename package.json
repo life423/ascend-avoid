@@ -32,6 +32,7 @@
         "test:unit": "cd server && npx tsx tests/airflow.unit.ts",
     "test:browsers": "playwright test",
     "gen:types": "node scripts/gen-synced-types.mjs",
+    "measure:escape": "npm run build:server && node scripts/escape-measure.mjs",
         "sim:bots": "npm run build:server && node scripts/bot-sim.cjs",
         "test:multiplayer": "npm run build:server && node scripts/multiplayer-smoke.mjs",
         "deploy:local": "npm run build:prod && npm run start:prod",

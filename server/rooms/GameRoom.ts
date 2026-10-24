@@ -84,6 +84,16 @@ export class GameRoom extends Room<GameState> {
     });
     this.onMessage("exhale", (client) => {
       if (!this.allowMessage(client)) return;
+      // The button let go: the only release that can launch a captive (see letGo). Breath running
+      // out, a stun or a lost captive stop the inhale too, but never through here.
+      const player = this.state.players.get(client.sessionId);
+      if (!player) return;
+      player.releasedAt = Date.now();
+      player.stopInhale();
+    });
+    this.onMessage("cancel", (client) => {
+      if (!this.allowMessage(client)) return;
+      // The press cut short (slid off the button, Esc, a cancelled touch): stop, but it isn't a release
       this.state.players.get(client.sessionId)?.stopInhale();
     });
     this.onMessage("spit", (client, data: any) => {
@@ -191,6 +201,15 @@ export class GameRoom extends Room<GameState> {
       });
       this.onMessage("test:protect", (client, data: any) => {
         playerOf(client)?.protectFor(Number(data?.ms) || 0, Date.now());
+      });
+      this.onMessage("test:breath", (client, data: any) => {
+        const player = playerOf(client);
+        if (!player) return;
+        player.stamina = Math.max(0, Math.min(1, Number(data?.stamina) || 0));
+        player.staminaAt = Date.now();
+      });
+      this.onMessage("test:stun", (client, data: any) => {
+        playerOf(client)?.stun(Date.now(), Number(data?.ms) || 500);
       });
     }
 

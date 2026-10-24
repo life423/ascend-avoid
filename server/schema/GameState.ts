@@ -19,6 +19,7 @@ import { updateLatches } from "../systems/latches.js";
 import { updateTurbines, clearanceAt } from "../systems/turbines.js";
 import { updateTraffic, reshuffleLanes, launchObstacle } from "../systems/traffic.js";
 import { updateInhales, knockOutWithGems } from "../systems/inhale.js";
+import { updateFlights } from "../systems/flights.js";
 import { botMouth, bombDanger, balanceBots } from "../systems/bots.js";
 import { updateBombs } from "../systems/bombs.js";
 import { updateShift, startGrace, startShift, endShift, fall } from "../systems/shift.js";
@@ -189,6 +190,7 @@ class GameState extends Schema {
     updateShift(this, deltaTime, now);
     updateTraffic(this);
     updateInhales(this, now, deltaTime);
+    updateFlights(this, now, deltaTime);
     updateLatches(this, now, deltaTime);
     updateBombs(this, now, deltaTime);
     updateTurbines(this, now, deltaTime);

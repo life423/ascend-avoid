@@ -28,6 +28,7 @@ import { drawPlayer } from '../render/players'
 import { drawObstacle } from '../render/obstacles'
 import { drawPickups } from '../render/pickups'
 import type { SyncedGameState, SyncedGem, SyncedObstacle, SyncedPlayer } from '../types/synced'
+import { drawCannon } from '../render/cannon'
 
 // Forward reference for the Game type to avoid circular dependencies
 interface Game {
@@ -746,7 +747,8 @@ export class MultiplayerMode extends GameMode {
             return
         }
         if (!this.predicted) this.predicted = { x: me.x, y: me.y }
-        if (me.sliding || me.recovering) {
+        // (caught in a mouth or flying, the server moves you too)
+        if (me.sliding || me.recovering || me.flying || me.capturedBy) {
             // Shoved or knocked into a skid: go where the server says, no steering until you've recovered
             this.predicted = {
                 x: this.predicted.x + (me.x - this.predicted.x) * 0.5,
@@ -771,9 +773,13 @@ export class MultiplayerMode extends GameMode {
                 this.sentAim = { x: 0, y: 0 }
                 this.multiplayerManager?.sendMessage('inhale', {})
             } else if (event === 'exhale' && this.inhaleHeld) {
-                // Let go: stop inhaling
+                // Let go: stop inhaling (holding a captive, this launches it)
                 this.inhaleHeld = false
                 this.multiplayerManager?.sendMessage('exhale', {})
+            } else if (event === 'cancel' && this.inhaleHeld) {
+                // Cut short (slid off, Esc, a cancelled touch): stop inhaling, never a launch
+                this.inhaleHeld = false
+                this.multiplayerManager?.sendMessage('cancel', {})
             }
         }
 
@@ -911,6 +917,7 @@ export class MultiplayerMode extends GameMode {
         const top = view.y - view.height / 2 - margin
         const bottom = view.y + view.height / 2 + margin
         drawTurbines(this, ctx, state, timestamp)
+        drawCannon(this, ctx, state, timestamp)
         drawCores(this, ctx, state, timestamp)
         this.drawGems(ctx, state, left, right, top, bottom, timestamp)
         drawGemBursts(this, ctx)
