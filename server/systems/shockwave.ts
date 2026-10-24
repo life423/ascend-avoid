@@ -1,5 +1,7 @@
 import type { GameState } from '../schema/GameState.js';
 import { SHOCKWAVE } from '../constants/gameConstants.js';
+import { sprayGems } from './gems.js';
+import { knockOutWithGems } from './inhale.js';
 
 /** Each expanding wave hits once. Previous radial distance catches players crossing a wave between ticks. */
 export function updateShockwave(state: GameState, dt: number, now: number): void {
@@ -21,7 +23,17 @@ export function updateShockwave(state: GameState, dt: number, now: number): void
     if (Math.min(previous, distance) - body > radius || Math.max(previous, distance) + body < previousRadius) continue;
     w.pulseHits.add(p.sessionId);
     const push = Math.max(SHOCKWAVE.MIN_PUSH, SHOCKWAVE.PUSH / Math.sqrt(p.weight()));
-    p.shoveAlong(distance > 0 ? dx / distance : 1, distance > 0 ? dy / distance : 0, push, w.owner, now, 'drum');
+    const x = p.x + body, y = p.y + body, size = p.width;
+    let lost = Math.min(p.gems, Math.max(SHOCKWAVE.DAMAGE_MIN_GEMS, Math.ceil(p.gems * SHOCKWAVE.DAMAGE_SHARE)));
+    const out = p.gems - lost < SHOCKWAVE.KO_GEMS;
+    if (out) { lost = p.gems; knockOutWithGems(state, p, now); }
+    else {
+      p.setGems(p.gems - lost, state.worldWidth, state.worldHeight);
+      sprayGems(state, x, y, lost, now, p.sessionId);
+    }
+    state.credit(p, 'pulsar', now, w.owner, { gems: lost, out, x, y, size });
+    if (out) continue;
+    p.shoveAlong(distance > 0 ? dx / distance : 1, distance > 0 ? dy / distance : 0, push, w.owner, now, 'pulsar');
   }
   for (const id of w.pulseDistances.keys()) if (!state.players.has(id)) w.pulseDistances.delete(id);
 }

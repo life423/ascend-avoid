@@ -11,7 +11,7 @@ import { FirstSessionGuide } from '../ui/FirstSessionGuide'
 import { WeaponPlacement } from '../ui/WeaponPlacement'
 import { drawSurge, drawSurgeHud } from '../render/surge'
 import { breathRate } from '../../server/game/airflow'
-import { CameraRig } from '../../server/game/camera'
+import { CameraRig, constrainArenaView } from '../../server/game/camera'
 import { turnStep, walk } from '../../server/game/movement'
 import { launchDuration, launchPosition } from '../../server/game/turbine'
 import { OnlineControls } from './OnlineControls'
@@ -1128,8 +1128,9 @@ export class MultiplayerMode extends GameMode {
         this.camera = this.cameraRig.short ? { x: this.cameraRig.x, y: this.cameraRig.y } : (this.camera ?? { x: state.worldWidth / 2, y: state.worldHeight / 2 })
         this.lastRenderAt = timestamp
 
-        // Locked on you, the view goes with you right up to the edge and past it (beyond the floor there's
-        // only the void, as in Agar.io), so you're always in the middle; otherwise it stays inside the world
+        // Phones keep the arena filling the screen, including while dead. Wide desktops retain the surround.
+        if (COMPACT.matches) return constrainArenaView({ ...this.camera, width, height, scale }, state.worldWidth, state.worldHeight)
+        // Wide desktops keep the creature centered all the way to the edge.
         const x = CAMERA.LOCKED ? this.camera.x : width >= state.worldWidth
             ? state.worldWidth / 2
             : Math.min(Math.max(this.camera.x, width / 2), state.worldWidth - width / 2)
@@ -1177,8 +1178,15 @@ export class MultiplayerMode extends GameMode {
             if (targetIsYou && data?.out) this.knockoutCause = { how: 'cannon', by: String(data?.by ?? 'Someone'), at: performance.now() }
             const shotByYou = data?.byId === localId
             const flownByYou = data?.projectileId === localId
-            if (shotByYou || flownByYou) this.banner = { title: data?.out ? 'Cannonball knockout!' : flownByYou ? 'Direct hit! You steered it!' : 'Cannonball hit!', sub: `${Number(data?.gems) || 0} GEMS SPILLED`, at: performance.now() }
+            if (shotByYou || flownByYou) this.banner = { title: data?.out ? 'Cannonball knockout!' : 'Cannonball hit!', sub: `${Number(data?.gems) || 0} GEMS SPILLED`, at: performance.now() }
             else this.addNotice(`${String(data?.by ?? 'Someone')} landed a cannonball hit on ${target}!`)
+            return
+        }
+        if (how === 'pulsar') {
+            this.noteImpact(data)
+            if (targetIsYou && data?.out) this.knockoutCause = { how, by: String(data?.by ?? 'Someone'), at: performance.now() }
+            if (data?.byId === localId) this.banner = { title: data?.out ? 'Pulsar knockout!' : 'Pulsar hit!', sub: `${Number(data?.gems) || 0} GEMS BLASTED LOOSE`, at: performance.now() }
+            else this.addNotice(`${this.nameOf(data?.byId, data?.by)} blasted ${target} with a pulsar wave!`, data?.out === true)
             return
         }
         if (targetIsYou && how !== 'stole' && how !== 'gulped') {

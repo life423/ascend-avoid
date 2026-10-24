@@ -3,14 +3,14 @@ import type { SyncedGameState, SyncedWeaponPart } from '../types/synced';
 import { PINWHEEL } from '../../server/constants/gameConstants';
 import { FONT, COMPACT, hudPanel, roundedRect } from './style';
 import { PART_COLORS, weaponRecipe, weaponChipBounds } from './weaponStyle';
-import { drawShockwaveDrum, drumPartIcon } from './shockwave';
+import { drawPulsarArray, pulsarPartIcon } from './shockwave';
 
 const COLORS = PART_COLORS;
 
-function partIcon(ctx: CanvasRenderingContext2D, kind: number, x: number, y: number, angle: number, drum = false): void {
+function partIcon(ctx: CanvasRenderingContext2D, kind: number, x: number, y: number, angle: number, pulsar = false): void {
     ctx.save(); ctx.translate(x, y); ctx.rotate(angle);
     ctx.fillStyle = COLORS[kind]; ctx.strokeStyle = '#e9f6ff'; ctx.lineWidth = 2;
-    if (drum) drumPartIcon(ctx, kind);
+    if (pulsar) pulsarPartIcon(ctx, kind);
     else if (kind === 0) {
         ctx.beginPath();
         for (let i = 0; i < 24; i++) {
@@ -41,7 +41,7 @@ function drawPart(ctx: CanvasRenderingContext2D, part: SyncedWeaponPart, remaini
         ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.beginPath();
         ctx.arc(0, 0, 34, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, remaining / PINWHEEL.CLAIM_MS)); ctx.stroke();
     }
-    partIcon(ctx, part.kind, 0, Math.sin(timestamp / 350 + part.kind) * 2, weapon !== 'drum' && part.kind === 1 ? timestamp / 1600 : -0.1, weapon === 'drum');
+    partIcon(ctx, part.kind, 0, Math.sin(timestamp / 350 + part.kind) * 2, weapon !== 'pulsar' && part.kind === 1 ? timestamp / 1600 : -0.1, weapon === 'pulsar');
     ctx.font = `800 10px ${FONT}`; ctx.textAlign = 'center'; ctx.fillStyle = COLORS[part.kind];
     ctx.fillText(weaponRecipe(weapon).parts[part.kind], 0, 47); ctx.restore();
 }
@@ -80,7 +80,7 @@ export function drawWeapons(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
     const charging = w.phase === 'charging';
     ctx.strokeStyle = charging ? '#ffd47d' : '#80e7de'; ctx.lineWidth = 2;
     ctx.fillStyle = 'rgba(22, 41, 58, 0.95)'; ctx.beginPath(); ctx.arc(0, 0, 43, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    if (w.kind === 'drum') drawShockwaveDrum(ctx, w, now);
+    if (w.kind === 'pulsar') drawPulsarArray(ctx, w, now);
     else {
     // A visible barrel and faint aim ray show the next shot before it fires.
     ctx.save(); ctx.rotate(w.angle);
@@ -91,7 +91,7 @@ export function drawWeapons(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
     // Phones already have a status chip/placement button; keep floating text off nearby faces.
     if (!COMPACT.matches) {
         ctx.font = `800 12px ${FONT}`; ctx.textAlign = 'center'; ctx.fillStyle = '#ffe4aa';
-        ctx.fillText(carried ? 'READY TO PLACE' : charging ? w.kind === 'drum' ? 'CHARGING…' : 'SPINNING UP…' : weaponRecipe(w.kind).title, 0, -58);
+        ctx.fillText(carried ? 'READY TO PLACE' : charging ? w.kind === 'pulsar' ? 'CHARGING…' : 'SPINNING UP…' : weaponRecipe(w.kind).title, 0, -58);
         const owner = state.players.get(w.owner);
         ctx.font = `600 11px ${FONT}`; ctx.fillStyle = '#dbe9ee';
         ctx.fillText(carried ? `${owner?.name || 'Builder'} · carried` : `${owner?.name || 'Builder'} · ${Math.max(0, Math.ceil((w.at - now) / 1000))}s`, 0, 64);
@@ -118,7 +118,7 @@ export function drawWeaponHud(mode: MultiplayerMode, ctx: CanvasRenderingContext
         const chip = weaponChipBounds(canvas.width, canvas.height, u);
         ctx.save(); hudPanel(ctx, chip.x, chip.y, chip.width, chip.height, 18 * u);
         ctx.textAlign = 'left'; ctx.fillStyle = '#ffe4aa'; ctx.font = `700 ${11 * u}px ${FONT}`;
-        const status = w.phase === 'parts' ? recipe.name : w.phase === 'carried' ? 'Weapon carried' : w.kind === 'drum' ? 'Drum · watch the rings' : 'Pinwheel · dodge bolts';
+        const status = w.phase === 'parts' ? recipe.name : w.phase === 'carried' ? 'Weapon carried' : w.kind === 'pulsar' ? 'Pulsar · dodge waves' : 'Pinwheel · dodge bolts';
         ctx.fillText(status, chip.x + 13 * u, chip.y + 22 * u, chip.width - (w.phase === 'parts' ? 110 : 26) * u);
         if (w.phase === 'parts') {
             for (let i = 0; i < 3; i++) {
@@ -152,7 +152,7 @@ export function drawWeaponHud(mode: MultiplayerMode, ctx: CanvasRenderingContext
         ctx.fillStyle = '#ffa8be'; ctx.beginPath(); ctx.moveTo(6 * u, 0); ctx.lineTo(-4 * u, -4 * u); ctx.lineTo(-2 * u, 0); ctx.lineTo(-4 * u, 4 * u); ctx.closePath(); ctx.fill(); ctx.restore();
     }
     ctx.textAlign = 'center'; ctx.fillStyle = '#ffe4aa'; ctx.font = `800 ${12 * u}px ${FONT}`;
-    ctx.fillText(w.phase === 'parts' ? `${recipe.title} · ${count}/3 PARTS` : w.phase === 'carried' ? `${recipe.title} READY TO PLACE` : w.phase === 'charging' ? `${recipe.title} CHARGING` : w.kind === 'drum' ? 'SHOCKWAVE — WATCH THE RINGS' : 'PINWHEEL FIRING — DODGE THE BOLTS', canvas.width / 2, y + 19 * u);
+    ctx.fillText(w.phase === 'parts' ? `${recipe.title} · ${count}/3 PARTS` : w.phase === 'carried' ? `${recipe.title} READY TO PLACE` : w.phase === 'charging' ? `${recipe.title} CHARGING` : w.kind === 'pulsar' ? 'SHOCKWAVE — WATCH THE RINGS' : 'PINWHEEL FIRING — DODGE THE BOLTS', canvas.width / 2, y + 19 * u);
     ctx.fillStyle = '#d1e3ec'; ctx.font = `600 ${10 * u}px ${FONT}`;
     const label = w.phase === 'parts' ? owner ? `${owner.name}'s build · ${Math.max(0, Math.ceil((w.claimUntil - now) / 1000))}s claim` : 'Touch or inhale the three parts' : w.phase === 'carried' ? w.owner === local.sessionId ? 'Move to your spot, then place it' : `${owner?.name || 'Builder'} is carrying it` : `${owner?.name || 'Builder'} · ${Math.max(0, Math.ceil((w.at - now) / 1000))}s`;
     ctx.fillText(label, canvas.width / 2, y + 37 * u, width - 16 * u); ctx.restore();

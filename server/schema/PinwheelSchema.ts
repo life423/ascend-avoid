@@ -43,7 +43,7 @@ export class PinwheelSchema extends Schema {
   nextShotAt = 0;
   nextBolt = 0;
   hitAt = new Map<string, number>();
-  kind: WeaponKind = 'drum';
+  kind: WeaponKind = 'pulsar';
   beatAt = 0;
   pulseAt = 0;
   pulseHits = new Set<string>();

@@ -362,6 +362,7 @@ export function drawKnockedOut(mode: MultiplayerMode, ctx: CanvasRenderingContex
     const verb =
         cause?.how === 'turbine' ? 'Fed to a turbine'
         : cause?.how === 'cannon' ? 'Blasted'
+        : cause?.how === 'pulsar' ? 'Blasted'
         : cause?.how === 'bomb' ? 'Blown up'
         : cause?.how === 'edge' ? 'Shoved off'
         : cause?.how === 'traffic' ? 'Wrecked'

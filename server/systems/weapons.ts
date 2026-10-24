@@ -54,7 +54,7 @@ export function deployWeapon(state: GameState, player: PlayerSchema): boolean {
   const radius = player.width / 2 + 72;
   w.x = Math.max(56, Math.min(state.worldWidth - 56, player.x + player.width / 2 + Math.cos(player.facing) * radius));
   w.y = Math.max(56, Math.min(state.worldHeight - 56, player.y + player.height / 2 + Math.sin(player.facing) * radius));
-  w.phase = 'charging'; w.at = state.time + (w.kind === 'drum' ? SHOCKWAVE.CHARGE_MS : PINWHEEL.CHARGE_MS); w.angle = player.facing;
+  w.phase = 'charging'; w.at = state.time + (w.kind === 'pulsar' ? SHOCKWAVE.CHARGE_MS : PINWHEEL.CHARGE_MS); w.angle = player.facing;
   return true;
 }
 
@@ -159,15 +159,15 @@ export function updateWeapons(state: GameState, dt: number, now: number): void {
       w.x = Math.max(56, Math.min(state.worldWidth - 56, carrier.x + carrier.width / 2 - Math.cos(carrier.facing) * radius));
       w.y = Math.max(56, Math.min(state.worldHeight - 56, carrier.y + carrier.height / 2 - Math.sin(carrier.facing) * radius));
       w.angle = carrier.facing;
-    } else { w.phase = 'charging'; w.at = state.time + (w.kind === 'drum' ? SHOCKWAVE.CHARGE_MS : PINWHEEL.CHARGE_MS); }
+    } else { w.phase = 'charging'; w.at = state.time + (w.kind === 'pulsar' ? SHOCKWAVE.CHARGE_MS : PINWHEEL.CHARGE_MS); }
     return;
   }
   if (w.phase === 'charging' && state.time >= w.at) {
-    w.phase = 'active'; w.at = state.time + (w.kind === 'drum' ? SHOCKWAVE.ACTIVE_MS : PINWHEEL.ACTIVE_MS);
+    w.phase = 'active'; w.at = state.time + (w.kind === 'pulsar' ? SHOCKWAVE.ACTIVE_MS : PINWHEEL.ACTIVE_MS);
     w.nextShotAt = state.time + PINWHEEL.SHOT_MS; w.beatAt = state.time + SHOCKWAVE.WINDUP_MS;
   }
   if (w.phase === 'active' && state.time >= w.at) { retireWeapon(state); return; }
-  if (w.kind === 'drum') {
+  if (w.kind === 'pulsar') {
     if (w.phase === 'active') updateShockwave(state, dt, now);
     return;
   }
@@ -196,7 +196,7 @@ export function updateWeapons(state: GameState, dt: number, now: number): void {
 
 function retireWeapon(state: GameState): void {
   const w = state.pinwheel;
-  w.kind = w.kind === 'drum' ? 'pinwheel' : 'drum';
+  w.kind = w.kind === 'pulsar' ? 'pinwheel' : 'pulsar';
   w.phase = 'waiting'; w.at = state.time + PINWHEEL.RESPAWN_MS;
   w.owner = ''; w.claimUntil = 0; w.progress = 0;
   w.parts.clear(); w.bolts.clear(); w.pulseHits.clear(); w.pulseDistances.clear();

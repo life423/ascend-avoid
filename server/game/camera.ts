@@ -22,6 +22,15 @@ export function viewShort(width: number): number {
   return Math.max(width / share, 2 * threatHorizon(Math.min(width, CAMERA.THREAT_MAX_WIDTH), CAMERA.THREAT_RATIO, CAMERA.REACTION_S));
 }
 
+/** Keep compact screens filled with arena, including held knockout views and extreme zoom levels. */
+export function constrainArenaView(view: { x: number; y: number; width: number; height: number; scale: number }, worldWidth: number, worldHeight: number) {
+  const zoom = Math.max(1, view.width / worldWidth, view.height / worldHeight);
+  const width = view.width / zoom, height = view.height / zoom;
+  return { width, height, scale: view.scale * zoom,
+    x: Math.max(width / 2, Math.min(worldWidth - width / 2, view.x)),
+    y: Math.max(height / 2, Math.min(worldHeight - height / 2, view.y)) };
+}
+
 /** What the camera follows: a creature's middle, velocity, width and facing, and whether it's inhaling */
 export interface CameraSubject {
   x: number;
