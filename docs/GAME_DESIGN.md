@@ -32,6 +32,14 @@ The captor's facing alone determines launch direction. Captive input cannot chan
 
 Current loading is 2.8/3.1/3.4 seconds for three/four/five inputs. Earlier 1.8/2.1/2.4-second tuning still left too little human reaction time after the 600ms daze. Early FIRE still queues, and slow, imperfect bot escape attempts remain unchanged.
 
+## Shockwave Drum and shared weapon assembly
+
+The first weapon recipe is the Shockwave Drum, made from a drum body, spring and piston. The minimap marks D/S/P. It shares contact/inhale pickup, persistent carrying, the 18-second builder claim, gust disruption and explicit E/Place weapon placement with the Pinwheel. Only one recipe is on the map at a time. When a build expires or finishes, the next set alternates between Drum and Pinwheel after the existing 20-second wait.
+
+After placement the Drum charges for 1.2 seconds. Each beat has a 700ms compression warning. Four waves launch 2.2 seconds apart over an 8.3-second active lifetime, expanding from radius 44 to 404 over 900ms. The faint outer boundary previews their reach. A wave pushes each rival once, about 210 units for a newborn and at least 110 for a giant. It does not stun or remove gems. The owner, spawn-protected, captured, flying and dead players are excluded. A player crossing the wave between simulation ticks still gets hit; expiring waves finish their final swept segment. Disconnect removes the deployed weapon.
+
+On phones the old three-line weapon banner is replaced by a 238x36 CSS-pixel progress pill, above the sticks in portrait and between them in landscape. It shows recipe and component progress, while minimap letters and world icons identify pieces. A complete locally carried weapon hides the pill and shows the existing Place weapon button. Capture prompts take priority. Redundant floating completed-weapon labels are omitted on phones to keep faces clear.
+
 ## Defensive gust
 
 Each gust spends 35 percentage points of the full breath meter, after elapsed recharge. At least 35% breath is required; declined gusts spend neither breath nor cooldown. The server acknowledges remaining breath so desktop and phone meters show the cost.

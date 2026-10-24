@@ -1,5 +1,5 @@
 import { Schema, ArraySchema, MapSchema, type } from '@colyseus/schema';
-import { PINWHEEL } from '../constants/gameConstants.js';
+import { PINWHEEL, type WeaponKind } from '../constants/gameConstants.js';
 
 export class WeaponPartSchema extends Schema {
   kind = 0;
@@ -29,6 +29,7 @@ type("number")(WeaponBoltSchema.prototype, "bornAt");
 
 /** One contested assembly per arena; all deadlines use the world clock. */
 export class PinwheelSchema extends Schema {
+  // Keep the existing schema's field order for connected clients; new weapon fields are appended below.
   phase = 'waiting';
   at: number = PINWHEEL.FIRST_MS;
   x = 0;
@@ -42,6 +43,11 @@ export class PinwheelSchema extends Schema {
   nextShotAt = 0;
   nextBolt = 0;
   hitAt = new Map<string, number>();
+  kind: WeaponKind = 'drum';
+  beatAt = 0;
+  pulseAt = 0;
+  pulseHits = new Set<string>();
+  pulseDistances = new Map<string, number>();
 }
 type("string")(PinwheelSchema.prototype, "phase");
 type("number")(PinwheelSchema.prototype, "at");
@@ -53,3 +59,6 @@ type("number")(PinwheelSchema.prototype, "claimUntil");
 type("number")(PinwheelSchema.prototype, "progress");
 type([WeaponPartSchema])(PinwheelSchema.prototype, "parts");
 type({ map: WeaponBoltSchema })(PinwheelSchema.prototype, "bolts");
+type("string")(PinwheelSchema.prototype, "kind");
+type("number")(PinwheelSchema.prototype, "beatAt");
+type("number")(PinwheelSchema.prototype, "pulseAt");

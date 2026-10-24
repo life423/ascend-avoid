@@ -1,5 +1,8 @@
 # Current gameplay follow-up
 
+- [x] Add the Shockwave Drum: drum/spring/piston parts, shared collection/claims/carry/place controls, visible windup and four expanding knockback pulses. Alternate builds with the Pinwheel.
+- [x] Replace the large mobile weapon panel with a compact 36px progress pill; preserve minimap part markers and contextual placement in portrait/landscape. Suppress duplicate floating weapon labels on phones.
+
 - [x] Touch or inhale weapon parts into persistent carried cargo; releasing inhale or turning must not drop them. Preserve claims and the approved collection feel.
 - [x] Mark each loose weapon part on the minimap and guide players to the nearest missing part.
 - [x] Carry the completed weapon to a chosen location, then place with a visible phone/desktop button or E. Keep phone controls clear in portrait and landscape; no timed auto-placement.

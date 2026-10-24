@@ -4,6 +4,7 @@ import { drawCreature } from './creatures'
 import { COMPACT, FONT, GOLD, drawCrown, drawPeople, drawRobot, hudPanel, roundedRect } from './style'
 import { JOIN_NOTICE_MS, View } from './shared'
 import type { SyncedGameState, SyncedPlayer, SyncedTurbine } from '../types/synced'
+import { weaponRecipe } from './weaponStyle'
 
 /** The whole world in a corner: everyone in it, and the part your screen shows */
 export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, state: SyncedGameState, view: View, localId: string | null, leaderId: string | null) : void {
@@ -97,7 +98,7 @@ export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
     if (state.pinwheel && state.pinwheel.phase !== 'waiting') {
         if (state.pinwheel.phase === 'parts') {
             const colors = ['#ffd47d', '#80e7de', '#ffa8be'];
-            const letters = ['H', 'R', 'B'];
+            const letters = weaponRecipe(state.pinwheel.kind).letters;
             ctx.font = `800 8px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
             const markers = Array.from(state.pinwheel.parts).map(part => ({ kind: part.kind, x: x + part.x * scale, y: y + part.y * scale, rawX: x + part.x * scale, rawY: y + part.y * scale }));
             // Spread nearby component labels just enough to remain legible, with tethers to their true positions.
