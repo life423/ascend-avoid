@@ -60,15 +60,15 @@ export function botMouth(state: GameState, bot: PlayerSchema, now: number) : voi
     return;
   }
   if (Math.random() > 0.12) return;
-  // Someone stealing from this bot: it runs from a robber its size or bigger (its brain sees to that)
-  // and often inhales back as it goes; a smaller robber is faster, so it turns and fights
+  // Someone stealing from this bot: clearly bigger than the robber, it inhales back (and wins the clash);
+  // otherwise it doesn't stand in the cone trading breath: its brain slips it sideways out of reach
   let thief: PlayerSchema | null = null;
   state.players.forEach((other) => {
     if (other.robbing.split(",").includes(bot.sessionId)) thief = other;
   });
   const robber = thief as PlayerSchema | null;
   if (robber) {
-    if (Math.random() < 0.8) {
+    if (bot.width >= robber.width * BOTS.FIGHT_BACK_RATIO && Math.random() < 0.8) {
       bot.startInhale(now, INHALE.MAX_MS);
       bot.aimAt(robber.x + robber.width / 2 - cx, robber.y + robber.height / 2 - cy);
     }
@@ -78,20 +78,26 @@ export function botMouth(state: GameState, bot: PlayerSchema, now: number) : voi
   let want: { x: number; y: number } | null = null;
   let nearest = reach;
   state.players.forEach((other) => {
-    if (other === bot || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected || other.width * INHALE.EAT_RATIO > bot.width) return;
+    if (other === bot || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected || other.capturedBy || other.width * INHALE.EAT_RATIO > bot.width) return;
+    if (robbersOf(state, other.sessionId) >= BOTS.MAX_ROBBERS) return;
     const d = Math.hypot(other.x + other.width / 2 - cx, other.y + other.height / 2 - cy);
     if (d < nearest) {
       nearest = d;
       want = { x: other.x + other.width / 2, y: other.y + other.height / 2 };
     }
   });
-  // Nothing to swallow: rob anyone in reach (they can rob back)
+  // Nothing to catch: rob someone in reach (they can rob back). Not into a clash it would lose, though: a
+  // creature it isn't clearly bigger than is robbed only from behind (outside its front cone), and never
+  // one that MAX_ROBBERS are already on
   state.players.forEach((other) => {
-    if (want || other === bot || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected || other.gems < 1) return;
+    if (want || other === bot || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected || other.capturedBy || other.gems < 1) return;
     const ox = other.x + other.width / 2;
     const oy = other.y + other.height / 2;
     const d = Math.hypot(ox - cx, oy - cy);
     if (d - other.width / 2 > reach + bot.width * 0.3) return;
+    const behind = ((cx - ox) * Math.cos(other.facing) + (cy - oy) * Math.sin(other.facing)) / (d || 1) < 0.2;
+    if (bot.width < other.width * BOTS.FIGHT_BACK_RATIO && !behind) return;
+    if (robbersOf(state, other.sessionId) >= BOTS.MAX_ROBBERS) return;
     want = { x: ox, y: oy };
   });
   state.bombs.forEach((bomb) => {
@@ -108,6 +114,15 @@ export function botMouth(state: GameState, bot: PlayerSchema, now: number) : voi
   bot.inhaleIdleSince = 0;
   bot.startInhale(now, INHALE.MAX_MS);
   bot.aimAt(goal.x - cx, goal.y - cy);
+}
+
+/** How many creatures are robbing this one right now */
+function robbersOf(state: GameState, id: string) : number {
+  let n = 0;
+  state.players.forEach((other) => {
+    if (other.robbing.split(",").includes(id)) n++;
+  });
+  return n;
 }
 
 /** Which way a bot should run to get clear of a lit bomb about to go off (null when it's safe) */
