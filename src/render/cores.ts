@@ -2,6 +2,7 @@ import type { MultiplayerMode } from '../core/GameModes'
 import { CORE } from '../../server/constants/gameConstants'
 import { airflowOnCore } from '../../server/game/corePhysics'
 import { FONT } from './style'
+import type { SyncedCore, SyncedGameState, SyncedPlayer } from '../types/synced'
 
 /**
  * The Cores: dense, heavy orbs with a metal rim and a glowing heart (teal at rest, hot orange when
@@ -9,13 +10,13 @@ import { FONT } from './style'
  * server (carrying on at their velocity, easing to each update). Where someone's airflow is holding
  * one off, the squeezed air shows: a crescent between them and streams bending round the Core.
  */
-export function drawCores(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state: any, timestamp: number) : void {
+export function drawCores(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state: SyncedGameState, timestamp: number) : void {
     if (!state.cores) return
     const dt = Math.min(0.1, Math.max(0, (timestamp - mode.coresDrawnAt) / 1000))
     mode.coresDrawnAt = timestamp
     const localId = mode.multiplayerManager?.localSessionId
     const present = new Set<string>()
-    state.cores.forEach((core: any) => {
+    state.cores.forEach((core: SyncedCore) => {
         present.add(core.id)
         let drawn = mode.coresDrawn.get(core.id)
         if (!drawn) {
@@ -38,7 +39,7 @@ export function drawCores(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, 
         const danger = Math.min(1, Math.max(0, (speed * CORE.MASS - CORE.STUN_MOMENTUM * 0.6) / (CORE.STUN_MOMENTUM * 0.4)))
         ctx.save()
         // Squeezed air between it and anyone whose airflow is holding it off
-        state.players.forEach((player: any, id: string) => {
+        state.players.forEach((player: SyncedPlayer, id: string) => {
             if (!player.inhaling || player.state !== 'alive') return
             const isLocal = id === localId
             const at = isLocal && mode.predicted ? mode.predicted : (mode.drawnPositions.get(id) ?? player)

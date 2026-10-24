@@ -3,6 +3,7 @@ import { ARENA_RULES, INHALE } from '../../server/constants/gameConstants'
 import { INHALE_LOOK, suctionPower } from './airflow'
 import { drawCreature } from './creatures'
 import { BURST_MS } from './shared'
+import type { SyncedGameState, SyncedPlayer } from '../types/synced'
 
 /** Bursts of gems (a flash, a ring and sparks, bigger for bigger piles) and shockwaves from hits */
 export function drawGemBursts(mode: MultiplayerMode, ctx: CanvasRenderingContext2D) : void {
@@ -50,9 +51,9 @@ export function drawGemBursts(mode: MultiplayerMode, ctx: CanvasRenderingContext
  * can watch them shrink, with a faint gold tether between the two while the stream runs
  */
 /** Someone held at a mouth, about to be swallowed: a red ring closes in on them (they're still free if they get away first) */
-export function drawGulps(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state: any, timestamp: number) : void {
+export function drawGulps(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state: SyncedGameState, timestamp: number) : void {
     const now = mode.worldNow(state, timestamp)
-    state.players?.forEach((eater: any) => {
+    state.players?.forEach((eater: SyncedPlayer) => {
         if (!eater.gulping) return
         const prey = state.players.get(eater.gulping)
         if (!prey || prey.state !== 'alive') return
@@ -88,11 +89,11 @@ export function drawVanishes(mode: MultiplayerMode, ctx: CanvasRenderingContext2
     }
 }
 
-export function drawTheft(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state: any, timestamp: number) : void {
+export function drawTheft(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state: SyncedGameState, timestamp: number) : void {
     const now = performance.now()
     // Who is robbing whom (a thief can rob several at once): a faint dashed tether from each victim to each thief
     const robbers = new Map<string, string[]>()
-    state.players.forEach((thief: any, id: string) => {
+    state.players.forEach((thief: SyncedPlayer, id: string) => {
         for (const victimId of String(thief.robbing ?? '').split(',')) {
             const victim = victimId ? state.players.get(victimId) : null
             if (!victim) continue
@@ -114,7 +115,7 @@ export function drawTheft(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, 
         }
     })
     // Each gem a victim just lost pops out of it and heads for one of the thieves robbing it
-    state.players.forEach((victim: any, victimId: string) => {
+    state.players.forEach((victim: SyncedPlayer, victimId: string) => {
         const total = Number(victim.robbedTotal) || 0
         const had = mode.theftGems.get(victimId) ?? total
         mode.theftGems.set(victimId, total)

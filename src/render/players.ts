@@ -4,8 +4,9 @@ import { drawBreath, drawCreature } from './creatures'
 import { FONT, GOLD, drawCrown, drawRobot } from './style'
 import { SMOOTHING, SNAP_DISTANCE } from './shared'
 import { drawAirflow } from './stream'
+import type { SyncedPlayer } from '../types/synced'
 
-export function drawPlayer(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, player: any, sessionId: string, isLocal: boolean, isLeader: boolean, timestamp: number) : void {
+export function drawPlayer(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, player: SyncedPlayer, sessionId: string, isLocal: boolean, isLeader: boolean, timestamp: number) : void {
     if (player.state !== 'alive') return // knocked out: gone until they're back
 
     // Your own player is drawn where your hops put it; other players ease toward the
@@ -150,7 +151,7 @@ export function squashFor(mode: MultiplayerMode, id: string, x: number, y: numbe
     if (!state) return { angle: 0, amount: 0 }
     let angle = 0
     let amount = 0
-    state.players.forEach((other: any, otherId: string) => {
+    state.players.forEach((other: SyncedPlayer, otherId: string) => {
         if (otherId === id || other.state !== 'alive') return
         const at = mode.drawnPositions.get(otherId) ?? other
         const ox = at.x + other.width / 2

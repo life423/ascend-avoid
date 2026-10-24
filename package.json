@@ -30,6 +30,8 @@
         "install:all": "npm install && cd server && npm install",
         "test": "npm run test:unit && npm run test:multiplayer",
         "test:unit": "cd server && npx tsx tests/airflow.unit.ts",
+    "test:browsers": "playwright test",
+    "gen:types": "node scripts/gen-synced-types.mjs",
         "sim:bots": "npm run build:server && node scripts/bot-sim.cjs",
         "test:multiplayer": "npm run build:server && node scripts/multiplayer-smoke.mjs",
         "deploy:local": "npm run build:prod && npm run start:prod",
@@ -49,6 +51,7 @@
     "license": "MIT",
     "devDependencies": {
         "@eslint/js": "^9.39.5",
+        "@playwright/test": "^1.64.1",
         "@types/body-parser": "^1.19.6",
         "@types/cors": "^2.8.17",
         "@types/express": "^5.0.1",
