@@ -3,16 +3,15 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Ascend Avoid</title>
-        <link
-            href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap"
-            rel="stylesheet"
-        />
+        <title>Ascend Avoid — Multiplayer Creature Arena</title>
+        <meta name="description" content="Grow your creature, steal gems, escape captures and launch steerable cannonballs in Ascend Avoid, a free real-time multiplayer browser arena." />
+        <meta name="theme-color" content="#0a192f" />
+        <script>try { if (localStorage.getItem('ascend.barHidden') === '1') document.documentElement.classList.add('bar-start-hidden'); } catch {}</script>
         <link rel="stylesheet" href="styles/index.css" />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     </head>
 
-    <body>
+    <body class="online-mode">
         <div class="loader"></div>
 
         <div class="app-root">
@@ -20,20 +19,22 @@
                 <h1>Ascend Avoid</h1>
 
                 <div class="score-panel">
-                    <h4>
+                    <p class="score-label">
                         High Score:
                         <span class="score-value high-score">0</span>
-                    </h4>
-                    <h4>
+                    </p>
+                    <p class="score-label">
                         Score:
                         <span class="score-value current-score">0</span>
-                    </h4>
+                    </p>
                     <!-- Solo stays in the code but off the page: everyone plays online (index.ts setupModeSwitch still wires this up, hidden) -->
                     <div class="mode-switch" role="group" aria-label="Game mode" hidden>
                         <button type="button" class="mode-option" data-mode="singlePlayer" aria-pressed="false">Solo</button>
                         <button type="button" class="mode-option active" data-mode="multiplayer" aria-pressed="true">Online</button>
                     </div>
                 </div>
+                <form class="bar-name"><label for="player-name">Name</label><input id="player-name" class="bar-name-input" type="text" maxlength="20" aria-label="Your name" /><button type="submit" class="name-save-button">Save name</button><span class="name-status sr-only" role="status"></span></form>
+                <div class="bar-actions"><button type="button" class="bar-button bar-help" data-action="help">☰ <span>Help & settings</span><kbd>H</kbd></button><button type="button" class="bar-button bar-view" data-action="hide">⌃ <span>Focus view</span></button></div>
             </header>
 
             <main class="game-main">
@@ -47,25 +48,7 @@
                     </div>
 
                     <aside class="info-panel desktop-only">
-                    <div class="panel-content">
-                        <h3>How to Play:</h3>
-                        <p>
-                            Glide around the arena, grab gems, and knock other players into trouble to steal theirs.
-                            Everyone on the site plays in the same world, and
-                            bots (marked with a robot) fill in when it's quiet.
-                        </p>
-                        <ul>
-                            <li>Arrow keys or WASD to move (diagonals too)</li>
-                            <li>Dash into someone to shove them</li>
-                            <li>Hold the mouse button to steer toward the cursor</li>
-                            <li>Tap space to dash; hold it to charge a slingshot, turn the arrow with WASD, and let go</li>
-                            <!-- Arena shifts are switched off for now (SHIFT.ENABLED): <li>When the arena shifts, get onto the new floor and don't get shoved off</li> -->
-                        </ul>
-                        <p class="note">
-                            A hit sprays out half your gems. With none left, you're out for two seconds.
-                        </p>
-
-                    </div>
+                    <div class="panel-content"><h2>How to Play</h2><div class="game-instructions"></div></div>
                     <div class="info-actions">
                         <button
                             class="nav-button btn-action guide-btn-desktop"
@@ -111,25 +94,7 @@
                         </button>
                     </div>
                     <div class="modal-body">
-                        <div class="modal-instructions">
-                            <p>
-                                Move the white block to the top without
-                                hitting the blue blocks.
-                            </p>
-                            <ul>
-                                <li>Use the D-pad on the left to move</li>
-                                <li>A button: Fire missile</li>
-                                <li>B button: Activate boost</li>
-                            </ul>
-                            <p class="note">
-                                Game speed increases as you score more
-                                points!
-                            </p>
-                            <p>
-                                Try to beat your high score and challenge
-                                your friends in multiplayer mode!
-                            </p>
-                        </div>
+                        <div class="modal-instructions game-instructions"></div>
                     </div>
                 </div>
             </div>

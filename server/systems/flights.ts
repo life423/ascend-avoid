@@ -71,6 +71,7 @@ function impact(state: GameState, flier: PlayerSchema, target: PlayerSchema, spe
   const ux = flier.flightVx / speed;
   const uy = flier.flightVy / speed;
   const spill = target.spawnProtected ? 0 : impactGems(target.gems, speed, flier.width);
+  const launcher = flier.launchedBy;
   if (spill > 0) {
     target.setGems(target.gems - spill, state.worldWidth, state.worldHeight);
     sprayGems(state, target.x + target.width / 2, target.y + target.height / 2, spill, now, target.sessionId);
@@ -78,6 +79,12 @@ function impact(state: GameState, flier: PlayerSchema, target: PlayerSchema, spe
   // The heavier the target than the flier, the less it's knocked back
   target.skid(ux, uy, CANNON.TARGET_SHOVE * Math.max(0.15, Math.min(1, flier.weight() / Math.max(1, target.weight()))));
   target.impactImmuneUntil = now + CANNON.IMPACT_IMMUNE_MS;
+  state.onEvent?.("impact", {
+    byId: launcher, projectileId: flier.sessionId, targetId: target.sessionId,
+    x: target.x + target.width / 2, y: target.y + target.height / 2,
+    size: target.width, gems: spill,
+  });
+  if (spill > 0) state.credit(target, "cannon", now, launcher, { gems: spill, projectileId: flier.sessionId });
   flier.flightHit = true;
   if (!target.spawnProtected && now >= target.stunImmuneUntil) target.stun(now, CANNON.IMPACT_STUN_MS);
   flier.flightVx = -ux * speed * CANNON.BOUNCE;

@@ -89,6 +89,12 @@ class PlayerSchema extends Schema {
   /** Server-only: when the stun wears off, and when another can land */
   stunEndsAt = 0;
   stunImmuneUntil = 0;
+  /** A defensive puff briefly clears incoming suction, without granting damage immunity. */
+  suctionSafeUntil = 0;
+  inhaleBlockedUntil = 0;
+  puffReadyAt = 0;
+  fireReadyAt = 0;
+  fireQueued = false;
   /** The creature this one's airflow is latched on ("" for none), how focused the stream is (0-1, for drawing), the beam's quality when it saves breath (0 unless held cleanly), and how strongly it draws your aim (all synced) */
   latchTarget: string;
   beamFocus: number;
@@ -220,6 +226,7 @@ class PlayerSchema extends Schema {
     this.stopSliding();
     this.protectFor(WORLD.SPAWN_PROTECTION_MS, now);
     this.inhaling = false;
+    this.steerX = this.steerY = this.walkX = this.walkY = 0;
   }
 
   /** Traffic passes through for `ms` (drawn in a bubble) */
@@ -492,9 +499,10 @@ class PlayerSchema extends Schema {
   /** Start inhaling (for up to `forMs`, INHALE.MAX_MS for players): you move as usual, and your mouth turns toward your aim */
   startInhale(now: number, forMs: number = Infinity): void {
     // (a full mouth can't inhale: holding someone caught, a press fires them instead (GameRoom); someone gulped has to pop back out first)
-    if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering || this.stunned || this.flying || this.capturedBy || this.gulping || now < this.digestUntil) return;
+    if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering || this.stunned || this.flying || this.capturedBy || this.gulping || now < this.digestUntil || now < this.inhaleBlockedUntil) return;
     this.breathe(now);
     if (this.stamina < INHALE.MIN_BREATH) return;
+    this.dropProtection();
     this.inhaling = true;
     // Until you let go, or the breath you have left runs out
     // Until you let go, the time asked for, or the breath runs out (a good beam can stretch it)
@@ -640,5 +648,8 @@ type("number")(PlayerSchema.prototype, "escapeMissAt");
 type("string")(PlayerSchema.prototype, "robbing");
 type("number")(PlayerSchema.prototype, "robbedTotal");
 type("boolean")(PlayerSchema.prototype, "isBot");
+type("number")(PlayerSchema.prototype, "puffReadyAt");
+type("number")(PlayerSchema.prototype, "fireReadyAt");
+type("boolean")(PlayerSchema.prototype, "fireQueued");
 
 export { PlayerSchema };

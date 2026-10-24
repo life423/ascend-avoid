@@ -2,7 +2,8 @@ import { Room, Client } from "colyseus";
 import { GAME_CONSTANTS } from "../constants/serverConstants";
 import logger from "../utils/logger";
 import { GameState } from "../schema/GameState";
-import { exhale, fireCaptive } from "../systems/inhale";
+import { exhale, fireCaptive, escapePress, escapeSteer } from "../systems/inhale";
+import { beginSurge } from "../systems/surges";
 
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
@@ -56,6 +57,7 @@ export class GameRoom extends Room<GameState> {
     if (!IS_PRODUCTION && Number.isInteger(options.testBots)) this.state.botFill = options.testBots;
     // Test worlds have no turbines unless they ask: testTurbines true runs them as usual, "manual" places them by hand
     if (!IS_PRODUCTION && Object.keys(options).some((key) => key.startsWith("test"))) {
+      this.state.surgesOn = options.testSurges === true;
       this.state.setTurbines(options.testTurbines === true ? "auto" : options.testTurbines === "manual" ? "manual" : "off");
     }
     // Moments worth telling everyone about (who shoved whom off the edge, who took the jackpot)
@@ -70,7 +72,21 @@ export class GameRoom extends Room<GameState> {
     // Where the browser is steering (a direction no longer than 1), whenever it changes
     this.onMessage("steer", (client, data: any) => {
       if (!this.allowMessage(client)) return;
-      this.state.players.get(client.sessionId)?.steer(Number(data?.x) || 0, Number(data?.y) || 0);
+      const player = this.state.players.get(client.sessionId);
+      if (!player) return;
+      player.steer(Number(data?.x) || 0, Number(data?.y) || 0);
+      if (data?.escape === true || (player.capturedBy && Math.hypot(Number(data?.x) || 0, Number(data?.y) || 0) <= 0.3)) escapeSteer(this.state, player);
+    });
+    // Keyboard edges are explicit, so a quick tap is never lost between simulation ticks.
+    this.onMessage("escape", (client, data: { key?: unknown }) => {
+      if (!this.allowMessage(client)) return;
+      const player = this.state.players.get(client.sessionId);
+      const key = data?.key;
+      if (!player || typeof key !== "string" || key.length !== 1 || !"UDLR".includes(key)) return;
+      const now = Date.now();
+      if (now < player.escapeTryAt) return;
+      player.escapeTryAt = now + 60;
+      escapePress(this.state, player, key);
     });
 
     // Where an inhale is aimed: the creature turns to face it (its eyes give it away)
@@ -110,7 +126,10 @@ export class GameRoom extends Room<GameState> {
     this.onMessage("cancel", (client) => {
       if (!this.allowMessage(client)) return;
       // The press cut short (slid off the button, Esc, a cancelled touch): stop, but it isn't a release
-      this.state.players.get(client.sessionId)?.stopInhale();
+      const player = this.state.players.get(client.sessionId);
+      player?.stopInhale();
+      player?.steer(0, 0);
+      if (player) player.fireQueued = false;
     });
     this.onMessage("spit", (client, data: any) => {
       if (!this.allowMessage(client)) return;
@@ -226,6 +245,11 @@ export class GameRoom extends Room<GameState> {
       });
       this.onMessage("test:stun", (client, data: any) => {
         playerOf(client)?.stun(Date.now(), Number(data?.ms) || 500);
+      });
+      this.onMessage("test:surge", (_client, data: { active?: unknown }) => {
+        this.state.surgesOn = true;
+        beginSurge(this.state);
+        if (data?.active === true) this.state.surgeAt = this.state.time;
       });
     }
 

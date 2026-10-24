@@ -36,6 +36,8 @@ import logger from "./utils/logger";
 
 // Create an Express application
 const app = express();
+// Resolve from the entry file, so source and compiled servers work from any working directory.
+const distPath = path.resolve(__dirname, path.basename(__dirname) === "dist" ? "../../dist" : "../dist");
 
 // Enable CORS to allow connections from your game client
 // Security headers (HSTS, no sniffing, no framing, a content security policy for the game) and no
@@ -47,7 +49,7 @@ app.use(
     contentSecurityPolicy: {
       useDefaults: true,
       directives: {
-        "script-src": ["'self'", ...inlineScriptHashes(path.join(process.env.NODE_ENV === "production" ? "./dist" : "../dist", "index.html"))],
+        "script-src": ["'self'", ...inlineScriptHashes(path.join(distPath, "index.html"))],
         "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         "font-src": ["'self'", "https://fonts.gstatic.com", "data:"],
         "img-src": ["'self'", "data:", "blob:"],
@@ -75,7 +77,6 @@ app.use(express.json());
 
 // Serve static files from the client build directory
 // In Docker, the dist folder is at /app/dist, in dev it's at ../dist
-const distPath = process.env.NODE_ENV === 'production' ? './dist' : '../dist';
 // Vite's content-hashed bundles never change, so browsers keep them a year; everything else
 // (index.html) is always rechecked, so a new deploy shows up at once
 app.use(

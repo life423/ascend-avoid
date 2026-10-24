@@ -79,6 +79,10 @@ export interface SyncedGameState {
     jackpotLandsAt: number
     jackpotHolder: string
     jackpotProgress: number
+    surgePhase: string
+    surgeAt: number
+    surgeX: number
+    surgeY: number
 }
 
 /** GemSchema, as synced to the browser */
@@ -148,6 +152,9 @@ export interface SyncedPlayer {
     robbing: string
     robbedTotal: number
     isBot: boolean
+    puffReadyAt: number
+    fireReadyAt: number
+    fireQueued: boolean
 }
 
 /** TurbineSchema, as synced to the browser */

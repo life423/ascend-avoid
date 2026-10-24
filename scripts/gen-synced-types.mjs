@@ -68,7 +68,7 @@ const text = lines.join('\n') + '\n';
 
 if (process.argv.includes('--check')) {
   const current = existsSync(out) ? readFileSync(out, 'utf8') : '';
-  if (current !== text) {
+  if (current.replace(/\r\n/g, '\n') !== text) {
     console.error('src/types/synced.ts is out of date: run npm run gen:types');
     process.exit(1);
   }

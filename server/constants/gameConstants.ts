@@ -144,7 +144,7 @@ export const PUSH = {
  * faster), dodge the traffic they see coming, chase gems and shove now and then.
  */
 export const BOTS = {
-  FILL_TO: 36, // bots fill in until this many are playing, and leave as people arrive (GAME.MAX_PLAYERS leaves room for people on top)
+  FILL_TO: 20, // room to roam; bots yield their places to arriving people
   NAMES: ["Bolt", "Pixel", "Zippy", "Nova", "Sprocket", "Blip", "Widget", "Gizmo", "Rivet", "Chip", "Pebble", "Comet", "Fizz", "Mochi", "Dot", "Tangle", "Scoot", "Bubble", "Ziggy", "Pogo", "Nibble", "Quark", "Jinx", "Wisp", "Flick", "Dizzy", "Tumble", "Pip", "Zoom", "Waffle", "Sprout", "Gadget", "Fidget", "Noodle", "Sizzle", "Bumble", "Twig", "Pixie", "Rocket", "Dash"],
   THINK_MS_MIN: 200, // each bot decides on a hop every 200-320 ms (it varies by bot)...
   THINK_MS_MAX: 320,
@@ -159,17 +159,21 @@ export const BOTS = {
   CONTENT_AT: 30, // ...until they have this many; then they just wander, dodge and shove
   DECAY_START: 20, // bots shed gems above this, and faster (people: GEMS.DECAY_*), so people can outgrow them...
   DECAY_RATE: 0.02, // ...this share of what's above DECAY_START each second (1 a second at 70)
-  CROWD_SPACE: 140, // bots ease away from each other within this much beyond touching (not from whoever they're after)...
-  CROWD_PENALTY: 45, // ...a neighbor pressed right against it counts this much against a hop, fading with distance (a hop toward a goal earns up to about 60), so a crowd at a spill melts away after a moment
+  CROWD_SPACE: 220,
+  CROWD_PENALTY: 110,
+  MAX_PURSUERS: 2,
+  DISPERSE_NEIGHBORS: 3,
+  DISPERSE_MS: 6000,
   PURSUIT_PENALTY: 0.6, // a creature other bots are already after appeals this much less per pursuer (a frenzy, not a dogpile)
   SPILL_CROWD_PENALTY: 0.8, // a gem within SPILL_CROWD_RANGE of where other bots are already heading appeals this much less per bot (a spill still draws a crowd, then it spreads out)
   SPILL_CROWD_RANGE: 260,
   HUNT_GIVE_UP_MS: 6000, // a chase that hasn't closed to inhale reach in this long is dropped...
   SHUN_MS: 5000, // ...and that creature left alone for this long
   FIGHT_BACK_RATIO: 1.1, // robbed, a bot inhales back only if it's this much wider than the robber (it would win the clash); otherwise it slips sideways out of the cone. It robs a wider creature only from behind
-  MAX_ROBBERS: 2, // a bot doesn't join more than this many already robbing the same creature
-  ESCAPE_EVERY_MS: 320, // caught, a bot tries a direction this often once its daze ends...
-  ESCAPE_SKILL: 0.75, // ...and gets the right one this share of the time (a wrong one starts it over, so about 4 seconds in all to get out)
+  MAX_ROBBERS: 2, // including this bot: at most two attackers per victim
+  ESCAPE_EVERY_MS: 450,
+  ESCAPE_READ_MS: 500, // bots take a moment to read their sequence after the daze
+  ESCAPE_SKILL: 0.65,
   FIRE_RANGE: 1100, // holding someone, a bot looks for another creature within this far to fire them at...
   FIRE_AIM: 0.18, // ...and fires once its facing is within this many radians of it...
   FIRE_WAIT_MS: 1600, // ...or straight ahead after holding this long with nobody to aim at
@@ -239,10 +243,10 @@ export const COMETS = {
  */
 export const FACING = {
   TURN_RATE: 5.5, // radians a second at most for a newborn...
-  TURN_FALLOFF: 0.5, // ...falling as (PLAYER_SIZE / width) ^ this: about 2.8 at 25 gems, 2 at 100, 1.4 at 400
-  INHALE_TURN: 0.4, // ...and while inhaling, this share of that
+  TURN_FALLOFF: 0.25,
+  INHALE_TURN: 0.55,
   TURN_ACCEL: 30, // how fast turning builds up or slows down (radians a second, each second) for a newborn...
-  ACCEL_FALLOFF: 1, // ...falling as (PLAYER_SIZE / width) ^ this: a giant takes a while to get turning, and to stop
+  ACCEL_FALLOFF: 0.35, // large bodies respond promptly while retaining a lower turn rate
 } as const;
 
 /**
@@ -450,14 +454,14 @@ export const CAMERA = {
  * or broken free can't be caught (by a mouth or a turbine) again for RECAPTURE_MS.
  */
 export const CANNON = {
-  HOLD_MS: 8000, // a capture lasts at most this long (a safety net; with ARM_MS of it spent loading, the captor has the rest to aim and fire): until then the captive is out of sight inside, and ammunition, until it escapes or is fired
-  CAPTIVE_STUN_MS: 1250, // caught, the captive is dazed this long before it can start working its way out...
-  ESCAPE_KEYS: 4, // ...by pushing the stick (or WASD) in this many directions, in the order shown; a wrong one starts the sequence over
+  HOLD_MS: 4500, // a brief capture, then automatic release
+  CAPTIVE_STUN_MS: 600,
+  ESCAPE_KEYS: 3, // rises to four at a 2x width advantage, five at 4x
   ESCAPE_PRESS: 0.6, // a push counts once the stick goes past this...
   ESCAPE_NEUTRAL: 0.3, // ...after coming back within this, so holding a direction is one push, not many
   ESCAPE_PUSH: 110, // out, it pops from the mouth this hard (and can't be caught again for RECAPTURE_MS)
   LAUNCH_MIN_MS: 120, // (the old release rule; firing is gated by ARM_MS now)
-  ARM_MS: 4300, // caught, a captive can't be fired for this long: the gun loads. Dazed for CAPTIVE_STUN_MS of that, the captive then has a head start on its escape sequence before the first shot can come, and every shot in the game has a breather in front of it
+  ARM_MS: 1200, // base loading; each extra escape input adds 200ms, up to 1.6 seconds
   HOLD_RATIO: 1, // the captor pulls its captive back to its mouth at this times the captive's own top speed...
   HOLD_MIN: 0.5, // ...times its firmness: this when just big enough to catch it (a near-size captive can simply push out)...
   HOLD_PER_DOUBLING: 0.35, // ...rising this much every time the captor is twice as big again...
@@ -585,12 +589,30 @@ export const TURBINE = {
 export const EXHALE = {
   REACH: 160, // the puff reaches this far from the mouth, plus REACH_PER_SIZE times your width (about 200 for a newborn, 450 at 100 gems)
   REACH_PER_SIZE: 2,
-  ARC: 40, // degrees either side of where you face
+  ARC: 55, // degrees either side of where you face
   GEM_PUSH: 420, // loose gems right at the mouth are blown away at this (units a second), easing to nothing at the reach
-  BODY_PUSH: 150, // a creature your own weight right at the mouth skids this far, easing to nothing at the reach...
-  PUSH_RATIO_MIN: 0.15, // ...times your weight over theirs, kept within these (a newborn barely nudges a giant; a giant sends a newborn flying)
-  PUSH_RATIO_MAX: 2.5,
-  COOLDOWN_MS: 500, // then a pause before the next puff
+  BODY_PUSH: 300,
+  PUSH_RATIO_MIN: 0.5, // even a small defender makes real space against a giant
+  PUSH_RATIO_MAX: 1.8,
+  PUSH_MAX: 420,
+  DEFENSE_PUSH: 150,
+  COOLDOWN_MS: 1800, // a deliberate defense, not repeated knockback
+  BREAK_MS: 1000, // a successful puff breaks suction on its user for a short escape window
+  PARRY_MS: 350, // the caught inhale stops briefly; no movement stun
+} as const;
+
+/** Short, announced resource contests in the continuous world. */
+export const SURGE = {
+  FIRST_MS: 30000,
+  GAP_MIN_MS: 60000,
+  GAP_MAX_MS: 90000,
+  WARNING_MS: 8000,
+  ACTIVE_MS: 18000,
+  SHOWER_MS: 3000,
+  PIECES: 10,
+  VALUE: 2,
+  RADIUS: 190,
+  JACKPOT_WITH_MS_LEFT: 5000,
 } as const;
 
 export const ARENA_RULES = {
@@ -598,8 +620,8 @@ export const ARENA_RULES = {
   HOP: 60, // one tap = one hop, while you're small...
   HOP_BEYOND_SIZE: 12, // ...and once you're big, your size plus this, so a hop always clears you
   MOVE_SPEED: 320, // top speed (units a second) for a newborn...
-  SPEED_FALLOFF: 0.7, // ...falling smoothly as MOVE_SPEED x (PLAYER_SIZE / width) ^ this, with every gem: about 275 with 1 gem, 205 with 5, 130 with 25, 80 with 100, 50 with 400
-  MIN_SPEED: 0, // no floor: the bigger you get, the slower you go (raise this to bring a floor back)
+  SPEED_FALLOFF: 0.3, // growth slows movement gently
+  MIN_SPEED: 130,
   // Contact grip: creatures are soft bodies, not billiard balls
   CONTACT_SQUISH: 0.15, // touching creatures squish up to this share of the smaller one's width into each other before pushing back hard...
   SCALE_SHOVE_RATIO: 4, // something this many times wider moving into a creature pushes it aside instead of being stopped by it
@@ -686,6 +708,7 @@ export const DESKTOP_SETTINGS = DEVICE_SETTINGS.DESKTOP;
 
 // Bundle all constants for convenient access
 export const GAME_CONSTANTS = {
+  SURGE,
   CORE,
   LATCH,
   CAMERA,

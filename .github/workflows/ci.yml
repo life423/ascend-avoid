@@ -40,3 +40,9 @@ jobs:
 
     - name: Build application
       run: npm run build
+
+    - name: Physics and gameplay regressions
+      run: npm run test:unit
+
+    - name: Isolated multiplayer scenarios
+      run: node scripts/multiplayer-smoke.mjs

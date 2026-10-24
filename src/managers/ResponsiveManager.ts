@@ -214,7 +214,7 @@ export default class ResponsiveManager {
 
         let width: number
         let height: number
-        if (this.game?.currentGameMode?.wantsFullCanvas?.()) {
+        if (this.game?.currentGameMode?.wantsFullCanvas?.() || document.body.classList.contains('online-mode')) {
             // The online world is bigger than the screen: use all the space there is
             width = Math.max(1, Math.floor(availableWidth - borderX))
             height = Math.max(1, Math.floor(availableHeight - borderY))

@@ -24,8 +24,18 @@ export function drawFloor(_mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
         ctx.lineTo(right, y)
     }
     ctx.stroke()
-    ctx.strokeStyle = 'rgba(79, 209, 197, 0.75)'
-    ctx.lineWidth = 6
+    // Outside the physical floor is empty space, not a continuation of the stars.
+    const viewLeft = view.x - view.width / 2
+    const viewTop = view.y - view.height / 2
+    const viewRight = view.x + view.width / 2
+    const viewBottom = view.y + view.height / 2
+    ctx.fillStyle = '#18354e'
+    if (viewLeft < 0) ctx.fillRect(viewLeft, viewTop, -viewLeft, view.height)
+    if (viewRight > state.worldWidth) ctx.fillRect(state.worldWidth, viewTop, viewRight - state.worldWidth, view.height)
+    if (viewTop < 0) ctx.fillRect(viewLeft, viewTop, view.width, -viewTop)
+    if (viewBottom > state.worldHeight) ctx.fillRect(viewLeft, state.worldHeight, view.width, viewBottom - state.worldHeight)
+    ctx.strokeStyle = 'rgba(67, 165, 195, 0.75)'
+    ctx.lineWidth = 2 / view.scale
     ctx.strokeRect(0, 0, state.worldWidth, state.worldHeight)
     ctx.restore()
 }

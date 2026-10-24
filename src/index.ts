@@ -9,6 +9,7 @@
 import Game from './core/Game'
 import { DrawerUI } from './ui/DrawerUI'
 import { DesktopChrome } from './ui/DesktopChrome'
+import { GAME_RULES } from './ui/GameRules'
 
 // Helper function for device detection
 function detectDevice() {
@@ -23,6 +24,7 @@ function detectDevice() {
 
 // Wait for DOM to load
 document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.game-instructions').forEach(element => { element.innerHTML = GAME_RULES })
     console.log('Initializing Ascend Avoid game...')
 
     // Show initial loading indicator if it exists

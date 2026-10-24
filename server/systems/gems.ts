@@ -13,7 +13,7 @@ export function updateJackpot(state: GameState, deltaTime: number) : void {
   if (!state.jackpotOn || state.time < state.jackpotLandsAt) return;
   const on: PlayerSchema[] = [];
   state.players.forEach((player) => {
-    if (player.state !== PLAYER_STATE.ALIVE) return;
+    if (player.state !== PLAYER_STATE.ALIVE || player.capturedBy || player.flying || player.stunned || player.sliding) return;
     const box = player.hitBox();
     const dx = Math.max(box.x - state.jackpotX, 0, state.jackpotX - (box.x + box.width));
     const dy = Math.max(box.y - state.jackpotY, 0, state.jackpotY - (box.y + box.height));

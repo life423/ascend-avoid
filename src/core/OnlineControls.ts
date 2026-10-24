@@ -1,6 +1,7 @@
 
 /** What the button (or space) asks for: an inhale starting (pressed) and stopping (let go) */
 /** inhale: the button pressed; exhale: deliberately let go (the only release that launches a captive); cancel: the press cut short (slid off, Esc, the touch cancelled), which just stops */
+import { sound } from './Sound'
 export type ControlEvent = 'inhale' | 'exhale' | 'cancel' | 'tap'
 
 /**
@@ -35,6 +36,8 @@ function isTyping(e: KeyboardEvent): boolean {
  * arrow keys and WASD stay with the InputManager.
  */
 export class OnlineControls {
+    action: 'INHALE' | 'LOADING' | 'QUEUED' | 'FIRE' | 'SPIT' = 'INHALE'
+    puffCooldown = 0
     /** Whether this device has a touchscreen (the joystick and INHALE button are drawn only then) */
     readonly touchDevice: boolean
     private stick: { id: number; originX: number; originY: number; x: number; y: number } | null = null
@@ -43,6 +46,9 @@ export class OnlineControls {
     private press: { id: number | 'key'; at: number; held: boolean } | null = null
     private events: ControlEvent[] = []
     private touchedOnce = false
+    private escapeKeys: string[] = []
+    get isPointerSteering(): boolean { return !!this.stick || !!this.mouse }
+    takeEscapeKeys(): string[] { const keys = this.escapeKeys; this.escapeKeys = []; return keys }
 
     constructor(private canvas: HTMLCanvasElement) {
         this.touchDevice = window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0
@@ -54,6 +60,14 @@ export class OnlineControls {
         window.addEventListener('pointercancel', this.onCancel)
         document.addEventListener('keydown', this.onKeyDown)
         document.addEventListener('keyup', this.onKeyUp)
+    }
+
+    reset(): void {
+        this.stick = null
+        this.mouse = null
+        this.press = null
+        this.events = []
+        this.escapeKeys = []
     }
 
     dispose(): void {
@@ -134,7 +148,8 @@ export class OnlineControls {
             ctx.textAlign = 'left'
             ctx.font = `700 12px ${FONT}`
             ctx.fillStyle = inhaling ? breathColor : `rgba(255, 255, 255, ${recovering ? 0.35 : 0.65})`
-            ctx.fillText(inhaling ? 'SPACE  inhaling' : recovering ? 'catching your breath…' : 'SPACE  hold to inhale, tap to exhale', 14, height - 16)
+            const hint = this.action === 'QUEUED' ? 'Shot queued — keep aiming' : this.action === 'LOADING' ? 'Loading… tap to queue a shot' : this.action === 'FIRE' ? 'SPACE  tap to FIRE' : this.action === 'SPIT' ? 'SPACE  tap to SPIT' : inhaling ? 'SPACE  inhaling' : `SPACE  hold to inhale · ${this.puffCooldown > 0 ? `puff in ${this.puffCooldown.toFixed(1)}s` : 'tap to puff'}`
+            ctx.fillText(hint, 14, height - 16)
             if (inhaling || recovering) {
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.12)'
                 ctx.fillRect(14, height - 34, 140, 5)
@@ -175,10 +190,14 @@ export class OnlineControls {
         }
         // Just the word, centered on its letters (it flashes red when you're low on breath)
         ctx.fillStyle = recovering ? 'rgba(255, 255, 255, 0.4)' : low ? breathColor : '#ffffff'
-        ctx.font = `800 17px ${FONT}`
+        ctx.font = `800 ${this.action === 'LOADING' ? 14 : 17}px ${FONT}`
         ctx.textBaseline = 'alphabetic'
-        const word = ctx.measureText('INHALE')
-        ctx.fillText('INHALE', x, y + (word.actualBoundingBoxAscent - word.actualBoundingBoxDescent) / 2)
+        const word = ctx.measureText(this.action)
+        ctx.fillText(this.action, x, y + (word.actualBoundingBoxAscent - word.actualBoundingBoxDescent) / 2)
+        if (this.action === 'INHALE' && this.puffCooldown > 0) {
+            ctx.font = `600 10px ${FONT}`
+            ctx.fillText(`PUFF ${this.puffCooldown.toFixed(1)}s`, x, y + 24)
+        }
         ctx.restore()
     }
 
@@ -242,6 +261,7 @@ export class OnlineControls {
     }
 
     private onDown = (e: PointerEvent): void => {
+        sound.unlock()
         const point = this.toCanvas(e)
         if (e.pointerType === 'mouse') {
             if (e.button !== 0) return
@@ -286,6 +306,9 @@ export class OnlineControls {
 
     private onKeyDown = (e: KeyboardEvent): void => {
         if (isTyping(e)) return
+        sound.unlock()
+        const direction: Record<string, string> = { KeyW: 'U', ArrowUp: 'U', KeyS: 'D', ArrowDown: 'D', KeyA: 'L', ArrowLeft: 'L', KeyD: 'R', ArrowRight: 'R' }
+        if (!e.repeat && direction[e.code]) this.escapeKeys.push(direction[e.code])
         if (e.code === 'Escape') this.cancelPress()
         if (e.code !== 'Space') return
         e.preventDefault()
@@ -293,7 +316,6 @@ export class OnlineControls {
     }
 
     private onKeyUp = (e: KeyboardEvent): void => {
-        if (isTyping(e)) return
         if (e.code !== 'Space') return
         e.preventDefault()
         this.pressUp('key')

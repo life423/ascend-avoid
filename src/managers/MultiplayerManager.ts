@@ -189,6 +189,9 @@ export class MultiplayerManager {
         this.room.onMessage('burst', (data) => this.eventBus.emit('multiplayer:burst', data));
         this.room.onMessage('vanish', (data) => this.eventBus.emit('multiplayer:vanish', data));
         this.room.onMessage('impact', (data) => this.eventBus.emit('multiplayer:impact', data));
+        this.room.onMessage('launch', (data) => this.eventBus.emit('multiplayer:launch', data));
+        this.room.onMessage('parry', (data) => this.eventBus.emit('multiplayer:parry', data));
+        this.room.onMessage('surge', (data) => this.eventBus.emit('multiplayer:surge', data));
         this.room.onMessage('blast', (data) => this.eventBus.emit('multiplayer:blast', data));
         this.room.onMessage('exhale', (data) => this.eventBus.emit('multiplayer:exhale', data));
 
