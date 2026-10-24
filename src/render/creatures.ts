@@ -119,72 +119,52 @@ export function drawBreath(ctx: CanvasRenderingContext2D, x: number, y: number, 
 }
 
 /**
- * A creature fired as a living cannonball: the same creature, shaped for it. The round body becomes a spiked
- * arrowhead along its flight: a sharp nose ahead, a rounded base behind, spikes bristling down both edges and
- * across the back, the outline running hot, and its eyes screwed shut, braced for the hit. Still its own
- * colour, so everyone can see who's been fired.
+ * A creature fired as a living cannonball: the same creature, shaped for it. The round body bristles with
+ * spikes all the way round and spins as it flies, a buzzsaw streaking across the arena (the streaks behind
+ * it show the way it's going); the outline runs hot, and its eyes are screwed shut, braced for the hit.
+ * Still its own colour, so everyone can see who's been fired.
  */
 export function drawProjectile(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string, heading: number, timestamp: number): void {
     const r = size / 2
-    const nose = r * 1.7
-    const base = -r * 0.7
-    const half = r * 0.95
+    const spin = heading + (timestamp / 1000) * Math.PI * 2 * 2.5
     ctx.save()
     ctx.translate(x, y)
-    ctx.rotate(heading)
-    // The body: an arrowhead, nose first, with a rounded base
+    ctx.rotate(spin)
+    // The body
     ctx.beginPath()
-    ctx.moveTo(nose, 0)
-    ctx.lineTo(base, -half)
-    ctx.arc(base, 0, half, -Math.PI / 2, Math.PI / 2, true)
-    ctx.closePath()
+    ctx.arc(0, 0, r * 0.92, 0, Math.PI * 2)
     ctx.fillStyle = color
     ctx.fill()
     // The outline runs hot: a soft glow under a crisp line
-    ctx.lineJoin = 'round'
     ctx.strokeStyle = 'rgba(255, 190, 110, 0.4)'
     ctx.lineWidth = Math.max(4, size * 0.18)
     ctx.stroke()
     ctx.strokeStyle = 'rgba(255, 236, 205, 0.95)'
     ctx.lineWidth = Math.max(1.5, size * 0.06)
     ctx.stroke()
-    // Spikes: down both edges, and across the back, bristling
+    // Spikes all the way round
     ctx.fillStyle = '#ffffff'
-    const spike = (px: number, py: number, nx: number, ny: number, length: number) => {
-        const w = r * 0.14
+    const spikes = 10
+    for (let i = 0; i < spikes; i++) {
+        const a = (i / spikes) * Math.PI * 2
+        const bx = Math.cos(a) * r * 0.9
+        const by = Math.sin(a) * r * 0.9
+        const length = r * 0.55
+        const half = r * 0.17
         ctx.beginPath()
-        ctx.moveTo(px + nx * length, py + ny * length)
-        ctx.lineTo(px - ny * w, py + nx * w)
-        ctx.lineTo(px + ny * w, py - nx * w)
+        ctx.moveTo(bx + Math.cos(a) * length, by + Math.sin(a) * length)
+        ctx.lineTo(bx - Math.sin(a) * half, by + Math.cos(a) * half)
+        ctx.lineTo(bx + Math.sin(a) * half, by - Math.cos(a) * half)
         ctx.closePath()
         ctx.fill()
     }
-    const edgeLength = Math.hypot(nose - base, half)
-    const ex = (nose - base) / edgeLength
-    const ey = half / edgeLength
-    let i = 0
-    for (const side of [-1, 1]) {
-        // Along this edge from the base corner toward the nose; the spike points away from the body
-        const nx = ey
-        const ny = -ex * side
-        for (const t of [0.22, 0.5, 0.78]) {
-            const px = base + (nose - base) * t
-            const py = side * (-half + half * t)
-            spike(px, py, nx, ny, r * (0.5 + 0.08 * Math.sin(timestamp / 45 + i * 1.9)))
-            i++
-        }
-    }
-    for (const a of [Math.PI - 0.75, Math.PI, Math.PI + 0.75]) {
-        spike(base + Math.cos(a) * half, Math.sin(a) * half, Math.cos(a), Math.sin(a), r * (0.45 + 0.08 * Math.sin(timestamp / 45 + i * 1.9)))
-        i++
-    }
-    // Eyes screwed shut: two short lines, angled like a wince
+    // Eyes screwed shut, spinning with it: two short lines, angled like a wince
     ctx.strokeStyle = '#10151f'
     ctx.lineCap = 'round'
     ctx.lineWidth = Math.max(1.5, size * 0.07)
     for (const side of [-1, 1]) {
-        const cx = r * 0.15
-        const cy = side * r * 0.4
+        const cx = r * 0.3
+        const cy = side * r * 0.36
         ctx.beginPath()
         ctx.moveTo(cx - r * 0.16, cy - side * r * 0.07)
         ctx.lineTo(cx + r * 0.16, cy + side * r * 0.07)
