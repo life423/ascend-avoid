@@ -190,9 +190,6 @@ export class EventBus {
     }
 }
 
-// Global event bus instance
-export const globalEventBus = new EventBus();
-
 // Common event types for type safety
 export interface GameEvents {
     'engine:started': Record<string, never>;
