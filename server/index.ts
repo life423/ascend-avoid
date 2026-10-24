@@ -38,7 +38,13 @@ app.use(
 );
 // Compress responses (the game bundle shrinks to about a third)
 app.use(compression());
-app.use(cors());
+// Browsers may only read this server's HTTP routes from our own pages (the game itself is same-origin
+// in production; the Vite dev page is the other origin). CORS_ORIGINS (comma-separated) overrides.
+const corsOrigins = (process.env.CORS_ORIGINS ?? "https://ascend.drewclark.io,http://localhost:5173,http://127.0.0.1:5173")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+app.use(cors({ origin: corsOrigins }));
 
 // Parse JSON bodies for any REST endpoints you might add later
 app.use(express.json());

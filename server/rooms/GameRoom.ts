@@ -5,6 +5,13 @@ import { GameState } from "../schema/GameState";
 
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
+/**
+ * Each player's message budget (a token bucket). Real clients send steering and aim only when they
+ * change, so at most a couple of hundred messages a second on a 120 Hz screen; anything past this
+ * budget is dropped, and a client that keeps flooding is disconnected.
+ */
+const MESSAGE_BUDGET = { PER_SECOND: 300, BURST: 400, KICK_AFTER_DROPPED: 1500, KICK_WINDOW_MS: 5000 } as const;
+
 /** What a client may send when joining; anything else is ignored */
 interface JoinOptions {
   name?: unknown;
@@ -61,27 +68,33 @@ export class GameRoom extends Room<GameState> {
 
     // Where the browser is steering (a direction no longer than 1), whenever it changes
     this.onMessage("steer", (client, data: any) => {
+      if (!this.allowMessage(client)) return;
       this.state.players.get(client.sessionId)?.steer(Number(data?.x) || 0, Number(data?.y) || 0);
     });
 
     // Where an inhale is aimed: the creature turns to face it (its eyes give it away)
     this.onMessage("aim", (client, data: any) => {
+      if (!this.allowMessage(client)) return;
       this.state.players.get(client.sessionId)?.aimAt(Number(data?.x) || 0, Number(data?.y) || 0);
     });
     // Hold the button to inhale, release to stop; tap with something in your mouth to spit it
     this.onMessage("inhale", (client) => {
+      if (!this.allowMessage(client)) return;
       this.state.players.get(client.sessionId)?.startInhale(Date.now());
     });
     this.onMessage("exhale", (client) => {
+      if (!this.allowMessage(client)) return;
       this.state.players.get(client.sessionId)?.stopInhale();
     });
     this.onMessage("spit", (client, data: any) => {
+      if (!this.allowMessage(client)) return;
       const player = this.state.players.get(client.sessionId);
       if (player) this.state.spit(player, Number(data?.x) || 0, Number(data?.y) || 0, Date.now());
     });
 
     // Browsers time their round trip to the server with this, to draw traffic in step with it
     this.onMessage("ping", (client, data: any) => {
+      if (!this.allowMessage(client)) return;
       client.send("pong", { t: Number(data?.t) || 0 });
     });
 
@@ -190,6 +203,38 @@ export class GameRoom extends Room<GameState> {
     logger.info(`Room ${this.roomId} created (world ${this.state.worldWidth}×${this.state.worldHeight})`);
   }
 
+  /** Each player's message budget (see MESSAGE_BUDGET) */
+  private messageBudgets = new Map<string, { tokens: number; at: number; dropped: number; since: number; kicked: boolean }>();
+
+  /** Spend one message from this player's budget; false (and the message is ignored) once it's empty */
+  private allowMessage(client: Client): boolean {
+    const now = Date.now();
+    let budget = this.messageBudgets.get(client.sessionId);
+    if (!budget) {
+      budget = { tokens: MESSAGE_BUDGET.BURST, at: now, dropped: 0, since: now, kicked: false };
+      this.messageBudgets.set(client.sessionId, budget);
+    }
+    // Already disconnected for flooding: ignore whatever else it had queued, quietly
+    if (budget.kicked) return false;
+    budget.tokens = Math.min(MESSAGE_BUDGET.BURST, budget.tokens + ((now - budget.at) / 1000) * MESSAGE_BUDGET.PER_SECOND);
+    budget.at = now;
+    if (budget.tokens >= 1) {
+      budget.tokens -= 1;
+      return true;
+    }
+    if (now - budget.since > MESSAGE_BUDGET.KICK_WINDOW_MS) {
+      budget.since = now;
+      budget.dropped = 0;
+    }
+    budget.dropped += 1;
+    if (budget.dropped >= MESSAGE_BUDGET.KICK_AFTER_DROPPED) {
+      budget.kicked = true;
+      logger.warn(`Disconnecting ${client.sessionId} for flooding messages`);
+      client.leave(4002);
+    }
+    return false;
+  }
+
   onJoin(client: Client, options: JoinOptions = {}): void {
     const player = this.state.addPlayer(client.sessionId, sanitizeName(options.name ?? options.playerName));
     this.broadcast("playerJoined", { id: client.sessionId, name: player.name });
@@ -197,6 +242,7 @@ export class GameRoom extends Room<GameState> {
   }
 
   onLeave(client: Client): void {
+    this.messageBudgets.delete(client.sessionId);
     const name = this.state.players.get(client.sessionId)?.name ?? client.sessionId;
     this.state.removePlayer(client.sessionId);
     this.broadcast("playerLeft", { id: client.sessionId });
