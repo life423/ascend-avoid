@@ -311,9 +311,7 @@ export function drawKnockedOut(mode: MultiplayerMode, ctx: CanvasRenderingContex
     const cause = mode.knockoutCause
     const credited = cause !== null && mode.knockedOutAt !== null && Math.abs(cause.at - mode.knockedOutAt) < 1500
     const verb =
-        cause?.how === 'ate' ? 'Swallowed'
-        : cause?.how === 'drained' ? 'Drained'
-        : cause?.how === 'turbine' ? 'Fed to a turbine'
+        cause?.how === 'turbine' ? 'Fed to a turbine'
         : cause?.how === 'bomb' ? 'Blown up'
         : cause?.how === 'edge' ? 'Shoved off'
         : cause?.how === 'traffic' ? 'Wrecked'

@@ -995,7 +995,8 @@ export class MultiplayerMode extends GameMode {
             drawTrafficChip(this, ctx, canvas, state, timestamp)
             drawBanner(this, ctx, canvas)
             this.controls?.draw(ctx, timestamp, this.breath)
-            if (me && me.state !== 'alive') drawKnockedOut(this, ctx, canvas)
+            if (me && me.state === 'gulped') drawMessage(this, ctx, canvas, `Gulped by ${this.nameOf(me.insideOf, 'someone')}`, 'Hang on: you pop back out in a moment')
+            else if (me && me.state !== 'alive') drawKnockedOut(this, ctx, canvas)
             ctx.globalAlpha = 1
         }
         ctx.restore()
@@ -1075,23 +1076,23 @@ export class MultiplayerMode extends GameMode {
         const targetIsYou = data?.targetId === localId
         const target = targetIsYou ? 'you' : String(data?.target ?? 'someone')
         const how = String(data?.how ?? '')
-        if (targetIsYou && how !== 'stole') {
+        if (targetIsYou && how !== 'stole' && how !== 'gulped') {
             this.knockoutCause = { how, by: String(data?.by ?? 'Someone'), at: performance.now() }
         }
-        const verb = how === 'stole' ? 'robbed' : how === 'ate' ? 'swallowed' : how === 'drained' ? 'drained' : how === 'turbine' ? 'fed' : how === 'bomb' ? 'blew up' : 'shoved'
-        const where = how === 'stole' ? `of ${Number(data?.gems) || 0} gems` : how === 'turbine' ? 'to a turbine' : how === 'edge' ? 'off the edge' : how === 'traffic' ? 'into traffic' : ''
+        const verb = how === 'stole' ? 'robbed' : how === 'gulped' ? 'gulped' : how === 'turbine' ? 'fed' : how === 'bomb' ? 'blew up' : 'shoved'
+        const where = how === 'stole' ? `of ${Number(data?.gems) || 0} gems` : how === 'gulped' ? (Number(data?.gems) > 0 ? `(${Number(data?.gems)} gems spilled)` : '') : how === 'turbine' ? 'to a turbine' : how === 'edge' ? 'off the edge' : how === 'traffic' ? 'into traffic' : ''
         if (data?.byId === localId) {
             const name = String(data?.target ?? 'someone')
-            const title = how === 'stole' ? `You stole ${Number(data?.gems) || 0} gems from ${name}!` : how === 'ate' ? `You swallowed ${name}!` : how === 'drained' ? `You drained ${name}!` : how === 'turbine' ? `You fed ${name} to a turbine!` : how === 'bomb' ? `You blew up ${name}!` : `You wrecked ${name}!`
+            const title = how === 'stole' ? `You stole ${Number(data?.gems) || 0} gems from ${name}!` : how === 'gulped' ? `You gulped ${name}!` : how === 'turbine' ? `You fed ${name} to a turbine!` : how === 'bomb' ? `You blew up ${name}!` : `You wrecked ${name}!`
             const parts =
                 how === 'stole' ? []
-                : how === 'ate' || how === 'drained' ? (Number(data?.gems) > 0 ? [`+${Number(data?.gems)} gems`] : [])
+                : how === 'gulped' ? (Number(data?.gems) > 0 ? [`${Number(data?.gems)} gems spilled`] : [])
                 : how === 'bomb' ? [data?.out ? 'knocked out' : `${Number(data?.gems) || 0} gems knocked loose`]
                 : [where, data?.out ? 'knocked out' : '']
             this.banner = { title, sub: parts.filter(Boolean).join(' · ').toUpperCase(), at: performance.now() }
             return
         }
-        const out = how !== 'ate' && how !== 'drained' && how !== 'turbine' && data?.out ? (targetIsYou ? ' and knocked you out' : ' and knocked them out') : ''
+        const out = how !== 'gulped' && how !== 'turbine' && data?.out ? (targetIsYou ? ' and knocked you out' : ' and knocked them out') : ''
         this.addNotice(`${this.nameOf(data?.byId, data?.by)} ${verb} ${target}${where ? ' ' + where : ''}${out}!`, data?.out === true)
     }
 
@@ -1313,7 +1314,7 @@ export class MultiplayerMode extends GameMode {
     }
 
     private trackKnockout(me: SyncedPlayer): void {
-        if (me && me.state !== 'alive') {
+        if (me && me.state !== 'alive' && me.state !== 'gulped') {
             if (this.knockedOutAt === null) this.knockedOutAt = performance.now()
         } else {
             this.knockedOutAt = null
