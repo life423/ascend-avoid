@@ -5,7 +5,9 @@
 import { airflowOnCore, stepCore, type CoreBody, type Inhaler } from "../game/corePhysics.js";
 import { airflowQuality, breathRate, cleanAir, latchSizeFactor } from "../game/airflow.js";
 import { turnRate, turnStep } from "../game/movement.js";
-import { CAMERA, CORE, INHALE, LATCH } from "../constants/gameConstants.js";
+import { CAMERA, CANNON, CORE, INHALE, LATCH } from "../constants/gameConstants.js";
+import { flightStep, impactGems, launchSpeed, struggleStrength } from "../game/cannon.js";
+import { intakePull, noReturnGap } from "../game/turbine.js";
 import { CameraRig, lookAhead, springStep, viewShort } from "../game/camera.js";
 import { dangerRadius, lethalShare, pressureBuild, scaleDrain, streamLook } from "../game/airflow.js";
 import { moveSpeed } from "../game/movement.js";
@@ -122,6 +124,16 @@ check(Math.abs(behind) > 1 && Math.abs(behind) < CAMERA.MAX_OFFSET * viewShort(2
 const lateGame = 20 * Math.sqrt(1 + 1500 / 2);
 check(lateGame / viewShort(lateGame) > 0.24 && (20 / lateGame) * (lateGame / viewShort(lateGame)) < 0.015, `late game, a 1500-gem giant fills about a quarter of the screen and a newborn beside it looks trivial (${((lateGame / viewShort(lateGame)) * 100).toFixed(0)}% vs ${(((20 / lateGame) * lateGame) / viewShort(lateGame) * 100).toFixed(1)}%)`);
 check(scaleDrain(20, 548) === LATCH.SCALE_MIN && scaleDrain(60, 120) === 1 && scaleDrain(20, 100) > LATCH.SCALE_MIN && scaleDrain(20, 100) < 1, "a tiny attacker on a giant is a mosquito: its drain fades with the size gap");
+
+// The living cannonball
+check(struggleStrength(56, 80) > 0.85 && struggleStrength(20, 300) === CANNON.STRUGGLE_MIN, "a captive near its captor's size struggles hard; a tiny one barely");
+check(launchSpeed(200) > launchSpeed(40), "a bigger captor launches harder");
+check(impactGems(120, 900) > impactGems(20, 900) && impactGems(120, 900) >= 15 && impactGems(0, 900) === 0, `a cannonball knocks the most gems out of a giant (${impactGems(120, 900)} of 120)`);
+const straightOn = flightStep(900, 0, 1, 0, 0.1);
+const bentFlight = flightStep(900, 0, 0, 1, 0.1);
+check(Math.hypot(straightOn.vx, straightOn.vy) < 900 && Math.abs(straightOn.vy) < 1e-9 && bentFlight.vy > 0 && Math.hypot(bentFlight.vx, bentFlight.vy) <= Math.hypot(straightOn.vx, straightOn.vy) + 1e-6, "a flier can bend its path, never speed it up or stop it");
+// Turbines: past the point of no return nobody outwalks the intake; outside it everyone can
+check([20, 72, 143, 284].every((w) => intakePull(w, noReturnGap() - 5) > moveSpeed(w) && intakePull(w, noReturnGap() + 40) < moveSpeed(w)), `inside a turbine's point of no return (${noReturnGap().toFixed(0)} units) nobody, whatever its size, outwalks the intake; outside it everyone can`);
 
 console.log(failed ? `${failed} unit check(s) failed` : "All unit checks passed");
 process.exit(failed ? 1 : 0);

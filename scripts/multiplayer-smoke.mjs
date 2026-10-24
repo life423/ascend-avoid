@@ -404,7 +404,7 @@ try {
     alice.send('inhale');
     await sleep(150);
     const heldNotEaten = bobState().state === 'alive' && me().gulping === bob.sessionId;
-    await sleep(1100);
+    await sleep(1600); // held through the whole capture (CANNON.HOLD_MS); letting go sooner would launch Bob
     alice.send('exhale');
     check(heldNotEaten, 'a much smaller creature is pulled to your mouth and held there, not eaten at once');
     check(bobState().state !== 'alive' && me().gems >= aliceBeforeGulp + 4, `held there a moment, it's swallowed whole (Alice ${aliceBeforeGulp} then ${me().gems}, Bob ${bobState().state})`);
@@ -1277,6 +1277,67 @@ try {
     check(second.every((s) => first.every((f) => Math.hypot(s.x - f.x, s.y - f.y) > 50)), 'somewhere else');
     clearInterval(phases);
     await ann.leave();
+
+    // ---- Capture and the living cannonball
+    const mine = (room) => room.state.players.get(room.sessionId);
+    const captor = await join('Captor');
+    const kid = await join('Kid');
+    const mark = await join('Mark');
+    captor.send('test:setGems', { count: 60 });
+    kid.send('test:setGems', { count: 0 });
+    mark.send('test:setGems', { count: 120 });
+    await sleep(500);
+    const lineY = 2300;
+    captor.send('test:moveTo', { x: 500, y: lineY - mine(captor).width / 2 });
+    captor.send('test:face', { angle: 0 });
+    await sleep(250);
+    kid.send('test:moveTo', { x: 500 + mine(captor).width + 4, y: lineY - mine(kid).width / 2 });
+    mark.send('test:moveTo', { x: 500 + mine(captor).width + 380, y: lineY - mine(mark).width / 2 });
+    await sleep(300);
+    captor.send('inhale');
+    await sleep(600);
+    check(mine(kid).capturedBy === captor.sessionId, `a creature pulled to a big enough mouth is caught there (caught by ${mine(kid).capturedBy || 'nobody'})`);
+    const markHad = mine(mark).gems;
+    captor.send('exhale');
+    await sleep(150);
+    check(mine(kid).flying === true, 'letting go launches the captive: a living cannonball');
+    await sleep(1000);
+    check(markHad - mine(mark).gems >= 10 && mine(kid).state === 'alive', `the cannonball knocks gems out of the creature it hits (${markHad} to ${mine(mark).gems}) and survives`);
+
+    // Held through the whole capture, the captive is swallowed; a captive near its captor's size can struggle free
+    kid.send('test:setGems', { count: 0 });
+    await sleep(300);
+    kid.send('test:moveTo', { x: 500 + mine(captor).width + 4, y: lineY - mine(kid).width / 2 });
+    captor.send('test:face', { angle: 0 });
+    await sleep(300);
+    const captorHad = mine(captor).gems;
+    captor.send('inhale');
+    await sleep(2000);
+    check(mine(kid).state !== 'alive' || mine(captor).gems > captorHad, `held through the whole capture, the captive is swallowed (${mine(kid).state})`);
+    captor.send('exhale');
+    await sleep(2600);
+    captor.send('test:setGems', { count: 30 });
+    kid.send('test:setGems', { count: 14 });
+    await sleep(500);
+    captor.send('test:moveTo', { x: 500, y: lineY - mine(captor).width / 2 });
+    captor.send('test:face', { angle: 0 });
+    await sleep(250);
+    kid.send('test:moveTo', { x: 500 + mine(captor).width + 4, y: lineY - mine(kid).width / 2 });
+    await sleep(300);
+    captor.send('inhale');
+    let caughtNearSize = false;
+    for (let i = 0; i < 20 && !caughtNearSize; i++) {
+        await sleep(50);
+        caughtNearSize = mine(kid).capturedBy === captor.sessionId;
+    }
+    kid.send('steer', { x: 1, y: 0 });
+    await sleep(1000);
+    check(caughtNearSize && !mine(kid).capturedBy && mine(kid).state === 'alive', `a captive near its captor's size can struggle free (caught ${caughtNearSize}, still caught: ${Boolean(mine(kid).capturedBy)})`);
+    kid.send('steer', { x: 0, y: 0 });
+    captor.send('exhale');
+    await captor.leave();
+    await kid.leave();
+    await mark.leave();
 
     // A client that floods messages is cut off (every other check here plays normally under the same limit)
     const flooder = await join('Flood');

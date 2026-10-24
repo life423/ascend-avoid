@@ -1,4 +1,5 @@
 import { GEMS, TURBINE } from "../constants/gameConstants.js";
+import { moveSpeed } from "./movement.js";
 
 /**
  * Turbine math shared by the server and every browser, so they all agree exactly: where a
@@ -44,4 +45,15 @@ function fold(value: number, lo: number, hi: number): number {
   const period = span * 2;
   const m = (((value - lo) % period) + period) % period;
   return lo + (m <= span ? m : period - m);
+}
+
+/** How fast (units a second) a turbine's intake pulls a creature this wide whose edge is `gap` from it: TURBINE.PULL_RATIO times the creature's own top speed at the intake, easing (squared) to nothing at its reach */
+export function intakePull(width: number, gap: number): number {
+  const closeness = Math.max(0, 1 - gap / TURBINE.INTAKE_REACH);
+  return moveSpeed(width) * TURBINE.PULL_RATIO * closeness * closeness;
+}
+
+/** How close to a turbine's intake (edge to edge) nobody, whatever its size, can walk away any more */
+export function noReturnGap(): number {
+  return TURBINE.INTAKE_REACH * (1 - 1 / Math.sqrt(TURBINE.PULL_RATIO));
 }

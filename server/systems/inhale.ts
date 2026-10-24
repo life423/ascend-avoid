@@ -4,6 +4,9 @@ import { airflowQuality, cleanAir, drainRamp, lethalShare, pressureBuild, pressu
 import { moveSpeed } from "../game/movement.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 
+import { CANNON } from "../constants/gameConstants.js";
+import { launchSpeed, struggleStrength } from "../game/cannon.js";
+
 const { PLAYER_STATE, INHALE, LATCH } = GAME_CONSTANTS;
 import { sprayGems } from "./gems.js";
 
@@ -29,7 +32,8 @@ export function updateInhales(state: GameState, now: number, deltaTime: number) 
     if (!eater.inhaling || eater.state !== PLAYER_STATE.ALIVE) {
       if (eater.stealingFrom) endTheft(state, eater, now);
       if (eater.robbing) eater.robbing = "";
-      if (eater.gulping) eater.gulping = "";
+      // Stopped inhaling with a captive: launched (held long enough) or just let go
+      if (eater.gulping) letGo(state, eater, now);
       fadeLocks(state, eater, null, deltaTime);
       return;
     }
@@ -85,6 +89,8 @@ export function updateInhales(state: GameState, now: number, deltaTime: number) 
       eater.lockOn.set(prey.sessionId, lock);
       // The drain ramp builds only on clean airflow; smothered (deep overlap) or poorly aimed, it fades
       const heldTime = eater.heldFor.get(prey.sessionId) ?? 0;
+      // A flier, or another creature's captive, is out of reach
+      if (prey.flying || (prey.capturedBy && prey.capturedBy !== eater.sessionId)) return;
       const clean = airflowQuality(state.mouthed(eater), state.bodyOf(prey), eater.latchTarget === prey.sessionId ? LATCH.CURVE_ARC * eater.beamFocus : 0) >= LATCH.RAMP_MIN_QUALITY;
       eater.heldFor.set(prey.sessionId, clean ? heldTime + deltaTime : Math.max(0, heldTime - deltaTime * LATCH.RAMP_FADE));
       locked.add(prey.sessionId);
@@ -92,7 +98,7 @@ export function updateInhales(state: GameState, now: number, deltaTime: number) 
       const py = prey.y + prey.height / 2;
       const d = Math.hypot(px - mouthX, py - mouthY);
       // A swallow needs the size, the prey at the mouth, and clean airflow (sitting on top of it isn't enough)
-      if (canSwallow(state, eater, prey) && d <= eater.width * INHALE.GULP_REACH + prey.width / 2 && d < heldAt && airflowQuality(state.mouthed(eater), state.bodyOf(prey)) >= LATCH.SWALLOW_MIN_QUALITY) {
+      if (now >= prey.recaptureAfter && canSwallow(state, eater, prey) && d <= eater.width * INHALE.GULP_REACH + prey.width / 2 && d < heldAt && airflowQuality(state.mouthed(eater), state.bodyOf(prey)) >= LATCH.SWALLOW_MIN_QUALITY) {
         held = prey;
         heldAt = d;
       }
@@ -108,15 +114,28 @@ export function updateInhales(state: GameState, now: number, deltaTime: number) 
       prey.nudge(((mouthX - px) / d) * pull, ((mouthY - py) / d) * pull, state.worldWidth, state.worldHeight);
     });
     fadeLocks(state, eater, locked, deltaTime);
-    const caught = held as PlayerSchema | null;
-    if (!caught) {
+    // Capture: a creature it could swallow, held at its mouth, is caught for up to CANNON.HOLD_MS. Still
+    // inhaling when that ends, it swallows it; letting go first launches it (letGo)
+    const captive = eater.gulping ? state.players.get(eater.gulping) : undefined;
+    if (captive && captive.capturedBy === eater.sessionId && captive.state === PLAYER_STATE.ALIVE) {
+      if (holdCaptive(state, eater, captive, mouthX, mouthY, now, deltaTime) && state.time >= eater.gulpEndsAt) {
+        eater.gulping = "";
+        captive.capturedBy = "";
+        captive.struggle = 0;
+        swallow(state, eater, captive, now);
+      }
+    } else {
       if (eater.gulping) eater.gulping = "";
-    } else if (eater.gulping !== caught.sessionId) {
-      eater.gulping = caught.sessionId;
-      eater.gulpEndsAt = state.time + INHALE.GULP_MS;
-    } else if (state.time >= eater.gulpEndsAt) {
-      eater.gulping = "";
-      swallow(state, eater, caught, now);
+      const caught = held as PlayerSchema | null;
+      if (caught) {
+        eater.gulping = caught.sessionId;
+        eater.gulpEndsAt = state.time + CANNON.HOLD_MS;
+        eater.captureStartedAt = now;
+        caught.capturedBy = eater.sessionId;
+        caught.struggle = 0;
+        caught.stopInhale(now);
+        caught.dropLatch();
+      }
     }
     steal(state, eater, now, deltaTime);
   });
@@ -289,4 +308,50 @@ export function swallow(state: GameState, eater: PlayerSchema, prey: PlayerSchem
   prey.setGems(0, state.worldWidth, state.worldHeight);
   prey.knockOut(now);
   state.credit(prey, "ate", now, eater.sessionId, { gems });
+}
+
+/** Holds a captive at its captor's mouth while it struggles (see CANNON); false once it breaks free */
+function holdCaptive(state: GameState, eater: PlayerSchema, captive: PlayerSchema, mouthX: number, mouthY: number, now: number, deltaTime: number): boolean {
+  const cx = captive.x + captive.width / 2;
+  const cy = captive.y + captive.height / 2;
+  const ex = eater.x + eater.width / 2;
+  const ey = eater.y + eater.height / 2;
+  const ad = Math.hypot(cx - ex, cy - ey) || 1;
+  const ax = (cx - ex) / ad;
+  const ay = (cy - ey) / ad;
+  // Pushing away fills the break-free meter; pushing sideways counts a little and twists the captor's aim
+  const steer = captive.steerInput();
+  const away = Math.max(0, steer.x * ax + steer.y * ay);
+  const side = steer.x * -ay + steer.y * ax;
+  const strength = struggleStrength(captive.width, eater.width);
+  captive.struggle = Math.min(1, captive.struggle + deltaTime * CANNON.STRUGGLE_RATE * strength * (away + CANNON.STRUGGLE_SIDEWAYS * Math.abs(side)));
+  eater.facing += deltaTime * CANNON.AIM_TWIST * strength * side;
+  if (captive.struggle >= 1) {
+    eater.gulping = "";
+    captive.capturedBy = "";
+    captive.struggle = 0;
+    captive.recaptureAfter = now + CANNON.RECAPTURE_MS;
+    captive.skid(ax, ay, CANNON.BREAK_PUSH);
+    return false;
+  }
+  // Held right at the mouth, turning with it
+  const tx = mouthX + Math.cos(eater.facing) * captive.width * 0.45;
+  const ty = mouthY + Math.sin(eater.facing) * captive.width * 0.45;
+  captive.nudge(tx - cx, ty - cy, state.worldWidth, state.worldHeight);
+  return true;
+}
+
+/** Its captor stopped inhaling: held long enough (and not stunned), the captive is launched along its facing; otherwise it's just let go */
+export function letGo(state: GameState, eater: PlayerSchema, now: number): void {
+  const captive = state.players.get(eater.gulping);
+  eater.gulping = "";
+  if (!captive || captive.capturedBy !== eater.sessionId) return;
+  captive.capturedBy = "";
+  captive.struggle = 0;
+  if (eater.state === PLAYER_STATE.ALIVE && !eater.stunned && captive.state === PLAYER_STATE.ALIVE && now - eater.captureStartedAt >= CANNON.LAUNCH_MIN_MS) {
+    const speed = launchSpeed(eater.width);
+    captive.launch(now, Math.cos(eater.facing) * speed, Math.sin(eater.facing) * speed, eater.sessionId, CANNON.MAX_MS);
+  } else {
+    captive.recaptureAfter = now + CANNON.RECAPTURE_MS;
+  }
 }

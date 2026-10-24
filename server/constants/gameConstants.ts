@@ -419,6 +419,39 @@ export const CAMERA = {
   ZOOM_OMEGA: 2.5, // ...zoom on a softer one
 } as const;
 
+/**
+ * Capture and the living cannonball. A creature pulled to the mouth of one big enough to swallow it is
+ * caught and held there briefly: still inhaling when the hold ends, the captor swallows it; letting go
+ * first launches it along the captor's facing, a projectile that can steer a little but can't stop or
+ * turn around. The captive struggles meanwhile (pushing away fills a meter, faster the closer it is in
+ * size; pushing sideways twists the captor's aim). A flying creature that hits another knocks more of
+ * its gems loose than a normal attack would (a giant spills the most), both bounce, the target is
+ * briefly stunned, and the flier survives to grab what spilled.
+ */
+export const CANNON = {
+  HOLD_MS: 1250, // a capture lasts at most this long: still inhaling then, the captive is swallowed
+  LAUNCH_MIN_MS: 120, // let go after holding at least this long to launch (sooner: just released)
+  STRUGGLE_RATE: 1.6, // a full-strength push away fills the break-free meter at this rate a second...
+  STRUGGLE_MIN: 0.3, // ...scaled by the captive's size against its captor's (just swallowable: full), never below this
+  STRUGGLE_SIDEWAYS: 0.4, // sideways pushing counts this much toward breaking free...
+  AIM_TWIST: 1.4, // ...and twists the captor's aim up to this many radians a second
+  BREAK_PUSH: 70, // breaking free pushes you this far from the mouth...
+  RECAPTURE_MS: 1500, // ...and you can't be caught again for this long
+  SPEED: 760, // launch speed (units a second)...
+  SPEED_PER_WIDTH: 2.2, // ...plus this per unit of the captor's width
+  DRAG: 1.1, // a flight loses this share of its speed a second...
+  STOP_SPEED: 140, // ...and ends below this speed...
+  MAX_MS: 1400, // ...or after this long
+  STEER: 520, // a flier's sideways steering (units a second squared): it bends the path, never speeds it up, stops or reverses it
+  LAUNCHER_GRACE_MS: 300, // a projectile can't hit its launcher this soon
+  IMPACT_BASE: 3, // a hit knocks this many of the target's gems loose...
+  IMPACT_SHARE: 0.16, // ...plus this share of them, times how fast the hit was against IMPACT_SPEED_REF (a giant spills the most)
+  IMPACT_SPEED_REF: 900,
+  IMPACT_STUN_MS: 450, // the target is stunned this long...
+  TARGET_SHOVE: 120, // ...and knocked this far along the hit; the flier bounces back off it
+  BOUNCE: 0.35, // keeping this share of its speed
+} as const;
+
 export const SHIFT = {
   ENABLED: false, // arena shifts (the red zone, the shrinking floor and its jackpot) are switched off for now; true brings them back (tests turn them on per world)
   GRID: 10, // shapes are drawn on a 10x10 grid of tiles (420 units each)
@@ -452,7 +485,8 @@ export const SHIFT = {
  * never turns) pulls in loose gems and nearby players, and rips gems out of anyone in its inner
  * zone, one by one; each flies in, crosses the turbine and fires out of the exhaust, which sweeps
  * slowly back and forth across the far side, landing 400-700 units away as an ordinary gem. The
- * exhaust's wind pushes players too, small ones most. Gems are moved around, never lost.
+ * exhaust's wind pushes players too, small ones most. Gems are moved around, never lost. A creature
+ * that reaches the intake is pulled through, loses a share of its gems, and is fired out of the exhaust.
  */
 export const TURBINE = {
   ENABLED: true,
@@ -464,8 +498,11 @@ export const TURBINE = {
   STRIP_RATE: 3, // ...this many a second...
   STRIP_PER_ROOT: 1.5, // ...plus this times the square root of their weight (giants lose them fastest)
   GEM_PULL: 480, // units a second loose gems are pulled at near the intake (a quarter of that at the edge)
-  PLAYER_PULL: 120, // units a second players are pulled at right by the intake (times SUCTION), easing to nothing at the edge...
-  SUCTION_SIZE: 60, // ...as if by a creature this wide (newborns are dragged hard, giants can walk away)
+  PULL_RATIO: 1.35, // creatures are pulled at this times their own top speed right at the intake, easing (squared) to nothing at its reach: from about 75 units in, nobody outwalks it (the point of no return)
+  THROUGH_GAP: 8, // a creature this close to the intake is pulled through it...
+  THROUGH_SHARE: 0.25, // ...losing this share of its gems on the way (giants lose the most)...
+  THROUGH_MIN: 1, // ...and at least this many...
+  EXHAUST_LAUNCH: 1150, // ...then fired out of the exhaust this fast, flying (see CANNON)
   TRAVEL_SPEED: 700, // units a second a stolen gem flies into the intake...
   MIN_TRAVEL_MS: 200,
   INSIDE_MS: 450, // ...then it crosses the turbine...
@@ -477,7 +514,8 @@ export const TURBINE = {
   EXHAUST_CYCLE_MS: 10000, // ...left, right and back again this often
   EXHAUST_REACH: 650, // its wind reaches this far...
   EXHAUST_ARC: 0.38, // ...within this angle either side of where it points...
-  WIND: 360, // ...pushing a newborn this fast right at the nozzle (divided by the square root of weight), easing to nothing at the end
+  WIND: 360, // ...pushing a newborn this fast right at the nozzle (see WIND_WEIGHT_POWER), easing to nothing at the end
+  WIND_WEIGHT_POWER: 0.3, // ...divided by weight to this power, so giants get shoved too (about a third as hard at 100 gems)
   WARNING_MS: 3000, // a new turbine shows where it's coming for this long before it switches on...
   LIFE_MIN_MS: 60000, // ...runs this long...
   LIFE_MAX_MS: 90000,
@@ -585,6 +623,7 @@ export const GAME_CONSTANTS = {
   CORE,
   LATCH,
   CAMERA,
+  CANNON,
   CANVAS,
   PLAYER,
   OBSTACLE,
