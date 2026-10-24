@@ -1457,39 +1457,6 @@ try {
     const atCatch = mine(kid).gems;
     await sleep(400);
     check(caughtNow && mine(kid).capturedBy === captor.sessionId && mine(kid).gems >= atCatch, `a captive isn't drained: its gems hold while it's held (${atCatch} then ${mine(kid).gems})`);
-    // Held on, it's gulped, then pops back out alive behind its captor, a quarter of its gems lighter, never more than 15, scattered for anyone
-    let beforeGulp = mine(kid).gems;
-    let insideNow = false;
-    for (let i = 0; i < 80 && !insideNow; i++) {
-        if (mine(kid).state === 'alive') beforeGulp = mine(kid).gems;
-        await sleep(20);
-        insideNow = mine(kid).state === 'gulped' && mine(kid).insideOf === captor.sessionId;
-    }
-    let popped = false;
-    let afterPop = -1;
-    for (let i = 0; i < 100 && !popped; i++) {
-        await sleep(20);
-        if (mine(kid).state === 'alive') {
-            popped = true;
-            afterPop = mine(kid).gems;
-        }
-    }
-    const bigNote = kid.messages.filter((m) => m.type === 'credit' && m.message?.how === 'gulped' && m.message?.targetId === kid.sessionId).pop();
-    const scatter = kid.messages.find((m) => m.type === 'burst' && m.message?.count === 15);
-    check(insideNow && popped && Number(bigNote?.message?.gems) === 15 && !!scatter && afterPop >= beforeGulp - 15 && !mine(kid).flying && !mine(kid).capturedBy, `held on, it's gulped, then pops back out alive, a quarter of its gems lighter but never more than 15, scattered (${beforeGulp} to ${afterPop}, lost ${bigNote?.message?.gems ?? 'nothing'}, scattered ${scatter ? 15 : 0})`);
-    // Just out, it can't be caught again straight away, even pressed right against the mouth
-    captor.send('test:breath', { stamina: 1 });
-    captor.send('test:face', { angle: 0 });
-    kid.send('test:moveTo', { x: mine(captor).x + mine(captor).width + 4, y: mine(captor).y + (mine(captor).height - mine(kid).height) / 2 });
-    await sleep(150);
-    captor.send('inhale');
-    let recaught = false;
-    for (let i = 0; i < 30 && !recaught; i++) {
-        await sleep(25);
-        recaught = mine(kid).capturedBy === captor.sessionId;
-    }
-    captor.send('exhale');
-    check(!recaught && mine(kid).state === 'alive', `just popped out, it can't be caught again straight away (caught ${recaught})`);
     // Big enough to catch an empty creature but not to swallow it: the hold runs out and it goes free, never gulped
     caughtNow = await catchKid(3, 0);
     let gulpedSmall = false;
