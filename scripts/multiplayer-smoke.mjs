@@ -400,14 +400,31 @@ try {
     await sleep(150);
     bob.send('test:moveTo', { x: 700 + me().width + 20, y: 1750 + (me().height - bobState().height) / 2 });
     await sleep(1100); // a breath taken just before needs a moment to come back
-    const aliceBeforeGulp = me().gems;
     alice.send('inhale');
     await sleep(150);
     const heldNotEaten = bobState().state === 'alive' && me().gulping === bob.sessionId;
-    await sleep(1600); // held through the whole capture (CANNON.HOLD_MS); letting go sooner would launch Bob
+    const bobCaught = bobState().gems;
+    // Held there (and pinned), it's gulped: into Alice and, a moment later, back out alive, a quarter of its gems lighter
+    let bobGulped = false;
+    let bobOut = false;
+    let bobDied = false;
+    let bobAfter = -1;
+    for (let i = 0; i < 120 && !bobOut; i++) {
+        await sleep(25);
+        const s = bobState().state;
+        if (s === 'gulped') bobGulped = true;
+        else if (s === 'dead') bobDied = true;
+        else if (bobGulped && s === 'alive') {
+            bobOut = true;
+            bobAfter = bobState().gems;
+        }
+    }
     alice.send('exhale');
     check(heldNotEaten, 'a much smaller creature is pulled to your mouth and held there, not eaten at once');
-    check(bobState().state !== 'alive' && me().gems >= aliceBeforeGulp, `held there (and pinned), it's swallowed whole, the swallower keeping a share of its gems (Alice ${aliceBeforeGulp} then ${me().gems}, Bob ${bobState().state})`);
+    const bobPenalty = Math.min(15, Math.ceil(bobCaught * 0.25));
+    const gulpNote = alice.messages.filter((m) => m.type === 'credit' && m.message?.how === 'gulped' && m.message?.targetId === bob.sessionId).pop();
+    // (the server says what it lost; it pops out onto whatever gems lie there and may pick a stray one up the same instant)
+    check(bobGulped && bobOut && !bobDied && Number(gulpNote?.message?.gems) === bobPenalty && bobAfter >= bobCaught - bobPenalty, `held there (and pinned), it's gulped, then pops back out alive, a quarter of its gems lighter (Bob ${bobCaught} to ${bobAfter}, lost ${gulpNote?.message?.gems ?? 'nothing'}, gulped ${bobGulped}, out ${bobOut}, knocked out ${bobDied})`);
     await waitFor(() => bobState().state === 'alive' && !bobState().spawnProtected, 6000, 'Bob is back');
     // ...but running straight away breaks free (robbed on the way out, but not swallowed)
     bob.send('test:setGems', { count: 30 });
@@ -576,8 +593,7 @@ try {
     alice.send('exhale');
     await sleep(150);
     check(giantHad - bobState().gems >= 2 && Math.abs(bobState().x - giantFrom) < 20, `a small creature can rob a giant, but barely budges its body (${giantHad - bobState().gems} stolen, moved ${Math.round(Math.abs(bobState().x - giantFrom))})`);
-    // Take someone's last gem and they're drained: gone until they come back (close enough in size that it
-    // never turns into a swallow: drained small enough, it would)
+    // Stealing never takes someone's last gem: drained down to one, they stay in the world, weak but alive
     await sleep(1100);
     alice.send('test:setGems', { count: 1 });
     bob.send('test:setGems', { count: 3 });
@@ -585,15 +601,16 @@ try {
     bob.send('test:moveTo', { x: 700 + me().width + 30, y: 1750 + (me().height - bobState().height) / 2 });
     await sleep(250);
     alice.messages.length = 0;
+    const bobLast = bobState().gems;
     alice.send('inhale');
     await sleep(1500);
     alice.send('exhale');
     const drainedNote = alice.messages.find((m) => m.type === 'credit' && m.message?.how === 'drained');
     const vanished = alice.messages.some((m) => m.type === 'vanish');
-    check(bobState().state !== 'alive' && !!drainedNote && vanished, `steal someone's last gem and they shrink away, out until they come back (${bobState().state})`);
+    check(bobState().state === 'alive' && bobState().gems === 1 && bobLast > 1 && !drainedNote && !vanished, `stealing never takes someone's last gem: drained to one, they stay in the world (Bob ${bobLast} to ${bobState().gems}, ${bobState().state})`);
     await waitFor(() => bobState().state === 'alive' && !bobState().spawnProtected, 6000, 'Bob is back');
     await sleep(300);
-    // Someone with no gems left can be sucked up by anyone, even a creature barely bigger: held at the mouth, they go down
+    // Someone with no gems isn't easy prey: a creature barely bigger can't catch it (that takes 1.3x its width), let alone swallow it
     alice.send('test:setGems', { count: 1 });
     bob.send('test:setGems', { count: 0 });
     await sleep(250);
@@ -605,7 +622,7 @@ try {
     alice.send('inhale');
     await sleep(1500);
     alice.send('exhale');
-    check(bobState().state !== 'alive', `a creature with no gems can be sucked up by anyone, even someone barely bigger (Bob ${bobState().state})`);
+    check(bobState().state === 'alive' && !bobState().capturedBy && me().width < bobState().width * 1.3, `a creature with no gems isn't caught by someone barely bigger: catching takes 1.3x its width (Bob ${bobState().state}, widths ${me().width.toFixed(1)} and ${bobState().width.toFixed(1)})`);
     await waitFor(() => bobState().state === 'alive' && !bobState().spawnProtected, 6000, 'Bob is back');
     await sleep(300);
     // Turning right around takes a moment, and much longer for a giant (mass: slower to start turning, and slower at it)
@@ -1322,11 +1339,20 @@ try {
     kid.send('test:moveTo', { x: 500 + mine(captor).width + 4, y: lineY - mine(kid).width / 2 });
     captor.send('test:face', { angle: 0 });
     await sleep(300);
-    const captorHad = mine(captor).gems;
     captor.send('inhale');
-    await sleep(2000);
-    check(mine(kid).state !== 'alive' || mine(captor).gems > captorHad, `held through the whole capture, the captive is swallowed (${mine(kid).state})`);
+    let kidGulped = false;
+    for (let i = 0; i < 80 && !kidGulped; i++) {
+        await sleep(25);
+        kidGulped = mine(kid).state === 'gulped' && mine(kid).insideOf === captor.sessionId;
+    }
+    // (letting go now launches nothing: the swallow already decided this capture)
     captor.send('exhale');
+    let kidOut = false;
+    for (let i = 0; i < 80 && !kidOut; i++) {
+        await sleep(25);
+        kidOut = mine(kid).state === 'alive';
+    }
+    check(kidGulped && kidOut && !mine(kid).flying, `held through the whole capture, the captive is gulped, then pops back out alive, never launched as well (gulped ${kidGulped}, out ${kidOut}, flying ${mine(kid).flying})`);
     await sleep(2600);
     captor.send('test:setGems', { count: 30 });
     kid.send('test:setGems', { count: 14 });
@@ -1392,13 +1418,55 @@ try {
     check(caughtNow && arcHidden && droppedHarmlessly(), `too small to swallow, a captor holds its captive until the hold runs out, then it goes free, with no swallow arc (caught ${caughtNow}, arc hidden ${arcHidden})`);
     caughtNow = await catchKid(0, 0);
     // (a stray gem picked up on the way makes the captor bigger, and then the catch is fair)
-    check(!caughtNow || mine(captor).width > mine(kid).width, `an empty creature can only be caught by a bigger one, never one its own size (caught ${caughtNow}, widths ${mine(captor).width.toFixed(1)} and ${mine(kid).width.toFixed(1)})`);
+    check(!caughtNow || mine(captor).width >= mine(kid).width * 1.3, `an empty creature is only caught by a mouth 1.3x its width, never one its own size (caught ${caughtNow}, widths ${mine(captor).width.toFixed(1)} and ${mine(kid).width.toFixed(1)})`);
     // A press cut short (slid off the button, Esc, a cancelled touch) never launches
     caughtNow = await catchKid(60, 0);
     await sleep(300);
     captor.send('cancel');
     await sleep(200);
     check(caughtNow && droppedHarmlessly(), `a press cut short (slid off, Esc, a cancelled touch) drops the captive harmlessly, no launch (caught ${caughtNow})`);
+
+    // ---- Every route through a capture leaves the captive alive: caught, shot, gulped and spat back out, or escaped
+    const kidStates = new Set();
+    const watchKid = setInterval(() => { const k = mine(kid); if (k) kidStates.add(k.state); }, 20);
+    // Caught, it isn't drained any more: whatever it holds, it keeps while it's held
+    captor.send('cancel');
+    kid.send('steer', { x: 0, y: 0 });
+    for (let i = 0; i < 80 && (mine(kid).flying || mine(kid).capturedBy); i++) await sleep(50);
+    for (let i = 0; i < 120 && (mine(captor).state !== 'alive' || mine(kid).state !== 'alive'); i++) await sleep(50);
+    captor.send('test:protect', { ms: 0 });
+    kid.send('test:protect', { ms: 0 });
+    captor.send('test:setGems', { count: 700 });
+    kid.send('test:setGems', { count: 60 });
+    captor.send('test:breath', { stamina: 1 });
+    await sleep(1700);
+    captor.send('test:moveTo', { x: 500, y: lineY - mine(captor).width / 2 });
+    captor.send('test:face', { angle: 0 });
+    await sleep(250);
+    // (a captive this big is slow to be drawn in: set it right where the hold pins it, so the swallow has time to finish)
+    const holdX = 500 + mine(captor).width / 2 + mine(captor).width * 0.3 + mine(kid).width * 0.45;
+    kid.send('test:moveTo', { x: holdX - mine(kid).width / 2, y: lineY - mine(kid).width / 2 });
+    await sleep(250);
+    kid.messages.length = 0;
+    captor.send('inhale');
+    caughtNow = false;
+    for (let i = 0; i < 80 && !caughtNow; i++) {
+        await sleep(25);
+        caughtNow = mine(kid).capturedBy === captor.sessionId;
+    }
+    const atCatch = mine(kid).gems;
+    await sleep(400);
+    check(caughtNow && mine(kid).capturedBy === captor.sessionId && mine(kid).gems >= atCatch, `a captive isn't drained: its gems hold while it's held (${atCatch} then ${mine(kid).gems})`);
+    // Big enough to catch an empty creature but not to swallow it: the hold runs out and it goes free, never gulped
+    caughtNow = await catchKid(3, 0);
+    let gulpedSmall = false;
+    for (let i = 0; i < 80; i++) {
+        await sleep(25);
+        if (mine(kid).state === 'gulped') gulpedSmall = true;
+    }
+    check(caughtNow && !gulpedSmall && droppedHarmlessly(), `an empty captive is no exception: a mouth too small to swallow it (under 2x) holds it, then lets it go (caught ${caughtNow}, gulped ${gulpedSmall})`);
+    clearInterval(watchKid);
+    check(!kidStates.has('dead'), `none of it knocked the kid out (seen: ${[...kidStates].join(', ')})`);
 
     // Struggling matters: a small captive that slips sideways (reacting at phone speed, 350 ms) survives a
     // much bigger captor even while it keeps re-aiming at it; one that just freezes is swallowed

@@ -190,7 +190,7 @@ export class BotBrain {
 
   /**
    * Someone worth going after: a creature in sight with gems to rob, better still one small enough
-   * to swallow (or with no gems left), and the leader most of all; richer and closer is better.
+   * to catch, and the leader most of all; richer and closer is better.
    * Never one big enough to swallow the bot. Bolder bots hunt farther.
    */
   private huntTarget(bot: PlayerSchema, world: GameState): PlayerSchema | null {
@@ -205,7 +205,7 @@ export class BotBrain {
       if (other.width >= bot.width * INHALE.EAT_RATIO) return;
       const distance = Math.hypot(other.x + other.width / 2 - cx, other.y + other.height / 2 - cy) - other.width / 2;
       if (distance > range) return;
-      const edible = other.gems <= 0 || other.width * INHALE.EAT_RATIO <= bot.width;
+      const edible = other.width * INHALE.EAT_RATIO <= bot.width;
       if (!edible && other.gems < 3) return;
       const appeal = ((edible ? 2 : 1) * (other === leader ? 1.5 : 1) * (other.gems + 5)) / (distance + 100);
       if (appeal > bestAppeal) {

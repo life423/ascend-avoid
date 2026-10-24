@@ -104,6 +104,8 @@ class PlayerSchema extends Schema {
   /** Caught by a captor big enough to swallow it, and how far that swallow has got, 0 to 1 (synced, for the arc both players see) */
   swallowable: boolean;
   swallowing: number;
+  /** Gulped: whose insides it's riding in until it pops back out (synced; "" when it's out in the world) */
+  insideOf: string;
   /** Server-only: smoothed airflow quality on each creature, when the latch began and when it last slipped, its score, whether it owns the focused connection, and the aim it adds */
   airQuality = new Map<string, number>();
   latchSince = 0;
@@ -137,6 +139,11 @@ class PlayerSchema extends Schema {
   captureDistance = 0;
   /** When the button was last let go (a deliberate release: the only one that launches a captive) */
   releasedAt = 0;
+  /** Gulped: when it pops back out, and the gems it loses then (see CANNON.SWALLOW_PENALTY_SHARE) */
+  expelAt = 0;
+  gulpPenalty = 0;
+  /** Digesting a creature it gulped: its mouth is full until then (no inhaling) */
+  digestUntil = 0;
   /** This flight has already hit someone (one damaging hit per launch); hit by a flier, immune to another until then */
   flightHit = false;
   impactImmuneUntil = 0;
@@ -167,6 +174,7 @@ class PlayerSchema extends Schema {
     this.latchQuality = 0;
     this.flying = false;
     this.capturedBy = "";
+    this.insideOf = "";
     this.struggle = 0;
     this.swallowable = false;
     this.swallowing = 0;
@@ -402,6 +410,33 @@ class PlayerSchema extends Schema {
     this.sliding = false;
   }
 
+  /** Swallowed whole: gulped into `by` (riding along inside it, out of the world) until `expelAt`; it loses `penalty` gems when it pops back out */
+  gulp(by: string, now: number, forMs: number, penalty: number): void {
+    this.state = PLAYER_STATE.GULPED;
+    this.insideOf = by;
+    this.expelAt = now + forMs;
+    this.gulpPenalty = penalty;
+    this.capturedBy = "";
+    this.struggle = 0;
+    this.swallowable = false;
+    this.swallowing = 0;
+    this.recovering = false;
+    this.stopInhale(now);
+    this.dropLatch();
+    this.stopSliding();
+  }
+
+  /** Popped back out, alive, centred at (cx, cy), and safe from being caught again for `protectMs` */
+  expel(cx: number, cy: number, now: number, protectMs: number, worldWidth: number, worldHeight: number): void {
+    this.state = PLAYER_STATE.ALIVE;
+    this.insideOf = "";
+    this.expelAt = 0;
+    this.gulpPenalty = 0;
+    this.x = Math.max(0, Math.min(worldWidth - this.width, cx - this.width / 2));
+    this.y = Math.max(0, Math.min(worldHeight - this.height, cy - this.height / 2));
+    this.recaptureAfter = now + protectMs;
+  }
+
   /** The flight is over */
   land(): void {
     this.flying = false;
@@ -439,7 +474,8 @@ class PlayerSchema extends Schema {
 
   /** Start inhaling (for up to `forMs`, INHALE.MAX_MS for players): you move as usual, and your mouth turns toward your aim */
   startInhale(now: number, forMs: number = Infinity): void {
-    if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering || this.stunned || this.flying || this.capturedBy) return;
+    // (a mouth full of a creature it gulped can't inhale until that pops back out)
+    if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering || this.stunned || this.flying || this.capturedBy || now < this.digestUntil) return;
     this.breathe(now);
     if (this.stamina < INHALE.MIN_BREATH) return;
     this.inhaling = true;
@@ -579,6 +615,7 @@ type("string")(PlayerSchema.prototype, "capturedBy");
 type("number")(PlayerSchema.prototype, "struggle");
 type("boolean")(PlayerSchema.prototype, "swallowable");
 type("number")(PlayerSchema.prototype, "swallowing");
+type("string")(PlayerSchema.prototype, "insideOf");
 type("string")(PlayerSchema.prototype, "robbing");
 type("number")(PlayerSchema.prototype, "robbedTotal");
 type("boolean")(PlayerSchema.prototype, "isBot");

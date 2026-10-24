@@ -140,6 +140,7 @@ export interface SyncedPlayer {
     struggle: number
     swallowable: boolean
     swallowing: number
+    insideOf: string
     robbing: string
     robbedTotal: number
     isBot: boolean

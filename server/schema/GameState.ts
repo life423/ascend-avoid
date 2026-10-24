@@ -254,7 +254,8 @@ class GameState extends Schema {
 
     this.players.forEach((player) => {
       if (player.state !== PLAYER_STATE.ALIVE) {
-        if (now >= player.respawnAt) this.spawn(player, now);
+        // (gulped, it isn't out: it pops back out of its swallower, see updateGulps)
+        if (player.state !== PLAYER_STATE.GULPED && now >= player.respawnAt) this.spawn(player, now);
         return;
       }
       const fromX = player.x;

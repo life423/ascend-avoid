@@ -5,7 +5,7 @@ import { moveSpeed } from "../game/movement.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 
 import { CANNON } from "../constants/gameConstants.js";
-import { canSwallowWhole, holdFirmness, launchAngle, launchSpeed } from "../game/cannon.js";
+import { canCatch, canSwallowWhole, holdFirmness, launchAngle, launchSpeed, swallowPenalty } from "../game/cannon.js";
 
 const { PLAYER_STATE, INHALE, LATCH } = GAME_CONSTANTS;
 import { sprayGems } from "./gems.js";
@@ -28,6 +28,7 @@ export function knockOutWithGems(state: GameState, player: PlayerSchema, now: nu
  */
 export function updateInhales(state: GameState, now: number, deltaTime: number) : void {
   const cone = Math.cos((INHALE.ARC * Math.PI) / 180);
+  updateGulps(state, now);
   state.players.forEach((eater) => {
     if (!eater.inhaling || eater.state !== PLAYER_STATE.ALIVE) {
       if (eater.stealingFrom) endTheft(state, eater, now);
@@ -100,7 +101,7 @@ export function updateInhales(state: GameState, now: number, deltaTime: number) 
       const d = Math.hypot(px - mouthX, py - mouthY);
       // A capture needs the size and the prey at the mouth, in front of it: pressed against the mouth counts
       // (body contact smothers the airflow, but it mustn't stop a catch; swallowing has its own test)
-      if (now >= prey.recaptureAfter && canSwallow(state, eater, prey) && d <= eater.width * INHALE.GULP_REACH + prey.width / 2 && d < heldAt && inFrontOf(eater, px, py)) {
+      if (now >= prey.recaptureAfter && canCatch(eater.width, prey.width) && d <= eater.width * INHALE.GULP_REACH + prey.width / 2 && d < heldAt && inFrontOf(eater, px, py)) {
         held = prey;
         heldAt = d;
       }
@@ -118,7 +119,7 @@ export function updateInhales(state: GameState, now: number, deltaTime: number) 
       // front, so slipping sideways out of the airflow does
       const speed = moveSpeed(prey.width);
       let pullSpeed = Math.min(strength, INHALE.PREY_PULL_CAP * speed);
-      if (close > 0 && canSwallow(state, eater, prey)) {
+      if (close > 0 && canCatch(eater.width, prey.width)) {
         const overpower = speed * (INHALE.PREY_PULL_CAP + (INHALE.PREY_PULL_CLOSE - INHALE.PREY_PULL_CAP) * Math.sqrt(close)) * alignment;
         pullSpeed = Math.max(pullSpeed, overpower);
       }
@@ -131,12 +132,8 @@ export function updateInhales(state: GameState, now: number, deltaTime: number) 
     const captive = eater.gulping ? state.players.get(eater.gulping) : undefined;
     if (captive && captive.capturedBy === eater.sessionId && captive.state === PLAYER_STATE.ALIVE) {
       if (holdCaptive(state, eater, captive, mouthX, mouthY, now, deltaTime)) {
-        if (eater.swallowHeld >= CANNON.SWALLOW_MS && canSwallowWhole(eater.width, captive.width, captive.gems)) {
+        if (eater.swallowHeld >= CANNON.SWALLOW_MS && canSwallowWhole(eater.width, captive.width)) {
           eater.gulping = "";
-          captive.capturedBy = "";
-          captive.struggle = 0;
-          captive.swallowable = false;
-          captive.swallowing = 0;
           swallow(state, eater, captive, now);
         } else if (state.time >= eater.gulpEndsAt) {
           // The hold is over without a swallow: the captive goes free
@@ -155,13 +152,22 @@ export function updateInhales(state: GameState, now: number, deltaTime: number) 
         caught.capturedBy = eater.sessionId;
         caught.captureDistance = heldAt;
         caught.struggle = 0;
-        caught.swallowable = canSwallowWhole(eater.width, caught.width, caught.gems);
+        caught.swallowable = canSwallowWhole(eater.width, caught.width);
         caught.swallowing = 0;
         caught.stopInhale(now);
         caught.dropLatch();
+        // The capture decides what happens to it now: any theft from it ends here
+        eater.stealShares.delete(caught.sessionId);
+        if (eater.stealingFrom === caught.sessionId) endTheft(state, eater, now);
       }
     }
-    steal(state, eater, now, deltaTime);
+    // A mouth holding a captive drains nobody (the capture decides what happens to it); an empty one robs
+    if (eater.gulping) {
+      if (eater.stealingFrom) endTheft(state, eater, now);
+      if (eater.robbing) eater.robbing = "";
+    } else {
+      steal(state, eater, now, deltaTime);
+    }
   });
 }
 
@@ -179,12 +185,6 @@ export function fadeLocks(_state: GameState, eater: PlayerSchema, keep: Set<stri
     if (left <= 0) eater.heldFor.delete(id);
     else eater.heldFor.set(id, left);
   }
-}
-
-/** Whether `eater` is big enough to swallow `prey` whole: INHALE.EAT_RATIO times as wide */
-export function canSwallow(_state: GameState, eater: PlayerSchema, prey: PlayerSchema) : boolean {
-  // ...or it has no gems left to hold it together: then anyone can suck it up
-  return (prey.gems <= 0 && eater.width > prey.width) || prey.width * INHALE.EAT_RATIO <= eater.width;
 }
 
 /**
@@ -254,13 +254,13 @@ export function stealStrength(_state: GameState, thief: PlayerSchema, victim: Pl
  * sits in the cone, and grows only with the square root of how many it catches, so a big cone
  * covers more creatures without draining each one as fast. A victim's share drains at INHALE.STEAL_RATE a second,
  * whatever either one's size (mass resists being pulled, not being robbed). Two creatures inhaling
- * each other both steal at once. Take someone's last gem and they're drained: gone until they respawn.
+ * each other both steal at once. Stealing never takes a creature's last gem (INHALE.DRAIN_FLOOR): drained, it's weak, never gone.
  */
 export function steal(state: GameState, thief: PlayerSchema, now: number, deltaTime: number) : void {
   const victims: { victim: PlayerSchema; weight: number }[] = [];
   state.players.forEach((other) => {
     // (a captive isn't drained: the capture decides what happens to it)
-    if (other === thief || other.gems <= 0 || other.capturedBy || other.flying) return;
+    if (other === thief || other.gems <= INHALE.DRAIN_FLOOR || other.capturedBy || other.flying) return;
     const weight = stealWeight(state, thief, other);
     if (weight > 0) victims.push({ victim: other, weight });
   });
@@ -278,11 +278,8 @@ export function steal(state: GameState, thief: PlayerSchema, now: number, deltaT
   // Catching several at once pays more than one, though far less than one each
   const budget = Math.sqrt(victims.length);
   for (const { victim, weight } of victims) {
-    // Whether the thief could catch this victim at its real size, before its last gem goes (drained empty it
-    // shrinks to a newborn; that mustn't turn a near-equal into prey)
-    const catchable = canSwallow(state, thief, victim);
     let progress = (thief.stealShares.get(victim.sessionId) ?? 0) + deltaTime * INHALE.STEAL_RATE * budget * (weight / total) * stealStrength(state, thief, victim) * drainRamp(thief.heldFor.get(victim.sessionId) ?? 0) * pressureBuild(thief.heldFor.get(victim.sessionId) ?? 0, thief.width) * scaleDrain(thief.width, victim.width) * (LATCH.OVERLAP_DRAIN_MIN + (1 - LATCH.OVERLAP_DRAIN_MIN) * cleanAir(state.bodyOf(thief), state.bodyOf(victim)));
-    while (progress >= 1 && victim.gems > 0) {
+    while (progress >= 1 && victim.gems > INHALE.DRAIN_FLOOR) {
       progress -= 1;
       victim.setGems(victim.gems - 1, state.worldWidth, state.worldHeight);
       thief.setGems(thief.gems + 1, state.worldWidth, state.worldHeight);
@@ -290,35 +287,8 @@ export function steal(state: GameState, thief: PlayerSchema, now: number, deltaT
       victim.robbedTotal += 1;
       if (victim.sessionId === thief.stealingFrom) thief.stolenRun += 1;
     }
-    thief.stealShares.set(victim.sessionId, progress);
-    // Drained empty by something that could catch it, it isn't knocked out: the physical capture decides
-    if (victim.gems <= 0 && victim.state === PLAYER_STATE.ALIVE && !catchable) drain(state, victim, now, thief);
+    thief.stealShares.set(victim.sessionId, Math.min(progress, 1));
   }
-}
-
-/** Lost their last gem (robbed, or fed to a turbine): they shrink away to nothing and are out until they respawn */
-export function drain(state: GameState, victim: PlayerSchema, now: number, thief?: PlayerSchema) : void {
-  state.onEvent?.("vanish", {
-    id: victim.sessionId,
-    x: Math.round(victim.x + victim.width / 2),
-    y: Math.round(victim.y + victim.height / 2),
-    size: Math.round(victim.width),
-    index: victim.playerIndex,
-    facing: Math.round(victim.facing * 100) / 100,
-  });
-  victim.knockOut(now);
-  if (!thief) {
-    // Whoever shoved them in gets the credit
-    state.credit(victim, "turbine", now);
-    return;
-  }
-  const primary = thief.stealingFrom === victim.sessionId;
-  const gems = primary ? thief.stolenRun : 0;
-  if (primary) {
-    thief.stolenRun = 0;
-    endTheft(state, thief, now);
-  }
-  state.credit(victim, "drained", now, thief.sessionId, { gems });
 }
 
 /** A run of stealing ends (or switches to someone else): a big one gets a banner and a line in the feed */
@@ -330,15 +300,60 @@ export function endTheft(state: GameState, thief: PlayerSchema, now: number, nex
   if (thief.stealingFrom !== next) thief.stealingFrom = next;
 }
 
-/** Swallowed whole: knocked out; the eater keeps a share of their gems (CANNON.SWALLOW_KEEP) and the rest spray out for anyone */
+/**
+ * Swallowed whole: gulped, not knocked out. The captive rides inside its swallower for CANNON.GULP_MS (nothing in
+ * the world can touch it, and its swallower's mouth is full), then pops back out alive behind it, a share of its
+ * gems lighter (SWALLOW_PENALTY_SHARE, at most SWALLOW_PENALTY_MAX), scattered there for anyone, and safe from
+ * being caught again for EXPEL_PROTECT_MS. One outcome per capture: once gulped, nothing can launch it.
+ */
 export function swallow(state: GameState, eater: PlayerSchema, prey: PlayerSchema, now: number) : void {
-  const gems = prey.gems;
-  const kept = Math.round(gems * CANNON.SWALLOW_KEEP);
-  if (kept > 0) eater.setGems(eater.gems + kept, state.worldWidth, state.worldHeight);
-  if (gems - kept > 0) sprayGems(state, prey.x + prey.width / 2, prey.y + prey.height / 2, gems - kept, now, eater.sessionId);
-  prey.setGems(0, state.worldWidth, state.worldHeight);
-  prey.knockOut(now);
-  state.credit(prey, "ate", now, eater.sessionId, { gems });
+  const lost = swallowPenalty(prey.gems);
+  state.onEvent?.("vanish", {
+    id: prey.sessionId,
+    x: Math.round(prey.x + prey.width / 2),
+    y: Math.round(prey.y + prey.height / 2),
+    size: Math.round(prey.width),
+    index: prey.playerIndex,
+    facing: Math.round(prey.facing * 100) / 100,
+  });
+  prey.gulp(eater.sessionId, now, CANNON.GULP_MS, lost);
+  eater.digestUntil = now + CANNON.GULP_MS;
+  eater.stopInhale(now);
+  state.credit(prey, "gulped", now, eater.sessionId, { gems: lost });
+}
+
+/** Gulped creatures ride inside their swallower, and pop back out when their time is up (at once if it's gone, or down) */
+export function updateGulps(state: GameState, now: number) : void {
+  state.players.forEach((prey) => {
+    if (prey.state !== PLAYER_STATE.GULPED) return;
+    const eater = state.players.get(prey.insideOf);
+    if (!eater || eater.state !== PLAYER_STATE.ALIVE || now >= prey.expelAt) {
+      expel(state, eater ?? null, prey, now);
+      return;
+    }
+    prey.x = eater.x + eater.width / 2 - prey.width / 2;
+    prey.y = eater.y + eater.height / 2 - prey.height / 2;
+  });
+}
+
+/** Pops a gulped creature back out, alive: behind its swallower (away from its mouth), its lost gems scattered there */
+export function expel(state: GameState, eater: PlayerSchema | null, prey: PlayerSchema, now: number) : void {
+  const facing = eater ? eater.facing : prey.facing;
+  const bx = -Math.cos(facing);
+  const by = -Math.sin(facing);
+  const fromX = eater ? eater.x + eater.width / 2 : prey.x + prey.width / 2;
+  const fromY = eater ? eater.y + eater.height / 2 : prey.y + prey.height / 2;
+  const clear = (eater ? eater.width / 2 : 0) + prey.width / 2 + CANNON.EXPEL_GAP;
+  const cx = fromX + bx * clear;
+  const cy = fromY + by * clear;
+  const lost = prey.gulpPenalty;
+  prey.expel(cx, cy, now, CANNON.EXPEL_PROTECT_MS, state.worldWidth, state.worldHeight);
+  if (lost > 0) {
+    prey.setGems(Math.max(0, prey.gems - lost), state.worldWidth, state.worldHeight);
+    sprayGems(state, cx, cy, lost, now, prey.sessionId);
+  }
+  prey.skid(bx, by, CANNON.EXPEL_PUSH);
+  if (eater) eater.digestUntil = 0;
 }
 
 /**
@@ -393,7 +408,7 @@ function holdCaptive(state: GameState, eater: PlayerSchema, captive: PlayerSchem
     return false;
   }
   if (Math.hypot(nx - hx, ny - hy) <= Math.max(8, captive.width * CANNON.SUBDUED)) eater.swallowHeld += deltaTime * 1000;
-  captive.swallowable = canSwallowWhole(eater.width, captive.width, captive.gems);
+  captive.swallowable = canSwallowWhole(eater.width, captive.width);
   captive.swallowing = captive.swallowable ? Math.min(1, eater.swallowHeld / CANNON.SWALLOW_MS) : 0;
   return true;
 }
