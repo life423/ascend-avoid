@@ -95,6 +95,14 @@ test('touch can walk left while aiming the inhale up with the existing action co
 test('held touch aim survives capturing a real peer while walking sideways', async ({ page, hasTouch, baseURL }) => {
   test.skip(!hasTouch, 'touch capture transition');
   await start(page);
+  await page.evaluate(() => {
+    window.loadingPanels = 0;
+    const fill = CanvasRenderingContext2D.prototype.fillText;
+    CanvasRenderingContext2D.prototype.fillText = function(text, ...args) {
+      if (/^Loading:/.test(String(text))) window.loadingPanels++;
+      return fill.call(this, text, ...args);
+    };
+  });
   const roomId = await page.evaluate(() => window.game.currentGameMode.multiplayerManager.room.id);
   const peer = await new Client(baseURL.replace(/^http/, 'ws')).joinById(roomId, { name: 'Aim regression' });
   peer.onMessage('*', () => {});
@@ -117,6 +125,7 @@ test('held touch aim survives capturing a real peer while walking sideways', asy
     await page.waitForTimeout(700);
     const after = await position(page);
     expect(after.x).toBeLessThan(before.x - 15);
+    expect(await page.evaluate(() => window.loadingPanels)).toBe(0);
     expect(Math.abs(after.facing + Math.PI / 2)).toBeLessThan(.1);
     expect(await page.evaluate(() => !!window.game.currentGameMode.multiplayerManager.getLocalPlayer().gulping)).toBe(true);
     await page.screenshot({ path: test.info().outputPath('touch-loaded-aim.png') });
