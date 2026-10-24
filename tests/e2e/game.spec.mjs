@@ -9,6 +9,43 @@ function me(page) {
   });
 }
 
+/**
+ * Why your creature can't act right now, or 'ready'. The opening must be over (the controls are off
+ * while it plays). Your creature must be alive, and not caught in a mouth, flying, stunned, sliding or
+ * recovering (on the live server a bot can catch, launch or hit a test creature at any moment); and, to
+ * inhale, have a full breath, the breath meter's 'ready' (breath isn't synced: this reads the page's own
+ * copy, kept by the same rules as the server's; full is stricter than the server's minimum, so a ready
+ * creature can always start inhaling).
+ */
+function readiness(page, needBreath) {
+  return page.evaluate(
+    (needBreath) => {
+      const mode = window.game?.currentGameMode;
+      const room = mode?.multiplayerManager?.room;
+      const p = room?.state?.players?.get(room.sessionId);
+      if (!p) return 'not in the world';
+      if (document.body.classList.contains('intro-playing')) return 'the opening is still playing';
+      if (p.state !== 'alive') return `not alive (${p.state})`;
+      if (p.capturedBy) return 'caught in a mouth';
+      if (p.flying) return 'flying';
+      if (p.stunned) return 'stunned';
+      if (p.sliding) return 'sliding';
+      if (p.recovering) return 'recovering';
+      const breath = typeof mode.stamina === 'number' ? mode.stamina : 1;
+      if (needBreath && breath < 0.999) return `catching its breath (${breath.toFixed(2)})`;
+      return 'ready';
+    },
+    needBreath,
+  );
+}
+
+/** Waits, at most `timeout` ms, until your creature can act (see readiness); if it never can, the test fails with the reason rather than skipping the check */
+async function waitUntilReady(page, { needBreath }, timeout = 10_000) {
+  await expect
+    .poll(() => readiness(page, needBreath), { message: `your creature is ready to ${needBreath ? 'inhale' : 'move'}`, timeout })
+    .toBe('ready');
+}
+
 /** Press a touch pointer on the canvas at this share of its width and height; returns a function that lifts it */
 async function touchDown(page, id, shareX, shareY) {
   await page.evaluate(({ id, shareX, shareY }) => {
@@ -45,8 +82,10 @@ test('the game loads, connects, draws, fits the screen, moves and inhales', asyn
   }, null, { timeout: 20_000 });
   await page.waitForTimeout(2600); // the opening
 
-  // It draws: the canvas fills most of the screen and holds a real picture, and nothing spills sideways
-  const view = await page.evaluate(() => {
+  // It draws: the canvas fills most of the screen and holds a real picture, and nothing spills sideways.
+  // On a busy machine the first frames can come late (Safari once read a blank canvas here), so the
+  // picture gets up to 10 s to show; a canvas that never shows one fails.
+  const look = () => page.evaluate(() => {
     const canvas = document.querySelector('canvas');
     const data = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
     let low = 765, high = 0;
@@ -58,35 +97,69 @@ test('the game loads, connects, draws, fits the screen, moves and inhales', asyn
     const box = canvas.getBoundingClientRect();
     return { spread: high - low, canvasWidth: box.width, viewportWidth: innerWidth, overflow: document.documentElement.scrollWidth - innerWidth };
   });
-  expect(view.spread, 'the canvas shows a real picture').toBeGreaterThan(60);
+  await expect.poll(async () => (await look()).spread, { message: 'the canvas shows a real picture', timeout: 10_000 }).toBeGreaterThan(60);
+  const view = await look();
   expect(view.canvasWidth, 'the canvas fills most of the screen').toBeGreaterThan(view.viewportWidth * 0.5);
   expect(view.overflow, 'nothing spills off the side of the screen').toBeLessThanOrEqual(1);
 
-  // You can move: the arrow keys on a desktop, the joystick (a thumb on the left half) on a touchscreen
-  const before = await me(page);
-  if (hasTouch) {
-    await touchDown(page, 1, 0.25, 0.6);
-    for (let i = 1; i <= 6; i++) {
-      await page.evaluate((dx) => window.__touches[1].move(dx), i * 10);
-      await page.waitForTimeout(16);
+  // You can move: the arrow keys on a desktop, the joystick (a thumb on the left half) on a touchscreen.
+  // It heads away from the nearer side of the world, so an edge can't stop it; if something disturbs it on
+  // the way (a bot catches, launches or stuns it), the move is tried again, at most twice more. A creature
+  // that stays ready and still doesn't move fails.
+  for (let attempt = 1; ; attempt++) {
+    await waitUntilReady(page, { needBreath: false });
+    const before = await me(page);
+    const worldWidth = await page.evaluate(() => window.game.currentGameMode.multiplayerManager.room.state.worldWidth);
+    const dir = before.x < worldWidth / 2 ? 1 : -1;
+    if (hasTouch) {
+      await touchDown(page, 1, 0.25, 0.6);
+      for (let i = 1; i <= 6; i++) {
+        await page.evaluate((dx) => window.__touches[1].move(dx), dir * i * 10);
+        await page.waitForTimeout(16);
+      }
+      await page.waitForTimeout(1200);
+      await page.evaluate((dx) => window.__touches[1].up(dx), dir * 60);
+    } else {
+      const key = dir > 0 ? 'ArrowRight' : 'ArrowLeft';
+      await page.keyboard.down(key);
+      await page.waitForTimeout(1200);
+      await page.keyboard.up(key);
     }
-    await page.waitForTimeout(1200);
-    await page.evaluate(() => window.__touches[1].up(60));
-  } else {
-    await page.keyboard.down('ArrowRight');
-    await page.waitForTimeout(1200);
-    await page.keyboard.up('ArrowRight');
+    await page.waitForTimeout(300);
+    const after = await me(page);
+    const disturbed = (await readiness(page, false)) !== 'ready';
+    if (disturbed && attempt < 3) continue;
+    expect(dir * (after.x - before.x), `your creature moves ${dir > 0 ? 'right' : 'left'}, away from the nearer edge`).toBeGreaterThan(30);
+    break;
   }
-  await page.waitForTimeout(300);
-  const after = await me(page);
-  expect(after.x - before.x, 'your creature moves right').toBeGreaterThan(30);
 
-  // You can inhale: space on a desktop, holding the right half of a touchscreen; letting go stops it
-  if (hasTouch) await touchDown(page, 2, 0.8, 0.6);
-  else await page.keyboard.down('Space');
-  await expect.poll(async () => (await me(page)).inhaling, { message: 'inhaling starts', timeout: 3000 }).toBe(true);
-  if (hasTouch) await page.evaluate(() => window.__touches[2].up());
-  else await page.keyboard.up('Space');
+  // You can inhale: space on a desktop, holding the right half of a touchscreen; letting go stops it.
+  // As with moving, a press that something disturbs (a bot catches, shoves or stuns the creature just
+  // then, and the press is dropped) is let go and tried again, at most twice more. A creature that
+  // stays ready and still doesn't inhale fails.
+  const press = () => (hasTouch ? touchDown(page, 2, 0.8, 0.6) : page.keyboard.down('Space'));
+  const letGo = () => (hasTouch ? page.evaluate(() => window.__touches[2].up()) : page.keyboard.up('Space'));
+  for (let attempt = 1; ; attempt++) {
+    await waitUntilReady(page, { needBreath: true });
+    await press();
+    let started = false;
+    let disturbed = null;
+    const until = Date.now() + 3000;
+    while (Date.now() < until) {
+      if ((await me(page))?.inhaling) {
+        started = true;
+        break;
+      }
+      const why = await readiness(page, false);
+      if (why !== 'ready') disturbed = why;
+      await page.waitForTimeout(100);
+    }
+    if (started) break;
+    await letGo();
+    if (disturbed && attempt < 3) continue;
+    expect(started, `inhaling starts${disturbed ? ` (disturbed: ${disturbed})` : ''}`).toBe(true);
+  }
+  await letGo();
   await expect.poll(async () => (await me(page)).inhaling, { message: 'inhaling stops when you let go', timeout: 3000 }).toBe(false);
 
   expect(problems, 'no page or console errors').toEqual([]);

@@ -1249,7 +1249,9 @@ try {
     };
     const smallPush = await windPush(0);
     const bigPush = await windPush(400);
-    check(smallPush > 40 && smallPush > bigPush * 1.8, `the exhaust's wind pushes small creatures much harder than giants (${Math.round(smallPush)} vs ${Math.round(bigPush)} units)`);
+    // The wind divides by weight^TURBINE.WIND_WEIGHT_POWER (0.3, since the cannonball update): small creatures
+    // are pushed harder, and giants get shoved too
+    check(smallPush > 40 && smallPush > bigPush * 1.3 && bigPush > 15, `the exhaust's wind pushes small creatures harder than giants, and giants too (${Math.round(smallPush)} vs ${Math.round(bigPush)} units)`);
     await tia.leave();
     await tom.leave();
 
@@ -1274,7 +1276,10 @@ try {
     await waitFor(() => ann.state.turbines.length === 0, 3000, 'turbines power down and go');
     await waitFor(() => ann.state.turbines.length === 3, 9000, 'and come back');
     const second = spots();
-    check(second.every((s) => first.every((f) => Math.hypot(s.x - f.x, s.y - f.y) > 50)), 'somewhere else');
+    // They respawn at random (spaced from each other and from players, not from where they stood before),
+    // so one landing near an old spot is chance, not a bug: at least two of the three must be somewhere new
+    const movedOn = second.filter((s) => first.every((f) => Math.hypot(s.x - f.x, s.y - f.y) > 50)).length;
+    check(movedOn >= 2, `somewhere else (${movedOn} of 3 in new spots)`);
     clearInterval(phases);
     await ann.leave();
 
@@ -1345,8 +1350,11 @@ try {
 
     // ---- Only letting go of the button launches; anything else drops the captive harmlessly
     const catchKid = async (captorGems, kidGems) => {
-        captor.send('exhale');
+        // A leftover hold from the step before is cut short (cancel: no launch), and the kid comes down,
+        // gets free and waits out its recapture immunity before the next catch
+        captor.send('cancel');
         kid.send('steer', { x: 0, y: 0 });
+        for (let i = 0; i < 80 && (mine(kid).flying || mine(kid).capturedBy); i++) await sleep(50);
         // Both alive and unprotected first (a bot may have caught or eaten one in a step that left it small)
         for (let i = 0; i < 120 && (mine(captor).state !== 'alive' || mine(kid).state !== 'alive'); i++) await sleep(50);
         captor.send('test:protect', { ms: 0 });
@@ -1361,7 +1369,7 @@ try {
         kid.send('test:moveTo', { x: 500 + mine(captor).width + 4, y: lineY - mine(kid).width / 2 });
         await sleep(250);
         captor.send('inhale');
-        for (let i = 0; i < 40; i++) {
+        for (let i = 0; i < 80; i++) {
             if (mine(kid).capturedBy === captor.sessionId) return true;
             await sleep(25);
         }

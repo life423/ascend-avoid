@@ -13,7 +13,8 @@ env:
 
 jobs:
   build-and-test:
-    name: Build and Test
+    # (named apart from CI Build and Test, the check branch protection requires)
+    name: Pre-deploy Build and Test
     runs-on: ubuntu-latest
     
     steps:
