@@ -1,4 +1,4 @@
-import { ARENA_RULES, CANNON, INHALE } from "../constants/gameConstants.js";
+import { ARENA_RULES, CANNON, GEMS, INHALE } from "../constants/gameConstants.js";
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
@@ -51,18 +51,18 @@ export function launchAngle(facing: number, steerX: number, steerY: number): num
   return facing + clamp(side, -1, 1) * CANNON.LAUNCH_INFLUENCE;
 }
 
-/**
- * How many gems a flier this wide hitting at this speed knocks out of a target holding this many: a flat
- * amount plus one growing with the square root of its gems (times speed and the flier's mass), or
- * IMPACT_SHARE of everything it holds (times speed), whichever is more, so a giant that's hit really
- * shrinks; never more than IMPACT_MAX_SHARE of them
- */
+/** Width is proportional to the square root of mass, so keeping 10% width retains about 1% mass. */
+export function missileMassAfterImpact(gems: number): number {
+  return Math.max(0, Math.floor((gems + GEMS.BASE_MASS) * CANNON.MISSILE_WIDTH_KEEP ** 2 - GEMS.BASE_MASS));
+}
+
+/** Target damage is distinct from the missile player's own spent growth. */
 export function impactGems(targetGems: number, speed: number, flierWidth: number): number {
   if (targetGems <= 0) return 0;
   const pace = clamp(speed / CANNON.IMPACT_SPEED_REF, 0.5, 1.25);
   const mass = clamp(Math.sqrt(flierWidth / 20), 1, 2.5);
   const knocked = Math.round(CANNON.IMPACT_BASE + CANNON.IMPACT_PER_ROOT * pace * mass * Math.sqrt(targetGems));
-  const share = Math.round(targetGems * CANNON.IMPACT_SHARE * pace);
+  const share = Math.ceil(targetGems * clamp(CANNON.IMPACT_SHARE + 0.08 * (pace - 0.5) + 0.02 * (mass - 1), CANNON.IMPACT_SHARE, CANNON.IMPACT_MAX_SHARE));
   return Math.min(targetGems, Math.ceil(targetGems * CANNON.IMPACT_MAX_SHARE), Math.max(knocked, share));
 }
 

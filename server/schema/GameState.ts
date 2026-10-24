@@ -24,7 +24,7 @@ import { botMouth, bombDanger, balanceBots } from "../systems/bots.js";
 import { updateBombs } from "../systems/bombs.js";
 import { updateShift, startGrace, startShift, endShift, fall } from "../systems/shift.js";
 import { collectGems, sprayGems, topUpField } from "../systems/gems.js";
-import { keepApart } from "../systems/bodies.js";
+import { keepApart, pruneBodyContacts } from "../systems/bodies.js";
 import { updateSurges } from "../systems/surges.js";
 import { PinwheelSchema } from "./PinwheelSchema.js";
 import { updatePinwheel } from "../systems/pinwheel.js";
@@ -108,6 +108,7 @@ class GameState extends Schema {
   /** Server-only: bots fill in until this many are playing (the automated test sets 0) */
   botFill: number = BOTS.FILL_TO;
   brains = new Map<string, BotBrain>();
+  bodyContacts = new Map<string, { a: string; b: string }>();
   nextBotId = 1;
   private startedAt = 0;
   /** Server-only: each traffic lane's direction (1 or -1) and speed; across lanes first, then down */
@@ -205,6 +206,7 @@ class GameState extends Schema {
     if (!this.startedAt) this.startedAt = now;
     this.time = Math.round(now - this.startedAt);
     this.players.forEach((player) => player.markTick());
+    pruneBodyContacts(this);
     updateShift(this, deltaTime, now);
     updateSurges(this, deltaTime, now);
     updateTraffic(this);

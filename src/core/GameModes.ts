@@ -5,9 +5,10 @@
 import Player from '../entities/Player'
 import { InputState } from '../types'
 import { GameEvents } from '../constants/client-constants'
-import { ARENA_RULES, BOMBS, CAMERA, GEMS, INHALE, LATCH, PLAYER_COLORS, SHIFT, WORLD } from '../../server/constants/gameConstants'
+import { ARENA_RULES, BOMBS, CAMERA, EXHALE, GEMS, INHALE, LATCH, PLAYER_COLORS, SHIFT, WORLD } from '../../server/constants/gameConstants'
 import { sound } from './Sound'
 import { FirstSessionGuide } from '../ui/FirstSessionGuide'
+import { WeaponPlacement } from '../ui/WeaponPlacement'
 import { drawSurge, drawSurgeHud } from '../render/surge'
 import { breathRate } from '../../server/game/airflow'
 import { CameraRig } from '../../server/game/camera'
@@ -550,6 +551,7 @@ export class MultiplayerMode extends GameMode {
     inGrace = false
     /** The joystick, INHALE button and mouse steering (drawn on the canvas) */
     controls: OnlineControls | null = null
+    private weaponPlacement: WeaponPlacement | null = null
     /** Your walking velocity */
     private velocity = { x: 0, y: 0 }
     /** Holding the button: inhaling (it never changes how you move) */
@@ -613,6 +615,7 @@ export class MultiplayerMode extends GameMode {
         // Touch and mouse controls drawn on the canvas; the D-pad and swipes are for solo
         if (this.game.canvas) this.controls = new OnlineControls(this.game.canvas)
         this.firstGuide = new FirstSessionGuide()
+        this.weaponPlacement = new WeaponPlacement(() => this.multiplayerManager?.sendMessage('placeWeapon', {}))
         window.addEventListener('blur', this.releaseControls)
         document.addEventListener('visibilitychange', this.visibilityChanged)
         document.addEventListener('focusin', this.textFocused)
@@ -669,7 +672,14 @@ export class MultiplayerMode extends GameMode {
             this.addNotice(data?.phase === 'warning' ? 'Gem surge incoming — follow the gold marker!' : 'Gem surge! Jackpot in the final seconds.', true)
         })
         eventBus.on('multiplayer:blast', (data: any) => this.blasts.push({ x: Number(data?.x) || 0, y: Number(data?.y) || 0, radius: Number(data?.radius) || BOMBS.BLAST_RADIUS, at: performance.now() }))
-        eventBus.on('multiplayer:exhale', (data: any) => this.puffs.push({ by: String(data?.id ?? ''), x: Number(data?.x) || 0, y: Number(data?.y) || 0, facing: Number(data?.facing) || 0, reach: Number(data?.reach) || 200, at: performance.now() }))
+        eventBus.on('multiplayer:exhale', (data: { id?: string; x?: number; y?: number; facing?: number; reach?: number; breathLeft?: number }) => {
+            this.puffs.push({ by: String(data.id ?? ''), x: Number(data.x) || 0, y: Number(data.y) || 0, facing: Number(data.facing) || 0, reach: Number(data.reach) || 200, at: performance.now() })
+            if (data.id === this.multiplayerManager?.localSessionId && typeof data.breathLeft === 'number') {
+                this.stamina = Math.max(0, Math.min(1, data.breathLeft))
+                this.staminaAt = performance.now()
+                this.breath = { phase: 'recovering', back: this.stamina }
+            }
+        })
         eventBus.on('multiplayer:jackpot', (data: any) => {
             this.addNotice(`${this.nameOf(data?.byId, data?.by)} took the jackpot! +${data?.value ?? ''}`, true)
         })
@@ -1060,6 +1070,7 @@ export class MultiplayerMode extends GameMode {
         ctx.setTransform(1, 0, 0, 1, 0, 0)
         this.cssScale = canvas.width / Math.max(1, canvas.getBoundingClientRect().width)
         const hud = this.runIntro(ctx, canvas, timestamp)
+        this.weaponPlacement?.update(state, localId, hud <= 0)
         if (hud > 0) {
             ctx.globalAlpha = hud
             if (COMPACT.matches) drawTopBar(this, ctx, canvas, state, me)
@@ -1081,6 +1092,7 @@ export class MultiplayerMode extends GameMode {
             if (this.controls) {
                 this.controls.action = me?.gulping ? (me.fireQueued ? 'QUEUED' : loaded ? 'FIRE' : 'LOADING') : me?.mouth ? 'SPIT' : 'INHALE'
                 this.controls.puffCooldown = Math.max(0, ((me?.puffReadyAt ?? 0) - this.worldNow(state, timestamp)) / 1000)
+                this.controls.puffNeedsBreath = this.stamina < EXHALE.BREATH_COST
             }
             this.firstGuide?.update(me, this.introPlaying || Boolean(state.pinwheel && state.pinwheel.phase !== 'waiting'))
             this.controls?.draw(ctx, timestamp, this.breath)
@@ -1167,9 +1179,10 @@ export class MultiplayerMode extends GameMode {
         const target = targetIsYou ? 'you' : String(data?.target ?? 'someone')
         const how = String(data?.how ?? '')
         if (how === 'cannon') {
+            if (targetIsYou && data?.out) this.knockoutCause = { how: 'cannon', by: String(data?.by ?? 'Someone'), at: performance.now() }
             const shotByYou = data?.byId === localId
             const flownByYou = data?.projectileId === localId
-            if (shotByYou || flownByYou) this.banner = { title: flownByYou ? 'Direct hit! You steered it!' : 'Cannonball hit!', sub: `${Number(data?.gems) || 0} GEMS SPILLED`, at: performance.now() }
+            if (shotByYou || flownByYou) this.banner = { title: data?.out ? 'Cannonball knockout!' : flownByYou ? 'Direct hit! You steered it!' : 'Cannonball hit!', sub: `${Number(data?.gems) || 0} GEMS SPILLED`, at: performance.now() }
             else this.addNotice(`${String(data?.by ?? 'Someone')} landed a cannonball hit on ${target}!`)
             return
         }
@@ -1439,6 +1452,7 @@ export class MultiplayerMode extends GameMode {
         document.removeEventListener('visibilitychange', this.visibilityChanged)
         document.removeEventListener('focusin', this.textFocused)
         this.firstGuide?.dispose()
+        this.weaponPlacement?.dispose()
         this.disposed = true
         if (this.reconnectTimer) clearTimeout(this.reconnectTimer)
         this.reconnectTimer = null

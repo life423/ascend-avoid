@@ -1,6 +1,6 @@
 
 /** What the button (or space) asks for: an inhale starting (pressed) and stopping (let go) */
-/** inhale: the button pressed; exhale: deliberately let go (the only release that launches a captive); cancel: the press cut short (slid off, Esc, the touch cancelled), which just stops */
+/** inhale: hold begins; exhale: release stops inhaling; cancel: interrupted press; tap: puff, spit or fire. */
 import { sound } from './Sound'
 export type ControlEvent = 'inhale' | 'exhale' | 'cancel' | 'tap'
 
@@ -38,6 +38,7 @@ function isTyping(e: KeyboardEvent): boolean {
 export class OnlineControls {
     action: 'INHALE' | 'LOADING' | 'QUEUED' | 'FIRE' | 'SPIT' = 'INHALE'
     puffCooldown = 0
+    puffNeedsBreath = false
     /** Whether this device has a touchscreen (the joystick and INHALE button are drawn only then) */
     readonly touchDevice: boolean
     private stick: { id: number; originX: number; originY: number; x: number; y: number } | null = null
@@ -148,7 +149,7 @@ export class OnlineControls {
             ctx.textAlign = 'left'
             ctx.font = `700 12px ${FONT}`
             ctx.fillStyle = inhaling ? breathColor : `rgba(255, 255, 255, ${recovering ? 0.35 : 0.65})`
-            const hint = this.action === 'QUEUED' ? 'Shot queued — keep aiming' : this.action === 'LOADING' ? 'Loading… tap to queue a shot' : this.action === 'FIRE' ? 'SPACE  tap to FIRE' : this.action === 'SPIT' ? 'SPACE  tap to SPIT' : inhaling ? 'SPACE  inhaling' : `SPACE  hold to inhale · ${this.puffCooldown > 0 ? `puff in ${this.puffCooldown.toFixed(1)}s` : 'tap to puff'}`
+            const hint = this.action === 'QUEUED' ? 'Shot queued — keep aiming' : this.action === 'LOADING' ? 'Loading… tap to queue a shot' : this.action === 'FIRE' ? 'SPACE  tap to FIRE' : this.action === 'SPIT' ? 'SPACE  tap to SPIT' : inhaling ? 'SPACE  inhaling' : `SPACE  hold to inhale · ${this.puffCooldown > 0 ? `puff in ${this.puffCooldown.toFixed(1)}s` : this.puffNeedsBreath ? 'puff needs 35% breath' : 'puff costs 35% breath'}`
             ctx.fillText(hint, 14, height - 16)
             if (inhaling || recovering) {
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.12)'
@@ -194,9 +195,9 @@ export class OnlineControls {
         ctx.textBaseline = 'alphabetic'
         const word = ctx.measureText(this.action)
         ctx.fillText(this.action, x, y + (word.actualBoundingBoxAscent - word.actualBoundingBoxDescent) / 2)
-        if (this.action === 'INHALE' && this.puffCooldown > 0) {
+        if (this.action === 'INHALE') {
             ctx.font = `600 10px ${FONT}`
-            ctx.fillText(`PUFF ${this.puffCooldown.toFixed(1)}s`, x, y + 24)
+            ctx.fillText(this.puffCooldown > 0 ? `PUFF ${this.puffCooldown.toFixed(1)}s` : this.puffNeedsBreath ? 'NEED 35% BREATH' : 'PUFF −35%', x, y + 24)
         }
         ctx.restore()
     }

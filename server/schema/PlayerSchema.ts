@@ -524,7 +524,15 @@ class PlayerSchema extends Schema {
     this.inhaling = false;
   }
 
-  /** Bring the breath up to date: draining while inhaling, refilling otherwise (INHALE.MAX_MS, INHALE.REFILL_MS) */
+  /** Spend a fixed share of the full meter, after applying any elapsed recharge. */
+  spendBreath(now: number, amount: number): boolean {
+    this.breathe(now);
+    if (this.stamina + 1e-9 < amount) return false;
+    this.stamina = Math.max(0, this.stamina - amount);
+    return true;
+  }
+
+  /** Bring breath up to date: drain while inhaling, otherwise refill. */
   private breathe(now: number): void {
     const elapsed = Math.max(0, now - this.staminaAt);
     this.staminaAt = now;

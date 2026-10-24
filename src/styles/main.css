@@ -917,6 +917,13 @@ body.online-mode .game-canvas { position: absolute; inset: 0; width: 100%; heigh
 /* Clear, labeled controls with a reserved footprint from the first paint. */
 body.online-mode .game-canvas { border: 0; border-radius: 12px; box-shadow: 0 0 0 1px rgba(255,255,255,.08); }
 .bar-button kbd { font: 600 10px system-ui, sans-serif; opacity: .55; padding: 1px 4px; border: 1px solid rgba(255,255,255,.18); border-radius: 4px; }
+.weapon-place-button { position: fixed; left: 50%; bottom: max(124px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 30; min-width: 180px; min-height: 48px; display: flex; align-items: center; justify-content: center; gap: 12px; padding: 10px 18px; border: 1px solid #e9ffe7; border-radius: 14px; background: #9df2d8; color: #102c27; box-shadow: 0 5px 20px rgba(0,0,0,.3); font: 800 15px system-ui, sans-serif; cursor: pointer; touch-action: manipulation; }
+.weapon-place-button[hidden] { display: none; }
+.weapon-place-button:disabled { opacity: .5; }
+.weapon-place-button:focus-visible { outline: 3px solid white; outline-offset: 3px; }
+.weapon-place-button kbd { padding: 2px 5px; border: 1px solid rgba(16,44,39,.35); border-radius: 5px; font: inherit; font-size: 12px; }
+@media (max-height: 500px) and (pointer: coarse) { body .weapon-place-button { bottom: max(20px, env(safe-area-inset-bottom)); min-height: 48px; padding: 7px 12px; } }
+@media (max-width: 1199px), (pointer: coarse) { .weapon-place-button { bottom: max(184px, env(safe-area-inset-bottom)); min-height: 52px; } .weapon-place-button kbd { display: none; } }
 @media (min-width: 1200px) {
     .app-header { height: 64px; gap: 16px; background: #0b1422; border-bottom: 1px solid rgba(255,255,255,.09); }
     .app-header .score-panel { font-size: 13px; font-variant-numeric: tabular-nums; gap: 20px; min-width: 160px; }

@@ -4,7 +4,7 @@ import logger from "../utils/logger";
 import { GameState } from "../schema/GameState";
 import { exhale, fireCaptive, escapePress, escapeSteer } from "../systems/inhale";
 import { beginSurge } from "../systems/surges";
-import { spawnPinwheel } from "../systems/pinwheel";
+import { spawnPinwheel, deployPinwheel } from "../systems/pinwheel";
 
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
@@ -38,7 +38,7 @@ export function sanitizeName(raw: unknown): string | null {
 export class GameRoom extends Room<GameState> {
   maxClients = GAME_CONSTANTS.GAME.MAX_PLAYERS;
 
-  onCreate(options: any = {}): void {
+  async onCreate(options: any = {}): Promise<void> {
     // The automated test can start a world with no loose gems, so its gem counts stay exact
     const fieldGems = !IS_PRODUCTION && Number.isInteger(options.testFieldGems) ? options.testFieldGems : undefined;
     this.setState(new GameState(fieldGems));
@@ -58,6 +58,7 @@ export class GameRoom extends Room<GameState> {
     if (!IS_PRODUCTION && Number.isInteger(options.testBots)) this.state.botFill = options.testBots;
     // Test worlds have no turbines unless they ask: testTurbines true runs them as usual, "manual" places them by hand
     if (!IS_PRODUCTION && Object.keys(options).some((key) => key.startsWith("test"))) {
+      await this.setPrivate(true);
       this.state.surgesOn = options.testSurges === true;
       this.state.weaponsOn = options.testWeapons === true;
       this.state.setTurbines(options.testTurbines === true ? "auto" : options.testTurbines === "manual" ? "manual" : "off");
@@ -117,6 +118,7 @@ export class GameRoom extends Room<GameState> {
       else exhale(this.state, player, now);
     });
     this.onMessage("exhale", (client) => {
+      // Releasing inhale preserves collected weapon cargo too.
       if (!this.allowMessage(client)) return;
       // The button let go: the inhale stops. Someone caught during it stays inside (the mouth is full);
       // the next press fires them (see fireCaptive).
@@ -124,6 +126,11 @@ export class GameRoom extends Room<GameState> {
       if (!player) return;
       player.releasedAt = Date.now();
       player.stopInhale();
+    });
+    this.onMessage("placeWeapon", (client) => {
+      if (!this.allowMessage(client)) return;
+      const player = this.state.players.get(client.sessionId);
+      if (player) deployPinwheel(this.state, player);
     });
     this.onMessage("cancel", (client) => {
       if (!this.allowMessage(client)) return;

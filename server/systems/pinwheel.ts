@@ -25,6 +25,7 @@ function claimPart(state: GameState, part: WeaponPartSchema, player: PlayerSchem
   const w = state.pinwheel;
   if (!w.owner) { w.owner = player.sessionId; w.claimUntil = state.time + PINWHEEL.CLAIM_MS; }
   part.owner = player.sessionId;
+  part.carriedBy = player.sessionId;
   const bit = 1 << part.kind;
   if (w.owner === player.sessionId && !(w.progress & bit)) {
     w.progress |= bit;
@@ -40,8 +41,19 @@ export function puffWeaponParts(state: GameState, player: PlayerSchema): void {
   for (const part of state.pinwheel.parts) {
     const dx = part.x - mx, dy = part.y - my, d = Math.hypot(dx, dy);
     if (d < 1 || d > EXHALE.REACH + player.width * EXHALE.REACH_PER_SIZE || (dx * fx + dy * fy) / d < Math.cos(EXHALE.ARC * Math.PI / 180)) continue;
+    part.carriedBy = '';
     part.vx = dx / d * PINWHEEL.GUST_SPEED; part.vy = dy / d * PINWHEEL.GUST_SPEED;
   }
+}
+
+export function deployPinwheel(state: GameState, player: PlayerSchema): boolean {
+  const w = state.pinwheel;
+  if (w.phase !== 'carried' || w.owner !== player.sessionId || player.state !== 'alive' || player.stunned || player.capturedBy || player.flying) return false;
+  const radius = player.width / 2 + 72;
+  w.x = Math.max(56, Math.min(state.worldWidth - 56, player.x + player.width / 2 + Math.cos(player.facing) * radius));
+  w.y = Math.max(56, Math.min(state.worldHeight - 56, player.y + player.height / 2 + Math.sin(player.facing) * radius));
+  w.phase = 'charging'; w.at = state.time + PINWHEEL.CHARGE_MS; w.angle = player.facing;
+  return true;
 }
 
 export function updatePinwheel(state: GameState, dt: number, now: number): void {
@@ -59,6 +71,17 @@ export function updatePinwheel(state: GameState, dt: number, now: number): void 
   if (w.phase === 'parts') {
     for (const part of w.parts) {
       if (part.owner && !state.players.has(part.owner)) part.owner = '';
+      const carrier = state.players.get(part.carriedBy);
+      if (carrier && carrier.state === 'alive' && !carrier.capturedBy && !carrier.flying) {
+        // Cargo rides behind the creature, independently of inhale, movement and turning.
+        const a = carrier.facing + Math.PI + (part.kind - 1) * 0.55;
+        const radius = carrier.width / 2 + 43;
+        part.x = Math.max(30, Math.min(state.worldWidth - 30, carrier.x + carrier.width / 2 + Math.cos(a) * radius));
+        part.y = Math.max(30, Math.min(state.worldHeight - 30, carrier.y + carrier.height / 2 + Math.sin(a) * radius));
+        part.vx = part.vy = 0;
+        continue;
+      }
+      part.carriedBy = '';
       const travel = (1 - Math.exp(-5 * dt)) / 5;
       part.x = Math.max(30, Math.min(state.worldWidth - 30, part.x + part.vx * travel));
       part.y = Math.max(30, Math.min(state.worldHeight - 30, part.y + part.vy * travel));
@@ -80,7 +103,10 @@ export function updatePinwheel(state: GameState, dt: number, now: number): void 
       const my = puller.y + puller.height / 2 + Math.sin(puller.facing) * puller.height * 0.3;
       const step = Math.min(nearest, PINWHEEL.PULL_SPEED * dt);
       if (nearest > 0) { part.x += (mx - part.x) / nearest * step; part.y += (my - part.y) / nearest * step; }
-      if (nearest - step < PINWHEEL.PART_RADIUS + 12 && !part.owner) claimPart(state, part, puller);
+      if (nearest - step < PINWHEEL.PART_RADIUS + 12) {
+        if (!part.owner) claimPart(state, part, puller);
+        else part.carriedBy = puller.sessionId;
+      }
     }
     const hub = w.parts[0];
     if (w.parts.length === 3 && w.owner && hub) {
@@ -92,7 +118,8 @@ export function updatePinwheel(state: GameState, dt: number, now: number): void 
           w.progress |= bit; p.owner = w.owner; w.claimUntil = state.time + PINWHEEL.CLAIM_MS;
         }
       }
-      if (w.parts.every(p => Math.hypot(p.x - hub.x, p.y - hub.y) <= PINWHEEL.SNAP && Math.hypot(p.vx, p.vy) < 100)) {
+      const carriedTogether = Boolean(hub.carriedBy) && w.parts.every(p => p.carriedBy === hub.carriedBy);
+      if (carriedTogether || w.parts.every(p => Math.hypot(p.x - hub.x, p.y - hub.y) <= PINWHEEL.SNAP && Math.hypot(p.vx, p.vy) < 100)) {
         w.x = w.parts.reduce((sum, p) => sum + p.x, 0) / 3; w.y = w.parts.reduce((sum, p) => sum + p.y, 0) / 3;
         const builder = state.players.get(w.owner);
         if (builder) {
@@ -104,11 +131,22 @@ export function updatePinwheel(state: GameState, dt: number, now: number): void 
             w.y = Math.max(56, Math.min(state.worldHeight - 56, cy + Math.sin(a) * gap));
           }
         }
-        w.progress = 7; w.parts.clear(); w.phase = 'charging'; w.at = state.time + PINWHEEL.CHARGE_MS;
+        w.progress = 7; w.parts.clear(); w.phase = 'carried';
+        w.at = 0; w.claimUntil = state.time + PINWHEEL.CLAIM_MS;
         w.angle = state.players.get(w.owner)?.facing ?? 0;
       }
     }
     if (w.phase === 'parts' && state.time >= w.at) { w.parts.clear(); w.phase = 'waiting'; w.at = state.time + PINWHEEL.RESPAWN_MS; }
+    return;
+  }
+  if (w.phase === 'carried') {
+    const carrier = state.players.get(w.owner);
+    if (carrier && carrier.state === 'alive' && !carrier.capturedBy && !carrier.flying) {
+      const radius = carrier.width / 2 + 58;
+      w.x = Math.max(56, Math.min(state.worldWidth - 56, carrier.x + carrier.width / 2 - Math.cos(carrier.facing) * radius));
+      w.y = Math.max(56, Math.min(state.worldHeight - 56, carrier.y + carrier.height / 2 - Math.sin(carrier.facing) * radius));
+      w.angle = carrier.facing;
+    } else { w.phase = 'charging'; w.at = state.time + PINWHEEL.CHARGE_MS; }
     return;
   }
   if (w.phase === 'charging' && state.time >= w.at) {

@@ -317,11 +317,12 @@ function clashStrength(state: GameState, thief: PlayerSchema, victim: PlayerSche
 /**
  * Exhaling: the button tapped with nothing in your mouth. A short puff out of the mouth: loose gems in
  * front of it are blown away, and creatures in it are shoved back and briefly stunned,
- * which pushes a robber out of its own inhale's reach. Free, with a
- * pause before the next one (EXHALE.COOLDOWN_MS).
+ * which pushes a robber out of its own inhale's reach. Costs EXHALE.BREATH_COST from the full
+ * breath meter, with a pause before the next one (EXHALE.COOLDOWN_MS).
  */
 export function exhale(state: GameState, player: PlayerSchema, now: number) : void {
   if (player.state !== PLAYER_STATE.ALIVE || player.stunned || player.sliding || player.recovering || player.flying || player.capturedBy || player.inhaling || now < player.exhaleReadyAt) return;
+  if (!player.spendBreath(now, EXHALE.BREATH_COST)) return;
   player.exhaleReadyAt = now + EXHALE.COOLDOWN_MS;
   player.puffReadyAt = state.time + EXHALE.COOLDOWN_MS;
   player.dropProtection();
@@ -331,7 +332,7 @@ export function exhale(state: GameState, player: PlayerSchema, now: number) : vo
   const mouthY = player.y + player.height / 2 + fy * player.width * 0.3;
   const reach = EXHALE.REACH + player.width * EXHALE.REACH_PER_SIZE;
   const cone = Math.cos((EXHALE.ARC * Math.PI) / 180);
-  state.onEvent?.("exhale", { id: player.sessionId, x: Math.round(mouthX), y: Math.round(mouthY), facing: Math.round(player.facing * 100) / 100, reach: Math.round(reach) });
+  state.onEvent?.("exhale", { id: player.sessionId, x: Math.round(mouthX), y: Math.round(mouthY), facing: Math.round(player.facing * 100) / 100, reach: Math.round(reach), breathLeft: player.stamina });
   puffWeaponParts(state, player);
   state.gems.forEach((gem) => {
     const dx = gem.x - mouthX;
