@@ -1,4 +1,4 @@
-import { CANNON, INHALE } from "../constants/gameConstants.js";
+import { ARENA_RULES, CANNON, INHALE } from "../constants/gameConstants.js";
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
@@ -24,9 +24,16 @@ export function swallowPenalty(gems: number): number {
   return Math.min(CANNON.SWALLOW_PENALTY_MAX, Math.ceil(gems * CANNON.SWALLOW_PENALTY_SHARE));
 }
 
-/** How fast a captor this wide launches its captive (units a second) */
-export function launchSpeed(captorWidth: number): number {
-  return CANNON.SPEED + CANNON.SPEED_PER_WIDTH * captorWidth;
+/**
+ * How fast a captor this wide launches a captive this wide (units a second): LAUNCH_SPEED_MIN when just big
+ * enough to catch it, LAUNCH_SPEED_PER_DOUBLING more every time it's twice as wide again relative to the
+ * captive, up to LAUNCH_SPEED_MAX. Doubling the size advantage adds a fixed amount, so giants hit hard
+ * without the speed ever running away.
+ */
+export function launchSpeed(captorWidth: number, captiveWidth: number = ARENA_RULES.PLAYER_SIZE): number {
+  const ratio = clamp(captorWidth / Math.max(1, captiveWidth), INHALE.EAT_RATIO, CANNON.LAUNCH_RATIO_CAP);
+  const doublings = Math.log2(ratio / INHALE.EAT_RATIO);
+  return clamp(CANNON.LAUNCH_SPEED_MIN + CANNON.LAUNCH_SPEED_PER_DOUBLING * doublings, CANNON.LAUNCH_SPEED_MIN, CANNON.LAUNCH_SPEED_MAX);
 }
 
 /** The launch direction: the captor's facing, shifted by the captive's sideways push up to LAUNCH_INFLUENCE */
@@ -50,8 +57,8 @@ export function impactGems(targetGems: number, speed: number, flierWidth: number
   return Math.min(targetGems, Math.ceil(targetGems * CANNON.IMPACT_MAX_SHARE), Math.max(knocked, share));
 }
 
-/** One step of a flight: drag slows it, and only the sideways part of the flier's steering bends it */
-export function flightStep(vx: number, vy: number, steerX: number, steerY: number, deltaTime: number): { vx: number; vy: number } {
+/** One step of a flight: drag slows it (a captor's shot and a turbine's throw lose speed at different rates), and only the sideways part of the flier's steering bends it */
+export function flightStep(vx: number, vy: number, steerX: number, steerY: number, deltaTime: number, drag: number = CANNON.DRAG): { vx: number; vy: number } {
   const speed = Math.hypot(vx, vy);
   if (speed < 1e-6) return { vx: 0, vy: 0 };
   const ux = vx / speed;
@@ -59,7 +66,7 @@ export function flightStep(vx: number, vy: number, steerX: number, steerY: numbe
   const side = steerX * -uy + steerY * ux;
   const nx = vx - uy * side * CANNON.STEER * deltaTime;
   const ny = vy + ux * side * CANNON.STEER * deltaTime;
-  const keep = (speed * Math.exp(-CANNON.DRAG * deltaTime)) / Math.max(1e-6, Math.hypot(nx, ny));
+  const keep = (speed * Math.exp(-drag * deltaTime)) / Math.max(1e-6, Math.hypot(nx, ny));
   return { vx: nx * keep, vy: ny * keep };
 }
 

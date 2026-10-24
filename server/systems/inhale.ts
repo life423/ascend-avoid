@@ -486,8 +486,11 @@ export function fireCaptive(state: GameState, eater: PlayerSchema, now: number):
   if (eater.state === PLAYER_STATE.ALIVE && !eater.stunned && !eater.capturedBy && captive.state === PLAYER_STATE.ALIVE) {
     const steer = captive.steerInput();
     const angle = launchAngle(eater.facing, steer.x, steer.y);
-    const speed = launchSpeed(eater.width);
-    captive.launch(now, Math.cos(angle) * speed, Math.sin(angle) * speed, eater.sessionId, CANNON.MAX_MS);
+    const speed = launchSpeed(eater.width, captive.width);
+    // Set clear of the captor's body first, along the shot, so the flight never starts with the two overlapping
+    const clearance = eater.width / 2 + captive.width / 2 + CANNON.LAUNCH_CLEARANCE;
+    captive.placeAt(eater.x + eater.width / 2 + Math.cos(angle) * clearance - captive.width / 2, eater.y + eater.height / 2 + Math.sin(angle) * clearance - captive.height / 2);
+    captive.launch(now, Math.cos(angle) * speed, Math.sin(angle) * speed, eater.sessionId, CANNON.FLIGHT_MS);
   } else {
     free(captive, Math.cos(eater.facing), Math.sin(eater.facing), now);
   }

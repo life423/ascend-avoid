@@ -32,7 +32,7 @@ export function updateFlights(state: GameState, now: number, deltaTime: number):
       continue;
     }
     const steer = player.steerInput();
-    const next = flightStep(player.flightVx, player.flightVy, steer.x, steer.y, deltaTime);
+    const next = flightStep(player.flightVx, player.flightVy, steer.x, steer.y, deltaTime, player.flightDrag);
     player.flightVx = next.vx;
     player.flightVy = next.vy;
     const speed = Math.hypot(next.vx, next.vy);
