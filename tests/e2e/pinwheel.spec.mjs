@@ -24,6 +24,9 @@ test('gliding over a weapon part collects it without inhaling', async ({ page })
     });
   } finally { await page.keyboard.up('ArrowRight'); }
   expect(await page.evaluate(() => window.game.currentGameMode.multiplayerManager.getLocalPlayer().inhaling)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.game.currentGameMode.notices.some(n => n.text.includes('1/3 parts')))).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.game.currentGameMode.notices.some(n => n.text.includes('/3 parts'))), { timeout: 5000 }).toBe(false);
+  await page.screenshot({ path: test.info().outputPath('quiet-weapon-hud.png') });
 });
 
 test('collect, carry and deliberately place a pinwheel with a button or E', async ({ page, hasTouch }) => {

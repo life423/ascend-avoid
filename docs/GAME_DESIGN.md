@@ -2,7 +2,7 @@
 
 ## Core loop
 
-Collect gems, grow, steal from other creatures, capture someone smaller, aim and fire them as a living cannonball, then compete for spilled gems. The captor controls the shot; the captive's chance is escaping before launch. The world is continuous: no lobby or round wait. The background field has 950 gems, about 25% fewer than the former 1,270; combat spills remain unchanged.
+Collect gems, grow, steal from other creatures, capture someone smaller, aim and fire them as a living cannonball, then compete for spilled gems. The captor controls the shot; the captive's chance is escaping before launch. The world is continuous: no lobby or round wait. The background field target is 950 gems, about 25% fewer than the former 1,270; combat spills are additional, within the overall 2,000-object cap. This is a field-density reduction, not a cap of 950 total objects after fights.
 
 ## World and presentation
 
@@ -38,7 +38,7 @@ The first weapon recipe is the Pulsar Array, made from a plasma cell, field coil
 
 After placement the Array charges for 1.2 seconds. Each pulse has a 700ms inward-charging warning. Four plasma waves launch 2.2 seconds apart over an 8.3-second active lifetime, expanding from radius 44 to 404 over 900ms. The faint outer boundary previews their reach. Each wave hits a rival once, spending 25% of their gems (rounded up, minimum six, never more than they have). Below three gems after damage means knockout and normal respawn. All lost gems spill with the usual pickup lock. Survivors get a mass-scaled shove with base distance 420 and a 220-unit floor, twice the earlier Drum tuning. The wave does not stun. Builder attribution, impact flash/sound and knockout feedback identify the hit. The owner, spawn-protected, captured, flying and dead players are excluded. Swept wave checks cover crossing players and the final segment. Disconnect removes the deployed weapon.
 
-On phones the old three-line weapon banner is replaced by a 238x36 CSS-pixel progress pill, above the sticks in portrait and between them in landscape. It shows recipe and component progress, while minimap letters and world icons identify pieces. A complete locally carried weapon hides the pill and shows the existing Place weapon button. Capture prompts take priority. Redundant floating completed-weapon labels are omitted on phones to keep faces clear.
+There is no persistent weapon banner, progress pill, waiting countdown or duplicate completed-weapon label on any screen. Minimap markers and physical carried parts provide continuous state. A local pickup or completed assembly gets one coalesced notice that expires after 3.5 seconds; other players' collection does not show it. The contextual Place weapon button appears only while carrying a complete weapon. Help contains the instructions. Starter tips close automatically after four seconds and can be replayed from Help.
 
 ## Defensive gust
 
@@ -62,7 +62,7 @@ One hub, rotor and barrel appear near the arena center after five seconds. Touch
 
 Carry all three or bring them within 72 world units to assemble. The complete weapon remains carried until its builder taps Place weapon (or presses E), allowing relocation before activation. It never auto-places on a timer. If its carrier is captured, knocked out or launched, it drops and begins charging. After placement, it spins up for 1.2 seconds, then rotates and fires a gem bolt every 600ms for eight seconds. Each bolt hits once, ignores the builder and spawn-protected/flying/captured creatures, spills at most six gems while leaving one, and knocks back without stunning. A short per-target hit cooldown prevents rapid repeated hits. Bolts expire within 650 units. Parts expire after 120 seconds if unfinished; the next set arrives 20 seconds after a build expires or finishes. Assembly stops when the builder disconnects. The prototype is disabled with experimental arena shifts; bots do not pursue or claim components yet.
 
-The HUD shows assembly progress, the builder's remaining claim, and a direction arrow. Individual H/R/B component markers track their real locations; nearby labels spread with short tethers to stay readable. The arrow points toward the nearest part the local player is not carrying. A pink square marks the completed weapon, and a waiting countdown announces the next set; the capture prompt takes priority over the weapon card.
+Individual H/R/B component markers track their real locations; nearby labels spread with short tethers to stay readable. A square marks the completed weapon. Claim rings remain attached to physical parts. Permanent progress cards, direction arrows and waiting countdowns are removed; brief local pickup notices and the contextual Place button provide feedback without covering the arena.
 
 ## Turbines and gem surges
 

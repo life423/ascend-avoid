@@ -1,8 +1,8 @@
 import type { MultiplayerMode } from '../core/GameModes';
 import type { SyncedGameState, SyncedWeaponPart } from '../types/synced';
 import { PINWHEEL } from '../../server/constants/gameConstants';
-import { FONT, COMPACT, hudPanel, roundedRect } from './style';
-import { PART_COLORS, weaponRecipe, weaponChipBounds } from './weaponStyle';
+import { FONT, roundedRect } from './style';
+import { PART_COLORS, weaponRecipe } from './weaponStyle';
 import { drawPulsarArray, pulsarPartIcon } from './shockwave';
 
 const COLORS = PART_COLORS;
@@ -88,14 +88,6 @@ export function drawWeapons(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
     partIcon(ctx, 2, 31, 0, 0); ctx.restore();
     ctx.save(); ctx.scale(1.3, 1.3); partIcon(ctx, 1, 0, 0, charging ? timestamp / 160 : w.angle * 2); partIcon(ctx, 0, 0, 0, w.angle); ctx.restore();
     }
-    // Phones already have a status chip/placement button; keep floating text off nearby faces.
-    if (!COMPACT.matches) {
-        ctx.font = `800 12px ${FONT}`; ctx.textAlign = 'center'; ctx.fillStyle = '#ffe4aa';
-        ctx.fillText(carried ? 'READY TO PLACE' : charging ? w.kind === 'pulsar' ? 'CHARGING…' : 'SPINNING UP…' : weaponRecipe(w.kind).title, 0, -58);
-        const owner = state.players.get(w.owner);
-        ctx.font = `600 11px ${FONT}`; ctx.fillStyle = '#dbe9ee';
-        ctx.fillText(carried ? `${owner?.name || 'Builder'} · carried` : `${owner?.name || 'Builder'} · ${Math.max(0, Math.ceil((w.at - now) / 1000))}s`, 0, 64);
-    }
     ctx.restore();
     w.bolts.forEach(bolt => {
         ctx.save(); ctx.translate(bolt.x, bolt.y); ctx.rotate(bolt.angle);
@@ -103,64 +95,4 @@ export function drawWeapons(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
         ctx.fillStyle = '#ffe6a3'; ctx.strokeStyle = '#fff7df'; ctx.lineWidth = 1.5;
         ctx.beginPath(); ctx.moveTo(11, 0); ctx.lineTo(0, -7); ctx.lineTo(-8, 0); ctx.lineTo(0, 7); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
     });
-}
-
-export function drawWeaponHud(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, state: SyncedGameState, timestamp: number): void {
-    const w = state.pinwheel;
-    if (!w || w.phase === 'waiting') return;
-    const local = mode.multiplayerManager?.getLocalPlayer();
-    if (local?.capturedBy || local?.gulping || local?.state !== 'alive') return;
-    if (COMPACT.matches && w.phase === 'carried' && w.owner === local.sessionId) return;
-    const u = COMPACT.matches ? mode.cssScale : 1;
-    const recipe = weaponRecipe(w.kind);
-    const count = [1, 2, 4].filter(bit => (w.progress & bit) !== 0).length;
-    if (COMPACT.matches) {
-        const chip = weaponChipBounds(canvas.width, canvas.height, u);
-        ctx.save(); hudPanel(ctx, chip.x, chip.y, chip.width, chip.height, 18 * u);
-        ctx.textAlign = 'left'; ctx.fillStyle = '#ffe4aa'; ctx.font = `700 ${11 * u}px ${FONT}`;
-        const status = w.phase === 'parts' ? recipe.name : w.phase === 'carried' ? 'Weapon carried' : w.kind === 'pulsar' ? 'Pulsar · dodge waves' : 'Pinwheel · dodge bolts';
-        ctx.fillText(status, chip.x + 13 * u, chip.y + 22 * u, chip.width - (w.phase === 'parts' ? 110 : 26) * u);
-        if (w.phase === 'parts') {
-            for (let i = 0; i < 3; i++) {
-                const owned = Boolean(w.progress & (1 << i));
-                ctx.fillStyle = owned ? COLORS[i] : 'rgba(255,255,255,.12)'; ctx.strokeStyle = owned ? COLORS[i] : 'rgba(255,255,255,.35)';
-                ctx.lineWidth = u; ctx.beginPath(); ctx.arc(chip.x + chip.width - (82 - i * 17) * u, chip.y + 18 * u, 5 * u, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-            }
-            ctx.font = `700 ${10 * u}px ${FONT}`; ctx.textAlign = 'right'; ctx.fillStyle = '#d1e3ec';
-            ctx.fillText(`${count}/3`, chip.x + chip.width - 10 * u, chip.y + 22 * u);
-        }
-        ctx.restore(); return;
-    }
-    const width = Math.min(canvas.width - 24 * u, 350 * u), height = (w.phase === 'parts' ? 65 : 51) * u;
-    const landscape = COMPACT.matches && canvas.height / u < 500;
-    const x = (canvas.width - width) / 2, y = landscape ? 70 * u : canvas.height - (COMPACT.matches ? (w.phase === 'parts' ? 256 : 238) : 104) * u;
-    const now = mode.worldNow(state, timestamp), owner = state.players.get(w.owner);
-    ctx.save(); hudPanel(ctx, x, y, width, height, 12 * u);
-    const me = mode.multiplayerManager?.getLocalPlayer();
-    let target = { x: w.x, y: w.y };
-    if (w.phase === 'parts' && me) {
-        let nearest = Infinity;
-        w.parts.forEach(p => {
-            if (p.carriedBy === me.sessionId) return;
-            const d = Math.hypot(p.x - me.x - me.width / 2, p.y - me.y - me.height / 2);
-            if (d < nearest) { nearest = d; target = p; }
-        });
-    }
-    if (me) {
-        ctx.save(); ctx.translate(x + 16 * u, y + 17 * u);
-        ctx.rotate(Math.atan2(target.y - me.y - me.height / 2, target.x - me.x - me.width / 2));
-        ctx.fillStyle = '#ffa8be'; ctx.beginPath(); ctx.moveTo(6 * u, 0); ctx.lineTo(-4 * u, -4 * u); ctx.lineTo(-2 * u, 0); ctx.lineTo(-4 * u, 4 * u); ctx.closePath(); ctx.fill(); ctx.restore();
-    }
-    ctx.textAlign = 'center'; ctx.fillStyle = '#ffe4aa'; ctx.font = `800 ${12 * u}px ${FONT}`;
-    ctx.fillText(w.phase === 'parts' ? `${recipe.title} · ${count}/3 PARTS` : w.phase === 'carried' ? `${recipe.title} READY TO PLACE` : w.phase === 'charging' ? `${recipe.title} CHARGING` : w.kind === 'pulsar' ? 'SHOCKWAVE — WATCH THE RINGS' : 'PINWHEEL FIRING — DODGE THE BOLTS', canvas.width / 2, y + 19 * u);
-    ctx.fillStyle = '#d1e3ec'; ctx.font = `600 ${10 * u}px ${FONT}`;
-    const label = w.phase === 'parts' ? owner ? `${owner.name}'s build · ${Math.max(0, Math.ceil((w.claimUntil - now) / 1000))}s claim` : 'Touch or inhale the three parts' : w.phase === 'carried' ? w.owner === local.sessionId ? 'Move to your spot, then place it' : `${owner?.name || 'Builder'} is carrying it` : `${owner?.name || 'Builder'} · ${Math.max(0, Math.ceil((w.at - now) / 1000))}s`;
-    ctx.fillText(label, canvas.width / 2, y + 37 * u, width - 16 * u); ctx.restore();
-    if (w.phase === 'parts') {
-        ctx.save(); ctx.textAlign = 'center'; ctx.font = `700 ${9 * u}px ${FONT}`;
-        for (let i = 0; i < 3; i++) {
-            ctx.fillStyle = COLORS[i]; ctx.fillText(`${recipe.letters[i]} · ${recipe.parts[i]}`, x + width * (i + 0.5) / 3, y + 54 * u);
-        }
-        ctx.restore();
-    }
 }

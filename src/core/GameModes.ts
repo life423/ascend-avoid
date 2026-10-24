@@ -32,7 +32,8 @@ import { drawObstacle } from '../render/obstacles'
 import { drawPickups } from '../render/pickups'
 import type { SyncedGameState, SyncedGem, SyncedObstacle, SyncedPlayer } from '../types/synced'
 import { drawCannon } from '../render/cannon'
-import { drawWeapons, drawWeaponHud } from '../render/weapons'
+import { drawWeapons } from '../render/weapons'
+import { weaponRecipe } from '../render/weaponStyle'
 
 // Forward reference for the Game type to avoid circular dependencies
 interface Game {
@@ -540,7 +541,7 @@ export class MultiplayerMode extends GameMode {
     /** The last time someone got you (and how), for the knocked-out screen: "Swallowed by Drew" */
     knockoutCause: { how: string; by: string; at: number } | null = null
     /** Messages at the top right: who joined, who shoved whom off the edge, who took the jackpot */
-    notices: { text: string; at: number; strong: boolean }[] = []
+    notices: { text: string; at: number; strong: boolean; category?: 'weapon' }[] = []
     /** When each dropping gem was first seen, to draw its fall */
     private fallingSince = new Map<string, number>()
     /** Whether everyone is protected right now (a shift's grace period) */
@@ -548,6 +549,7 @@ export class MultiplayerMode extends GameMode {
     /** The joystick, INHALE button and mouse steering (drawn on the canvas) */
     controls: OnlineControls | null = null
     private weaponPlacement: WeaponPlacement | null = null
+    private weaponSeen: { owner: string; phase: string; progress: number } | null = null
     /** Your walking velocity */
     private velocity = { x: 0, y: 0 }
     /** Holding the button: inhaling (it never changes how you move) */
@@ -1066,6 +1068,7 @@ export class MultiplayerMode extends GameMode {
         this.cssScale = canvas.width / Math.max(1, canvas.getBoundingClientRect().width)
         const hud = this.runIntro(ctx, canvas, timestamp)
         this.weaponPlacement?.update(state, localId, hud <= 0)
+        this.trackWeapon(state, localId)
         if (hud > 0) {
             ctx.globalAlpha = hud
             if (COMPACT.matches) drawTopBar(this, ctx, canvas, state, me)
@@ -1077,7 +1080,6 @@ export class MultiplayerMode extends GameMode {
             drawBanner(this, ctx, canvas)
             drawCapturePrompt(this, ctx, canvas, state, me, timestamp)
             drawSurgeHud(this, ctx, canvas, state, view, timestamp)
-            drawWeaponHud(this, ctx, canvas, state, timestamp)
             const loaded = Boolean(me?.gulping) && this.worldNow(state, timestamp) >= me.fireReadyAt
             if (loaded && !this.wasLoaded) sound.play('ready')
             this.wasLoaded = loaded
@@ -1089,7 +1091,7 @@ export class MultiplayerMode extends GameMode {
                 this.controls.puffCooldown = Math.max(0, ((me?.puffReadyAt ?? 0) - this.worldNow(state, timestamp)) / 1000)
                 this.controls.puffNeedsBreath = this.stamina < EXHALE.BREATH_COST
             }
-            this.firstGuide?.update(me, this.introPlaying || Boolean(state.pinwheel && state.pinwheel.phase !== 'waiting'))
+            this.firstGuide?.update(me, this.introPlaying)
             this.controls?.draw(ctx, timestamp, this.breath)
             if (me && me.state === 'gulped') drawMessage(this, ctx, canvas, `Gulped by ${this.nameOf(me.insideOf, 'someone')}`, 'Hang on: you pop back out in a moment')
             else if (me && me.state !== 'alive') drawKnockedOut(this, ctx, canvas)
@@ -1158,14 +1160,32 @@ export class MultiplayerMode extends GameMode {
         return Number.isFinite(this.clockGap) ? timestamp - this.clockGap : state.time
     }
 
-    private addNotice(text: string, strong = false): void {
-        this.notices.push({ text, at: performance.now(), strong })
+    private addNotice(text: string, strong = false, category?: 'weapon'): void {
+        if (category) this.notices = this.notices.filter(notice => notice.category !== category)
+        this.notices.push({ text, at: performance.now(), strong, category })
         if (this.notices.length > 3) this.notices.shift()
     }
 
     /** "You" for your own player, their name for anyone else */
     private nameOf(id: string | undefined, name: string | undefined): string {
         return id && id === this.multiplayerManager?.localSessionId ? 'You' : String(name ?? 'Someone')
+    }
+
+    /** Local collection feedback uses the existing expiring notices, never a permanent weapon panel. */
+    private trackWeapon(state: SyncedGameState, localId: string | null | undefined): void {
+        const w = state.pinwheel
+        if (!w) return
+        const before = this.weaponSeen
+        this.weaponSeen = { owner: w.owner, phase: w.phase, progress: w.progress }
+        if (!before || !localId || w.owner !== localId) return
+        const name = weaponRecipe(w.kind).name
+        if (w.phase === 'carried' && before.phase !== 'carried') {
+            this.addNotice(`${name} assembled — choose a spot`, false, 'weapon')
+        } else if (w.phase === 'parts') {
+            const count = [1, 2, 4].filter(bit => (w.progress & bit) !== 0).length
+            const previous = before.owner === localId ? [1, 2, 4].filter(bit => (before.progress & bit) !== 0).length : 0
+            if (count > previous) this.addNotice(`${name}: ${count}/3 parts`, false, 'weapon')
+        }
     }
 
     /** Someone knocked someone else into trouble: say who did it, with a big banner if it was you */
