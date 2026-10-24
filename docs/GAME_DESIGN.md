@@ -30,6 +30,8 @@ Bots take 500ms to read after the daze, attempt an input every 450ms, and choose
 
 The captor's facing and captive's lateral input determine launch direction. Captives can steer sideways during flight. Swept collision checks prevent tunneling. A hit spills gems, stuns briefly, and bounces the projectile. The flier survives. Impact events identify the launcher, flier and target, and both launcher and flier receive recognition. The capture badge sits below the body so faces remain readable.
 
+Current capture loading is 1.8/2.1/2.4 seconds for three/four/five directional inputs. The earlier 1.2–1.6-second tuning left too little human reaction time after the 600ms daze. Early FIRE still queues, and slow, imperfect bot escape attempts remain unchanged.
+
 ## Defensive gust
 
 Tap with an empty mouth to puff in a 110-degree cone. Knockback scales gently by mass: base shove 400 units, capped at 500. A successful puff into an incoming inhale creates at least 200 units of intended separation, clears that suction connection, and protects its user from suction for one second. The puff cooldown is 1.8 seconds. Protection ends when a creature inhales, puffs or fires.
@@ -37,6 +39,14 @@ Tap with an empty mouth to puff in a 110-degree cone. Knockback scales gently by
 A gust hit stuns its target for 800ms: no steering or inhaling, while knockback still carries it away. Spiral pupils, a slight wobble and orbiting sparks show the stun. Existing 1.2-second immunity after a stun prevents repeated extensions. Spawn protection still blocks gust hits.
 
 Every flight ends with three seconds of protection from incoming suction, inhale drain and recapture by any player or turbine. This applies after an impact, hitting the arena edge or simply landing, and starts after the flight finishes so the full window is usable. The creature can move and act; a draining mint ring shows the window. Normal collision damage still applies.
+
+## Pinwheel Cannon prototype
+
+One hub, rotor and barrel appear near the arena center after 20 seconds. Inhale to pull them together; nearby claimed parts continue following your mouth while you inhale. A meaningful pickup starts an 18-second claim for the build. Adding a new required component refreshes it; holding the same component does not. If a rival supplies the final piece, the active builder keeps ownership. Abandonment unlocks the parts when the claim expires. Gusts physically disrupt even claimed parts.
+
+Bring all three within 72 world units to assemble. The wheel spins up for 1.2 seconds, then rotates and fires a gem bolt every 600ms for eight seconds. Each bolt hits once, ignores the builder and spawn-protected/flying/captured creatures, spills at most six gems while leaving one, and knocks back without stunning. A short per-target hit cooldown prevents rapid repeated hits. Bolts expire within 650 units. Parts expire after 60 seconds if unfinished; the next set arrives 45 seconds after a build expires or finishes. Assembly stops when the builder disconnects. The prototype is disabled with experimental arena shifts; bots do not pursue or claim components yet.
+
+The HUD shows assembly progress, the builder's remaining claim, and a direction arrow. A pink minimap marker points to the event; the capture prompt takes priority over the weapon card.
 
 ## Turbines, Cores and gem surges
 

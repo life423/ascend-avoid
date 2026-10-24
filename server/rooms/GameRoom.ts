@@ -4,6 +4,7 @@ import logger from "../utils/logger";
 import { GameState } from "../schema/GameState";
 import { exhale, fireCaptive, escapePress, escapeSteer } from "../systems/inhale";
 import { beginSurge } from "../systems/surges";
+import { spawnPinwheel } from "../systems/pinwheel";
 
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
@@ -58,6 +59,7 @@ export class GameRoom extends Room<GameState> {
     // Test worlds have no turbines unless they ask: testTurbines true runs them as usual, "manual" places them by hand
     if (!IS_PRODUCTION && Object.keys(options).some((key) => key.startsWith("test"))) {
       this.state.surgesOn = options.testSurges === true;
+      this.state.weaponsOn = options.testWeapons === true;
       this.state.setTurbines(options.testTurbines === true ? "auto" : options.testTurbines === "manual" ? "manual" : "off");
     }
     // Moments worth telling everyone about (who shoved whom off the edge, who took the jackpot)
@@ -145,6 +147,10 @@ export class GameRoom extends Room<GameState> {
 
     // Hooks for the automated test; never available in production
     if (!IS_PRODUCTION) {
+      this.onMessage("test:pinwheel", (_client, data: { x?: number; y?: number }) => {
+        this.state.weaponsOn = true;
+        spawnPinwheel(this.state, Number(data?.x) || 2100, Number(data?.y) || 2100);
+      });
       const playerOf = (client: Client) => this.state.players.get(client.sessionId);
       const { worldWidth, worldHeight } = this.state;
       this.onMessage("test:hit", (client) => {

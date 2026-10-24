@@ -16,4 +16,8 @@ Open design questions: what the weapon fires, how aim is decided, whether pieces
 
 The user proposed a spinning wheel that shoots something. Suggested first prototype: a hub, rotor and barrel that snap together into a floating pinwheel. Once assembled, it telegraphs its spin-up, then rotates and fires visible gem bolts in a predictable pattern for a short burst (starting proposal: eight seconds). Bolts knock players back and spill a small amount of gems; they do not stun or automatically target players. Keep one barrel and clear gaps between shots so rivals can dodge and circle it. Reuse arena collision and hit feedback where practical.
 
-Retain the 18-second builder claim and inherit that active claim when the last component is added by someone else. The claim timer and the weapon's firing duration are separate. Gusts can disrupt unfinished assemblies. This is a design proposal only: parts, ownership and the weapon have not been implemented or approved for implementation yet.
+Retain the 18-second builder claim and inherit that active claim when the last component is added by someone else. The claim timer and the weapon's firing duration are separate. Gusts can disrupt unfinished assemblies. Following the user's request to keep going, this candidate is now implemented as a prototype on feature/pinwheel-cannon; current behavior and limits are described in GAME_DESIGN.md.
+
+## Collision crowd control (brainstorm)
+
+The user suggested stunning both players whenever they collide. Concern: stopping every touching pair may trap more players in a stationary cluster. Preferred direction to evaluate: stronger separation for ordinary bumps; only high-speed head-on collisions cause a short stagger, with immunity against repeated contact; bots steer away after bumping. No change to ordinary collision behavior has been implemented from this idea.

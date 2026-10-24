@@ -83,6 +83,7 @@ export interface SyncedGameState {
     surgeAt: number
     surgeX: number
     surgeY: number
+    pinwheel: SyncedPinwheel
 }
 
 /** GemSchema, as synced to the browser */
@@ -110,6 +111,20 @@ export interface SyncedObstacle {
     variant: number
     vx: number
     vy: number
+}
+
+/** PinwheelSchema, as synced to the browser */
+export interface SyncedPinwheel {
+    phase: string
+    at: number
+    x: number
+    y: number
+    angle: number
+    owner: string
+    claimUntil: number
+    progress: number
+    parts: SyncedArray<SyncedWeaponPart>
+    bolts: SyncedMap<SyncedWeaponBolt>
 }
 
 /** PlayerSchema, as synced to the browser */
@@ -179,4 +194,20 @@ export interface SyncedTurbineFlight {
     startAt: number
     arriveAt: number
     fireAt: number
+}
+
+/** WeaponBoltSchema, as synced to the browser */
+export interface SyncedWeaponBolt {
+    x: number
+    y: number
+    angle: number
+    bornAt: number
+}
+
+/** WeaponPartSchema, as synced to the browser */
+export interface SyncedWeaponPart {
+    kind: number
+    x: number
+    y: number
+    owner: string
 }
