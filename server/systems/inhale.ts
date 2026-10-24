@@ -469,16 +469,21 @@ function free(captive: PlayerSchema, ax: number, ay: number, now: number, push: 
 }
 
 /**
- * Firing: the captor's button pressed while it holds someone (GameRoom), or a bot deciding to. Held at least
- * LAUNCH_MIN_MS, with the captor alive, not stunned and not caught itself, the captive is launched out of the
- * mouth along the captor's facing (shifted by its own push); otherwise it's just let go, harmlessly.
+ * Firing: the captor's button pressed while it holds someone (GameRoom), or a bot deciding to. Nothing happens
+ * until the gun has loaded (ARM_MS after the catch: the captive stays put, working its way out); then, with the
+ * captor alive, not stunned and not caught itself, the captive is launched out of the mouth along the captor's
+ * facing (shifted by its own push); otherwise it's just let go, harmlessly. True if the hold ended.
  */
-export function fireCaptive(state: GameState, eater: PlayerSchema, now: number): void {
+export function fireCaptive(state: GameState, eater: PlayerSchema, now: number): boolean {
   const captive = state.players.get(eater.gulping);
+  if (!captive || captive.capturedBy !== eater.sessionId) {
+    eater.gulping = "";
+    return false;
+  }
+  if (now - eater.captureStartedAt < CANNON.ARM_MS) return false;
   eater.gulping = "";
-  if (!captive || captive.capturedBy !== eater.sessionId) return;
   clearEscape(captive);
-  if (eater.state === PLAYER_STATE.ALIVE && !eater.stunned && !eater.capturedBy && captive.state === PLAYER_STATE.ALIVE && now - eater.captureStartedAt >= CANNON.LAUNCH_MIN_MS) {
+  if (eater.state === PLAYER_STATE.ALIVE && !eater.stunned && !eater.capturedBy && captive.state === PLAYER_STATE.ALIVE) {
     const steer = captive.steerInput();
     const angle = launchAngle(eater.facing, steer.x, steer.y);
     const speed = launchSpeed(eater.width);
@@ -486,6 +491,7 @@ export function fireCaptive(state: GameState, eater: PlayerSchema, now: number):
   } else {
     free(captive, Math.cos(eater.facing), Math.sin(eater.facing), now);
   }
+  return true;
 }
 
 /**

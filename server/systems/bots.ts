@@ -175,8 +175,8 @@ function botFire(state: GameState, bot: PlayerSchema, cx: number, cy: number, no
     const dy = aim.y + aim.height / 2 - cy;
     const d = Math.hypot(dx, dy) || 1;
     bot.steer(dx / d, dy / d);
-    if (held >= CANNON.LAUNCH_MIN_MS + 300 && Math.abs(angleGap(bot.facing, Math.atan2(dy, dx))) <= BOTS.FIRE_AIM) fireCaptive(state, bot, now);
-  } else if (held >= BOTS.FIRE_WAIT_MS) {
+    if (held >= CANNON.ARM_MS && Math.abs(angleGap(bot.facing, Math.atan2(dy, dx))) <= BOTS.FIRE_AIM) fireCaptive(state, bot, now);
+  } else if (held >= Math.max(CANNON.ARM_MS, BOTS.FIRE_WAIT_MS)) {
     fireCaptive(state, bot, now);
   }
 }

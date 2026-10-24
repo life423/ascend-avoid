@@ -362,6 +362,9 @@ export function drawCapturePrompt(mode: MultiplayerMode, ctx: CanvasRenderingCon
         if (keys.length === 0) return
         const now = mode.worldNow(state, timestamp)
         const dazed = now < me.dazedUntil
+        // When the captor can first fire: the hold's safety net ends HOLD_MS after the catch, the gun loads ARM_MS after it
+        const armedAt = captor ? captor.gulpEndsAt - CANNON.HOLD_MS + CANNON.ARM_MS : 0
+        const loading = captor ? Math.max(0, Math.min(1, 1 - (armedAt - now) / CANNON.ARM_MS)) : 1
         const sinceMiss = now - me.escapeMissAt
         const missed = me.escapeMissAt > 0 && sinceMiss < 380
         const cell = 46 * u
@@ -387,7 +390,8 @@ export function drawCapturePrompt(mode: MultiplayerMode, ctx: CanvasRenderingCon
         ctx.fillText(dazed ? `Caught by ${who}!` : 'Wriggle out!', centerX, y + 22 * u, width - 24 * u)
         ctx.font = `600 ${12 * u}px ${FONT}`
         ctx.fillStyle = 'rgba(255, 255, 255, 0.75)'
-        const hint = dazed ? 'Hang on…' : missed ? 'Wrong one: from the top' : touch ? 'Flick the stick these ways, in order' : 'Tap these, in order (WASD or arrows)'
+        const hint = dazed ? 'Hang on…' : missed ? 'Wrong one: from the top' : loading >= 1 ? 'They can fire you now' : touch ? 'Flick the stick these ways, in order' : 'Tap these, in order (WASD or arrows)'
+        ctx.fillStyle = loading >= 1 && !dazed && !missed ? 'rgba(255, 120, 120, 0.9)' : 'rgba(255, 255, 255, 0.75)'
         ctx.fillText(hint, centerX, y + 42 * u, width - 24 * u)
         // The directions, lit as they're got; the next one pulses
         const rowY = y + 82 * u
@@ -407,11 +411,19 @@ export function drawCapturePrompt(mode: MultiplayerMode, ctx: CanvasRenderingCon
             }
             drawArrow(ctx, kx + cell / 2, rowY, cell * 0.5, keys[i], done ? '#2a2000' : dazed ? 'rgba(255, 255, 255, 0.35)' : current ? '#ffffff' : 'rgba(255, 255, 255, 0.6)')
         }
-        // Dazed: a bar draining away along the bottom
+        // Along the bottom: the captor's gun loading (red, filling up), and while you're dazed, your daze draining (blue, above it)
+        if (loading < 1) {
+            ctx.fillStyle = 'rgba(255, 90, 90, 0.25)'
+            roundedRect(ctx, x + 14 * u, y + height - 10 * u, width - 28 * u, 4 * u, 2 * u)
+            ctx.fill()
+            ctx.fillStyle = 'rgba(255, 90, 90, 0.9)'
+            roundedRect(ctx, x + 14 * u, y + height - 10 * u, Math.max(1, (width - 28 * u) * loading), 4 * u, 2 * u)
+            ctx.fill()
+        }
         if (dazed) {
             const left = Math.max(0, Math.min(1, (me.dazedUntil - now) / CANNON.CAPTIVE_STUN_MS))
             ctx.fillStyle = 'rgba(160, 230, 255, 0.85)'
-            roundedRect(ctx, x + 14 * u, y + height - 10 * u, Math.max(1, (width - 28 * u) * left), 4 * u, 2 * u)
+            roundedRect(ctx, x + 14 * u, y + height - 17 * u, Math.max(1, (width - 28 * u) * left), 4 * u, 2 * u)
             ctx.fill()
         }
         ctx.restore()
@@ -420,6 +432,10 @@ export function drawCapturePrompt(mode: MultiplayerMode, ctx: CanvasRenderingCon
     if (me.gulping) {
         const captive = state.players.get(me.gulping)
         if (!captive || captive.capturedBy !== me.sessionId) return
+        const now = mode.worldNow(state, timestamp)
+        const armedAt = me.gulpEndsAt - CANNON.HOLD_MS + CANNON.ARM_MS
+        const loading = Math.max(0, Math.min(1, 1 - (armedAt - now) / CANNON.ARM_MS))
+        const armed = loading >= 1
         const width = 270 * u
         const height = 64 * u
         const x = centerX - width / 2
@@ -427,11 +443,20 @@ export function drawCapturePrompt(mode: MultiplayerMode, ctx: CanvasRenderingCon
         ctx.save()
         ctx.setTransform(1, 0, 0, 1, 0, 0)
         hudPanel(ctx, x, y, width, height, 14 * u)
-        // Loaded: the frame glows
-        ctx.strokeStyle = `rgba(255, 209, 102, ${0.5 + 0.4 * Math.sin(timestamp / 160)})`
-        ctx.lineWidth = 2 * u
-        roundedRect(ctx, x, y, width, height, 14 * u)
-        ctx.stroke()
+        // Loading: a bar fills along the bottom; loaded: the frame glows
+        if (armed) {
+            ctx.strokeStyle = `rgba(255, 209, 102, ${0.5 + 0.4 * Math.sin(timestamp / 160)})`
+            ctx.lineWidth = 2 * u
+            roundedRect(ctx, x, y, width, height, 14 * u)
+            ctx.stroke()
+        } else {
+            ctx.fillStyle = 'rgba(255, 209, 102, 0.2)'
+            roundedRect(ctx, x + 14 * u, y + height - 9 * u, width - 28 * u, 4 * u, 2 * u)
+            ctx.fill()
+            ctx.fillStyle = GOLD
+            roundedRect(ctx, x + 14 * u, y + height - 9 * u, Math.max(1, (width - 28 * u) * loading), 4 * u, 2 * u)
+            ctx.fill()
+        }
         ctx.fillStyle = PLAYER_COLORS[captive.playerIndex % PLAYER_COLORS.length]
         ctx.beginPath()
         ctx.arc(x + 26 * u, y + height / 2, 9 * u, 0, Math.PI * 2)
@@ -440,10 +465,11 @@ export function drawCapturePrompt(mode: MultiplayerMode, ctx: CanvasRenderingCon
         ctx.textBaseline = 'middle'
         ctx.font = `800 ${15 * u}px ${FONT}`
         ctx.fillStyle = GOLD
-        ctx.fillText(`Loaded: ${String(captive.name ?? '')}`, x + 44 * u, y + 24 * u, width - 56 * u)
+        ctx.fillText(`${armed ? 'Loaded' : 'Loading'}: ${String(captive.name ?? '')}`, x + 44 * u, y + 22 * u, width - 56 * u)
         ctx.font = `600 ${12 * u}px ${FONT}`
         ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
-        ctx.fillText(touch ? 'Face your target, then tap the button to fire' : 'Face your target, then tap to fire', x + 44 * u, y + 44 * u, width - 56 * u)
+        const ready = armed ? (touch ? 'Face your target, then tap the button to fire' : 'Face your target, then tap to fire') : `Ready to fire in ${Math.max(0, (armedAt - now) / 1000).toFixed(1)} s`
+        ctx.fillText(ready, x + 44 * u, y + 41 * u, width - 56 * u)
         ctx.restore()
     }
 }
