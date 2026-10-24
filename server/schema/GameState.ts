@@ -8,20 +8,24 @@ import { CometSchema } from "./CometSchema.js";
 import { BombSchema } from "./BombSchema.js";
 import { TurbineFlightSchema, TurbineSchema } from "./TurbineSchema.js";
 import { CoreSchema } from "./CoreSchema.js";
-import { airflowQuality, cleanAir, lethalShare, pressureBuild, pressureBuildSeconds, scaleDrain } from "../game/airflow.js";
 import { BotBrain } from "../game/bots.js";
-import { closestFloorPoint, isFloor, jackpotSpot, layoutToString, pickLayout, randomFloorPoint } from "../game/layouts.js";
+import { closestFloorPoint, isFloor, randomFloorPoint } from "../game/layouts.js";
 import type { Layout } from "../game/layouts.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
-import { moveSpeed } from "../game/movement.js";
 import { exhaustAngle } from "../game/turbine.js";
 import type { Direction } from "../game/movement.js";
 import { updateCores } from "../systems/cores.js";
 import { updateLatches } from "../systems/latches.js";
-import { updateTurbines, moveTurbinesOntoFloor, clearanceAt } from "../systems/turbines.js";
+import { updateTurbines, clearanceAt } from "../systems/turbines.js";
 import { updateTraffic, reshuffleLanes, launchObstacle } from "../systems/traffic.js";
+import { updateInhales, knockOutWithGems } from "../systems/inhale.js";
+import { botMouth, bombDanger, balanceBots } from "../systems/bots.js";
+import { updateBombs } from "../systems/bombs.js";
+import { updateShift, startGrace, startShift, endShift, fall } from "../systems/shift.js";
+import { collectGems, sprayGems, topUpField } from "../systems/gems.js";
+import { keepApart } from "../systems/bodies.js";
 
-const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS, COMETS, INHALE, BOMBS, TURBINE, CORE, LATCH } = GAME_CONSTANTS;
+const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS, COMETS, BOMBS, TURBINE, CORE } = GAME_CONSTANTS;
 /** Which way each of a bot's decisions steers it */
 const STEER: Record<Direction, { x: number; y: number }> = {
   up: { x: 0, y: -1 },
@@ -32,13 +36,6 @@ const STEER: Record<Direction, { x: number; y: number }> = {
 
 /** How many random spots to try when looking for a safe place to (re)spawn */
 const SPAWN_TRIES = 24;
-
-/** How much harder gems come off someone held in an airflow this long without a break (INHALE.DRAIN_RAMP) */
-function drainRamp(held: number): number {
-  let times = 1;
-  for (const [at, multiplier] of INHALE.DRAIN_RAMP) if (held >= at) times = multiplier;
-  return times;
-}
 
 /**
  * The online world: one big open arena that never stops. Players drop in the moment they join,
@@ -94,22 +91,22 @@ class GameState extends Schema {
   waveAt: number;
   /** Server-only: bots fill in until this many are playing (the automated test sets 0) */
   botFill: number = BOTS.FILL_TO;
-  private brains = new Map<string, BotBrain>();
-  private nextBotId = 1;
+  brains = new Map<string, BotBrain>();
+  nextBotId = 1;
   private startedAt = 0;
   /** Server-only: each traffic lane's direction (1 or -1) and speed; across lanes first, then down */
   lanes: { direction: number; speed: number }[] = [];
-  private layout: Layout | null = null;
-  private lastLayoutName = "";
-  private nextShowerAt = 0;
-  private jackpotDropped = false;
+  layout: Layout | null = null;
+  lastLayoutName = "";
+  nextShowerAt = 0;
+  jackpotDropped = false;
   /** Called with moments worth telling everyone about (who shoved whom off the edge, who took the jackpot) */
   onEvent: ((type: string, data: any) => void) | null = null;
-  private nextPlayerIndex = 0;
+  nextPlayerIndex = 0;
   nextGemId = 0;
   /** Loose gems the field keeps topped up to, and how many are out there now */
-  private fieldGemTarget: number;
-  private fieldGems = 0;
+  fieldGemTarget: number;
+  fieldGems = 0;
   /** Server-only: whether turbines come and go on their own (test worlds ask), when the next ones are due, and ids */
   turbinesAuto: boolean = TURBINE.ENABLED;
   turbineDue: number[] = [];
@@ -166,7 +163,7 @@ class GameState extends Schema {
       this.comets.forEach((comet) => comet.placeAt(-500, -500));
       this.balls.forEach((ball) => ball.park());
     }
-    this.topUpField();
+    topUpField(this);
   }
 
   /** A new visitor: straight into the world, somewhere safe */
@@ -175,13 +172,13 @@ class GameState extends Schema {
     if (name) player.name = name;
     this.players.set(sessionId, player);
     this.spawn(player, now);
-    this.balanceBots(now);
+    balanceBots(this, now);
     return player;
   }
 
   removePlayer(sessionId: string): void {
     this.players.delete(sessionId);
-    this.balanceBots(Date.now());
+    balanceBots(this, Date.now());
   }
 
   /** One server tick: move traffic, gems and players, collect gems, decide hits, bring players back */
@@ -189,11 +186,11 @@ class GameState extends Schema {
     if (!this.startedAt) this.startedAt = now;
     this.time = Math.round(now - this.startedAt);
     this.players.forEach((player) => player.markTick());
-    this.updateShift(deltaTime, now);
+    updateShift(this, deltaTime, now);
     updateTraffic(this);
-    this.updateInhales(now, deltaTime);
+    updateInhales(this, now, deltaTime);
     updateLatches(this, now, deltaTime);
-    this.updateBombs(now, deltaTime);
+    updateBombs(this, now, deltaTime);
     updateTurbines(this, now, deltaTime);
     this.obstacles.forEach((obstacle) => {
       if (!obstacle.update(deltaTime, this.worldWidth, this.worldHeight)) {
@@ -236,13 +233,13 @@ class GameState extends Schema {
         const way = move ? STEER[move] : { x: 0, y: 0 };
         bot.steer(way.x, way.y);
         // Clear out of a lit bomb's blast
-        const escape = this.bombDanger(bot);
+        const escape = bombDanger(this, bot);
         if (escape) {
           if (bot.inhaling) bot.stopInhale();
           bot.steer(escape.x, escape.y);
         }
       }
-      if (bot) this.botMouth(bot, now);
+      if (bot) botMouth(this, bot, now);
       // Between decisions, a bot stops rather than walk off the edge
       if (bot && this.shiftPhase === "shift") {
         const way = bot.steering();
@@ -261,8 +258,8 @@ class GameState extends Schema {
       const fromX = player.x;
       const fromY = player.y;
       player.updateMovement(this.worldWidth, this.worldHeight, now, deltaTime);
-      this.keepApart(player);
-      this.collectGems(player, now, fromX, fromY);
+      keepApart(this, player);
+      collectGems(this, player, now, fromX, fromY);
       player.decay(deltaTime, this.worldWidth, this.worldHeight);
       // A skid after a hit never carries anyone off the edge
       if (this.shiftPhase === "shift" && player.recovering && this.layout && !this.isFloorAt(player.x + player.width / 2, player.y + player.height / 2)) {
@@ -271,7 +268,7 @@ class GameState extends Schema {
       }
       // Over the edge during a shift
       if (this.shiftPhase === "shift" && !player.isSafe() && !this.isFloorAt(player.x + player.width / 2, player.y + player.height / 2)) {
-        this.fall(player, now);
+        fall(this, player, now);
         return;
       }
       // Nobody can be hurt during a grace period
@@ -306,7 +303,7 @@ class GameState extends Schema {
       }
     });
 
-    this.topUpField();
+    topUpField(this);
   }
 
   /**
@@ -315,7 +312,7 @@ class GameState extends Schema {
    */
   hitPlayer(player: PlayerSchema, now: number = Date.now(), push?: { x: number; y: number }): void {
     if (player.gems < GEMS.SURVIVE_AT) {
-      this.knockOutWithGems(player, now);
+      knockOutWithGems(this, player, now);
       return;
     }
     const lost = Math.max(1, Math.ceil(player.gems * GEMS.SPRAY_SHARE));
@@ -323,284 +320,9 @@ class GameState extends Schema {
     const centerY = player.y + player.height / 2;
     player.setGems(player.gems - lost, this.worldWidth, this.worldHeight);
     player.recover(now);
-    this.sprayGems(centerX, centerY, lost, now, player.sessionId);
+    sprayGems(this, centerX, centerY, lost, now, player.sessionId);
     // Knocked into a skid, so whoever caused it has the first go at the spilled gems
     if (push) player.skid(push.x, push.y, Math.max(PUSH.SKID_MIN, player.width * PUSH.SKID_BODY_LENGTHS));
-  }
-
-  /** Knocked out: any last gems burst out where the player was */
-  private knockOutWithGems(player: PlayerSchema, now: number): void {
-    const left = player.gems;
-    const centerX = player.x + player.width / 2;
-    const centerY = player.y + player.height / 2;
-    if (left > 0) player.setGems(0, this.worldWidth, this.worldHeight);
-    player.knockOut(now);
-    if (left > 0) this.sprayGems(centerX, centerY, left, now, player.sessionId);
-  }
-
-  /**
-   * Inhaling: everything in a cone in front of the creature's mouth. Gems are pulled in and
-   * swallowed; a bomb stays in the mouth (safe until it's spat). Every creature in it is robbed
-   * (steal) and pulled bodily toward the mouth by mass; one 1.3 times
-   * narrower or more goes down once held at the mouth for INHALE.GULP_MS.
-   */
-  private updateInhales(now: number, deltaTime: number): void {
-    const cone = Math.cos((INHALE.ARC * Math.PI) / 180);
-    this.players.forEach((eater) => {
-      if (!eater.inhaling || eater.state !== PLAYER_STATE.ALIVE) {
-        if (eater.stealingFrom) this.endTheft(eater, now);
-        if (eater.robbing) eater.robbing = "";
-        if (eater.gulping) eater.gulping = "";
-        this.fadeLocks(eater, null, deltaTime);
-        return;
-      }
-      const fx = Math.cos(eater.facing);
-      const fy = Math.sin(eater.facing);
-      const mouthX = eater.x + eater.width / 2 + fx * eater.width * 0.3;
-      const mouthY = eater.y + eater.height / 2 + fy * eater.width * 0.3;
-      const reach = INHALE.REACH + eater.width * INHALE.REACH_PER_SIZE;
-      /** How far (x, y) is from the mouth, if it's in the cone and within reach (else -1) */
-      const inCone = (x: number, y: number, extra = 0): number => {
-        const dx = x - mouthX;
-        const dy = y - mouthY;
-        const d = Math.hypot(dx, dy);
-        if (d > reach + extra) return -1;
-        if (d < 1) return d;
-        return (dx * fx + dy * fy) / d >= cone ? d : -1;
-      };
-      this.gems.forEach((gem) => {
-        const d = inCone(gem.x, gem.y);
-        if (d < 1) return;
-        const step = Math.min(d, INHALE.PULL_GEMS * deltaTime);
-        gem.moveTo(gem.x + ((mouthX - gem.x) / d) * step, gem.y + ((mouthY - gem.y) / d) * step);
-      });
-      if (!eater.mouth) {
-        this.bombs.forEach((bomb) => {
-          if (bomb.heldBy || bomb.respawnAt || eater.mouth) return;
-          const d = inCone(bomb.x, bomb.y);
-          if (d < 0) return;
-          if (d <= eater.width * 0.35 + bomb.radius) {
-            // A lit bomb keeps ticking in your mouth
-            bomb.hold(eater.sessionId);
-            eater.mouth = bomb.lit() ? "lit" : "bomb";
-            return;
-          }
-          const step = Math.min(d, INHALE.PULL_BOMBS * deltaTime);
-          bomb.placeAt(bomb.x + ((mouthX - bomb.x) / d) * step, bomb.y + ((mouthY - bomb.y) / d) * step);
-        });
-      }
-      // Every creature in the cone is pulled bodily toward the mouth, by mass: harder the heavier the
-      // inhaler is next to it (a giant drags a newborn; a newborn barely moves a giant), the closer it
-      // is and the more squarely in front, but never past what it can get away from. One small enough
-      // to swallow goes down once it's held right at the mouth for GULP_MS.
-      let held: PlayerSchema | null = null;
-      let heldAt = Infinity;
-      const locked = new Set<string>();
-      this.players.forEach((prey) => {
-        if (prey === eater || prey.state !== PLAYER_STATE.ALIVE || prey.spawnProtected) return;
-        const alignment = this.stealWeight(eater, prey);
-        if (alignment <= 0) return;
-        // Holding it in the cone builds the lock: a light pull at first, dangerous after a second
-        // (a bigger inhaler's airflow takes longer to establish)
-        const lock = Math.min(1, (eater.lockOn.get(prey.sessionId) ?? 0) + deltaTime / ((INHALE.LOCK_MS / 1000) * (pressureBuildSeconds(eater.width) / LATCH.PRESSURE_BUILD_S)));
-        eater.lockOn.set(prey.sessionId, lock);
-        // The drain ramp builds only on clean airflow; smothered (deep overlap) or poorly aimed, it fades
-        const heldTime = eater.heldFor.get(prey.sessionId) ?? 0;
-        const clean = airflowQuality(this.mouthed(eater), this.bodyOf(prey), eater.latchTarget === prey.sessionId ? LATCH.CURVE_ARC * eater.beamFocus : 0) >= LATCH.RAMP_MIN_QUALITY;
-        eater.heldFor.set(prey.sessionId, clean ? heldTime + deltaTime : Math.max(0, heldTime - deltaTime * LATCH.RAMP_FADE));
-        locked.add(prey.sessionId);
-        const px = prey.x + prey.width / 2;
-        const py = prey.y + prey.height / 2;
-        const d = Math.hypot(px - mouthX, py - mouthY);
-        // A swallow needs the size, the prey at the mouth, and clean airflow (sitting on top of it isn't enough)
-        if (this.canSwallow(eater, prey) && d <= eater.width * INHALE.GULP_REACH + prey.width / 2 && d < heldAt && airflowQuality(this.mouthed(eater), this.bodyOf(prey)) >= LATCH.SWALLOW_MIN_QUALITY) {
-          held = prey;
-          heldAt = d;
-        }
-        if (d < 1) return;
-        const gap = Math.max(0, d - prey.width / 2);
-        const mass = Math.min(INHALE.BODY_PULL_MAX, eater.width / prey.width);
-        const near = Math.max(0, 1 - gap / reach);
-        // Much stronger in the last stretch before the mouth
-        const close = Math.max(0, 1 - gap / (reach * INHALE.CLOSE_RANGE));
-        const lockPull = INHALE.LOCK_START + (1 - INHALE.LOCK_START) * lock * lock;
-        const strength = INHALE.BODY_PULL * mass * near * near * (1 + INHALE.CLOSE_BOOST * close) * alignment * lockPull;
-        const pull = Math.min(strength, INHALE.PREY_PULL_CAP * moveSpeed(prey.width)) * deltaTime;
-        prey.nudge(((mouthX - px) / d) * pull, ((mouthY - py) / d) * pull, this.worldWidth, this.worldHeight);
-      });
-      this.fadeLocks(eater, locked, deltaTime);
-      const caught = held as PlayerSchema | null;
-      if (!caught) {
-        if (eater.gulping) eater.gulping = "";
-      } else if (eater.gulping !== caught.sessionId) {
-        eater.gulping = caught.sessionId;
-        eater.gulpEndsAt = this.time + INHALE.GULP_MS;
-      } else if (this.time >= eater.gulpEndsAt) {
-        eater.gulping = "";
-        this.swallow(eater, caught, now);
-      }
-      this.steal(eater, now, deltaTime);
-    });
-  }
-
-  /** Locks on creatures no longer held (or every lock, when `keep` is null) fade fast: out of the cone, out of danger */
-  private fadeLocks(eater: PlayerSchema, keep: Set<string> | null, deltaTime: number): void {
-    for (const [id, lock] of eater.lockOn) {
-      if (keep?.has(id)) continue;
-      const left = lock - (deltaTime * 1000) / INHALE.LOCK_DECAY_MS;
-      if (left <= 0) eater.lockOn.delete(id);
-      else eater.lockOn.set(id, left);
-    }
-    for (const [id, held] of eater.heldFor) {
-      if (keep?.has(id)) continue;
-      const left = held - deltaTime * INHALE.HOLD_DECAY;
-      if (left <= 0) eater.heldFor.delete(id);
-      else eater.heldFor.set(id, left);
-    }
-  }
-
-  /** Whether `eater` is big enough to swallow `prey` whole: INHALE.EAT_RATIO times as wide */
-  private canSwallow(eater: PlayerSchema, prey: PlayerSchema): boolean {
-    // ...or it has no gems left to hold it together: then anyone can suck it up
-    return prey.gems <= 0 || prey.width * INHALE.EAT_RATIO <= eater.width;
-  }
-
-  /**
-   * How squarely `victim` sits in `thief`'s inhale: 0 when no part of it is in the cone, up to 1
-   * dead center (or right against the mouth). The drain is shared out by this.
-   */
-  private stealWeight(thief: PlayerSchema, victim: PlayerSchema): number {
-    if (!thief.inhaling || thief.state !== PLAYER_STATE.ALIVE || victim.state !== PLAYER_STATE.ALIVE || victim.spawnProtected) return 0;
-    const fx = Math.cos(thief.facing);
-    const fy = Math.sin(thief.facing);
-    const dx = victim.x + victim.width / 2 - (thief.x + thief.width / 2 + fx * thief.width * 0.3);
-    const dy = victim.y + victim.height / 2 - (thief.y + thief.height / 2 + fy * thief.width * 0.3);
-    const d = Math.hypot(dx, dy);
-    const radius = victim.width / 2;
-    // Touching it across your front: the inhale grabs it, no aiming needed
-    // ...and a focused beam holds its latched creature even round a curve
-    const grabbed = Math.max(this.touchingFront(thief, victim) ? INHALE.CONTACT_WEIGHT : 0, thief.latchTarget === victim.sessionId ? LATCH.CURVE_WEIGHT * thief.beamFocus : 0);
-    if (d - radius > INHALE.REACH + thief.width * INHALE.REACH_PER_SIZE) return grabbed;
-    if (d <= radius) return 1;
-    // In the cone if any of it is: its center's angle off the facing, against how wide it looks from here
-    const off = Math.acos(Math.max(-1, Math.min(1, (dx * fx + dy * fy) / d)));
-    const allowed = (INHALE.ARC * Math.PI) / 180 + Math.asin(Math.min(1, radius / d));
-    if (off > allowed) return grabbed;
-    return Math.max(grabbed, INHALE.STEAL_EDGE_SHARE + (1 - INHALE.STEAL_EDGE_SHARE) * (1 - off / allowed));
-  }
-
-  /** Whether `victim` is touching `thief` anywhere across its front (contact range: an inhale grabs it with no aiming) */
-  private touchingFront(thief: PlayerSchema, victim: PlayerSchema): boolean {
-    const dx = victim.x + victim.width / 2 - (thief.x + thief.width / 2);
-    const dy = victim.y + victim.height / 2 - (thief.y + thief.height / 2);
-    const d = Math.hypot(dx, dy);
-    if (d - (thief.width + victim.width) / 2 > INHALE.CONTACT_GAP) return false;
-    if (d < 1e-6) return true;
-    return (dx * Math.cos(thief.facing) + dy * Math.sin(thief.facing)) / d >= Math.cos((INHALE.CONTACT_ARC * Math.PI) / 180);
-  }
-
-  /**
-   * How hard `thief`'s inhale pulls gems out of `victim` (0 to 1): sharply weaker with distance (the
-   * cone reaches far but bites near the mouth), and weaker while the victim gets away, strafing
-   * across the cone most of all. Right at the mouth there's no getting away.
-   */
-  private stealStrength(thief: PlayerSchema, victim: PlayerSchema): number {
-    const fx = Math.cos(thief.facing);
-    const fy = Math.sin(thief.facing);
-    const dx = victim.x + victim.width / 2 - (thief.x + thief.width / 2 + fx * thief.width * 0.3);
-    const dy = victim.y + victim.height / 2 - (thief.y + thief.height / 2 + fy * thief.width * 0.3);
-    const d = Math.hypot(dx, dy);
-    const reach = INHALE.REACH + thief.width * INHALE.REACH_PER_SIZE;
-    const gap = Math.max(0, d - victim.width / 2);
-    const near = Math.pow(Math.max(0, 1 - gap / reach), INHALE.STEAL_FALLOFF);
-    // The outer part of the reach catches but doesn't kill: drain fades to nothing toward the tip
-    const lethal = lethalShare(gap / reach);
-    if (d < 1e-6) return near * lethal;
-    const nx = dx / d;
-    const ny = dy / d;
-    const velocity = victim.velocity();
-    const away = Math.max(0, velocity.x * nx + velocity.y * ny);
-    const across = Math.abs(velocity.y * nx - velocity.x * ny);
-    const escape = Math.min(1, (INHALE.STEAL_ESCAPE_AWAY * away + across) / moveSpeed(victim.width));
-    const reachable = Math.min(1, gap / (reach * INHALE.STEAL_POINT_BLANK));
-    return near * lethal * (1 - INHALE.STEAL_ESCAPE * escape * reachable);
-  }
-
-  /**
-   * Gravity theft: everyone in the inhale cone has gems pulled out into the thief (one small enough
-   * to swallow is pulled in bodily too). An inhale's drain is shared out by how squarely each victim
-   * sits in the cone, and grows only with the square root of how many it catches, so a big cone
-   * covers more creatures without draining each one as fast. A victim's share drains at INHALE.STEAL_RATE a second,
-   * whatever either one's size (mass resists being pulled, not being robbed). Two creatures inhaling
-   * each other both steal at once. Take someone's last gem and they're drained: gone until they respawn.
-   */
-  private steal(thief: PlayerSchema, now: number, deltaTime: number): void {
-    const victims: { victim: PlayerSchema; weight: number }[] = [];
-    this.players.forEach((other) => {
-      if (other === thief || other.gems <= 0) return;
-      const weight = this.stealWeight(thief, other);
-      if (weight > 0) victims.push({ victim: other, weight });
-    });
-    victims.sort((a, b) => b.weight - a.weight);
-    const primary = victims[0]?.victim.sessionId ?? "";
-    if (primary !== thief.stealingFrom) this.endTheft(thief, now, primary);
-    const list = victims.map((entry) => entry.victim.sessionId).join(",");
-    if (list !== thief.robbing) thief.robbing = list;
-    // Progress toward the next gem is kept between inhales, and while someone slips out of the cone for a moment
-    for (const id of [...thief.stealShares.keys()]) {
-      const known = this.players.get(id);
-      if (!known || known.state !== PLAYER_STATE.ALIVE) thief.stealShares.delete(id);
-    }
-    const total = victims.reduce((sum, entry) => sum + entry.weight, 0);
-    // Catching several at once pays more than one, though far less than one each
-    const budget = Math.sqrt(victims.length);
-    for (const { victim, weight } of victims) {
-      let progress = (thief.stealShares.get(victim.sessionId) ?? 0) + deltaTime * INHALE.STEAL_RATE * budget * (weight / total) * this.stealStrength(thief, victim) * drainRamp(thief.heldFor.get(victim.sessionId) ?? 0) * pressureBuild(thief.heldFor.get(victim.sessionId) ?? 0, thief.width) * scaleDrain(thief.width, victim.width) * (LATCH.OVERLAP_DRAIN_MIN + (1 - LATCH.OVERLAP_DRAIN_MIN) * cleanAir(this.bodyOf(thief), this.bodyOf(victim)));
-      while (progress >= 1 && victim.gems > 0) {
-        progress -= 1;
-        victim.setGems(victim.gems - 1, this.worldWidth, this.worldHeight);
-        thief.setGems(thief.gems + 1, this.worldWidth, this.worldHeight);
-        thief.stolenTotal += 1;
-        victim.robbedTotal += 1;
-        if (victim.sessionId === thief.stealingFrom) thief.stolenRun += 1;
-      }
-      thief.stealShares.set(victim.sessionId, progress);
-      if (victim.gems <= 0 && victim.state === PLAYER_STATE.ALIVE) this.drain(victim, now, thief);
-    }
-  }
-
-  /** Lost their last gem (robbed, or fed to a turbine): they shrink away to nothing and are out until they respawn */
-  drain(victim: PlayerSchema, now: number, thief?: PlayerSchema): void {
-    this.onEvent?.("vanish", {
-      id: victim.sessionId,
-      x: Math.round(victim.x + victim.width / 2),
-      y: Math.round(victim.y + victim.height / 2),
-      size: Math.round(victim.width),
-      index: victim.playerIndex,
-      facing: Math.round(victim.facing * 100) / 100,
-    });
-    victim.knockOut(now);
-    if (!thief) {
-      // Whoever shoved them in gets the credit
-      this.credit(victim, "turbine", now);
-      return;
-    }
-    const primary = thief.stealingFrom === victim.sessionId;
-    const gems = primary ? thief.stolenRun : 0;
-    if (primary) {
-      thief.stolenRun = 0;
-      this.endTheft(thief, now);
-    }
-    this.credit(victim, "drained", now, thief.sessionId, { gems });
-  }
-
-  /** A run of stealing ends (or switches to someone else): a big one gets a banner and a line in the feed */
-  private endTheft(thief: PlayerSchema, now: number, next = ""): void {
-    const victim = thief.stealingFrom ? this.players.get(thief.stealingFrom) : undefined;
-    if (victim && thief.stolenRun >= INHALE.STOLE_NOTICE) this.credit(victim, "stole", now, thief.sessionId, { gems: thief.stolenRun });
-    thief.stolenRun = 0;
-    thief.stealProgress = 0;
-    if (thief.stealingFrom !== next) thief.stealingFrom = next;
   }
 
   /** Bombs in the arena (switched off by BOMBS.ENABLED; the automated test switches them on) */
@@ -609,15 +331,6 @@ class GameState extends Schema {
     for (let i = 0; i < BOMBS.COUNT; i++) {
       this.bombs.push(new BombSchema(80 + Math.random() * (this.worldWidth - 160), 80 + Math.random() * (this.worldHeight - 160)));
     }
-  }
-
-  /** Swallowed whole: knocked out, and all their gems go to the eater */
-  private swallow(eater: PlayerSchema, prey: PlayerSchema, now: number): void {
-    const gems = prey.gems;
-    if (gems > 0) eater.setGems(eater.gems + gems, this.worldWidth, this.worldHeight);
-    prey.setGems(0, this.worldWidth, this.worldHeight);
-    prey.knockOut(now);
-    this.credit(prey, "ate", now, eater.sessionId, { gems });
   }
 
   /** Spit the bomb in the mouth along (x, y) (or the way the creature faces): it slides, and its fuse starts */
@@ -639,271 +352,6 @@ class GameState extends Schema {
     if (!bomb.lit()) bomb.explodesAt = this.time + BOMBS.FUSE_MS;
     player.facing = Math.atan2(dy, dx);
     player.spitReadyAt = now + BOMBS.SPIT_COOLDOWN_MS;
-  }
-
-  /**
-   * Bombs: back after going off; safe in a mouth unless lit (then it goes off right there); dropped
-   * where a holder was if they're gone; sliding, nudged by anyone walking into it;
-   * and going off when the fuse runs down
-   */
-  private updateBombs(now: number, deltaTime: number): void {
-    this.bombs.forEach((bomb) => {
-      if (bomb.respawnAt) {
-        if (this.time < bomb.respawnAt) return;
-        bomb.respawnAt = 0;
-        const spot = this.layout ? randomFloorPoint(this.layout) : { x: 80 + Math.random() * (this.worldWidth - 160), y: 80 + Math.random() * (this.worldHeight - 160) };
-        bomb.placeAt(spot.x, spot.y);
-        return;
-      }
-      if (bomb.heldBy) {
-        const holder = this.players.get(bomb.heldBy);
-        if (holder && holder.state === PLAYER_STATE.ALIVE && holder.mouth) {
-          const mouth = bomb.lit() ? "lit" : "bomb";
-          if (holder.mouth !== mouth) holder.mouth = mouth;
-          if (!bomb.lit() || this.time < bomb.explodesAt) return;
-          // Went off in their mouth
-          holder.mouth = "";
-          bomb.heldBy = "";
-          bomb.placeAt(holder.x + holder.width / 2, holder.y + holder.height / 2);
-          this.explode(bomb, now);
-          return;
-        }
-        if (holder) holder.mouth = "";
-        bomb.heldBy = "";
-        const x = holder ? holder.x + holder.width / 2 : this.worldWidth / 2;
-        const y = holder ? holder.y + holder.height / 2 : this.worldHeight / 2;
-        bomb.placeAt(Math.max(bomb.radius, Math.min(x, this.worldWidth - bomb.radius)), Math.max(bomb.radius, Math.min(y, this.worldHeight - bomb.radius)));
-      }
-      bomb.update(deltaTime, this.worldWidth, this.worldHeight);
-      this.players.forEach((player) => {
-        if (player.state !== PLAYER_STATE.ALIVE) return;
-        const cx = player.x + player.width / 2;
-        const cy = player.y + player.height / 2;
-        const dx = bomb.x - cx;
-        const dy = bomb.y - cy;
-        const d = Math.hypot(dx, dy);
-        const reach = player.width / 2 + bomb.radius;
-        if (d >= reach || d < 1e-6) return;
-        const nx = dx / d;
-        const ny = dy / d;
-        // Nudged out of the way, rolling off a little
-        const moving = player.velocity();
-        const push = Math.max(60, moving.x * nx + moving.y * ny) * 1.1;
-        bomb.x = cx + nx * reach;
-        bomb.y = cy + ny * reach;
-        bomb.vx = nx * push;
-        bomb.vy = ny * push;
-      });
-      if (bomb.lit() && this.time >= bomb.explodesAt) this.explode(bomb, now);
-    });
-  }
-
-  /**
-   * A bomb goes off: everyone in the blast is knocked outward (lighter creatures farther) and has
-   * gems knocked loose, more near the middle; under GEMS.SURVIVE_AT gems it knocks them out. Other
-   * bombs caught in it go off a moment later. Credit goes to whoever spat or kicked it last.
-   */
-  private explode(bomb: BombSchema, now: number): void {
-    const x = bomb.x;
-    const y = bomb.y;
-    const by = bomb.thrownBy;
-    bomb.vanish(this.time + BOMBS.RESPAWN_MS);
-    this.onEvent?.("blast", { x: Math.round(x), y: Math.round(y), radius: BOMBS.BLAST_RADIUS });
-    this.players.forEach((target) => {
-      if (target.state !== PLAYER_STATE.ALIVE || target.spawnProtected) return;
-      const tx = target.x + target.width / 2;
-      const ty = target.y + target.height / 2;
-      const d = Math.hypot(tx - x, ty - y);
-      const reach = BOMBS.BLAST_RADIUS + target.width / 2;
-      if (d >= reach) return;
-      const strength = 1 - d / reach;
-      const awayX = d > 1e-6 ? (tx - x) / d : -Math.cos(target.facing);
-      const awayY = d > 1e-6 ? (ty - y) / d : -Math.sin(target.facing);
-      const lightness = Math.min(1, Math.max(0.5, 1 / Math.sqrt(target.weight())));
-      target.shoveAlong(awayX, awayY, (BOMBS.PUSH_MIN + (BOMBS.PUSH_MAX - BOMBS.PUSH_MIN) * strength) * lightness, by, now, "bomb");
-      if (!target.takeBounty(now)) return;
-      const credited = by !== "" && by !== target.sessionId;
-      if (target.gems < GEMS.SURVIVE_AT) {
-        this.knockOutWithGems(target, now);
-        if (credited) this.credit(target, "bomb", now, by, { gems: 0 });
-        return;
-      }
-      const share = BOMBS.SHARE_MIN + (BOMBS.SHARE_MAX - BOMBS.SHARE_MIN) * strength;
-      const loose = Math.min(target.gems, BOMBS.LOOSE_MAX, Math.max(1, Math.ceil(target.gems * share)));
-      target.setGems(target.gems - loose, this.worldWidth, this.worldHeight);
-      this.sprayGems(tx, ty, loose, now, target.sessionId);
-      if (credited) this.credit(target, "bomb", now, by, { gems: loose });
-    });
-    this.bombs.forEach((other) => {
-      if (other === bomb || other.respawnAt || other.heldBy) return;
-      if (Math.hypot(other.x - x, other.y - y) > BOMBS.BLAST_RADIUS + other.radius) return;
-      const soon = this.time + BOMBS.CHAIN_MS;
-      if (!other.lit() || other.explodesAt > soon) other.explodesAt = soon;
-    });
-  }
-
-  /**
-   * Bots swallow smaller creatures, pick up bombs, and spit them at a good target: someone big,
-   * slow, or rooted while inhaling. A lit bomb in the mouth goes straight back out.
-   */
-  private botMouth(bot: PlayerSchema, now: number): void {
-    if (bot.state !== PLAYER_STATE.ALIVE || bot.sliding || bot.recovering) return;
-    const cx = bot.x + bot.width / 2;
-    const cy = bot.y + bot.height / 2;
-    if (bot.mouth) {
-      let target: PlayerSchema | null = null;
-      let best = -Infinity;
-      this.players.forEach((other) => {
-        if (other === bot || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected) return;
-        const d = Math.hypot(other.x + other.width / 2 - cx, other.y + other.height / 2 - cy);
-        if (d < 140 || d > 360) return;
-        const score = other.width + (other.inhaling ? 60 : 0) - d * 0.1;
-        if (score > best) {
-          best = score;
-          target = other;
-        }
-      });
-      const aim = target as PlayerSchema | null;
-      if (bot.mouth === "lit") {
-        this.spit(bot, aim ? aim.x + aim.width / 2 - cx : Math.cos(bot.facing), aim ? aim.y + aim.height / 2 - cy : Math.sin(bot.facing), now);
-      } else if (aim && Math.random() < 0.03) {
-        this.spit(bot, aim.x + aim.width / 2 - cx + (Math.random() - 0.5) * 60, aim.y + aim.height / 2 - cy + (Math.random() - 0.5) * 60, now);
-      }
-      return;
-    }
-    // Inhaling: keep the mouth on whoever it's robbing or swallowing for as long as its breath lasts,
-    // and let go once nobody has been in its inhale for a moment (saving its breath)
-    if (bot.inhaling) {
-      const held = bot.stealingFrom ? this.players.get(bot.stealingFrom) : bot.gulping ? this.players.get(bot.gulping) : undefined;
-      if (held) {
-        bot.aimAt(held.x + held.width / 2 - cx, held.y + held.height / 2 - cy);
-        bot.inhaleIdleSince = 0;
-      } else if (!bot.inhaleIdleSince) {
-        bot.inhaleIdleSince = now;
-      } else if (now - bot.inhaleIdleSince > 700) {
-        bot.stopInhale(now);
-        bot.inhaleIdleSince = 0;
-      }
-      return;
-    }
-    if (Math.random() > 0.12) return;
-    // Someone stealing from this bot: it runs from a robber its size or bigger (its brain sees to that)
-    // and often inhales back as it goes; a smaller robber is faster, so it turns and fights
-    let thief: PlayerSchema | null = null;
-    this.players.forEach((other) => {
-      if (other.robbing.split(",").includes(bot.sessionId)) thief = other;
-    });
-    const robber = thief as PlayerSchema | null;
-    if (robber) {
-      if (Math.random() < 0.8) {
-        bot.startInhale(now, INHALE.MAX_MS);
-        bot.aimAt(robber.x + robber.width / 2 - cx, robber.y + robber.height / 2 - cy);
-      }
-      return;
-    }
-    const reach = INHALE.REACH + bot.width * INHALE.REACH_PER_SIZE;
-    let want: { x: number; y: number } | null = null;
-    let nearest = reach;
-    this.players.forEach((other) => {
-      if (other === bot || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected || other.width * INHALE.EAT_RATIO > bot.width) return;
-      const d = Math.hypot(other.x + other.width / 2 - cx, other.y + other.height / 2 - cy);
-      if (d < nearest) {
-        nearest = d;
-        want = { x: other.x + other.width / 2, y: other.y + other.height / 2 };
-      }
-    });
-    // Nothing to swallow: rob anyone in reach (they can rob back)
-    this.players.forEach((other) => {
-      if (want || other === bot || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected || other.gems < 1) return;
-      const ox = other.x + other.width / 2;
-      const oy = other.y + other.height / 2;
-      const d = Math.hypot(ox - cx, oy - cy);
-      if (d - other.width / 2 > reach + bot.width * 0.3) return;
-      want = { x: ox, y: oy };
-    });
-    this.bombs.forEach((bomb) => {
-      if (bomb.heldBy || bomb.respawnAt || bomb.lit()) return;
-      const d = Math.hypot(bomb.x - cx, bomb.y - cy);
-      if (d < Math.min(nearest, 170)) {
-        nearest = d;
-        want = { x: bomb.x, y: bomb.y };
-      }
-    });
-    const goal = want as { x: number; y: number } | null;
-    if (!goal) return;
-    // As long as its breath lasts (it lets go once nobody is in its inhale)
-    bot.inhaleIdleSince = 0;
-    bot.startInhale(now, INHALE.MAX_MS);
-    bot.aimAt(goal.x - cx, goal.y - cy);
-  }
-
-  /** Which way a bot should run to get clear of a lit bomb about to go off (null when it's safe) */
-  private bombDanger(bot: PlayerSchema): { x: number; y: number } | null {
-    const cx = bot.x + bot.width / 2;
-    const cy = bot.y + bot.height / 2;
-    let escape: { x: number; y: number } | null = null;
-    this.bombs.forEach((bomb) => {
-      if (escape || !bomb.lit() || bomb.heldBy || bomb.respawnAt) return;
-      const d = Math.hypot(cx - bomb.x, cy - bomb.y);
-      if (d > BOMBS.BLAST_RADIUS + bot.width / 2 + 40 || bomb.explodesAt - this.time > 1600) return;
-      escape = d > 1e-6 ? { x: (cx - bomb.x) / d, y: (cy - bomb.y) / d } : { x: 1, y: 0 };
-    });
-    return escape as { x: number; y: number } | null;
-  }
-
-  /**
-   * Creatures are solid: nobody overlaps or passes through anyone, and touching never shoves,
-   * bounces or knocks anyone back. When two overlap, whoever moved (or grew) into the other this
-   * tick gives way: walking into someone standing still stops you and never moves them, two
-   * walking into each other both stop, anyone pulled into someone by suction is the one moved back,
-   * and a thief growing as it steals is the one that makes room. The one doing the moving stops
-   * going that way, so at an angle it slides along. Inhaling changes nothing.
-   */
-  private keepApart(player: PlayerSchema): void {
-    if (player.state !== PLAYER_STATE.ALIVE) return;
-    this.players.forEach((other) => {
-      if (other === player || other.state !== PLAYER_STATE.ALIVE) return;
-      const dx = other.x + other.width / 2 - (player.x + player.width / 2);
-      const dy = other.y + other.height / 2 - (player.y + player.height / 2);
-      const distance = Math.hypot(dx, dy);
-      const overlap = (player.width + other.width) / 2 - distance;
-      if (overlap <= -ARENA_RULES.CONTACT_TOUCH) return;
-      const nx = distance > 1e-6 ? dx / distance : 1;
-      const ny = distance > 1e-6 ? dy / distance : 0;
-      // Touching: most of this step's sideways movement is undone, so they stay pressed together
-      // instead of orbiting; moving away peels off freely
-      const stepX = player.x + player.width / 2 - player.tickX;
-      const stepY = player.y + player.height / 2 - player.tickY;
-      const stepToward = stepX * nx + stepY * ny;
-      const step = Math.hypot(stepX, stepY);
-      if (step > 1e-6 && stepToward >= -0.2 * step) {
-        const grip = ARENA_RULES.CONTACT_GRIP;
-        player.nudge(-(stepX - stepToward * nx) * grip, -(stepY - stepToward * ny) * grip, this.worldWidth, this.worldHeight);
-      }
-      // Soft bodies: a little squish before they push back hard
-      const excess = overlap - ARENA_RULES.CONTACT_SQUISH * Math.min(player.width, other.width);
-      if (excess <= 0) return;
-      // How far each moved (or grew) toward the other this tick
-      const mine = Math.max(0, (player.x + player.width / 2 - player.tickX) * nx + (player.y + player.height / 2 - player.tickY) * ny + player.width / 2 - player.tickRadius);
-      const theirs = Math.max(0, -((other.x + other.width / 2 - other.tickX) * nx + (other.y + other.height / 2 - other.tickY) * ny) + other.width / 2 - other.tickRadius);
-      // Whoever moved (or grew) into the other gives way; when both push, the lighter one gives way more
-      // (mass only decides it when both are walking into each other: not growing, not being pulled)
-      const movedIn = (player.x + player.width / 2 - player.tickX) * nx + (player.y + player.height / 2 - player.tickY) * ny;
-      const theyMovedIn = -((other.x + other.width / 2 - other.tickX) * nx + (other.y + other.height / 2 - other.tickY) * ny);
-      const walking = player.velocity();
-      const theirWalking = other.velocity();
-      const bothPush = walking.x * nx + walking.y * ny > 1 && -(theirWalking.x * nx + theirWalking.y * ny) > 1 && movedIn > 0 && theyMovedIn > 0;
-      const mineHeavy = bothPush ? movedIn * other.width * other.width : mine;
-      const theirsHeavy = bothPush ? theyMovedIn * player.width * player.width : theirs;
-      // Scale separation: something enormous walking into something tiny pushes it aside instead of being stopped (being pulled never shoves)
-      const dwarfs = player.width >= other.width * ARENA_RULES.SCALE_SHOVE_RATIO && walking.x * nx + walking.y * ny > 1;
-      const dwarfed = other.width >= player.width * ARENA_RULES.SCALE_SHOVE_RATIO && -(theirWalking.x * nx + theirWalking.y * ny) > 1;
-      const share = dwarfs ? 0 : dwarfed ? 1 : mineHeavy + theirsHeavy > 1e-6 ? mineHeavy / (mineHeavy + theirsHeavy) : 0.5;
-      player.nudge(-nx * excess * share, -ny * excess * share, this.worldWidth, this.worldHeight);
-      other.nudge(nx * excess * (1 - share), ny * excess * (1 - share), this.worldWidth, this.worldHeight);
-      if (mine > 0 && !dwarfs) player.blockAlong(nx, ny);
-      if (theirs > 0 && !dwarfed) other.blockAlong(-nx, -ny);
-    });
   }
 
   /** A traffic wave begins: comets and balls stream in (lane traffic enters as its lanes allow) */
@@ -942,75 +390,6 @@ class GameState extends Schema {
     return this.layout ? closestFloorPoint(this.layout, x, y) : { x, y };
   }
 
-  /** Run the arena shift: start it when it's due, move through its phases, and bring the arena back */
-  private updateShift(deltaTime: number, now: number): void {
-    // Switched off: the arena stays whole, so no warnings, grace, drop, showers or jackpot
-    if (!this.shiftsOn) return;
-    if (this.time >= this.phaseEndsAt) {
-      if (this.shiftPhase === "normal") this.startGrace(now);
-      else if (this.shiftPhase === "grace") this.startShift();
-      else this.endShift();
-      return;
-    }
-    if (this.shiftPhase !== "shift" || !this.layout) return;
-    const left = this.phaseEndsAt - this.time;
-    if (this.time >= this.nextShowerAt) {
-      this.nextShowerAt = this.time + SHIFT.SHOWER_EVERY_MS;
-      // Richer as the shift goes on: 1-gem drops, then 2, then 3
-      const progress = 1 - left / SHIFT.SHIFT_MS;
-      this.dropGems(SHIFT.SHOWER_GEMS, progress < 1 / 3 ? 1 : progress < 2 / 3 ? 2 : 3, now);
-    }
-    if (!this.jackpotDropped && left <= SHIFT.JACKPOT_DROPS_WITH_MS_LEFT) {
-      const spot = jackpotSpot(this.layout);
-      this.dropJackpot(spot.x, spot.y, SHIFT.DROP_MS * 1.5);
-    }
-    this.updateJackpot(deltaTime);
-  }
-
-  /** Show the new shape. Nobody can be hurt while everyone gets onto it, and gems drop there to lead the way */
-  private startGrace(now: number): void {
-    // New traffic patterns too, so nobody memorizes them
-    reshuffleLanes(this);
-    const people: { x: number; y: number }[] = [];
-    this.players.forEach((player) => {
-      if (player.state === PLAYER_STATE.ALIVE) people.push({ x: player.x + player.width / 2, y: player.y + player.height / 2 });
-    });
-    const picked = pickLayout(people, this.players.size, this.lastLayoutName);
-    this.layout = picked.layout;
-    this.lastLayoutName = picked.name;
-    this.floor = layoutToString(picked.layout);
-    this.shiftPhase = "grace";
-    this.phaseEndsAt = this.time + SHIFT.GRACE_MS;
-    this.dropGems(SHIFT.GRACE_GEMS, 1, now);
-    moveTurbinesOntoFloor(this);
-  }
-
-  /** The rest of the arena drops away; gems lying out there move onto the floor */
-  private startShift(): void {
-    this.shiftPhase = "shift";
-    this.phaseEndsAt = this.time + SHIFT.SHIFT_MS;
-    this.nextShowerAt = this.time + SHIFT.SHOWER_EVERY_MS;
-    this.jackpotDropped = false;
-    const layout = this.layout;
-    if (!layout) return;
-    this.gems.forEach((gem) => {
-      if (isFloor(layout, gem.x, gem.y)) return;
-      const spot = closestFloorPoint(layout, gem.x, gem.y);
-      gem.moveTo(spot.x, spot.y);
-    });
-  }
-
-  /** The whole arena comes back, until the next shift */
-  private endShift(): void {
-    this.shiftPhase = "normal";
-    this.phaseEndsAt = this.time + SHIFT.EVERY_MS;
-    this.layout = null;
-    this.floor = "";
-    this.jackpotOn = false;
-    this.jackpotHolder = "";
-    this.jackpotProgress = 0;
-  }
-
   /** Jump straight to a phase of the shift, ending after `msLeft` (used by the automated test) */
   /** Switch arena shifts on in this world (tests), the first coming SHIFT.FIRST_AFTER_MS from now */
   enableShifts(): void {
@@ -1021,16 +400,16 @@ class GameState extends Schema {
 
   forcePhase(phase: string, msLeft: number, now: number): void {
     if (phase === "normal") {
-      this.endShift();
+      endShift(this);
     } else {
-      if (phase === "grace" || !this.layout) this.startGrace(now);
-      if (phase === "shift") this.startShift();
+      if (phase === "grace" || !this.layout) startGrace(this, now);
+      if (phase === "shift") startShift(this);
     }
     this.phaseEndsAt = this.time + msLeft;
   }
 
   /** Gems dropping onto the floor (they can be grabbed once they land) */
-  private dropGems(count: number, value: number, now: number): void {
+  dropGems(count: number, value: number, now: number): void {
     if (!this.layout) return;
     for (let i = 0; i < count && this.gems.size < GEMS.MAX_GEMS; i++) {
       const spot = randomFloorPoint(this.layout);
@@ -1051,59 +430,8 @@ class GameState extends Schema {
     this.jackpotProgress = 0;
   }
 
-  /**
-   * The jackpot goes to whoever stands on it alone for JACKPOT_CLAIM_MS. A shove starts their
-   * claim over, and while two or more are on it, nobody's claim moves.
-   */
-  private updateJackpot(deltaTime: number): void {
-    if (!this.jackpotOn || this.time < this.jackpotLandsAt) return;
-    const on: PlayerSchema[] = [];
-    this.players.forEach((player) => {
-      if (player.state !== PLAYER_STATE.ALIVE) return;
-      const box = player.hitBox();
-      const dx = Math.max(box.x - this.jackpotX, 0, this.jackpotX - (box.x + box.width));
-      const dy = Math.max(box.y - this.jackpotY, 0, this.jackpotY - (box.y + box.height));
-      if (Math.hypot(dx, dy) <= SHIFT.JACKPOT_RADIUS) on.push(player);
-    });
-    if (on.length === 0) {
-      if (this.jackpotHolder) this.jackpotHolder = "";
-      if (this.jackpotProgress) this.jackpotProgress = 0;
-      return;
-    }
-    if (on.length > 1) return;
-    const claimant = on[0];
-    if (claimant.sessionId !== this.jackpotHolder || claimant.sliding) {
-      this.jackpotHolder = claimant.sessionId;
-      this.jackpotProgress = 0;
-      if (claimant.sliding) return;
-    }
-    this.jackpotProgress = Math.min(1, this.jackpotProgress + (deltaTime * 1000) / SHIFT.JACKPOT_CLAIM_MS);
-    if (this.jackpotProgress < 1) return;
-    claimant.setGems(claimant.gems + SHIFT.JACKPOT_VALUE, this.worldWidth, this.worldHeight);
-    this.jackpotOn = false;
-    this.onEvent?.("jackpot", { byId: claimant.sessionId, by: claimant.name, value: SHIFT.JACKPOT_VALUE });
-  }
-
-  /**
-   * Over the edge during a shift: it counts as a hit. With gems, half of them burst out and the
-   * player lands back on the nearest floor, blinking; with none, they're knocked out.
-   */
-  private fall(player: PlayerSchema, now: number): void {
-    this.credit(player, "edge", now);
-    if (player.gems <= 0 || !this.layout) {
-      player.knockOut(now);
-      return;
-    }
-    const centerX = player.x + player.width / 2;
-    const centerY = player.y + player.height / 2;
-    const spot = closestFloorPoint(this.layout, centerX, centerY);
-    player.placeAt(spot.x - player.width / 2, spot.y - player.height / 2);
-    // Skidding onward, away from the edge
-    this.hitPlayer(player, now, { x: spot.x - centerX, y: spot.y - centerY });
-  }
-
   /** If someone shoved this player just before they were hit or fell, tell everyone who did it */
-  private credit(target: PlayerSchema, how: string, now: number, byId?: string, extra: Record<string, unknown> = {}): void {
+  credit(target: PlayerSchema, how: string, now: number, byId?: string, extra: Record<string, unknown> = {}): void {
     const who = byId ?? target.shovedBy(now, SHIFT.CREDIT_MS);
     const by = who ? this.players.get(who) : undefined;
     if (!by || !this.onEvent) return;
@@ -1119,44 +447,6 @@ class GameState extends Schema {
     });
   }
 
-  /** Keep the world lively: bots fill in until `botFill` are playing, and make room as people arrive */
-  private balanceBots(now: number): void {
-    let people = 0;
-    this.players.forEach((player) => {
-      if (!player.isBot) people++;
-    });
-    const wanted = people === 0 ? 0 : Math.max(0, this.botFill - people);
-    while (this.brains.size < wanted) this.addBot(now);
-    while (this.brains.size > wanted) this.removeBot();
-  }
-
-  private addBot(now: number): void {
-    const id = `bot-${this.nextBotId++}`;
-    const taken = new Set<string>();
-    this.players.forEach((player) => taken.add(player.name));
-    const free = BOTS.NAMES.filter((name) => !taken.has(name));
-    const bot = new PlayerSchema(id, this.nextPlayerIndex++);
-    bot.name = free.length > 0 ? free[Math.floor(Math.random() * free.length)] : `Bot ${this.nextBotId}`;
-    bot.isBot = true;
-    this.players.set(id, bot);
-    this.brains.set(id, new BotBrain());
-    this.spawn(bot, now);
-  }
-
-  /** The bot with the fewest gems leaves */
-  private removeBot(): void {
-    const pick = { id: "", gems: Infinity };
-    this.brains.forEach((_, id) => {
-      const gems = this.players.get(id)?.gems ?? 0;
-      if (gems < pick.gems) {
-        pick.id = id;
-        pick.gems = gems;
-      }
-    });
-    this.brains.delete(pick.id);
-    this.players.delete(pick.id);
-  }
-
   /** A loose gem somewhere in the world, or at a given spot */
   addGem(x?: number, y?: number): void {
     const margin = 40;
@@ -1168,54 +458,6 @@ class GameState extends Schema {
     );
     this.gems.set(`g${this.nextGemId++}`, gem);
     this.fieldGems++;
-  }
-
-  /** Keep the field stocked: every gem picked up reappears somewhere else */
-  private topUpField(): void {
-    while (this.fieldGems < this.fieldGemTarget && this.gems.size < GEMS.MAX_GEMS) this.addGem();
-  }
-
-  /** Pick up every gem the player is touching */
-  private collectGems(player: PlayerSchema, now: number, fromX = player.x, fromY = player.y): void {
-    // Everything the player passed over this tick counts, so a skid can't skip a gem
-    // (unless they were moved somewhere else entirely, like a respawn)
-    const moved = Math.hypot(player.x - fromX, player.y - fromY);
-    const path = moved > 300
-      ? player
-      : {
-          x: Math.min(fromX, player.x),
-          y: Math.min(fromY, player.y),
-          width: player.width + Math.abs(player.x - fromX),
-          height: player.height + Math.abs(player.y - fromY),
-        };
-    let collected = 0;
-    const taken: string[] = [];
-    this.gems.forEach((gem, id) => {
-      if (!gem.touches(path, now, player.sessionId)) return;
-      collected += gem.value;
-      taken.push(id);
-      if (!gem.sprayed) this.fieldGems--;
-    });
-    if (collected === 0) return;
-    taken.forEach((id) => this.gems.delete(id));
-    player.setGems(player.gems + collected, this.worldWidth, this.worldHeight);
-  }
-
-  /** Burst gems outward from a point, spread around the circle; big piles make bigger gems */
-  private sprayGems(centerX: number, centerY: number, total: number, now: number, owner = ""): void {
-    // Browsers draw a burst for anything more than a gem or two
-    if (total >= 3) this.onEvent?.("burst", { x: Math.round(centerX), y: Math.round(centerY), count: total });
-    const room = Math.max(1, GEMS.MAX_GEMS - this.gems.size);
-    const pieces = Math.min(total, GEMS.SPRAY_PIECES, room);
-    const turn = Math.random() * Math.PI * 2;
-    for (let i = 0; i < pieces; i++) {
-      const value = Math.floor(total / pieces) + (i < total % pieces ? 1 : 0);
-      const gem = new GemSchema(centerX, centerY, value);
-      const angle = turn + (i / pieces) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
-      const speed = GEMS.SPRAY_SPEED_MIN + Math.random() * (GEMS.SPRAY_SPEED_MAX - GEMS.SPRAY_SPEED_MIN);
-      gem.spray(angle, speed, now, owner);
-      this.gems.set(`g${this.nextGemId++}`, gem);
-    }
   }
 
   /** A creature's middle and width, for the airflow (see game/airflow) */
@@ -1343,7 +585,7 @@ class GameState extends Schema {
    * traffic (where it is and where it's headed), from other players and, most of all, from
    * the leader.
    */
-  private spawn(player: PlayerSchema, now: number): void {
+  spawn(player: PlayerSchema, now: number): void {
     const margin = ARENA_RULES.EDGE_MARGIN + 40;
     const size = player.width;
     const leader = this.leader();

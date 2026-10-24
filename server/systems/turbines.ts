@@ -4,6 +4,7 @@ import { GemSchema } from "../schema/GemSchema.js";
 import { TurbineSchema } from "../schema/TurbineSchema.js";
 import { distanceToRect, suctionScale } from "../game/geometry.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
+import { drain } from "./inhale.js";
 
 const { GEMS, PLAYER_STATE, TURBINE } = GAME_CONSTANTS;
 
@@ -96,7 +97,7 @@ export function runTurbine(state: GameState, turbine: TurbineSchema, now: number
         if (player.gems <= 0) {
           // Its last gem: gone
           player.turbineStrip = 0;
-          state.drain(player, now);
+          drain(state, player, now);
           return;
         }
       } else {
