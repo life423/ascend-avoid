@@ -1,5 +1,5 @@
 import type { MultiplayerMode } from '../core/GameModes'
-import { GEMS, INHALE, PLAYER_COLORS } from '../../server/constants/gameConstants'
+import { CANNON, GEMS, INHALE, PLAYER_COLORS } from '../../server/constants/gameConstants'
 import { MOUTH_OFFSET, drawBreath, drawCreature, drawProjectile, mouthOf, mouthRadius } from './creatures'
 import { FONT, GOLD, drawCrown, drawRobot } from './style'
 import { SMOOTHING, SNAP_DISTANCE } from './shared'
@@ -332,10 +332,13 @@ function drawMouthful(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, capt
         ctx.arc(m.x, m.y, ring, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, captive.struggle))
         ctx.stroke()
     }
-    if (captive.swallowable && captive.swallowing > 0) {
-        ctx.strokeStyle = 'rgba(255, 70, 70, 0.95)'
+    // ...and red, outside it, the gun loading: once it's full the captive can be fired (a race both can see)
+    const armedAt = captor.gulpEndsAt - CANNON.HOLD_MS + CANNON.ARM_MS
+    const loading = Math.max(0, Math.min(1, 1 - (armedAt - mode.worldNow(state, timestamp)) / CANNON.ARM_MS))
+    if (loading > 0) {
+        ctx.strokeStyle = loading >= 1 ? `rgba(255, 70, 70, ${0.6 + 0.35 * Math.sin(timestamp / 120)})` : 'rgba(255, 70, 70, 0.95)'
         ctx.beginPath()
-        ctx.arc(m.x, m.y, ring + 6, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, captive.swallowing))
+        ctx.arc(m.x, m.y, ring + 6, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * loading)
         ctx.stroke()
     }
     if (captor.sessionId === localId) {
