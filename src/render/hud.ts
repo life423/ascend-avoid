@@ -81,8 +81,7 @@ export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
         ctx.stroke()
     }
     if (state.jackpotOn) {
-        // Other arena objectives are marked separately below.
-        // The jackpot is the one thing the minimap points out
+        // The jackpot has a distinct gold diamond.
         const jx = x + state.jackpotX * scale
         const jy = y + state.jackpotY * scale
         ctx.fillStyle = GOLD
@@ -96,14 +95,46 @@ export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
     }
     ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
     if (state.pinwheel && state.pinwheel.phase !== 'waiting') {
-        const wx = x + state.pinwheel.x * scale, wy = y + state.pinwheel.y * scale;
-        ctx.fillStyle = '#ffa8be'; ctx.strokeStyle = '#fff2cf'; ctx.lineWidth = 1.5;
-        ctx.fillRect(wx - 4, wy - 4, 8, 8); ctx.strokeRect(wx - 4, wy - 4, 8, 8);
+        if (state.pinwheel.phase === 'parts') {
+            const colors = ['#ffd47d', '#80e7de', '#ffa8be'];
+            const letters = ['H', 'R', 'B'];
+            ctx.font = `800 8px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            const markers = Array.from(state.pinwheel.parts).map(part => ({ kind: part.kind, x: x + part.x * scale, y: y + part.y * scale, rawX: x + part.x * scale, rawY: y + part.y * scale }));
+            // Spread nearby component labels just enough to remain legible, with tethers to their true positions.
+            for (let pass = 0; pass < 8; pass++) for (let i = 0; i < markers.length; i++) for (let j = i + 1; j < markers.length; j++) {
+                const a = markers[i], b = markers[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
+                if (d >= 15) continue;
+                const nx = d > 0.01 ? dx / d : Math.cos(j * 2), ny = d > 0.01 ? dy / d : Math.sin(j * 2);
+                const shift = (15 - d) / 2;
+                a.x = Math.max(x + 7, Math.min(x + width - 7, a.x - nx * shift));
+                a.y = Math.max(y + 7, Math.min(y + height - 7, a.y - ny * shift));
+                b.x = Math.max(x + 7, Math.min(x + width - 7, b.x + nx * shift));
+                b.y = Math.max(y + 7, Math.min(y + height - 7, b.y + ny * shift));
+            }
+            markers.forEach(part => {
+                const px = part.x, py = part.y;
+                ctx.strokeStyle = 'rgba(220,235,245,.5)'; ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.moveTo(part.rawX, part.rawY); ctx.lineTo(px, py); ctx.stroke();
+                ctx.fillStyle = '#0c1725'; ctx.strokeStyle = colors[part.kind]; ctx.lineWidth = 1.5;
+                ctx.beginPath(); ctx.arc(px, py, 6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = colors[part.kind]; ctx.fillText(letters[part.kind], px, py);
+            });
+        } else {
+            const wx = x + state.pinwheel.x * scale, wy = y + state.pinwheel.y * scale;
+            ctx.fillStyle = '#ffa8be'; ctx.strokeStyle = '#fff2cf'; ctx.lineWidth = 1.5;
+            ctx.fillRect(wx - 4, wy - 4, 8, 8); ctx.strokeRect(wx - 4, wy - 4, 8, 8);
+        }
         ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
     }
     ctx.font = `600 11px ${FONT}`
     ctx.textAlign = 'right'
     ctx.textBaseline = 'bottom'
+    if (state.pinwheel?.phase === 'waiting') {
+        ctx.font = `600 9px ${FONT}`;
+        ctx.fillStyle = '#ffa8be';
+        ctx.fillText(`Parts in ${Math.max(0, Math.ceil((state.pinwheel.at - mode.worldNow(state, performance.now())) / 1000))}s`, x + width, y + 12, width - 6);
+        ctx.font = `600 11px ${FONT}`; ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+    }
     if (!COMPACT.matches) ctx.fillText(`${playing} playing`, x + width, y - 8)
     ctx.restore()
 }
@@ -329,6 +360,7 @@ export function drawKnockedOut(mode: MultiplayerMode, ctx: CanvasRenderingContex
     const credited = cause !== null && mode.knockedOutAt !== null && Math.abs(cause.at - mode.knockedOutAt) < 1500
     const verb =
         cause?.how === 'turbine' ? 'Fed to a turbine'
+        : cause?.how === 'cannon' ? 'Blasted'
         : cause?.how === 'bomb' ? 'Blown up'
         : cause?.how === 'edge' ? 'Shoved off'
         : cause?.how === 'traffic' ? 'Wrecked'

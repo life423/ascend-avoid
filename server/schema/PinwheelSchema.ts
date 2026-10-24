@@ -6,6 +6,7 @@ export class WeaponPartSchema extends Schema {
   x = 0;
   y = 0;
   owner = '';
+  carriedBy = '';
   vx = 0;
   vy = 0;
 }
@@ -13,6 +14,7 @@ type("number")(WeaponPartSchema.prototype, "kind");
 type("number")(WeaponPartSchema.prototype, "x");
 type("number")(WeaponPartSchema.prototype, "y");
 type("string")(WeaponPartSchema.prototype, "owner");
+type("string")(WeaponPartSchema.prototype, "carriedBy");
 
 export class WeaponBoltSchema extends Schema {
   x = 0;

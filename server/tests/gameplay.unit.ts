@@ -8,6 +8,7 @@ import { beginSurge, updateSurges } from '../systems/surges.js';
 import { updateJackpot } from '../systems/gems.js';
 import { captureLoadMs, escapeLength } from '../game/cannon.js';
 import { BotBrain } from '../game/bots.js';
+import { keepApart, pruneBodyContacts } from '../systems/bodies.js';
 
 const NOW = 100_000;
 function world() {
@@ -48,6 +49,73 @@ assert.equal(escapeLength(80, 20), 5);
 assert.equal(escapeLength(800, 20), 5);
 assert.equal(captureLoadMs(3), 1800);
 assert.equal(captureLoadMs(5), 2400);
+
+{
+  const normal = new GameState(0); normal.botFill = 0;
+  normal.update(1 / 30, NOW);
+  assert.equal(normal.cores.length, 0, 'Core orbs no longer spawn in normal worlds');
+}
+
+{
+  const s = world(), p = player(s, 'breath');
+  p.stamina = 1; p.staminaAt = NOW;
+  exhale(s, p, NOW);
+  assert(Math.abs(p.stamina - 0.65) < 1e-9, 'a gust costs 35 percentage points');
+  p.exhaleReadyAt = 0; p.stamina = 0.34; p.staminaAt = NOW;
+  exhale(s, p, NOW);
+  assert.equal(p.exhaleReadyAt, 0, 'not enough breath: no gust or cooldown is spent');
+  assert.equal(p.stamina, 0.34);
+  p.stamina = 0.35;
+  exhale(s, p, NOW);
+  assert.equal(p.stamina, 0, 'exactly 35% breath can produce one gust');
+  p.startInhale(NOW); assert(!p.inhaling, 'a depleted meter cannot immediately inhale');
+}
+{
+  const s = world(), a = player(s, 'bumper-a'), b = player(s, 'bumper-b', 0, 1018, 1000);
+  a.steer(1, 0); b.steer(-1, 0);
+  a.updateMovement(s.worldWidth, s.worldHeight, NOW, 0.05);
+  b.updateMovement(s.worldWidth, s.worldHeight, NOW, 0.05);
+  a.markTick(); b.markTick(); keepApart(s, a);
+  assert(a.stunned && b.stunned && a.sliding && b.sliding, 'a forceful fresh bump staggers and separates both players');
+  const ends = a.stunEndsAt;
+  keepApart(s, b); assert.equal(a.stunEndsAt, ends, 'the other side of the same pair cannot retrigger the stun');
+  a.placeAt(1000, 1000); b.placeAt(1018, 1000);
+  s.now += 3000;
+  a.updateMovement(s.worldWidth, s.worldHeight, s.now, 0);
+  b.updateMovement(s.worldWidth, s.worldHeight, s.now, 0);
+  keepApart(s, a); assert.equal(a.stunEndsAt, ends, 'continued contact cannot re-stun after immunity expires');
+  b.placeAt(1300, 1000); pruneBodyContacts(s);
+  assert.equal(s.bodyContacts.size, 0, 'separation rearms the pair');
+}
+for (const protectedTarget of [false, true]) {
+  const s = world(), flier = player(s, 'missile', 4), target = player(s, 'small-target', 12, 1100, 1000);
+  target.spawnProtected = protectedTarget;
+  flier.placeAt(1000, target.y + target.height / 2 - flier.height / 2);
+  flier.launch(NOW, 1400, 0, 'shooter', CANNON.FLIGHT_MS);
+  updateFlights(s, NOW + 100, 0.1);
+  assert.equal(target.state, protectedTarget ? 'alive' : 'dead');
+  assert.equal(flier.state, 'alive', 'the missile player survives');
+  if (!protectedTarget) {
+    assert.equal(target.gems, 0);
+    s.update(0, target.respawnAt);
+    assert.equal(target.state, 'alive'); assert(target.spawnProtected);
+    assert.equal(target.width, 20, 'a small missile victim returns at newborn size');
+  } else assert.equal(target.gems, 12, 'spawn protection blocks missile damage and knockout');
+}
+{
+  const s = world(), flier = player(s, 'large-missile', 1000), target = player(s, 'large-target', 1000, 1800, 1000);
+  const width = flier.width;
+  flier.launch(NOW, 1400, 0, 'shooter', CANNON.FLIGHT_MS);
+  updateFlights(s, NOW + 400, 0.4);
+  assert(flier.flightHit && flier.width <= width * 0.11, 'the missile loses about 90% of its width on impact');
+  assert.equal(flier.state, 'alive');
+  assert(target.width < width * 0.55, 'a giant target shrinks dramatically too');
+  const gems = flier.gems;
+  flier.placeAt(s.worldWidth - flier.width - 10, 1000); flier.flightVx = 1400; flier.flightVy = 0;
+  updateFlights(s, NOW + 500, 0.1);
+  assert.equal(flier.gems, gems, 'a later wall bounce does not consume missile growth twice');
+  assert(flier.suctionSafeUntil > NOW + 500, 'the spent missile still gets a recovery shield');
+}
 
 for (const gems of [16, 32, 80]) {
   const { state, captor, captive } = capture(gems);

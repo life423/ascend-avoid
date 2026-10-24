@@ -2,8 +2,9 @@ import type { GameState } from "../schema/GameState.js";
 import type { PlayerSchema } from "../schema/PlayerSchema.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 import { CANNON } from "../constants/gameConstants.js";
-import { flightStep, impactGems, sweptHit } from "../game/cannon.js";
+import { flightStep, impactGems, missileMassAfterImpact, sweptHit } from "../game/cannon.js";
 import { sprayGems } from "./gems.js";
+import { knockOutWithGems } from "./inhale.js";
 
 const { PLAYER_STATE } = GAME_CONSTANTS;
 
@@ -41,6 +42,7 @@ export function updateFlights(state: GameState, now: number, deltaTime: number):
     player.nudge(next.vx * deltaTime, next.vy * deltaTime, state.worldWidth, state.worldHeight);
     // Stopped by the edge of the world
     if (Math.hypot(player.x - fromX, player.y - fromY) < speed * deltaTime * 0.5) {
+      spendMissileMass(state, player, now);
       land(state, player, now);
       continue;
     }
@@ -70,28 +72,44 @@ function struck(everyone: PlayerSchema[], flier: PlayerSchema, now: number, from
 function impact(state: GameState, flier: PlayerSchema, target: PlayerSchema, speed: number, now: number): void {
   const ux = flier.flightVx / speed;
   const uy = flier.flightVy / speed;
-  const spill = target.spawnProtected ? 0 : impactGems(target.gems, speed, flier.width);
+  let spill = target.spawnProtected ? 0 : impactGems(target.gems, speed, flier.width);
+  const out = !target.spawnProtected && target.gems - spill < CANNON.IMPACT_KO_GEMS;
   const launcher = flier.launchedBy;
-  if (spill > 0) {
+  if (out) {
+    spill = target.gems;
+    knockOutWithGems(state, target, now);
+  } else if (spill > 0) {
     target.setGems(target.gems - spill, state.worldWidth, state.worldHeight);
     sprayGems(state, target.x + target.width / 2, target.y + target.height / 2, spill, now, target.sessionId);
   }
   // The heavier the target than the flier, the less it's knocked back
-  target.skid(ux, uy, CANNON.TARGET_SHOVE * Math.max(0.15, Math.min(1, flier.weight() / Math.max(1, target.weight()))));
+  if (!out) target.skid(ux, uy, CANNON.TARGET_SHOVE * Math.max(0.15, Math.min(1, flier.weight() / Math.max(1, target.weight()))));
   target.impactImmuneUntil = now + CANNON.IMPACT_IMMUNE_MS;
   state.onEvent?.("impact", {
     byId: launcher, projectileId: flier.sessionId, targetId: target.sessionId,
     x: target.x + target.width / 2, y: target.y + target.height / 2,
-    size: target.width, gems: spill,
+    size: target.width, gems: spill, out,
   });
-  if (spill > 0) state.credit(target, "cannon", now, launcher, { gems: spill, projectileId: flier.sessionId });
-  flier.flightHit = true;
-  if (!target.spawnProtected && now >= target.stunImmuneUntil) target.stun(now, CANNON.IMPACT_STUN_MS);
+  state.credit(target, "cannon", now, launcher, { gems: spill, projectileId: flier.sessionId, out });
+  spendMissileMass(state, flier, now);
+  if (!out && !target.spawnProtected && now >= target.stunImmuneUntil) target.stun(now, CANNON.IMPACT_STUN_MS);
   flier.flightVx = -ux * speed * CANNON.BOUNCE;
   flier.flightVy = -uy * speed * CANNON.BOUNCE;
   flier.flightEndsAt = Math.min(flier.flightEndsAt, now + 250);
   flier.launchedBy = target.sessionId;
   flier.flightStartedAt = now;
+}
+
+/** Growth powers the impact once; the flying player survives at no less than newborn size. */
+function spendMissileMass(state: GameState, player: PlayerSchema, now: number): void {
+  if (player.flightHit) return;
+  player.flightHit = true;
+  const kept = missileMassAfterImpact(player.gems), lost = player.gems - kept;
+  const x = player.x + player.width / 2, y = player.y + player.height / 2;
+  if (lost > 0) {
+    player.setGems(kept, state.worldWidth, state.worldHeight);
+    sprayGems(state, x, y, lost, now, player.sessionId);
+  }
 }
 
 /** A flight ends: no catching it again (by a mouth or a turbine) for a moment */

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { GameState } from '../schema/GameState.js';
 import { WeaponBoltSchema } from '../schema/PinwheelSchema.js';
-import { spawnPinwheel, updatePinwheel, puffWeaponParts } from '../systems/pinwheel.js';
+import { spawnPinwheel, updatePinwheel, puffWeaponParts, deployPinwheel } from '../systems/pinwheel.js';
 import { PINWHEEL } from '../constants/gameConstants.js';
 
 const NOW = 100000;
@@ -28,12 +28,17 @@ function setup() {
   s.time += 1000; updatePinwheel(s, 0.1, NOW + 1000);
   assert.equal(w.claimUntil, claim, 'holding the same part cannot renew a claim forever');
   a.stopInhale(NOW + 1000);
+  a.placeAt(900, 900); a.facing = Math.PI / 2;
+  updatePinwheel(s, 0.1, NOW + 1000);
+  assert.equal(hub.carriedBy, a.sessionId, 'releasing inhale keeps the part carried');
+  assert(Math.hypot(hub.x - a.x - a.width / 2, hub.y - a.y - a.height / 2) < a.width / 2 + 44, 'cargo follows movement and turning');
   b.placeAt(1400, 1400); b.startInhale(NOW + 1000);
   updatePinwheel(s, 0.1, NOW + 1000);
   assert.equal(hub.owner, a.sessionId, 'rival suction cannot steal a claimed part');
   const x = hub.x;
-  hub.x += 60; puffWeaponParts(s, b); updatePinwheel(s, 0.1, NOW + 1000);
-  assert(hub.x > x + 60, 'gusts can disrupt claimed pieces');
+  b.placeAt(hub.x - 110, hub.y - b.height / 2); b.facing = 0;
+  puffWeaponParts(s, b); updatePinwheel(s, 0.1, NOW + 1000);
+  assert(hub.x > x + 30 && !hub.carriedBy, 'gusts knock carried pieces loose');
   b.stopInhale(NOW + 1000);
   s.time = claim; updatePinwheel(s, 0.01, NOW + claim);
   assert.equal(w.owner, ''); assert(w.parts.every(p => p.owner === ''), 'abandoned parts unlock after 18 seconds');
@@ -43,8 +48,18 @@ function setup() {
   w.owner = a.sessionId; w.claimUntil = s.time + 18000; w.progress = 3;
   for (const part of w.parts) { part.x = 2000 + part.kind * 20; part.y = 2000; part.owner = part.kind === 2 ? b.sessionId : a.sessionId; }
   updatePinwheel(s, 0.01, NOW);
-  assert.equal(w.phase, 'charging'); assert.equal(w.owner, a.sessionId, 'contributing the last piece does not steal the weapon');
+  assert.equal(w.phase, 'carried'); assert.equal(w.owner, a.sessionId, 'contributing the last piece does not steal the weapon');
   assert.equal(w.parts.length, 0);
+  assert.equal(deployPinwheel(s, b), false, 'a rival cannot place the builder\'s weapon');
+  a.placeAt(2500, 2300); a.facing = Math.PI / 2;
+  updatePinwheel(s, 0.01, NOW);
+  assert(w.x > 2400 && w.y > 2200, 'the complete weapon moves with its builder');
+  assert.equal(w.bolts.size, 0, 'carrying does not fire the weapon');
+  s.time += PINWHEEL.CLAIM_MS + 2000;
+  updatePinwheel(s, 0.01, NOW);
+  assert.equal(w.phase, 'carried', 'the builder chooses placement; the weapon never auto-places at a timer deadline');
+  assert(deployPinwheel(s, a));
+  assert.equal(w.phase, 'charging');
   s.time = w.at; updatePinwheel(s, 0.01, NOW);
   assert.equal(w.phase, 'active');
   s.time += PINWHEEL.SHOT_MS; updatePinwheel(s, 0.01, NOW);

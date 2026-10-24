@@ -124,8 +124,8 @@ export const GEMS = {
 } as const;
 
 /**
- * Knockback from blasts and hits. Creatures never shove each other: touching just stops you (see
- * GameState.keepApart). Weight grows with size, so heavier creatures slide less.
+ * Knockback from blasts, hits and forceful body bumps. Weight grows with size, so heavier
+ * creatures slide less; contact staggering and rearming are handled by systems/bodies.
  */
 export const PUSH = {
   DISTANCE: 140, // how far a shove sends someone your own weight (about two hops)...
@@ -345,7 +345,7 @@ export const BOMBS = {
  * physics. Never swallowed, by anyone. A hard enough hit stuns (no gems lost).
  */
 export const CORE = {
-  COUNT: 3, // how many are in a world
+  COUNT: 0, // Core orbs retired from normal play; explicit physics fixtures can still create them
   RADIUS: 24, // physical size (drawn at this size too); small enough for a newborn to work with
   MASS: 3, // in newborns: a creature's mass is (its width / a newborn's) squared
   DRAG: 0.35, // momentum fades by this share a second (exponentially): half its speed in about 2s, so launches carry
@@ -492,8 +492,10 @@ export const CANNON = {
   IMPACT_BASE: 10, // a hit knocks this many of the target's gems loose...
   IMPACT_PER_ROOT: 7, // ...plus this times the square root of its gems (diminishing against giants), times the hit's speed against IMPACT_SPEED_REF and the flier's mass: a living cannonball is the big hit of the game (about 60 of 120, 150 of 400)...
   IMPACT_SPEED_REF: 900,
-  IMPACT_SHARE: 0.5, // ...and never less than this share of everything it holds (times the hit's speed), whatever its size: a giant that's hit shrinks a lot...
-  IMPACT_MAX_SHARE: 0.6, // ...but never more than this share of them (devastating, never deleting)
+  IMPACT_SHARE: 0.75, // every player-missile hit removes at least this share of target mass
+  IMPACT_MAX_SHARE: 0.85, // speed/projectile mass can increase the loss to this share
+  IMPACT_KO_GEMS: 8, // targets left below this mass are knocked out and return at a fresh spawn
+  MISSILE_WIDTH_KEEP: 0.1, // the missile player keeps one tenth of their width after impact, floored at newborn size
   IMPACT_IMMUNE_MS: 1200, // a creature just hit can't be hit by another flier for this long
   IMPACT_STUN_MS: 450, // the target is stunned this long...
   TARGET_SHOVE: 120, // ...and knocked up to this far along the hit (less the heavier it is than the flier)
@@ -586,9 +588,9 @@ export const TURBINE = {
 export const PINWHEEL = {
   ENABLED: true,
   CLAIM_MS: 18000,
-  FIRST_MS: 20000,
-  RESPAWN_MS: 45000,
-  PARTS_MS: 60000,
+  FIRST_MS: 5000,
+  RESPAWN_MS: 20000,
+  PARTS_MS: 120000,
   SNAP: 72,
   PART_RADIUS: 22,
   PULL_SPEED: 260,
@@ -619,6 +621,7 @@ export const EXHALE = {
   BREAK_MS: 1000, // a successful puff breaks suction on its user for a short escape window
   PARRY_MS: 350, // minimum restart lock on a broken inhale
   STUN_MS: 800, // a gust hit disables steering and inhaling; knockback still carries the target away
+  BREATH_COST: 0.35, // 35 percentage points from a full meter, not 35% of the remaining breath
 } as const;
 
 /** Short, announced resource contests in the continuous world. */
@@ -646,7 +649,11 @@ export const ARENA_RULES = {
   CONTACT_SQUISH: 0.15, // touching creatures squish up to this share of the smaller one's width into each other before pushing back hard...
   SCALE_SHOVE_RATIO: 4, // something this many times wider moving into a creature pushes it aside instead of being stopped by it
   CONTACT_TOUCH: 3, // ...count as touching within this many units...
-  CONTACT_GRIP: 0.8, // ...and pressed together, this share of each step's sideways movement is undone so they stay put instead of orbiting (moving away peels off freely)
+  CONTACT_GRIP: 0.15, // allow creatures to slide sideways out of a crowd rather than stick together
+  BUMP_STUN_MS: 220,
+  BUMP_SPEED: 120,
+  BUMP_PUSH: 45,
+  BUMP_REARM_GAP: 18,
   MOVE_RESPONSE: 14, // how quickly you reach the speed you're steering (and glide to a stop)
   HOP_REPEAT_DELAY: 0.2, // holding a direction: the first repeat hop comes after this many seconds,
   HOP_REPEAT: 1 / 6, // then one every this many seconds (six a second)
