@@ -35,6 +35,7 @@ export interface CameraSubject {
 
 /** Where the camera wants to lead a creature: its velocity a little ahead, plus a little of its facing (more inhaling), capped to CAMERA.MAX_OFFSET of the view */
 export function lookAhead(subject: CameraSubject, short: number): { x: number; y: number } {
+  if (CAMERA.LOCKED) return { x: 0, y: 0 };
   const facing = (subject.inhaling ? CAMERA.INHALE_FACING : CAMERA.FACING) * short;
   let x = subject.vx * CAMERA.LOOK_AHEAD_S + Math.cos(subject.facing) * facing;
   let y = subject.vy * CAMERA.LOOK_AHEAD_S + Math.sin(subject.facing) * facing;
@@ -77,6 +78,12 @@ export class CameraRig {
       this.vy = 0;
       if (!this.ready) this.short = short;
       this.ready = true;
+    } else if (CAMERA.LOCKED) {
+      // Pinned to the creature: it stays in the middle of the screen (the zoom still eases below)
+      this.x = targetX;
+      this.y = targetY;
+      this.vx = 0;
+      this.vy = 0;
     } else {
       const sx = springStep(this.x, this.vx, targetX, CAMERA.FOLLOW_OMEGA, step);
       const sy = springStep(this.y, this.vy, targetY, CAMERA.FOLLOW_OMEGA, step);
