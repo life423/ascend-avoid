@@ -91,6 +91,11 @@ export class GameRoom extends Room<GameState> {
       player.releasedAt = Date.now();
       player.stopInhale();
     });
+    this.onMessage("cancel", (client) => {
+      if (!this.allowMessage(client)) return;
+      // The press cut short (slid off the button, Esc, a cancelled touch): stop, but it isn't a release
+      this.state.players.get(client.sessionId)?.stopInhale();
+    });
     this.onMessage("spit", (client, data: any) => {
       if (!this.allowMessage(client)) return;
       const player = this.state.players.get(client.sessionId);

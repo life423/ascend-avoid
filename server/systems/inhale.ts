@@ -24,7 +24,7 @@ export function knockOutWithGems(state: GameState, player: PlayerSchema, now: nu
  * Inhaling: everything in a cone in front of the creature's mouth. Gems are pulled in and
  * swallowed; a bomb stays in the mouth (safe until it's spat). Every creature in it is robbed
  * (steal) and pulled bodily toward the mouth by mass; one 1.3 times
- * narrower or more goes down once held at the mouth for INHALE.GULP_MS.
+ * narrower or more is caught there (see CANNON: struggle, swallow, launch).
  */
 export function updateInhales(state: GameState, now: number, deltaTime: number) : void {
   const cone = Math.cos((INHALE.ARC * Math.PI) / 180);
@@ -75,7 +75,7 @@ export function updateInhales(state: GameState, now: number, deltaTime: number) 
     // Every creature in the cone is pulled bodily toward the mouth, by mass: harder the heavier the
     // inhaler is next to it (a giant drags a newborn; a newborn barely moves a giant), the closer it
     // is and the more squarely in front, but never past what it can get away from. One small enough
-    // to swallow goes down once it's held right at the mouth for GULP_MS.
+    // to swallow is caught once it's held right at the mouth (see CANNON).
     let held: PlayerSchema | null = null;
     let heldAt = Infinity;
     const locked = new Set<string>();
@@ -260,7 +260,7 @@ export function steal(state: GameState, thief: PlayerSchema, now: number, deltaT
   const victims: { victim: PlayerSchema; weight: number }[] = [];
   state.players.forEach((other) => {
     // (a captive isn't drained: the capture decides what happens to it)
-    if (other === thief || other.gems <= 0 || other.capturedBy) return;
+    if (other === thief || other.gems <= 0 || other.capturedBy || other.flying) return;
     const weight = stealWeight(state, thief, other);
     if (weight > 0) victims.push({ victim: other, weight });
   });

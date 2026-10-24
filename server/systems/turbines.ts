@@ -4,7 +4,6 @@ import { GemSchema } from "../schema/GemSchema.js";
 import { TurbineSchema } from "../schema/TurbineSchema.js";
 import { distanceToRect } from "../game/geometry.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
-import { drain } from "./inhale.js";
 
 import { CANNON } from "../constants/gameConstants.js";
 import { intakePull } from "../game/turbine.js";
@@ -98,17 +97,12 @@ export function runTurbine(state: GameState, turbine: TurbineSchema, now: number
       }
       if (gap < TURBINE.DANGER_REACH && player.gems > 0) {
         player.turbineStrip += deltaTime * (TURBINE.STRIP_RATE + TURBINE.STRIP_PER_ROOT * Math.sqrt(player.weight()));
-        while (player.turbineStrip >= 1 && player.gems > 0) {
+        // (never the last gem: reaching the intake takes that, and fires the creature out alive)
+        while (player.turbineStrip >= 1 && player.gems > 1) {
           player.turbineStrip -= 1;
           player.setGems(player.gems - 1, state.worldWidth, state.worldHeight);
           // Out of their body, on the side facing the intake
           state.addFlight(turbine, player.sessionId, px - (dx / d) * radius, py - (dy / d) * radius, 1, false, mouthX, mouthY);
-        }
-        if (player.gems <= 0) {
-          // Its last gem: gone
-          player.turbineStrip = 0;
-          drain(state, player, now);
-          return;
         }
       } else {
         player.turbineStrip = 0;

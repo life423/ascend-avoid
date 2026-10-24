@@ -246,7 +246,7 @@ export const SUCTION = {
  * are). Gems are pulled in and swallowed. Every creature in it is robbed of gems (STEAL_RATE) and
  * pulled bodily toward your mouth, by mass: harder the heavier you are next to it, the closer it is
  * and the more squarely in front (BODY_PULL). One 1.3 times narrower or more (EAT_RATIO)
- * goes down once it's held right at your mouth for GULP_MS. Size resists being pulled, not being
+ * is caught once it's held right at your mouth (see CANNON). Size resists being pulled, not being
  * robbed; heavier creatures move and turn slower.
  */
 export const INHALE = {
@@ -261,7 +261,6 @@ export const INHALE = {
   PREY_PULL_CLOSE: 1.6, // ...except in the close range of a mouth big enough to catch it, where the suction rises past its top speed, to this share at the mouth: running straight away from right in front of a bigger mouth, you're pulled in (sideways out of the cone still escapes)
   EAT_RATIO: 1.3, // you can swallow a creature 1.3 times narrower (about 1.7 times lighter)...
   GULP_REACH: 0.35, // ...held this close to your mouth (times your width, plus its radius)...
-  GULP_MS: 400, // ...once it's held right at your mouth for this long (if it gets away first, it starts over)
   LOCK_MS: 1500, // holding a creature in your inhale builds a lock to full over this long...
   LOCK_DECAY_MS: 350, // ...that fades this fast once it's out of the cone (or you stop), so breaking the cone frees it
   LOCK_START: 0.25, // body pull starts at this share and grows with the lock squared: a warning, then dangerous, then full

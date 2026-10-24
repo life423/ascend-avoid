@@ -773,9 +773,13 @@ export class MultiplayerMode extends GameMode {
                 this.sentAim = { x: 0, y: 0 }
                 this.multiplayerManager?.sendMessage('inhale', {})
             } else if (event === 'exhale' && this.inhaleHeld) {
-                // Let go: stop inhaling
+                // Let go: stop inhaling (holding a captive, this launches it)
                 this.inhaleHeld = false
                 this.multiplayerManager?.sendMessage('exhale', {})
+            } else if (event === 'cancel' && this.inhaleHeld) {
+                // Cut short (slid off, Esc, a cancelled touch): stop inhaling, never a launch
+                this.inhaleHeld = false
+                this.multiplayerManager?.sendMessage('cancel', {})
             }
         }
 

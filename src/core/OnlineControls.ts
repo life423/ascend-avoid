@@ -1,6 +1,7 @@
 
 /** What the button (or space) asks for: an inhale starting (pressed) and stopping (let go) */
-export type ControlEvent = 'inhale' | 'exhale'
+/** inhale: the button pressed; exhale: deliberately let go (the only release that launches a captive); cancel: the press cut short (slid off, Esc, the touch cancelled), which just stops */
+export type ControlEvent = 'inhale' | 'exhale' | 'cancel'
 
 /** Your breath, for the button and the ring around your creature: draining while you inhale, refilling while you catch it */
 export type Breath = { phase: 'ready' } | { phase: 'inhaling'; left: number } | { phase: 'recovering'; back: number }
@@ -43,7 +44,7 @@ export class OnlineControls {
         canvas.addEventListener('contextmenu', this.preventMenu)
         window.addEventListener('pointermove', this.onMove)
         window.addEventListener('pointerup', this.onUp)
-        window.addEventListener('pointercancel', this.onUp)
+        window.addEventListener('pointercancel', this.onCancel)
         document.addEventListener('keydown', this.onKeyDown)
         document.addEventListener('keyup', this.onKeyUp)
     }
@@ -54,7 +55,7 @@ export class OnlineControls {
         this.canvas.removeEventListener('contextmenu', this.preventMenu)
         window.removeEventListener('pointermove', this.onMove)
         window.removeEventListener('pointerup', this.onUp)
-        window.removeEventListener('pointercancel', this.onUp)
+        window.removeEventListener('pointercancel', this.onCancel)
         document.removeEventListener('keydown', this.onKeyDown)
         document.removeEventListener('keyup', this.onKeyUp)
     }
@@ -222,10 +223,10 @@ export class OnlineControls {
         this.press = null
     }
 
-    /** Slid off the button (or pressed Esc): inhaling stops */
+    /** Slid off the button, pressed Esc, or the touch was cancelled: inhaling stops, but it isn't a release (it never launches a captive) */
     private cancelPress(): void {
         if (!this.press) return
-        this.events.push('exhale')
+        this.events.push('cancel')
         this.press = null
     }
 
@@ -257,6 +258,13 @@ export class OnlineControls {
         } else if (this.press?.id === e.pointerId && this.toCanvas(e).x < this.canvas.width / 2 - 30) {
             this.cancelPress()
         }
+    }
+
+    /** The system cancelled a pointer (a gesture took over, the page lost it): the stick lets go, and a press is cut short, never released */
+    private onCancel = (e: PointerEvent): void => {
+        if (this.stick?.id === e.pointerId) this.stick = null
+        if (this.mouse?.id === e.pointerId) this.mouse = null
+        if (this.press?.id === e.pointerId) this.cancelPress()
     }
 
     private onUp = (e: PointerEvent): void => {

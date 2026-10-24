@@ -1286,6 +1286,8 @@ try {
     captor.send('test:setGems', { count: 60 });
     kid.send('test:setGems', { count: 0 });
     mark.send('test:setGems', { count: 120 });
+    // (fresh joiners are spawn-protected: cleared, so the capture starts when the test says, not half a second later)
+    for (const room of [captor, kid, mark]) room.send('test:protect', { ms: 0 });
     await sleep(500);
     const lineY = 2300;
     captor.send('test:moveTo', { x: 500, y: lineY - mine(captor).width / 2 });
@@ -1295,7 +1297,8 @@ try {
     mark.send('test:moveTo', { x: 500 + mine(captor).width + 380, y: lineY - mine(mark).width / 2 });
     await sleep(300);
     captor.send('inhale');
-    await sleep(600);
+    for (let i = 0; i < 40 && mine(kid).capturedBy !== captor.sessionId; i++) await sleep(25);
+    await sleep(300); // held long enough that letting go launches (CANNON.LAUNCH_MIN_MS), not just lets go
     check(mine(kid).capturedBy === captor.sessionId, `a creature pulled to a big enough mouth is caught there (caught by ${mine(kid).capturedBy || 'nobody'})`);
     const markHad = mine(mark).gems;
     captor.send('exhale');
@@ -1382,6 +1385,13 @@ try {
     caughtNow = await catchKid(0, 0);
     // (a stray gem picked up on the way makes the captor bigger, and then the catch is fair)
     check(!caughtNow || mine(captor).width > mine(kid).width, `an empty creature can only be caught by a bigger one, never one its own size (caught ${caughtNow}, widths ${mine(captor).width.toFixed(1)} and ${mine(kid).width.toFixed(1)})`);
+    // A press cut short (slid off the button, Esc, a cancelled touch) never launches
+    caughtNow = await catchKid(60, 0);
+    await sleep(300);
+    captor.send('cancel');
+    await sleep(200);
+    check(caughtNow && droppedHarmlessly(), `a press cut short (slid off, Esc, a cancelled touch) drops the captive harmlessly, no launch (caught ${caughtNow})`);
+
     // Struggling matters: a small captive that slips sideways (reacting at phone speed, 350 ms) survives a
     // much bigger captor even while it keeps re-aiming at it; one that just freezes is swallowed
     caughtNow = await catchKid(100, 4);
@@ -1462,6 +1472,23 @@ try {
     check(caughtNow && mine(captor).state === 'alive' && !mine(captor).gulping, 'a captive leaving mid-capture leaves its captor unharmed and free');
     await captor.leave();
     await mark.leave();
+
+    // A turbine pulls a creature on its last gem through and fires it out of the exhaust alive
+    const thru = await join('Thru');
+    thru.send('test:setGems', { count: 1 });
+    await sleep(300);
+    thru.send('test:placeTurbine', { x: 2000, y: 2000, intake: 0, still: true });
+    await sleep(3400);
+    thru.send('test:moveTo', { x: 2000 + 60 + 25, y: 2000 - mine(thru).width / 2 });
+    let flewOut = false;
+    for (let i = 0; i < 80 && !flewOut; i++) {
+        await sleep(50);
+        flewOut = mine(thru).flying === true;
+    }
+    await sleep(1500);
+    check(flewOut && mine(thru).state === 'alive', `a turbine pulls a creature on its last gem through and fires it out of the exhaust alive (flew ${flewOut}, ${mine(thru).state}, ${mine(thru).gems} gems)`);
+    thru.send('test:endTurbines');
+    await thru.leave();
 
     // A client that floods messages is cut off (every other check here plays normally under the same limit)
     const flooder = await join('Flood');

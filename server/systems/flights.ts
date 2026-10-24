@@ -2,7 +2,7 @@ import type { GameState } from "../schema/GameState.js";
 import type { PlayerSchema } from "../schema/PlayerSchema.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 import { CANNON } from "../constants/gameConstants.js";
-import { flightStep, impactGems } from "../game/cannon.js";
+import { flightStep, impactGems, sweptHit } from "../game/cannon.js";
 import { sprayGems } from "./gems.js";
 
 const { PLAYER_STATE } = GAME_CONSTANTS;
@@ -44,14 +44,16 @@ export function updateFlights(state: GameState, now: number, deltaTime: number):
       land(player, now);
       continue;
     }
-    const target = player.flightHit ? null : struck(everyone, player, now);
+    const target = player.flightHit ? null : struck(everyone, player, now, fromX, fromY);
     if (target) impact(state, player, target, speed, now);
     else if (speed < CANNON.STOP_SPEED || now >= player.flightEndsAt) land(player, now);
   }
 }
 
-/** The creature a flier has just flown into, if any */
-function struck(everyone: PlayerSchema[], flier: PlayerSchema, now: number): PlayerSchema | null {
+/** The creature a flier has just flown into (anywhere along this tick's path, from fromX/fromY), if any */
+function struck(everyone: PlayerSchema[], flier: PlayerSchema, now: number, fromX: number, fromY: number): PlayerSchema | null {
+  const ax = fromX + flier.width / 2;
+  const ay = fromY + flier.height / 2;
   const fx = flier.x + flier.width / 2;
   const fy = flier.y + flier.height / 2;
   for (const other of everyone) {
@@ -59,7 +61,7 @@ function struck(everyone: PlayerSchema[], flier: PlayerSchema, now: number): Pla
     if (other.sessionId === flier.launchedBy && now - flier.flightStartedAt < CANNON.LAUNCHER_GRACE_MS) continue;
     const ox = other.x + other.width / 2;
     const oy = other.y + other.height / 2;
-    if (Math.hypot(ox - fx, oy - fy) < (other.width + flier.width) / 2) return other;
+    if (sweptHit(ax, ay, fx, fy, ox, oy, (other.width + flier.width) / 2)) return other;
   }
   return null;
 }

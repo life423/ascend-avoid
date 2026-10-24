@@ -1,5 +1,5 @@
 import type { MultiplayerMode } from '../core/GameModes'
-import { ARENA_RULES, INHALE } from '../../server/constants/gameConstants'
+import { ARENA_RULES, CANNON } from '../../server/constants/gameConstants'
 import { INHALE_LOOK, suctionPower } from './airflow'
 import { drawCreature } from './creatures'
 import { BURST_MS } from './shared'
@@ -57,7 +57,7 @@ export function drawGulps(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, 
         if (!eater.gulping) return
         const prey = state.players.get(eater.gulping)
         if (!prey || prey.state !== 'alive') return
-        const left = Math.max(0, Math.min(1, (eater.gulpEndsAt - now) / INHALE.GULP_MS))
+        const left = Math.max(0, Math.min(1, (eater.gulpEndsAt - now) / CANNON.HOLD_MS))
         const at = mode.centerOf(eater.gulping, prey)
         ctx.save()
         ctx.strokeStyle = `rgba(255, 107, 107, ${0.55 + 0.45 * (1 - left)})`

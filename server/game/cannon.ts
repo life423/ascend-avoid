@@ -46,3 +46,12 @@ export function flightStep(vx: number, vy: number, steerX: number, steerY: numbe
   const keep = (speed * Math.exp(-CANNON.DRAG * deltaTime)) / Math.max(1e-6, Math.hypot(nx, ny));
   return { vx: nx * keep, vy: ny * keep };
 }
+
+/** Whether a flier that moved from (ax, ay) to (bx, by) this tick passed within `radius` of (cx, cy): swept along the path, so a fast flier can't skip through a small target between ticks */
+export function sweptHit(ax: number, ay: number, bx: number, by: number, cx: number, cy: number, radius: number): boolean {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const length2 = dx * dx + dy * dy;
+  const t = length2 > 1e-9 ? Math.max(0, Math.min(1, ((cx - ax) * dx + (cy - ay) * dy) / length2)) : 1;
+  return Math.hypot(ax + dx * t - cx, ay + dy * t - cy) < radius;
+}

@@ -1,0 +1,54 @@
+name: CI
+
+# Every branch other than main, and every pull request: the same build and tests as a deploy, no deploying
+on:
+  push:
+    branches-ignore: [ main ]
+  pull_request:
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: |
+        npm ci
+        cd server && npm ci
+    
+    - name: Run type checking
+      run: |
+        npm run type-check
+        cd server && npm run type-check
+    
+    - name: Lint
+      run: npm run lint
+
+    - name: Synced types match the server schema
+      run: node scripts/gen-synced-types.mjs --check
+
+    - name: Build application
+      run: npm run build
+    
+    - name: Verify build outputs
+      run: |
+        echo "Checking client build..."
+        ls -la dist/
+        echo "Checking server build..."
+        ls -la server/dist/
+
+    - name: Run the multiplayer smoke test
+      # Every deploy is guarded: the built server plus scripted players checking every game rule.
+      # If any check fails, the deploy job below never runs.
+      timeout-minutes: 10
+      run: npm test
