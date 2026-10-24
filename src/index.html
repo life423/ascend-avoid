@@ -28,7 +28,8 @@
                         Score:
                         <span class="score-value current-score">0</span>
                     </h4>
-                    <div class="mode-switch" role="group" aria-label="Game mode">
+                    <!-- Solo stays in the code but off the page: everyone plays online (index.ts setupModeSwitch still wires this up, hidden) -->
+                    <div class="mode-switch" role="group" aria-label="Game mode" hidden>
                         <button type="button" class="mode-option" data-mode="singlePlayer" aria-pressed="false">Solo</button>
                         <button type="button" class="mode-option active" data-mode="multiplayer" aria-pressed="true">Online</button>
                     </div>
@@ -63,10 +64,7 @@
                         <p class="note">
                             A hit sprays out half your gems. With none left, you're out for two seconds.
                         </p>
-                        <p>
-                            Solo is the classic game: reach the top without
-                            getting hit, and press R to restart.
-                        </p>
+
                     </div>
                     <div class="info-actions">
                         <button
