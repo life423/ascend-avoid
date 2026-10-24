@@ -5,7 +5,7 @@
 - [x] Remove persistent weapon panels/pills, floating completed-weapon labels and waiting countdowns from every screen. Keep minimap markers, physical cargo and contextual placement; local collection gets one brief coalesced notice. Starter tips auto-close after four seconds.
 
 - [x] Touch or inhale weapon parts into persistent carried cargo; releasing inhale or turning must not drop them. Preserve claims and the approved collection feel.
-- [x] Mark each loose weapon part on the minimap and guide players to the nearest missing part.
+- [x] Mark each loose weapon part on the minimap; use those markers for navigation without a pinned direction/progress panel.
 - [x] Carry the completed weapon to a chosen location, then place with a visible phone/desktop button or E. Keep phone controls clear in portrait and landscape; no timed auto-placement.
 - [x] Make player-missile hits shrink large targets dramatically and knock small targets out to a fresh spawn.
 - [x] The missile player spends about 90% of their width on a player/wall impact, once per flight. No growth remaining means knockout; larger survivors retain recapture protection.
