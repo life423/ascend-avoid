@@ -5,8 +5,33 @@ function me(page) {
   return page.evaluate(() => {
     const room = window.game?.currentGameMode?.multiplayerManager?.room;
     const p = room?.state?.players?.get(room.sessionId);
-    return p ? { x: p.x, y: p.y, inhaling: Boolean(p.inhaling) } : null;
+    return p
+      ? { x: p.x, y: p.y, inhaling: Boolean(p.inhaling), state: p.state, capturedBy: p.capturedBy || '', flying: Boolean(p.flying), stunned: Boolean(p.stunned) }
+      : null;
   });
+}
+
+/**
+ * Waits, at most `timeout` ms, until your creature is free to act: alive, and not caught in a mouth,
+ * flying or stunned. On the live server a bot can catch or hit a test creature at any moment, which
+ * blocks moving and inhaling until it's over. If it never comes free, the test fails (with the reason)
+ * rather than skipping the check.
+ */
+async function waitUntilFree(page, timeout = 10_000) {
+  await expect
+    .poll(
+      async () => {
+        const p = await me(page);
+        if (!p) return 'not in the world';
+        if (p.state !== 'alive') return `not alive (${p.state})`;
+        if (p.capturedBy) return 'caught in a mouth';
+        if (p.flying) return 'flying';
+        if (p.stunned) return 'stunned';
+        return 'free';
+      },
+      { message: 'your creature becomes free to act (alive, and not caught, flying or stunned)', timeout },
+    )
+    .toBe('free');
 }
 
 /** Press a touch pointer on the canvas at this share of its width and height; returns a function that lifts it */
@@ -62,6 +87,7 @@ test('the game loads, connects, draws, fits the screen, moves and inhales', asyn
   expect(view.canvasWidth, 'the canvas fills most of the screen').toBeGreaterThan(view.viewportWidth * 0.5);
   expect(view.overflow, 'nothing spills off the side of the screen').toBeLessThanOrEqual(1);
 
+  await waitUntilFree(page);
   // You can move: the arrow keys on a desktop, the joystick (a thumb on the left half) on a touchscreen
   const before = await me(page);
   if (hasTouch) {
@@ -81,6 +107,7 @@ test('the game loads, connects, draws, fits the screen, moves and inhales', asyn
   const after = await me(page);
   expect(after.x - before.x, 'your creature moves right').toBeGreaterThan(30);
 
+  await waitUntilFree(page);
   // You can inhale: space on a desktop, holding the right half of a touchscreen; letting go stops it
   if (hasTouch) await touchDown(page, 2, 0.8, 0.6);
   else await page.keyboard.down('Space');
