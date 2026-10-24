@@ -403,7 +403,7 @@ try {
     alice.send('inhale');
     await sleep(150);
     const heldNotEaten = bobState().state === 'alive' && me().gulping === bob.sessionId;
-    const bobHeld = bobState().gems;
+    const bobCaught = bobState().gems;
     // Held there (and pinned), it's gulped: into Alice and, a moment later, back out alive, a quarter of its gems lighter
     let bobGulped = false;
     let bobOut = false;
@@ -421,8 +421,8 @@ try {
     }
     alice.send('exhale');
     check(heldNotEaten, 'a much smaller creature is pulled to your mouth and held there, not eaten at once');
-    const bobPenalty = Math.min(15, Math.ceil(bobHeld * 0.25));
-    check(bobGulped && bobOut && !bobDied && bobAfter === bobHeld - bobPenalty, `held there (and pinned), it's gulped, then pops back out alive, a quarter of its gems lighter (Bob ${bobHeld} to ${bobAfter}, gulped ${bobGulped}, out ${bobOut}, knocked out ${bobDied})`);
+    const bobPenalty = Math.min(15, Math.ceil(bobCaught * 0.25));
+    check(bobGulped && bobOut && !bobDied && bobAfter === bobCaught - bobPenalty, `held there (and pinned), it's gulped, then pops back out alive, a quarter of its gems lighter (Bob ${bobCaught} to ${bobAfter}, gulped ${bobGulped}, out ${bobOut}, knocked out ${bobDied})`);
     await waitFor(() => bobState().state === 'alive' && !bobState().spawnProtected, 6000, 'Bob is back');
     // ...but running straight away breaks free (robbed on the way out, but not swallowed)
     bob.send('test:setGems', { count: 30 });
@@ -1451,8 +1451,8 @@ try {
         }
     }
     const bigPenalty = Math.min(15, Math.ceil(beforeGulp * 0.25));
-    const spilled = kid.messages.find((m) => m.type === 'burst');
-    check(insideNow && popped && beforeGulp - afterPop === bigPenalty && bigPenalty === 15 && spilled?.message?.count === bigPenalty && !mine(kid).flying && !mine(kid).capturedBy, `held on, it's gulped, then pops back out alive, a quarter of its gems lighter but never more than 15, scattered (${beforeGulp} to ${afterPop}, ${spilled?.message?.count ?? 0} scattered)`);
+    const scatter = kid.messages.find((m) => m.type === 'burst');
+    check(insideNow && popped && beforeGulp - afterPop === bigPenalty && bigPenalty === 15 && scatter?.message?.count === bigPenalty && !mine(kid).flying && !mine(kid).capturedBy, `held on, it's gulped, then pops back out alive, a quarter of its gems lighter but never more than 15, scattered (${beforeGulp} to ${afterPop}, ${scatter?.message?.count ?? 0} scattered)`);
     // Just out, it can't be caught again straight away, even pressed right against the mouth
     captor.send('test:breath', { stamina: 1 });
     captor.send('test:face', { angle: 0 });
