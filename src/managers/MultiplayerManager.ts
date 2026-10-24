@@ -190,6 +190,7 @@ export class MultiplayerManager {
         this.room.onMessage('vanish', (data) => this.eventBus.emit('multiplayer:vanish', data));
         this.room.onMessage('impact', (data) => this.eventBus.emit('multiplayer:impact', data));
         this.room.onMessage('blast', (data) => this.eventBus.emit('multiplayer:blast', data));
+        this.room.onMessage('exhale', (data) => this.eventBus.emit('multiplayer:exhale', data));
 
 
         // Handle errors

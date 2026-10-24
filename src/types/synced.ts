@@ -141,6 +141,10 @@ export interface SyncedPlayer {
     swallowable: boolean
     swallowing: number
     insideOf: string
+    escapeKeys: string
+    escapeStep: number
+    dazedUntil: number
+    escapeMissAt: number
     robbing: string
     robbedTotal: number
     isBot: boolean

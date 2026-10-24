@@ -1,7 +1,7 @@
 import type { MultiplayerMode } from '../core/GameModes'
-import { ARENA_RULES, CANNON } from '../../server/constants/gameConstants'
+import { ARENA_RULES, EXHALE } from '../../server/constants/gameConstants'
 import { INHALE_LOOK, suctionPower } from './airflow'
-import { drawCreature } from './creatures'
+import { drawCreature, mouthOf, mouthRadius } from './creatures'
 import { BURST_MS } from './shared'
 import type { SyncedGameState, SyncedPlayer } from '../types/synced'
 
@@ -50,41 +50,56 @@ export function drawGemBursts(mode: MultiplayerMode, ctx: CanvasRenderingContext
  * Gravity theft: every gem stolen pops out of the victim and arcs into the thief's mouth, so you
  * can watch them shrink, with a faint gold tether between the two while the stream runs
  */
-/** Someone held at a mouth, about to be swallowed: a red ring closes in on them (they're still free if they get away first) */
-export function drawGulps(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state: SyncedGameState, timestamp: number) : void {
-    const now = mode.worldNow(state, timestamp)
-    state.players?.forEach((eater: SyncedPlayer) => {
-        if (!eater.gulping) return
-        const prey = state.players.get(eater.gulping)
-        if (!prey || prey.state !== 'alive') return
-        const left = Math.max(0, Math.min(1, (eater.gulpEndsAt - now) / CANNON.HOLD_MS))
-        const at = mode.centerOf(eater.gulping, prey)
-        ctx.save()
-        ctx.strokeStyle = `rgba(255, 107, 107, ${0.55 + 0.45 * (1 - left)})`
-        ctx.lineWidth = 3
-        ctx.beginPath()
-        ctx.arc(at.x, at.y, prey.width / 2 + 4 + 24 * left, 0, Math.PI * 2)
-        ctx.stroke()
-        ctx.restore()
-    })
-}
-
-/** Drained creatures: each shrinks away to nothing where it was, with a last ring of gold */
+/**
+ * Swallows: the captive is already out of sight inside its swallower, so the moment shows on the swallower
+ * instead: its mouth snaps shut and the gulp ripples out from it. (A vanish with nobody to be inside of
+ * shrinks away where it was, with a last ring of gold.)
+ */
 export function drawVanishes(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, timestamp: number) : void {
     const now = performance.now()
     const VANISH_MS = 550
     mode.vanishes = mode.vanishes.filter((v) => now - v.at < VANISH_MS)
+    const state = mode.multiplayerManager?.getState() as SyncedGameState | undefined
+    const localId = mode.multiplayerManager?.localSessionId ?? null
     for (const v of mode.vanishes) {
         const k = (now - v.at) / VANISH_MS
+        const prey = state?.players.get(v.id)
+        const eaterId = prey ? (prey.state === 'gulped' ? prey.insideOf : prey.capturedBy) : ''
+        const eater = eaterId ? state?.players.get(eaterId) : undefined
         ctx.save()
-        ctx.globalAlpha = 1 - k * 0.6
-        drawCreature(ctx, v.x, v.y, Math.max(1, v.size * Math.pow(1 - k, 1.6)), v.color, v.facing, timestamp)
-        ctx.globalAlpha = (1 - k) * 0.8
-        ctx.strokeStyle = '#ffd166'
-        ctx.lineWidth = 2
-        ctx.beginPath()
-        ctx.arc(v.x, v.y, v.size * 0.5 + 30 * k, 0, Math.PI * 2)
-        ctx.stroke()
+        if (eater && eaterId) {
+            const at = mode.centerOf(eaterId, eater)
+            const size = mode.drawnSizes.get(eaterId)?.size ?? eater.width
+            const facing = eaterId === localId ? mode.localFacing : (eater.facing ?? -Math.PI / 2)
+            const m = mouthOf(at.x, at.y, size, facing)
+            const open = Math.min(size * 0.21, mouthRadius(size) * 1.25)
+            // The mouth snapping shut...
+            const shut = Math.min(1, k / 0.4)
+            ctx.fillStyle = '#10151f'
+            ctx.beginPath()
+            ctx.arc(m.x, m.y, Math.max(0.1, open * (1 - shut)), 0, Math.PI * 2)
+            ctx.fill()
+            // ...and the gulp rippling out from it
+            for (const delay of [0, 0.25]) {
+                const q = (k - delay) / (1 - delay)
+                if (q <= 0) continue
+                ctx.globalAlpha = (1 - q) * 0.7
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)'
+                ctx.lineWidth = Math.max(1, size * 0.03 * (1 - q))
+                ctx.beginPath()
+                ctx.arc(m.x, m.y, open + size * 0.6 * q, 0, Math.PI * 2)
+                ctx.stroke()
+            }
+        } else {
+            ctx.globalAlpha = 1 - k * 0.6
+            drawCreature(ctx, v.x, v.y, Math.max(1, v.size * Math.pow(1 - k, 1.6)), v.color, v.facing, timestamp)
+            ctx.globalAlpha = (1 - k) * 0.8
+            ctx.strokeStyle = '#ffd166'
+            ctx.lineWidth = 2
+            ctx.beginPath()
+            ctx.arc(v.x, v.y, v.size * 0.5 + 30 * k, 0, Math.PI * 2)
+            ctx.stroke()
+        }
         ctx.restore()
     }
 }
@@ -196,6 +211,29 @@ export function drawBursts(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
         ctx.beginPath()
         ctx.arc(burst.x, burst.y, burst.size * (0.6 + 2.2 * t), 0, Math.PI * 2)
         ctx.stroke()
+        ctx.restore()
+    }
+}
+
+/** Exhales: three arcs of air rolling out of the mouth through the puff's cone, fading as they go */
+export function drawPuffs(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, timestamp: number) : void {
+    const PUFF_MS = 320
+    const arc = (EXHALE.ARC * Math.PI) / 180
+    mode.puffs = mode.puffs.filter((puff) => timestamp - puff.at < PUFF_MS)
+    for (const puff of mode.puffs) {
+        const t = Math.max(0, (timestamp - puff.at) / PUFF_MS)
+        ctx.save()
+        ctx.lineCap = 'round'
+        for (const lag of [0, 0.12, 0.24]) {
+            const k = t - lag
+            if (k <= 0) continue
+            const out = k / (1 - lag)
+            ctx.strokeStyle = `rgba(220, 240, 255, ${0.75 * (1 - out)})`
+            ctx.lineWidth = 4 * (1 - out) + 1
+            ctx.beginPath()
+            ctx.arc(puff.x, puff.y, puff.reach * (0.12 + 0.88 * out), puff.facing - arc * (1 - 0.3 * out), puff.facing + arc * (1 - 0.3 * out))
+            ctx.stroke()
+        }
         ctx.restore()
     }
 }

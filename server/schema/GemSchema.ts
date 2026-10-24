@@ -106,6 +106,13 @@ class GemSchema extends Schema {
     return this.launchedAt > 0;
   }
 
+  /** Puffed by an exhale: it slides off that way (friction stops it), staying whatever kind of gem it was */
+  blow(angle: number, speed: number): void {
+    if (this.launchedAt > 0 || this.falling) return;
+    this.vx += Math.cos(angle) * speed;
+    this.vy += Math.sin(angle) * speed;
+  }
+
   /** Burst outward from a hit: it slides out, can't be grabbed for a moment, and vanishes if nobody does */
   spray(angle: number, speed: number, now: number, owner = ""): void {
     this.sprayed = true;
@@ -133,8 +140,7 @@ class GemSchema extends Schema {
       if (at.done) this.launchedAt = 0;
       return true;
     }
-    if (!this.sprayed) return true;
-    if (now >= this.expiresAt) return false;
+    if (this.sprayed && now >= this.expiresAt) return false;
     if (this.vx !== 0 || this.vy !== 0) {
       const r = GEMS.RADIUS;
       this.px += this.vx * deltaTime;

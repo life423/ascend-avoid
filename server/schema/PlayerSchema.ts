@@ -106,6 +106,14 @@ class PlayerSchema extends Schema {
   swallowing: number;
   /** Gulped: whose insides it's riding in until it pops back out (synced; "" when it's out in the world) */
   insideOf: string;
+  /** Caught: the directions to push, in order, to get out (U, D, L, R), how many it has got so far, when its daze ends and when it last got one wrong (world time; all synced, for the prompt) */
+  escapeKeys: string;
+  escapeStep: number;
+  dazedUntil: number;
+  escapeMissAt: number;
+  /** Server-only: whether the stick has come back to neutral since the last push that counted; and (bots) when it next tries a direction */
+  escapeNeutral = true;
+  escapeTryAt = 0;
   /** Server-only: smoothed airflow quality on each creature, when the latch began and when it last slipped, its score, whether it owns the focused connection, and the aim it adds */
   airQuality = new Map<string, number>();
   latchSince = 0;
@@ -147,6 +155,8 @@ class PlayerSchema extends Schema {
   /** This flight has already hit someone (one damaging hit per launch); hit by a flier, immune to another until then */
   flightHit = false;
   impactImmuneUntil = 0;
+  /** Server-only: when the next exhale (a tap with an empty mouth) is allowed */
+  exhaleReadyAt = 0;
   /** Server-only: when this breath runs out, and when you can spit again */
   inhaleStopAt = 0;
   /** Server-only: how much breath is left (0-1) as of staminaAt: it drains while inhaling and refills from wherever it is */
@@ -176,6 +186,10 @@ class PlayerSchema extends Schema {
     this.capturedBy = "";
     this.insideOf = "";
     this.struggle = 0;
+    this.escapeKeys = "";
+    this.escapeStep = 0;
+    this.dazedUntil = 0;
+    this.escapeMissAt = 0;
     this.swallowable = false;
     this.swallowing = 0;
     this.robbing = "";
@@ -474,8 +488,8 @@ class PlayerSchema extends Schema {
 
   /** Start inhaling (for up to `forMs`, INHALE.MAX_MS for players): you move as usual, and your mouth turns toward your aim */
   startInhale(now: number, forMs: number = Infinity): void {
-    // (a mouth full of a creature it gulped can't inhale until that pops back out)
-    if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering || this.stunned || this.flying || this.capturedBy || now < this.digestUntil) return;
+    // (a full mouth can't inhale: holding someone caught, a press fires them instead (GameRoom); someone gulped has to pop back out first)
+    if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering || this.stunned || this.flying || this.capturedBy || this.gulping || now < this.digestUntil) return;
     this.breathe(now);
     if (this.stamina < INHALE.MIN_BREATH) return;
     this.inhaling = true;
@@ -616,6 +630,10 @@ type("number")(PlayerSchema.prototype, "struggle");
 type("boolean")(PlayerSchema.prototype, "swallowable");
 type("number")(PlayerSchema.prototype, "swallowing");
 type("string")(PlayerSchema.prototype, "insideOf");
+type("string")(PlayerSchema.prototype, "escapeKeys");
+type("number")(PlayerSchema.prototype, "escapeStep");
+type("number")(PlayerSchema.prototype, "dazedUntil");
+type("number")(PlayerSchema.prototype, "escapeMissAt");
 type("string")(PlayerSchema.prototype, "robbing");
 type("number")(PlayerSchema.prototype, "robbedTotal");
 type("boolean")(PlayerSchema.prototype, "isBot");

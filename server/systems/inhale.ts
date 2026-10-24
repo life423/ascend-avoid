@@ -4,8 +4,8 @@ import { airflowQuality, cleanAir, drainRamp, lethalShare, pressureBuild, pressu
 import { moveSpeed } from "../game/movement.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 
-import { CANNON } from "../constants/gameConstants.js";
-import { canCatch, canSwallowWhole, holdFirmness, launchAngle, launchSpeed, swallowPenalty } from "../game/cannon.js";
+import { CANNON, EXHALE } from "../constants/gameConstants.js";
+import { canCatch, launchAngle, launchSpeed, swallowPenalty } from "../game/cannon.js";
 
 const { PLAYER_STATE, INHALE, LATCH } = GAME_CONSTANTS;
 import { sprayGems } from "./gems.js";
@@ -29,12 +29,11 @@ export function knockOutWithGems(state: GameState, player: PlayerSchema, now: nu
 export function updateInhales(state: GameState, now: number, deltaTime: number) : void {
   const cone = Math.cos((INHALE.ARC * Math.PI) / 180);
   updateGulps(state, now);
+  updateHolds(state, now);
   state.players.forEach((eater) => {
     if (!eater.inhaling || eater.state !== PLAYER_STATE.ALIVE) {
       if (eater.stealingFrom) endTheft(state, eater, now);
       if (eater.robbing) eater.robbing = "";
-      // Stopped inhaling with a captive: launched (held long enough) or just let go
-      if (eater.gulping) letGo(state, eater, now);
       fadeLocks(state, eater, null, deltaTime);
       return;
     }
@@ -127,39 +126,33 @@ export function updateInhales(state: GameState, now: number, deltaTime: number) 
       prey.nudge(((mouthX - px) / d) * pull, ((mouthY - py) / d) * pull, state.worldWidth, state.worldHeight);
     });
     fadeLocks(state, eater, locked, deltaTime);
-    // Capture: a creature it could swallow, held at its mouth, is caught for up to CANNON.HOLD_MS. Still
-    // inhaling when that ends, it swallows it; letting go first launches it (letGo)
-    const captive = eater.gulping ? state.players.get(eater.gulping) : undefined;
-    if (captive && captive.capturedBy === eater.sessionId && captive.state === PLAYER_STATE.ALIVE) {
-      if (holdCaptive(state, eater, captive, mouthX, mouthY, now, deltaTime)) {
-        if (eater.swallowHeld >= CANNON.SWALLOW_MS && canSwallowWhole(eater.width, captive.width)) {
-          eater.gulping = "";
-          swallow(state, eater, captive, now);
-        } else if (state.time >= eater.gulpEndsAt) {
-          // The hold is over without a swallow: the captive goes free
-          eater.gulping = "";
-          free(captive, Math.cos(eater.facing), Math.sin(eater.facing), now);
-        }
-      }
-    } else {
-      if (eater.gulping) eater.gulping = "";
-      const caught = held as PlayerSchema | null;
-      if (caught) {
-        eater.gulping = caught.sessionId;
-        eater.gulpEndsAt = state.time + CANNON.HOLD_MS;
-        eater.captureStartedAt = now;
-        eater.swallowHeld = 0;
-        caught.capturedBy = eater.sessionId;
-        caught.captureDistance = heldAt;
-        caught.struggle = 0;
-        caught.swallowable = canSwallowWhole(eater.width, caught.width);
-        caught.swallowing = 0;
-        caught.stopInhale(now);
-        caught.dropLatch();
-        // The capture decides what happens to it now: any theft from it ends here
-        eater.stealShares.delete(caught.sessionId);
-        if (eater.stealingFrom === caught.sessionId) endTheft(state, eater, now);
-      }
+    // Capture: a creature it could catch, held at its mouth, is caught: it goes inside (out of sight), the
+    // mouth is full (the inhale ends; no more until it's empty), and it's ammunition until it gets its
+    // escape sequence right or is fired (fireCaptive). The hold itself runs in updateHolds, button or not.
+    const caught = held as PlayerSchema | null;
+    if (caught && !eater.gulping) {
+      eater.gulping = caught.sessionId;
+      eater.gulpEndsAt = state.time + CANNON.HOLD_MS;
+      eater.captureStartedAt = now;
+      eater.swallowHeld = 0;
+      caught.capturedBy = eater.sessionId;
+      caught.captureDistance = heldAt;
+      caught.struggle = 0;
+      caught.swallowable = false;
+      caught.swallowing = 0;
+      // Dazed for a moment, then it has to push its stick in these directions, in order, to get out
+      caught.escapeKeys = escapeSequence();
+      caught.escapeStep = 0;
+      caught.dazedUntil = state.time + CANNON.CAPTIVE_STUN_MS;
+      caught.escapeMissAt = 0;
+      caught.escapeNeutral = false;
+      caught.escapeTryAt = 0;
+      caught.stopInhale(now);
+      caught.dropLatch();
+      // The capture decides what happens to it now: any theft from it ends here
+      eater.stealShares.delete(caught.sessionId);
+      if (eater.stealingFrom === caught.sessionId) endTheft(state, eater, now);
+      eater.stopInhale(now);
     }
     // A mouth holding a captive drains nobody (the capture decides what happens to it); an empty one robs
     if (eater.gulping) {
@@ -254,7 +247,9 @@ export function stealStrength(_state: GameState, thief: PlayerSchema, victim: Pl
  * sits in the cone, and grows only with the square root of how many it catches, so a big cone
  * covers more creatures without draining each one as fast. A victim's share drains at INHALE.STEAL_RATE a second,
  * whatever either one's size (mass resists being pulled, not being robbed). Two creatures inhaling
- * each other both steal at once. Stealing never takes a creature's last gem (INHALE.DRAIN_FLOOR): drained, it's weak, never gone.
+ * each other never both steal at once: only the stronger pull does (clashStrength, INHALE.CLASH_MARGIN), so a
+ * clash has a winner instead of an endless exchange. Stealing never takes a creature's last gem
+ * (INHALE.DRAIN_FLOOR): drained, it's weak, never gone.
  */
 export function steal(state: GameState, thief: PlayerSchema, now: number, deltaTime: number) : void {
   const victims: { victim: PlayerSchema; weight: number }[] = [];
@@ -278,6 +273,17 @@ export function steal(state: GameState, thief: PlayerSchema, now: number, deltaT
   // Catching several at once pays more than one, though far less than one each
   const budget = Math.sqrt(victims.length);
   for (const { victim, weight } of victims) {
+    // A clash: the victim's own inhale is on this thief too. Only the stronger pull siphons (ahead by
+    // CLASH_MARGIN; closer than that, whoever has held the other longer): nothing flows the losing way
+    const theirs = clashStrength(state, victim, thief);
+    if (theirs > 0) {
+      const mine = clashStrength(state, thief, victim);
+      const held = thief.heldFor.get(victim.sessionId) ?? 0;
+      const theirHeld = victim.heldFor.get(thief.sessionId) ?? 0;
+      const lead = held > theirHeld || (held === theirHeld && thief.sessionId < victim.sessionId);
+      const margin = 1 + INHALE.CLASH_MARGIN;
+      if (!(mine > theirs * margin || (mine * margin >= theirs && lead))) continue;
+    }
     let progress = (thief.stealShares.get(victim.sessionId) ?? 0) + deltaTime * INHALE.STEAL_RATE * budget * (weight / total) * stealStrength(state, thief, victim) * drainRamp(thief.heldFor.get(victim.sessionId) ?? 0) * pressureBuild(thief.heldFor.get(victim.sessionId) ?? 0, thief.width) * scaleDrain(thief.width, victim.width) * (LATCH.OVERLAP_DRAIN_MIN + (1 - LATCH.OVERLAP_DRAIN_MIN) * cleanAir(state.bodyOf(thief), state.bodyOf(victim)));
     while (progress >= 1 && victim.gems > INHALE.DRAIN_FLOOR) {
       progress -= 1;
@@ -289,6 +295,54 @@ export function steal(state: GameState, thief: PlayerSchema, now: number, deltaT
     }
     thief.stealShares.set(victim.sessionId, Math.min(progress, 1));
   }
+}
+
+/**
+ * How hard one creature's inhale is draining another right now: its per-victim drain rate, before an inhale's
+ * budget is shared out (0 unless it's inhaling, free, with the other in its cone). Two creatures inhaling each
+ * other compare these, and only the stronger pull siphons (see steal)
+ */
+function clashStrength(state: GameState, thief: PlayerSchema, victim: PlayerSchema) : number {
+  if (!thief.inhaling || thief.state !== PLAYER_STATE.ALIVE || thief.capturedBy || thief.flying || thief.gulping) return 0;
+  const weight = stealWeight(state, thief, victim);
+  if (weight <= 0) return 0;
+  const held = thief.heldFor.get(victim.sessionId) ?? 0;
+  return weight * stealStrength(state, thief, victim) * drainRamp(held) * pressureBuild(held, thief.width) * scaleDrain(thief.width, victim.width) * (LATCH.OVERLAP_DRAIN_MIN + (1 - LATCH.OVERLAP_DRAIN_MIN) * cleanAir(state.bodyOf(thief), state.bodyOf(victim)));
+}
+
+/**
+ * Exhaling: the button tapped with nothing in your mouth. A short puff out of the mouth: loose gems in
+ * front of it are blown away, and creatures in it are shoved back (hard if they're lighter than you,
+ * barely if they're much heavier), which pushes a robber out of its own inhale's reach. Free, with a
+ * pause before the next one (EXHALE.COOLDOWN_MS).
+ */
+export function exhale(state: GameState, player: PlayerSchema, now: number) : void {
+  if (player.state !== PLAYER_STATE.ALIVE || player.stunned || player.flying || player.capturedBy || player.inhaling || now < player.exhaleReadyAt) return;
+  player.exhaleReadyAt = now + EXHALE.COOLDOWN_MS;
+  const fx = Math.cos(player.facing);
+  const fy = Math.sin(player.facing);
+  const mouthX = player.x + player.width / 2 + fx * player.width * 0.3;
+  const mouthY = player.y + player.height / 2 + fy * player.width * 0.3;
+  const reach = EXHALE.REACH + player.width * EXHALE.REACH_PER_SIZE;
+  const cone = Math.cos((EXHALE.ARC * Math.PI) / 180);
+  state.onEvent?.("exhale", { id: player.sessionId, x: Math.round(mouthX), y: Math.round(mouthY), facing: Math.round(player.facing * 100) / 100, reach: Math.round(reach) });
+  state.gems.forEach((gem) => {
+    const dx = gem.x - mouthX;
+    const dy = gem.y - mouthY;
+    const d = Math.hypot(dx, dy);
+    if (d < 1e-6 || d > reach || (dx * fx + dy * fy) / d < cone) return;
+    gem.blow(Math.atan2(dy, dx), EXHALE.GEM_PUSH * (1 - d / reach));
+  });
+  state.players.forEach((other) => {
+    if (other === player || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected || other.flying || other.capturedBy) return;
+    const ox = other.x + other.width / 2 - mouthX;
+    const oy = other.y + other.height / 2 - mouthY;
+    const d = Math.hypot(ox, oy);
+    const gap = Math.max(0, d - other.width / 2);
+    if (d < 1e-6 || gap > reach || (ox * fx + oy * fy) / d < cone) return;
+    const ratio = Math.min(EXHALE.PUSH_RATIO_MAX, Math.max(EXHALE.PUSH_RATIO_MIN, player.weight() / other.weight()));
+    other.skid(ox / d, oy / d, EXHALE.BODY_PUSH * ratio * (1 - gap / reach));
+  });
 }
 
 /** A run of stealing ends (or switches to someone else): a big one gets a banner and a line in the feed */
@@ -357,84 +411,74 @@ export function expel(state: GameState, eater: PlayerSchema | null, prey: Player
 }
 
 /**
- * Holds a captive at its captor's mouth: the captor pulls it back to the hold point (at the captive's
- * own speed times its firmness times how squarely it faces it) while the captive's stick moves it, and
- * pushing sideways twists the captor's aim. False once it slips free (BREAK_GAP); while it's pinned
- * (SUBDUED), the captor's swallow builds.
+ * Holds a captive: pinned at its captor's mouth (inside it, as far as anyone can see), working its way out.
+ * Dazed for CAPTIVE_STUN_MS after the catch; then every push of its stick past ESCAPE_PRESS (after a return
+ * to neutral) counts as one direction: the right next one advances its sequence, a wrong one starts it over.
+ * struggle is how far along it is, 0 to 1.
  */
-function holdCaptive(state: GameState, eater: PlayerSchema, captive: PlayerSchema, mouthX: number, mouthY: number, now: number, deltaTime: number): boolean {
-  const fx = Math.cos(eater.facing);
-  const fy = Math.sin(eater.facing);
-  const hx = mouthX + fx * captive.width * 0.45;
-  const hy = mouthY + fy * captive.width * 0.45;
-  const cx = captive.x + captive.width / 2;
-  const cy = captive.y + captive.height / 2;
-  const tx = cx - (eater.x + eater.width / 2);
-  const ty = cy - (eater.y + eater.height / 2);
-  const squarely = Math.max(0, (tx * fx + ty * fy) / (Math.hypot(tx, ty) || 1));
+function holdCaptive(state: GameState, captive: PlayerSchema, mouthX: number, mouthY: number, facing: number): void {
+  captive.placeAt(mouthX + Math.cos(facing) * captive.width * 0.45 - captive.width / 2, mouthY + Math.sin(facing) * captive.width * 0.45 - captive.height / 2);
+  captive.struggle = captive.escapeKeys.length > 0 ? captive.escapeStep / captive.escapeKeys.length : 0;
+  if (state.time < captive.dazedUntil) return;
   const steer = captive.steerInput();
-  const speed = moveSpeed(captive.width);
-  const side = steer.x * -fy + steer.y * fx;
-  // (twisting it away from the side the captive pushes to, so the captive slips round to where the hold is weak)
-  eater.facing -= deltaTime * CANNON.AIM_TWIST * side * Math.min(1, (captive.width / eater.width) * 2);
-  let dx = steer.x * speed * deltaTime;
-  let dy = steer.y * speed * deltaTime;
-  const ox = hx - (cx + dx);
-  const oy = hy - (cy + dy);
-  const od = Math.hypot(ox, oy);
-  // The grip pulls it back along the captor's facing at full strength, but only HOLD_SIDEWAYS as hard
-  // across it (suction holds you in the stream, not beside it): slipping sideways is how you get out
-  const grip = speed * CANNON.HOLD_RATIO * holdFirmness(eater.width, captive.width) * squarely * deltaTime;
-  if (od > 1e-6) {
-    const along = ox * fx + oy * fy;
-    const across = ox * -fy + oy * fx;
-    const alongPull = Math.sign(along) * Math.min(Math.abs(along), grip);
-    const acrossPull = Math.sign(across) * Math.min(Math.abs(across), grip * CANNON.HOLD_SIDEWAYS);
-    dx += fx * alongPull - fy * acrossPull;
-    dy += fy * alongPull + fx * acrossPull;
+  const push = Math.hypot(steer.x, steer.y);
+  if (push <= CANNON.ESCAPE_NEUTRAL) {
+    captive.escapeNeutral = true;
+    return;
   }
-  captive.nudge(dx, dy, state.worldWidth, state.worldHeight);
-  // Free once it's pushed out far enough (BREAK_GAP, BREAK_MARGIN); pinned within SUBDUED of the hold point
-  const nx = captive.x + captive.width / 2;
-  const ny = captive.y + captive.height / 2;
-  const holdAt = captive.width * 0.45;
-  const breakAt = Math.max(holdAt + captive.width * CANNON.BREAK_GAP, captive.captureDistance) + CANNON.BREAK_MARGIN;
-  const fromMouth = Math.hypot(nx - mouthX, ny - mouthY);
-  captive.struggle = Math.max(0, Math.min(1, (fromMouth - holdAt) / Math.max(1, breakAt - holdAt)));
-  if (fromMouth >= breakAt) {
-    eater.gulping = "";
-    const ad = Math.hypot(tx, ty) || 1;
-    free(captive, tx / ad, ty / ad, now);
-    return false;
+  if (!captive.escapeNeutral || push < CANNON.ESCAPE_PRESS) return;
+  captive.escapeNeutral = false;
+  escapePress(state, captive, Math.abs(steer.x) >= Math.abs(steer.y) ? (steer.x > 0 ? "R" : "L") : (steer.y > 0 ? "D" : "U"));
+}
+
+/** The directions a fresh captive has to push, in order: CANNON.ESCAPE_KEYS of U, D, L and R */
+export function escapeSequence(): string {
+  let keys = "";
+  for (let i = 0; i < CANNON.ESCAPE_KEYS; i++) keys += "UDLR"[Math.floor(Math.random() * 4)];
+  return keys;
+}
+
+/** A captive pushes one direction: the right next one advances its sequence; a wrong one starts it over (and shows) */
+export function escapePress(state: GameState, captive: PlayerSchema, key: string): void {
+  if (!captive.capturedBy || captive.escapeStep >= captive.escapeKeys.length) return;
+  if (captive.escapeKeys[captive.escapeStep] === key) {
+    captive.escapeStep++;
+  } else {
+    captive.escapeStep = 0;
+    captive.escapeMissAt = state.time;
   }
-  if (Math.hypot(nx - hx, ny - hy) <= Math.max(8, captive.width * CANNON.SUBDUED)) eater.swallowHeld += deltaTime * 1000;
-  captive.swallowable = canSwallowWhole(eater.width, captive.width);
-  captive.swallowing = captive.swallowable ? Math.min(1, eater.swallowHeld / CANNON.SWALLOW_MS) : 0;
-  return true;
+}
+
+/** No longer caught: the escape sequence is over, whichever way it ended */
+function clearEscape(captive: PlayerSchema): void {
+  captive.escapeKeys = "";
+  captive.escapeStep = 0;
+  captive.dazedUntil = 0;
+  captive.escapeMissAt = 0;
 }
 
 /** A captive goes free: pushed clear along (ax, ay), and safe from being caught again for a moment */
-function free(captive: PlayerSchema, ax: number, ay: number, now: number): void {
+function free(captive: PlayerSchema, ax: number, ay: number, now: number, push: number = CANNON.BREAK_PUSH): void {
   captive.capturedBy = "";
   captive.struggle = 0;
   captive.swallowable = false;
   captive.swallowing = 0;
+  clearEscape(captive);
   captive.recaptureAfter = now + CANNON.RECAPTURE_MS;
-  captive.skid(ax, ay, CANNON.BREAK_PUSH);
+  captive.skid(ax, ay, push);
 }
 
 /**
- * Its captor stopped inhaling. Only a deliberate release (the button let go after the capture began,
- * held at least LAUNCH_MIN_MS, the captor still alive and not stunned) launches the captive, along its
- * facing shifted by the captive's own push; breath running out, a stun, being caught or knocked out
- * itself, all just let it go, harmlessly.
+ * Firing: the captor's button pressed while it holds someone (GameRoom), or a bot deciding to. Held at least
+ * LAUNCH_MIN_MS, with the captor alive, not stunned and not caught itself, the captive is launched out of the
+ * mouth along the captor's facing (shifted by its own push); otherwise it's just let go, harmlessly.
  */
-export function letGo(state: GameState, eater: PlayerSchema, now: number): void {
+export function fireCaptive(state: GameState, eater: PlayerSchema, now: number): void {
   const captive = state.players.get(eater.gulping);
   eater.gulping = "";
   if (!captive || captive.capturedBy !== eater.sessionId) return;
-  const deliberate = eater.releasedAt >= eater.captureStartedAt;
-  if (deliberate && eater.state === PLAYER_STATE.ALIVE && !eater.stunned && !eater.capturedBy && captive.state === PLAYER_STATE.ALIVE && now - eater.captureStartedAt >= CANNON.LAUNCH_MIN_MS) {
+  clearEscape(captive);
+  if (eater.state === PLAYER_STATE.ALIVE && !eater.stunned && !eater.capturedBy && captive.state === PLAYER_STATE.ALIVE && now - eater.captureStartedAt >= CANNON.LAUNCH_MIN_MS) {
     const steer = captive.steerInput();
     const angle = launchAngle(eater.facing, steer.x, steer.y);
     const speed = launchSpeed(eater.width);
@@ -442,6 +486,45 @@ export function letGo(state: GameState, eater: PlayerSchema, now: number): void 
   } else {
     free(captive, Math.cos(eater.facing), Math.sin(eater.facing), now);
   }
+}
+
+/**
+ * Every hold, every tick, whether or not the captor is still inhaling (the button can be let go; the mouth
+ * stays full): the captive is pinned inside and works its escape sequence. Out when it gets it right, when
+ * the safety net (CANNON.HOLD_MS) runs out, or at once if its captor is knocked out, stunned, caught or sent
+ * flying itself. A captive whose captor has left the game goes free too.
+ */
+export function updateHolds(state: GameState, now: number): void {
+  state.players.forEach((captor) => {
+    if (!captor.gulping) return;
+    const captive = state.players.get(captor.gulping);
+    if (!captive || captive.capturedBy !== captor.sessionId || captive.state !== PLAYER_STATE.ALIVE) {
+      captor.gulping = "";
+      return;
+    }
+    const fx = Math.cos(captor.facing);
+    const fy = Math.sin(captor.facing);
+    if (captor.state !== PLAYER_STATE.ALIVE || captor.stunned || captor.capturedBy || captor.flying) {
+      captor.gulping = "";
+      free(captive, fx, fy, now);
+      return;
+    }
+    holdCaptive(state, captive, captor.x + captor.width / 2 + fx * captor.width * 0.3, captor.y + captor.height / 2 + fy * captor.width * 0.3, captor.facing);
+    if (captive.escapeKeys.length > 0 && captive.escapeStep >= captive.escapeKeys.length) {
+      // It got the sequence right: out it pops
+      captor.gulping = "";
+      free(captive, fx, fy, now, CANNON.ESCAPE_PUSH);
+    } else if (state.time >= captor.gulpEndsAt) {
+      // The safety net: the hold is over, the captive goes free
+      captor.gulping = "";
+      free(captive, fx, fy, now);
+    }
+  });
+  state.players.forEach((captive) => {
+    if (!captive.capturedBy) return;
+    const captor = state.players.get(captive.capturedBy);
+    if (!captor || captor.gulping !== captive.sessionId) free(captive, Math.cos(captive.facing), Math.sin(captive.facing), now);
+  });
 }
 
 /** Whether a point is in front of a creature (within about 70 degrees of its facing), as a catch needs */

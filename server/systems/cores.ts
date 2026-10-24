@@ -60,7 +60,8 @@ export function updateCores(state: GameState, now: number, deltaTime: number) : 
 export function coreMeetsPlayers(state: GameState, core: CoreSchema, now: number) : void {
   state.players.forEach((player) => {
     const id = player.sessionId;
-    if (player.state !== PLAYER_STATE.ALIVE) {
+    if (player.state !== PLAYER_STATE.ALIVE || player.capturedBy) {
+      // (caught: inside a mouth, where nothing reaches it)
       core.touching.delete(id);
       return;
     }

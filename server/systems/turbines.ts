@@ -12,7 +12,8 @@ const { GEMS, PLAYER_STATE, TURBINE } = GAME_CONSTANTS;
 
 /**
  * Turbines appear (after a warning) in open spots, run for a minute or so, power down and come
- * back somewhere else. While on, each pulls in loose gems and nearby players, rips gems out of
+ * back somewhere else: always COUNT_MIN to COUNT_MAX of them (rolled again each time one goes), the
+ * only gap being one on its way back. While on, each pulls in loose gems and nearby players, rips gems out of
  * anyone in its inner zone, fires every gem it takes in out of its exhaust, and blows players
  * around with the exhaust's wind.
  */
@@ -29,14 +30,18 @@ export function updateTurbines(state: GameState, now: number, deltaTime: number)
       turbine.phase = "ending";
       turbine.phaseEndsAt = t + TURBINE.POWER_DOWN_MS;
     } else if (!turbineBusy(state, turbine.id)) {
-      // Every gem inside has been fired: it's gone, and another comes somewhere else
+      // Every gem inside has been fired: it's gone. How many there should be is rolled again, and another
+      // comes somewhere else if that still calls for one (more arrive below if it calls for extra)
       state.turbines.splice(i, 1);
-      if (state.turbinesAuto) state.turbineDue.push(t + TURBINE.RESPAWN_MIN_MS + Math.random() * (TURBINE.RESPAWN_MAX_MS - TURBINE.RESPAWN_MIN_MS));
+      if (state.turbinesAuto) {
+        state.turbineTarget = TURBINE.COUNT_MIN + Math.floor(Math.random() * (TURBINE.COUNT_MAX - TURBINE.COUNT_MIN + 1));
+        if (state.turbines.length + state.turbineDue.length < state.turbineTarget) state.turbineDue.push(t + TURBINE.RESPAWN_MIN_MS + Math.random() * (TURBINE.RESPAWN_MAX_MS - TURBINE.RESPAWN_MIN_MS));
+      }
     }
   }
   if (state.turbinesAuto) {
     // The first ones arrive one at a time over the first few seconds
-    while (state.turbines.length + state.turbineDue.length < TURBINE.COUNT) state.turbineDue.push(t + Math.random() * 4000);
+    while (state.turbines.length + state.turbineDue.length < state.turbineTarget) state.turbineDue.push(t + Math.random() * 4000);
     for (let i = state.turbineDue.length - 1; i >= 0; i--) {
       if (t < state.turbineDue[i]) continue;
       const spot = state.turbineSpot();

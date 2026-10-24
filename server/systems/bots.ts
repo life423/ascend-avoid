@@ -2,6 +2,8 @@ import type { GameState } from "../schema/GameState.js";
 import { PlayerSchema } from "../schema/PlayerSchema.js";
 import { BotBrain } from "../game/bots.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
+import { CANNON } from "../constants/gameConstants.js";
+import { escapePress, fireCaptive } from "./inhale.js";
 
 const { PLAYER_STATE, BOTS, INHALE, BOMBS } = GAME_CONSTANTS;
 
@@ -11,8 +13,16 @@ const { PLAYER_STATE, BOTS, INHALE, BOMBS } = GAME_CONSTANTS;
  */
 export function botMouth(state: GameState, bot: PlayerSchema, now: number) : void {
   if (bot.state !== PLAYER_STATE.ALIVE || bot.sliding || bot.recovering) return;
+  if (bot.capturedBy) {
+    botEscape(state, bot, now);
+    return;
+  }
   const cx = bot.x + bot.width / 2;
   const cy = bot.y + bot.height / 2;
+  if (bot.gulping) {
+    botFire(state, bot, cx, cy, now);
+    return;
+  }
   if (bot.mouth) {
     let target: PlayerSchema | null = null;
     let best = -Infinity;
@@ -37,7 +47,7 @@ export function botMouth(state: GameState, bot: PlayerSchema, now: number) : voi
   // Inhaling: keep the mouth on whoever it's robbing or swallowing for as long as its breath lasts,
   // and let go once nobody has been in its inhale for a moment (saving its breath)
   if (bot.inhaling) {
-    const held = bot.stealingFrom ? state.players.get(bot.stealingFrom) : bot.gulping ? state.players.get(bot.gulping) : undefined;
+    const held = bot.stealingFrom ? state.players.get(bot.stealingFrom) : undefined;
     if (held) {
       bot.aimAt(held.x + held.width / 2 - cx, held.y + held.height / 2 - cy);
       bot.inhaleIdleSince = 0;
@@ -136,6 +146,56 @@ export function addBot(state: GameState, now: number) : void {
   state.players.set(id, bot);
   state.brains.set(id, new BotBrain());
   state.spawn(bot, now);
+}
+
+/**
+ * Holding someone (its mouth full, button or no button): the bot heads for the best target in range (bigger is
+ * better, nearer is better), which turns it to face them, and fires once it's lined up; with nobody to aim at
+ * for a while, it fires straight ahead
+ */
+function botFire(state: GameState, bot: PlayerSchema, cx: number, cy: number, now: number) : void {
+  const captive = state.players.get(bot.gulping);
+  if (!captive) return;
+  let target: PlayerSchema | null = null;
+  let best = -Infinity;
+  state.players.forEach((other) => {
+    if (other === bot || other === captive || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected || other.capturedBy || other.flying) return;
+    const d = Math.hypot(other.x + other.width / 2 - cx, other.y + other.height / 2 - cy);
+    if (d > BOTS.FIRE_RANGE) return;
+    const score = other.width - d * 0.05;
+    if (score > best) {
+      best = score;
+      target = other;
+    }
+  });
+  const aim = target as PlayerSchema | null;
+  const held = now - bot.captureStartedAt;
+  if (aim) {
+    const dx = aim.x + aim.width / 2 - cx;
+    const dy = aim.y + aim.height / 2 - cy;
+    const d = Math.hypot(dx, dy) || 1;
+    bot.steer(dx / d, dy / d);
+    if (held >= CANNON.LAUNCH_MIN_MS + 300 && Math.abs(angleGap(bot.facing, Math.atan2(dy, dx))) <= BOTS.FIRE_AIM) fireCaptive(state, bot, now);
+  } else if (held >= BOTS.FIRE_WAIT_MS) {
+    fireCaptive(state, bot, now);
+  }
+}
+
+/** Caught: dazed at first, then it tries a direction every ESCAPE_EVERY_MS, the right one ESCAPE_SKILL of the time */
+function botEscape(state: GameState, bot: PlayerSchema, now: number) : void {
+  if (state.time < bot.dazedUntil || now < bot.escapeTryAt || bot.escapeStep >= bot.escapeKeys.length) return;
+  bot.escapeTryAt = now + BOTS.ESCAPE_EVERY_MS;
+  const right = bot.escapeKeys[bot.escapeStep];
+  const wrong = "UDLR".replace(right, "");
+  escapePress(state, bot, Math.random() < BOTS.ESCAPE_SKILL ? right : wrong[Math.floor(Math.random() * wrong.length)]);
+}
+
+/** The shortest turn from one angle to another, in radians (signed) */
+function angleGap(from: number, to: number) : number {
+  let d = to - from;
+  while (d > Math.PI) d -= Math.PI * 2;
+  while (d < -Math.PI) d += Math.PI * 2;
+  return d;
 }
 
 /** The bot with the fewest gems leaves */

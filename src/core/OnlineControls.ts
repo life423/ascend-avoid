@@ -1,7 +1,14 @@
 
 /** What the button (or space) asks for: an inhale starting (pressed) and stopping (let go) */
 /** inhale: the button pressed; exhale: deliberately let go (the only release that launches a captive); cancel: the press cut short (slid off, Esc, the touch cancelled), which just stops */
-export type ControlEvent = 'inhale' | 'exhale' | 'cancel'
+export type ControlEvent = 'inhale' | 'exhale' | 'cancel' | 'tap'
+
+/**
+ * How long a press can last and still be a tap. The button decides nothing until then: let go
+ * within it and it's a tap (fire a captive, spit a bomb), never a moment of inhaling; keep holding
+ * past it and the inhale starts
+ */
+export const TAP_MS = 180
 
 /** Your breath, for the button and the ring around your creature: draining while you inhale, refilling while you catch it */
 export type Breath = { phase: 'ready' } | { phase: 'inhaling'; left: number } | { phase: 'recovering'; back: number }
@@ -33,7 +40,7 @@ export class OnlineControls {
     private stick: { id: number; originX: number; originY: number; x: number; y: number } | null = null
     private mouse: { id: number; x: number; y: number } | null = null
     /** The button held down: by which pointer (or the space bar) */
-    private press: { id: number | 'key' } | null = null
+    private press: { id: number | 'key'; at: number; held: boolean } | null = null
     private events: ControlEvent[] = []
     private touchedOnce = false
 
@@ -62,6 +69,11 @@ export class OnlineControls {
 
     /** What the button asked for since the last call */
     takeEvents(): ControlEvent[] {
+        // A press held past the tap window becomes an inhale (decided here, once a frame, button or key)
+        if (this.press && !this.press.held && performance.now() - this.press.at >= TAP_MS) {
+            this.press.held = true
+            this.events.push('inhale')
+        }
         const events = this.events
         this.events = []
         return events
@@ -122,7 +134,7 @@ export class OnlineControls {
             ctx.textAlign = 'left'
             ctx.font = `700 12px ${FONT}`
             ctx.fillStyle = inhaling ? breathColor : `rgba(255, 255, 255, ${recovering ? 0.35 : 0.65})`
-            ctx.fillText(inhaling ? 'SPACE  inhaling' : recovering ? 'catching your breath…' : 'SPACE  hold to inhale', 14, height - 16)
+            ctx.fillText(inhaling ? 'SPACE  inhaling' : recovering ? 'catching your breath…' : 'SPACE  hold to inhale, tap to exhale', 14, height - 16)
             if (inhaling || recovering) {
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.12)'
                 ctx.fillRect(14, height - 34, 140, 5)
@@ -209,24 +221,23 @@ export class OnlineControls {
         }
     }
 
-    /** The button pressed (by a pointer on the right half, or the space bar): inhaling starts at once */
+    /** The button pressed (by a pointer on the right half, or the space bar): nothing yet; held past TAP_MS it becomes an inhale (see takeEvents) */
     private pressDown(id: number | 'key'): void {
         if (this.press) return
-        this.press = { id }
-        this.events.push('inhale')
+        this.press = { id, at: performance.now(), held: false }
     }
 
-    /** The button let go: inhaling stops */
+    /** The button let go: within the tap window it was a tap (never an inhale); past it, the inhale stops */
     private pressUp(id: number | 'key'): void {
         if (this.press?.id !== id) return
-        this.events.push('exhale')
+        this.events.push(this.press.held ? 'exhale' : 'tap')
         this.press = null
     }
 
-    /** Slid off the button, pressed Esc, or the touch was cancelled: inhaling stops, but it isn't a release (it never launches a captive) */
+    /** Slid off the button, pressed Esc, or the touch was cancelled: an inhale stops (but it isn't a release); a press still undecided was nothing */
     private cancelPress(): void {
         if (!this.press) return
-        this.events.push('cancel')
+        if (this.press.held) this.events.push('cancel')
         this.press = null
     }
 
