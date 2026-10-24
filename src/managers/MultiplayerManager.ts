@@ -1,6 +1,5 @@
 import { Client, Room } from 'colyseus.js';
 import { EventBus } from '../core/EventBus';
-import AssetManager from './AssetManager';
 import { GameEvents } from '../constants/client-constants';
 import { GAME } from '../../server/constants/gameConstants';
 import { NAME_EVENT, playerName, setPlayerName } from '../core/PlayerName';
@@ -9,7 +8,6 @@ export class MultiplayerManager {
     private client: Client | null = null;
     private room: Room | null = null;
     private eventBus: EventBus;
-    // private _assetManager: AssetManager; // Removed unused property
     private isConnecting: boolean = false;
     private reconnectAttempts: number = 0;
     private maxReconnectAttempts: number = 0; // MultiplayerMode handles reconnecting
@@ -17,9 +15,8 @@ export class MultiplayerManager {
     roundTripMs: number = 0;
     private pingTimer: ReturnType<typeof setInterval> | null = null;
 
-    constructor(eventBus: EventBus, _assetManager: AssetManager) {
+    constructor(eventBus: EventBus) {
         this.eventBus = eventBus;
-        // this._assetManager = assetManager; // Removed unused assignment
     }
 
     /**

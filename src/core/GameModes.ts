@@ -622,13 +622,12 @@ export class MultiplayerMode extends GameMode {
         this.game.uiManager?.updateScore(0)
         this.game.uiManager?.updateHighScore(0)
 
-        const [{ MultiplayerManager }, { EventBus }, { default: AssetManager }] = await Promise.all([
+        const [{ MultiplayerManager }, { EventBus }] = await Promise.all([
             import('../managers/MultiplayerManager'),
             import('./EventBus'),
-            import('../managers/AssetManager'),
         ])
         const eventBus = new EventBus()
-        this.multiplayerManager = new MultiplayerManager(eventBus, new AssetManager())
+        this.multiplayerManager = new MultiplayerManager(eventBus)
         eventBus.on(GameEvents.PLAYER_JOINED, (data: any) => {
             if (data?.id && data.id !== this.multiplayerManager?.localSessionId) {
                 this.addNotice(`${String(data.name ?? 'Someone')} joined`)

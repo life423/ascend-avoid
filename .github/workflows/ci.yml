@@ -1,8 +1,7 @@
 name: CI
 
-# Every pull request: type-check, lint, synced types and the production build, in a couple of minutes.
-# The long suites (npm test for the multiplayer checks, npm run test:browsers for the browsers and
-# devices) run locally when you want them, not here.
+# Every pull request: types, lint, synced schema, production build, unit and multiplayer regressions.
+# Device/browser checks run locally with npm run test:browsers.
 on:
   pull_request:
 

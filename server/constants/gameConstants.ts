@@ -443,15 +443,11 @@ export const CAMERA = {
 
 /**
  * Capture and the living cannonball. A creature pulled to the mouth of one at least INHALE.EAT_RATIO
- * wider is caught and held there, for CANNON.HOLD_MS at most. The hold is physical: the captor pulls
- * its captive back to its mouth at the captive's own speed times how firmly it holds (more the bigger
- * it is) times how squarely it faces it, while the captive's stick moves it, so pushing straight out
- * fights the hold, and pushing sideways twists the captor's aim and slips round to where its hold is
- * weak. Slip far enough and you're free. A captor at least SWALLOW_RATIO wider that keeps its captive
- * pinned for SWALLOW_MS swallows it (keeping a share of its gems; the rest spray out); otherwise the hold
- * ends and the captive goes free. Letting go first launches it, a projectile that steers a little.
- * One damaging hit per launch; its target can't be hit again for a moment; and anyone launched, let go
- * or broken free can't be caught (by a mouth or a turbine) again for RECAPTURE_MS.
+ * wider is caught for HOLD_MS at most. A captive escapes with three to five directional inputs,
+ * depending on the captor's size advantage. A new action press fires it after loading; an early press
+ * queues the shot. Releasing inhale leaves the capture intact. Flights can steer sideways and deal
+ * one damaging hit. After landing, LAND_SAFE_MS blocks incoming suction and recapture; ordinary
+ * release/escape uses RECAPTURE_MS. Whole-swallow constants remain for the older implementation.
  */
 export const CANNON = {
   HOLD_MS: 4500, // a brief capture, then automatic release
@@ -480,7 +476,7 @@ export const CANNON = {
   EXPEL_GAP: 6, // it pops out behind its swallower, this far clear of its body...
   EXPEL_PUSH: 110, // ...pushed this much farther...
   EXPEL_PROTECT_MS: 2500, // ...and can't be caught again (by a mouth or a turbine) for this long
-  RECAPTURE_MS: 1500, // launched (after landing), let go or broken free: can't be caught by a mouth or a turbine for this long
+  RECAPTURE_MS: 1500, // let go or broken free: can't be caught by a mouth or a turbine for this long
   LAND_SAFE_MS: 3000, // after any flight, ignore incoming suction and captures while moving clear
   LAUNCH_INFLUENCE: 0.35, // the captive's sideways push as it's launched shifts its direction up to this many radians
   LAUNCH_SPEED_MIN: 1250, // launch speed (units a second) for a captor just big enough to catch its captive (CAPTURE_RATIO wider)...
@@ -592,11 +588,11 @@ export const EXHALE = {
   REACH_PER_SIZE: 2,
   ARC: 55, // degrees either side of where you face
   GEM_PUSH: 420, // loose gems right at the mouth are blown away at this (units a second), easing to nothing at the reach
-  BODY_PUSH: 300,
+  BODY_PUSH: 400,
   PUSH_RATIO_MIN: 0.5, // even a small defender makes real space against a giant
   PUSH_RATIO_MAX: 1.8,
-  PUSH_MAX: 420,
-  DEFENSE_PUSH: 150,
+  PUSH_MAX: 500,
+  DEFENSE_PUSH: 200,
   COOLDOWN_MS: 1800, // a deliberate defense, not repeated knockback
   BREAK_MS: 1000, // a successful puff breaks suction on its user for a short escape window
   PARRY_MS: 350, // minimum restart lock on a broken inhale

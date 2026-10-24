@@ -25,3 +25,5 @@ Follow-up to PR #27: remove the filled black mouth from ordinary inhaling too. U
 Accepted capture appearance: puffed cheeks. Inflate two soft cheek bulges during the gulp, with a subtle blush and highlights. Keep both eyes fully visible; cheeks disappear when the captive escapes or is fired. Retain the below-body loading badge and existing firing delay.
 
 Accepted combat follow-up: gust hits briefly stun (800ms) with no steering or inhaling, plus a dizzy animation. Knockback continues and repeated stuns respect the existing immunity window. After a fired creature lands, grant three seconds without incoming suction, drain or recapture by anyone, with a visible recovery ring. Keep capture loading unchanged.
+
+Later gust tuning: increase base knockback from 300 to 400 units and minimum defensive shove from 150 to 200, capped at 500. Keep the 800ms stun, 1.8-second cooldown and range unchanged. The reported persistent black inhale circle was confirmed by the user to come from an older version in an open hosted-site tab.
