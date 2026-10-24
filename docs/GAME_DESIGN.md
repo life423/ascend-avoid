@@ -2,7 +2,7 @@
 
 ## Core loop
 
-Collect gems, grow, steal from other creatures, capture someone smaller, aim and fire them as a steerable living cannonball, then compete for spilled gems. The world is continuous: no lobby or round wait.
+Collect gems, grow, steal from other creatures, capture someone smaller, aim and fire them as a living cannonball, then compete for spilled gems. The captor controls the shot; the captive's chance is escaping before launch. The world is continuous: no lobby or round wait. The background field has 950 gems, about 25% fewer than the former 1,270; combat spills remain unchanged.
 
 ## World and presentation
 
@@ -22,15 +22,15 @@ Hold Space or the touch button to inhale. A cone pulls gems and steals weight, p
 
 A creature at least 1.3 times wider can capture a smaller one at its mouth. Captives remain alive. After a 600ms daze, they enter a directional escape sequence: three inputs below a 2x captor width advantage, four at 2x, five at 4x or greater. A wrong input resets progress. Keyboard edges are transmitted explicitly; touch flicks return to neutral between inputs, and their edges are processed on message arrival.
 
-Loading takes 1.8, 2.1 or 2.4 seconds for those respective sequences. Tapping FIRE early queues a shot for the end of loading. Releasing the original inhale simply stops inhaling. The captor can keep aiming. A hold ends after 4.5 seconds, or sooner when the captive escapes or the captor is incapacitated/leaves. Focus loss clears input and cancels a queued shot.
+Loading takes 2.8, 3.1 or 3.4 seconds for those respective sequences. After the 600ms daze, this leaves 2.2, 2.5 or 2.8 usable seconds before the earliest shot. Tapping FIRE early queues a shot for the end of loading. Releasing the original inhale simply stops inhaling. The captor can keep aiming. A hold ends after 4.5 seconds, or sooner when the captive escapes or the captor is incapacitated/leaves. Focus loss clears input and cancels a queued shot.
 
 Bots take 500ms to read after the daze, attempt an input every 450ms, and choose correctly 65% of the time. These values deliberately give the captor a usable shot window.
 
 ## Flights and hits
 
-The captor's facing and captive's lateral input determine launch direction. Captives can steer sideways during flight. Swept collision checks prevent tunneling. A hit spills gems, stuns briefly, and bounces the projectile. The flier survives. Impact events identify the launcher, flier and target, and both launcher and flier receive recognition. The capture badge sits below the body so faces remain readable.
+The captor's facing alone determines launch direction. Captive input cannot change the launch angle or steer a player-fired missile, including its bounce. Turbine throws retain their separate steering behavior. Swept collision checks prevent tunneling. A hit spills gems, stuns briefly, and bounces a surviving projectile. Impact events identify the launcher, flier and target. The capture badge sits below the body so faces remain readable.
 
-Current capture loading is 1.8/2.1/2.4 seconds for three/four/five directional inputs. The earlier 1.2–1.6-second tuning left too little human reaction time after the 600ms daze. Early FIRE still queues, and slow, imperfect bot escape attempts remain unchanged.
+Current loading is 2.8/3.1/3.4 seconds for three/four/five inputs. Earlier 1.8/2.1/2.4-second tuning still left too little human reaction time after the 600ms daze. Early FIRE still queues, and slow, imperfect bot escape attempts remain unchanged.
 
 ## Defensive gust
 
@@ -40,17 +40,17 @@ Tap with an empty mouth to puff in a 110-degree cone. Knockback scales gently by
 
 A gust hit stuns its target for 800ms: no steering or inhaling, while knockback still carries it away. Spiral pupils, a slight wobble and orbiting sparks show the stun. Existing 1.2-second immunity after a stun prevents repeated extensions. Spawn protection still blocks gust hits.
 
-Every flight ends with three seconds of protection from incoming suction, inhale drain and recapture by any player or turbine. This applies after an impact, hitting the arena edge or simply landing, and starts after the flight finishes so the full window is usable. The creature can move and act; a draining mint ring shows the window. Normal collision damage still applies.
+A surviving flight ends with three seconds of protection from incoming suction, inhale drain and recapture by any player or turbine. This applies after an impact, hitting the arena edge or simply landing, and starts after the flight finishes so the full window is usable. Knocked-out missiles instead use normal respawn protection. The creature can move and act; a draining mint ring shows the window. Normal collision damage still applies.
 
 ## Impact and collision tuning
 
-Player missiles remove 75–85% of a target's mass. A target left below eight gems is knocked out and respawns protected at newborn size. The missile player separately retains about 10% of their former width (at least newborn size) after hitting another player or an arena edge. Its spent mass spills as gems, and a bounce cannot charge it twice. The missile survives and retains its post-flight suction shield.
+Player missiles remove 75–85% of a target's mass. A target left below 12 gems is knocked out and respawns protected at newborn size. The missile separately retains about 10% of its former width after hitting another player or an arena edge. If its retained growth rounds down to zero gems, it is knocked out too; a larger survivor receives the post-flight suction shield. Spent mass spills as gems, and a bounce cannot charge it twice. Flights that time out without impact do not consume growth. The two-second respawn and 1.5-second spawn protection are unchanged; the user's concern was too few deaths, not difficult respawning.
 
 Forceful new body contact (closing speed at least 120 units/s) staggers both players for 220ms and gives a mass-scaled separating shove. The pair must separate by 18 units before rearming; existing stun immunity prevents repeated stun chains. Tangential contact grip is reduced from 80% to 15% so players can slide out of crowds. Spawn-protected, flying, captured, already stunned or skidding players do not trigger a fresh bump.
 
 ## Pinwheel Cannon prototype
 
-One hub, rotor and barrel appear near the arena center after five seconds. Inhale to collect a part; cargo stays attached behind the creature when it releases inhale, moves or turns. A meaningful pickup starts an 18-second claim for the build. Adding a new required component refreshes it; holding the same component does not. If a rival supplies the final piece, the active builder keeps ownership. Abandonment unlocks the parts when the claim expires. Gusts physically disrupt even claimed parts.
+One hub, rotor and barrel appear near the arena center after five seconds. Touch or inhale a part to collect it; cargo stays attached behind the creature when it releases inhale, moves or turns. Touching does not bypass another player's part claim. A meaningful pickup starts an 18-second claim for the build. Adding a new required component refreshes it; holding the same component does not. If a rival supplies the final piece, the active builder keeps ownership. Abandonment unlocks the parts when the claim expires. Gusts physically disrupt even claimed parts.
 
 Carry all three or bring them within 72 world units to assemble. The complete weapon remains carried until its builder taps Place weapon (or presses E), allowing relocation before activation. It never auto-places on a timer. If its carrier is captured, knocked out or launched, it drops and begins charging. After placement, it spins up for 1.2 seconds, then rotates and fires a gem bolt every 600ms for eight seconds. Each bolt hits once, ignores the builder and spawn-protected/flying/captured creatures, spills at most six gems while leaving one, and knocks back without stunning. A short per-target hit cooldown prevents rapid repeated hits. Bolts expire within 650 units. Parts expire after 120 seconds if unfinished; the next set arrives 20 seconds after a build expires or finishes. Assembly stops when the builder disconnects. The prototype is disabled with experimental arena shifts; bots do not pursue or claim components yet.
 

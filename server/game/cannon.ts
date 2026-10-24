@@ -45,12 +45,6 @@ export function launchSpeed(captorWidth: number, captiveWidth: number = ARENA_RU
   return clamp(CANNON.LAUNCH_SPEED_MIN + CANNON.LAUNCH_SPEED_PER_DOUBLING * doublings, CANNON.LAUNCH_SPEED_MIN, CANNON.LAUNCH_SPEED_MAX);
 }
 
-/** The launch direction: the captor's facing, shifted by the captive's sideways push up to LAUNCH_INFLUENCE */
-export function launchAngle(facing: number, steerX: number, steerY: number): number {
-  const side = steerX * -Math.sin(facing) + steerY * Math.cos(facing);
-  return facing + clamp(side, -1, 1) * CANNON.LAUNCH_INFLUENCE;
-}
-
 /** Width is proportional to the square root of mass, so keeping 10% width retains about 1% mass. */
 export function missileMassAfterImpact(gems: number): number {
   return Math.max(0, Math.floor((gems + GEMS.BASE_MASS) * CANNON.MISSILE_WIDTH_KEEP ** 2 - GEMS.BASE_MASS));
@@ -66,7 +60,7 @@ export function impactGems(targetGems: number, speed: number, flierWidth: number
   return Math.min(targetGems, Math.ceil(targetGems * CANNON.IMPACT_MAX_SHARE), Math.max(knocked, share));
 }
 
-/** One step of a flight: drag slows it (a captor's shot and a turbine's throw lose speed at different rates), and only the sideways part of the flier's steering bends it */
+/** One flight step. Player-fired missiles supply zero steering; turbine throws allow lateral input. */
 export function flightStep(vx: number, vy: number, steerX: number, steerY: number, deltaTime: number, drag: number = CANNON.DRAG): { vx: number; vy: number } {
   const speed = Math.hypot(vx, vy);
   if (speed < 1e-6) return { vx: 0, vy: 0 };

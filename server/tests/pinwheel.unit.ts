@@ -15,6 +15,41 @@ function setup() {
 }
 {
   const { s, w, a, b } = setup();
+  const hub = w.parts[0]; assert(hub);
+  b.placeAt(1000, 1000);
+  a.placeAt(hub.x - a.width / 2, hub.y - a.height / 2);
+  a.facing = Math.PI;
+  assert(!a.inhaling);
+  updatePinwheel(s, 0.01, NOW);
+  assert.equal(hub.carriedBy, a.sessionId, 'gliding over a part picks it up without inhaling or facing it');
+  assert.equal(w.owner, a.sessionId);
+  assert.equal(w.claimUntil, s.time + 18000);
+  a.placeAt(1000, 1000);
+  updatePinwheel(s, 0.01, NOW);
+  hub.carriedBy = ''; hub.x = 1700; hub.y = 1700;
+  b.placeAt(hub.x - b.width / 2, hub.y - b.height / 2);
+  updatePinwheel(s, 0.01, NOW);
+  assert.equal(hub.carriedBy, '', 'touching cannot steal another player\'s claimed loose part');
+  assert.equal(hub.owner, a.sessionId);
+  s.time = w.claimUntil;
+  updatePinwheel(s, 0.01, NOW + 18000);
+  assert.equal(hub.carriedBy, b.sessionId, 'a touching rival can collect the part once its claim expires');
+  assert.equal(w.owner, b.sessionId);
+}
+{
+  const { s, w, a, b } = setup();
+  const hub = w.parts[0]; assert(hub);
+  b.placeAt(1000, 1000);
+  hub.x = a.x + a.width * 0.8 + 90; hub.y = a.y + a.height / 2;
+  const start = hub.x;
+  a.startInhale(NOW);
+  updatePinwheel(s, 0.1, NOW);
+  assert(hub.x < start && !hub.carriedBy, 'inhale pulls in a part before physical contact');
+  for (let tick = 0; tick < 5 && !hub.carriedBy; tick++) updatePinwheel(s, 0.1, NOW);
+  assert.equal(hub.carriedBy, a.sessionId, 'inhaling still collects parts from a distance');
+}
+{
+  const { s, w, a, b } = setup();
   const abandoned = w.parts[1]; assert(abandoned);
   abandoned.owner = 'departed-contributor';
   updatePinwheel(s, 0.01, NOW);

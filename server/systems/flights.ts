@@ -9,10 +9,9 @@ import { knockOutWithGems } from "./inhale.js";
 const { PLAYER_STATE } = GAME_CONSTANTS;
 
 /**
- * Flying creatures (launched out of a captor's mouth, or a turbine's exhaust) fly on, slowing and
- * steering a little; one that hits another creature knocks gems loose from it (more than a normal
- * attack would: a giant spills the most), both bounce, the target is briefly stunned, and the flier
- * survives to grab what spilled. Also frees captives whose captor is gone.
+ * Player-fired missiles follow the captor's aim; turbine throws still allow steering. Impact spills
+ * gems, briefly stuns the target and bounces a surviving projectile. A missile with no growth left
+ * is knocked out. Also frees captives whose captor is gone.
  */
 export function updateFlights(state: GameState, now: number, deltaTime: number): void {
   const everyone: PlayerSchema[] = [];
@@ -32,7 +31,7 @@ export function updateFlights(state: GameState, now: number, deltaTime: number):
       player.land();
       continue;
     }
-    const steer = player.steerInput();
+    const steer = player.flightKind === 'turbine' ? player.steerInput() : { x: 0, y: 0 };
     const next = flightStep(player.flightVx, player.flightVy, steer.x, steer.y, deltaTime, player.flightDrag);
     player.flightVx = next.vx;
     player.flightVy = next.vy;
@@ -43,7 +42,7 @@ export function updateFlights(state: GameState, now: number, deltaTime: number):
     // Stopped by the edge of the world
     if (Math.hypot(player.x - fromX, player.y - fromY) < speed * deltaTime * 0.5) {
       spendMissileMass(state, player, now);
-      land(state, player, now);
+      if (player.state === PLAYER_STATE.ALIVE) land(state, player, now);
       continue;
     }
     const target = player.flightHit ? null : struck(everyone, player, now, fromX, fromY);
@@ -93,6 +92,7 @@ function impact(state: GameState, flier: PlayerSchema, target: PlayerSchema, spe
   state.credit(target, "cannon", now, launcher, { gems: spill, projectileId: flier.sessionId, out });
   spendMissileMass(state, flier, now);
   if (!out && !target.spawnProtected && now >= target.stunImmuneUntil) target.stun(now, CANNON.IMPACT_STUN_MS);
+  if (flier.state !== PLAYER_STATE.ALIVE) return;
   flier.flightVx = -ux * speed * CANNON.BOUNCE;
   flier.flightVy = -uy * speed * CANNON.BOUNCE;
   flier.flightEndsAt = Math.min(flier.flightEndsAt, now + 250);
@@ -100,7 +100,7 @@ function impact(state: GameState, flier: PlayerSchema, target: PlayerSchema, spe
   flier.flightStartedAt = now;
 }
 
-/** Growth powers the impact once; the flying player survives at no less than newborn size. */
+/** Growth powers an impact once; a player-fired missile with none left is knocked out. */
 function spendMissileMass(state: GameState, player: PlayerSchema, now: number): void {
   if (player.flightHit) return;
   player.flightHit = true;
@@ -109,6 +109,11 @@ function spendMissileMass(state: GameState, player: PlayerSchema, now: number): 
   if (lost > 0) {
     player.setGems(kept, state.worldWidth, state.worldHeight);
     sprayGems(state, x, y, lost, now, player.sessionId);
+  }
+  if (player.flightKind === 'missile' && kept === 0) {
+    state.credit(player, 'cannon', now, player.launchedBy, { out: true });
+    player.land();
+    knockOutWithGems(state, player, now);
   }
 }
 

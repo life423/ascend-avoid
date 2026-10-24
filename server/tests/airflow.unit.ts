@@ -5,7 +5,7 @@
 import { airflowQuality, breathRate, cleanAir, latchSizeFactor } from "../game/airflow.js";
 import { turnRate, turnStep } from "../game/movement.js";
 import { CAMERA, CANNON, INHALE, LATCH } from "../constants/gameConstants.js";
-import { canCatch, canSwallowWhole, flightStep, holdFirmness, impactGems, launchAngle, launchSpeed, swallowPenalty, sweptHit } from "../game/cannon.js";
+import { canCatch, canSwallowWhole, flightStep, holdFirmness, impactGems, launchSpeed, swallowPenalty, sweptHit } from "../game/cannon.js";
 import { intakePull, noReturnGap } from "../game/turbine.js";
 import { CameraRig, lookAhead, springStep, viewShort } from "../game/camera.js";
 import { dangerRadius, lethalShare, pressureBuild, scaleDrain, streamLook } from "../game/airflow.js";
@@ -91,7 +91,6 @@ check(holdFirmness(80, 56) < 1 && holdFirmness(300, 20) === CANNON.HOLD_MAX && h
 check(!canSwallowWhole(80, 56) && canSwallowWhole(120, 56) && !canSwallowWhole(24, 20) && !canSwallowWhole(20, 20) && canSwallowWhole(40, 20), "swallowing needs a captor SWALLOW_RATIO (2x) wider, whatever the captive holds: an empty one is no exception");
 check(canCatch(26.5, 20) && !canCatch(25.5, 20) && !canCatch(20, 20), "catching needs a mouth INHALE.EAT_RATIO (1.3x) wider, gems or none");
 check(swallowPenalty(0) === 0 && swallowPenalty(1) === 1 && swallowPenalty(20) === 5 && swallowPenalty(40) === 10 && swallowPenalty(100) === 15 && swallowPenalty(1000) === 15, "a swallow costs a quarter of the captive's gems (rounded up), never more than 15, nothing when it has none");
-check(Math.abs(launchAngle(0, 0, 1) - CANNON.LAUNCH_INFLUENCE) < 1e-9 && launchAngle(0, 1, 0) === 0, "the captive can shift its launch a little sideways, never turn it around");
 check(launchSpeed(200) > launchSpeed(40), "a bigger captor launches harder");
 check(launchSpeed(130, 100) === CANNON.LAUNCH_SPEED_MIN && launchSpeed(200, 100) > launchSpeed(130, 100) && launchSpeed(400, 100) > launchSpeed(200, 100) && launchSpeed(800, 100) > launchSpeed(400, 100) && launchSpeed(1600, 100) === launchSpeed(800, 100), "launch speed grows with the captor's size advantage and caps at LAUNCH_RATIO_CAP");
 // How far a captive's shot carries in the open: flightStep integrated with the shot's drag for FLIGHT_MS, from each launch speed
@@ -110,7 +109,7 @@ check(carries(130, 100) > 2000 && carries(130, 100) < 2300 && carries(200, 100) 
 check(impactGems(1000, 900, 20) >= 750 && impactGems(1000, 900, 20) <= 850 && impactGems(400, 900, 60) > impactGems(400, 900, 20) && impactGems(400, 450, 20) < impactGems(400, 900, 20), `missile hits remove 75–85% of mass, with speed and projectile mass affecting severity (${impactGems(120, 900, 20)} of 120, ${impactGems(400, 900, 20)} of 400, ${impactGems(1000, 900, 20)} of 1000)`);
 const straightOn = flightStep(900, 0, 1, 0, 0.1);
 const bentFlight = flightStep(900, 0, 0, 1, 0.1);
-check(Math.hypot(straightOn.vx, straightOn.vy) < 900 && Math.abs(straightOn.vy) < 1e-9 && bentFlight.vy > 0 && Math.hypot(bentFlight.vx, bentFlight.vy) <= Math.hypot(straightOn.vx, straightOn.vy) + 1e-6, "a flier can bend its path, never speed it up or stop it");
+check(Math.hypot(straightOn.vx, straightOn.vy) < 900 && Math.abs(straightOn.vy) < 1e-9 && bentFlight.vy > 0 && Math.hypot(bentFlight.vx, bentFlight.vy) <= Math.hypot(straightOn.vx, straightOn.vy) + 1e-6, "turbine steering can bend a throw, never speed it up or stop it");
 // Turbines: past the point of no return nobody outwalks the intake; outside it everyone can
 check([20, 72, 143, 284].every((w) => intakePull(w, noReturnGap() - 5) > moveSpeed(w) && intakePull(w, noReturnGap() + 40) < moveSpeed(w)), `inside a turbine's point of no return (${noReturnGap().toFixed(0)} units) nobody, whatever its size, outwalks the intake; outside it everyone can`);
 

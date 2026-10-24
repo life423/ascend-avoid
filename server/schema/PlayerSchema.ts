@@ -145,6 +145,8 @@ class PlayerSchema extends Schema {
   flightVx = 0;
   flightVy = 0;
   flightDrag: number = CANNON.DRAG;
+  /** Server-only: turbine throws retain steering and their existing survival rules. */
+  flightKind: 'missile' | 'turbine' = 'missile';
   flightStartedAt = 0;
   flightEndsAt = 0;
   launchedBy = "";
@@ -418,12 +420,13 @@ class PlayerSchema extends Schema {
     this.assistY = 0;
   }
 
-  /** Launched (out of a captor's mouth, or a turbine's exhaust): flying at this velocity until it slows down or `maxMs` passes, steering a little on the way */
-  launch(now: number, vx: number, vy: number, by: string, maxMs: number, drag: number = CANNON.DRAG): void {
+  /** Launched at this velocity until it slows or `maxMs` passes. Only turbine throws opt into steering. */
+  launch(now: number, vx: number, vy: number, by: string, maxMs: number, drag: number = CANNON.DRAG, kind: 'missile' | 'turbine' = 'missile'): void {
     this.flying = true;
     this.flightVx = vx;
     this.flightVy = vy;
     this.flightDrag = drag;
+    this.flightKind = kind;
     this.flightStartedAt = now;
     this.flightEndsAt = now + maxMs;
     this.launchedBy = by;
@@ -469,12 +472,13 @@ class PlayerSchema extends Schema {
   /** The flight is over */
   land(): void {
     this.flying = false;
+    this.flightKind = 'missile';
     this.flightVx = 0;
     this.flightVy = 0;
     this.launchedBy = "";
   }
 
-  /** The stick's direction (kept while caught or flying, when it struggles or steers instead of walking) */
+  /** The stick's direction: escape input while caught, steering for turbine throws, walking after landing. */
   steerInput(): { x: number; y: number } {
     return { x: this.steerX, y: this.steerY };
   }
@@ -576,7 +580,7 @@ class PlayerSchema extends Schema {
     }
     if (this.stunned) return;
     // Stunned (like recovering), steering can't move you; your facing holds where it was
-    // (caught in a mouth or flying, the stick struggles or steers the flight instead: see game/cannon)
+    // (caught in a mouth, the stick struggles; only turbine flights allow steering)
     const steer = this.recovering || this.stunned || this.flying || this.capturedBy ? { x: 0, y: 0 } : { x: this.steerX, y: this.steerY };
     const box = { x: this.x, y: this.y, width: this.width, height: this.height };
     const velocity = { x: this.walkX, y: this.walkY };

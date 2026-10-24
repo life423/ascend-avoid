@@ -100,7 +100,7 @@ export const WORLD = {
  * you bigger, with longer hops and a slower rhythm when holding a direction.
  */
 export const GEMS = {
-  FIELD_COUNT: 1270, // loose gems lying around the world (one every ~118 units in a 4200-wide arena; MAX_GEMS leaves room for sprays on top)
+  FIELD_COUNT: 950, // about 25% fewer background gems; combat sprays remain available on top
   RADIUS: 9,
   /**
    * Size = PLAYER_SIZE + this x the square root of your gems, with no ceiling: area grows with gems,
@@ -120,7 +120,7 @@ export const GEMS = {
   OWNER_PICKUP_DELAY_MS: 1500, // your own spilled gems wait this long for you, so whoever caused it gets first crack
   DECAY_START: 300, // gems above this slowly shed (late game: a strong player can hold about 1500, see CAMERA)
   DECAY_RATE: 0.001, // ...this share of the excess a second (about 1.2 a second at 1500)
-  MAX_GEMS: 2000, // cap on gems in the world at once (the field, plus about 700 for sprays)
+  MAX_GEMS: 2000, // cap on gems in the world at once (the field, plus room for combat sprays)
 } as const;
 
 /**
@@ -406,7 +406,7 @@ export const CAMERA = {
  * Capture and the living cannonball. A creature pulled to the mouth of one at least INHALE.EAT_RATIO
  * wider is caught for HOLD_MS at most. A captive escapes with three to five directional inputs,
  * depending on the captor's size advantage. A new action press fires it after loading; an early press
- * queues the shot. Releasing inhale leaves the capture intact. Flights can steer sideways and deal
+ * queues the shot. Releasing inhale leaves the capture intact. Shots follow the captor's aim and deal
  * one damaging hit. After landing, LAND_SAFE_MS blocks incoming suction and recapture; ordinary
  * release/escape uses RECAPTURE_MS. Whole-swallow constants remain for the older implementation.
  */
@@ -418,7 +418,7 @@ export const CANNON = {
   ESCAPE_NEUTRAL: 0.3, // ...after coming back within this, so holding a direction is one push, not many
   ESCAPE_PUSH: 110, // out, it pops from the mouth this hard (and can't be caught again for RECAPTURE_MS)
   LAUNCH_MIN_MS: 120, // (the old release rule; firing is gated by ARM_MS now)
-  ARM_MS: 1800, // base loading; each extra escape input adds 300ms, up to 2.4 seconds
+  ARM_MS: 2800, // base loading includes the 600ms daze; each extra escape input adds 300ms, up to 3.4s
   HOLD_RATIO: 1, // the captor pulls its captive back to its mouth at this times the captive's own top speed...
   HOLD_MIN: 0.5, // ...times its firmness: this when just big enough to catch it (a near-size captive can simply push out)...
   HOLD_PER_DOUBLING: 0.35, // ...rising this much every time the captor is twice as big again...
@@ -439,7 +439,6 @@ export const CANNON = {
   EXPEL_PROTECT_MS: 2500, // ...and can't be caught again (by a mouth or a turbine) for this long
   RECAPTURE_MS: 1500, // let go or broken free: can't be caught by a mouth or a turbine for this long
   LAND_SAFE_MS: 3000, // after any flight, ignore incoming suction and captures while moving clear
-  LAUNCH_INFLUENCE: 0.35, // the captive's sideways push as it's launched shifts its direction up to this many radians
   LAUNCH_SPEED_MIN: 1250, // launch speed (units a second) for a captor just big enough to catch its captive (CAPTURE_RATIO wider)...
   LAUNCH_SPEED_PER_DOUBLING: 300, // ...plus this every time the captor is twice as wide again, relative to its captive...
   LAUNCH_SPEED_MAX: 2000, // ...up to this (reached at LAUNCH_RATIO_CAP times wider)
@@ -448,14 +447,14 @@ export const CANNON = {
   DRAG: 0.35, // a captive's flight loses this share of its speed a second (with FLIGHT_MS, it carries about 2,100 units at the minimum speed and 3,400 at the maximum, in the open: most of the arena)...
   STOP_SPEED: 140, // ...and ends below this speed...
   FLIGHT_MS: 2600, // ...or after this long (a turbine's throw has its own: TURBINE.PLAYER_DRAG, PLAYER_FLIGHT_MS)
-  STEER: 520, // a flier's sideways steering (units a second squared): it bends the path, never speeds it up, stops or reverses it
+  STEER: 520, // turbine throws only: lateral steering acceleration; player-fired missiles ignore input
   LAUNCHER_GRACE_MS: 300, // a projectile can't hit its launcher this soon
   IMPACT_BASE: 10, // a hit knocks this many of the target's gems loose...
   IMPACT_PER_ROOT: 7, // ...plus this times the square root of its gems (diminishing against giants), times the hit's speed against IMPACT_SPEED_REF and the flier's mass: a living cannonball is the big hit of the game (about 60 of 120, 150 of 400)...
   IMPACT_SPEED_REF: 900,
   IMPACT_SHARE: 0.75, // every player-missile hit removes at least this share of target mass
   IMPACT_MAX_SHARE: 0.85, // speed/projectile mass can increase the loss to this share
-  IMPACT_KO_GEMS: 8, // targets left below this mass are knocked out and return at a fresh spawn
+  IMPACT_KO_GEMS: 12, // heavily damaged targets below this mass are knocked out and return at a fresh spawn
   MISSILE_WIDTH_KEEP: 0.1, // the missile player keeps one tenth of their width after impact, floored at newborn size
   IMPACT_IMMUNE_MS: 1200, // a creature just hit can't be hit by another flier for this long
   IMPACT_STUN_MS: 450, // the target is stunned this long...

@@ -88,9 +88,15 @@ export function updatePinwheel(state: GameState, dt: number, now: number): void 
       part.vx *= Math.exp(-5 * dt); part.vy *= Math.exp(-5 * dt);
       // Strong gusts briefly overpower suction; only the current piece owner can pull a claimed part.
       if (Math.hypot(part.vx, part.vy) > 100) continue;
-      let puller: PlayerSchema | undefined, nearest = Infinity;
+      let puller: PlayerSchema | undefined, nearest = Infinity, touching = false;
       for (const p of state.players.values()) {
-        if (p.isBot || !p.inhaling || p.stunned || p.state !== 'alive' || p.gulping || p.flying || p.capturedBy || (part.owner && part.owner !== p.sessionId)) continue;
+        if (p.isBot || p.stunned || p.state !== 'alive' || p.gulping || p.flying || p.capturedBy || (part.owner && part.owner !== p.sessionId)) continue;
+        const contact = Math.hypot(part.x - p.x - p.width / 2, part.y - p.y - p.height / 2);
+        if (contact <= p.width / 2 + PINWHEEL.PART_RADIUS) {
+          if (!touching || contact < nearest) { puller = p; nearest = contact; touching = true; }
+          continue;
+        }
+        if (touching || !p.inhaling) continue;
         const fx = Math.cos(p.facing), fy = Math.sin(p.facing);
         const mx = p.x + p.width / 2 + fx * p.width * 0.3, my = p.y + p.height / 2 + fy * p.height * 0.3;
         const dx = part.x - mx, dy = part.y - my, d = Math.hypot(dx, dy);
@@ -99,6 +105,11 @@ export function updatePinwheel(state: GameState, dt: number, now: number): void 
         if (d < nearest) { nearest = d; puller = p; }
       }
       if (!puller) continue;
+      if (touching) {
+        if (!part.owner) claimPart(state, part, puller);
+        else part.carriedBy = puller.sessionId;
+        continue;
+      }
       const mx = puller.x + puller.width / 2 + Math.cos(puller.facing) * puller.width * 0.3;
       const my = puller.y + puller.height / 2 + Math.sin(puller.facing) * puller.height * 0.3;
       const step = Math.min(nearest, PINWHEEL.PULL_SPEED * dt);

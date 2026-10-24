@@ -5,7 +5,7 @@ import { moveSpeed } from "../game/movement.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 
 import { CANNON, EXHALE } from "../constants/gameConstants.js";
-import { canCatch, launchAngle, launchSpeed, swallowPenalty, escapeLength, captureLoadMs } from "../game/cannon.js";
+import { canCatch, launchSpeed, swallowPenalty, escapeLength, captureLoadMs } from "../game/cannon.js";
 
 const { PLAYER_STATE, INHALE, LATCH, BOTS } = GAME_CONSTANTS;
 import { sprayGems } from "./gems.js";
@@ -500,7 +500,7 @@ function free(captive: PlayerSchema, ax: number, ay: number, now: number, push: 
  * Firing: the captor's button pressed while it holds someone (GameRoom), or a bot deciding to. Nothing happens
  * until the gun has loaded (ARM_MS after the catch: the captive stays put, working its way out); then, with the
  * captor alive, not stunned and not caught itself, the captive is launched out of the mouth along the captor's
- * facing (shifted by its own push); otherwise it's just let go, harmlessly. True if the hold ended.
+ * facing; captive input cannot change the shot. Otherwise it's just let go, harmlessly. True if the hold ended.
  */
 export function fireCaptive(state: GameState, eater: PlayerSchema, now: number): boolean {
   const captive = state.players.get(eater.gulping);
@@ -514,8 +514,7 @@ export function fireCaptive(state: GameState, eater: PlayerSchema, now: number):
   eater.gulping = "";
   clearEscape(captive);
   if (eater.state === PLAYER_STATE.ALIVE && !eater.stunned && !eater.capturedBy && captive.state === PLAYER_STATE.ALIVE) {
-    const steer = captive.steerInput();
-    const angle = launchAngle(eater.facing, steer.x, steer.y);
+    const angle = eater.facing;
     const speed = launchSpeed(eater.width, captive.width);
     // Set clear of the captor's body first, along the shot, so the flight never starts with the two overlapping
     const clearance = eater.width / 2 + captive.width / 2 + CANNON.LAUNCH_CLEARANCE;

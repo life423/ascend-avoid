@@ -66,6 +66,7 @@ test('WASD and arrow taps free a real captive; focus loss cancels movement and i
       await page.waitForTimeout(200);
       captor.send('inhale');
       await expect.poll(async () => (await mine(page)).capturedBy).toBe(captor.sessionId);
+      captor.send('tap'); // queue the earliest possible shot while the human reads the puzzle
       await page.waitForFunction(() => {
         const room = window.game.currentGameMode.multiplayerManager.room;
         return room.state.time >= room.state.players.get(room.sessionId).dazedUntil;
@@ -73,6 +74,7 @@ test('WASD and arrow taps free a real captive; focus loss cancels movement and i
       const keys = (await mine(page)).escapeKeys;
       expect(keys).toHaveLength(3);
       await page.screenshot({ path: test.info().outputPath(`capture-${String(useArrows)}.png`) });
+      await page.waitForTimeout(650); // human reading/reaction time after the daze
       const mapping = useArrows ? { U: 'ArrowUp', D: 'ArrowDown', L: 'ArrowLeft', R: 'ArrowRight' } : { U: 'w', D: 's', L: 'a', R: 'd' };
       for (const direction of keys) {
         // A quick tap: keydown/up may both occur before the next simulation tick.
@@ -89,7 +91,7 @@ test('WASD and arrow taps free a real captive; focus loss cancels movement and i
           await page.waitForTimeout(100);
           await page.evaluate(() => window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 99, pointerType: 'touch', bubbles: true })));
         } else await page.keyboard.press(mapping[direction], { delay: 20 });
-        await page.waitForTimeout(100);
+        await page.waitForTimeout(useArrows === 'touch' ? 400 : 480);
       }
       await expect.poll(async () => (await mine(page)).capturedBy).toBe('');
       expect((await mine(page)).flying).toBe(false);
