@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { Client } from 'colyseus.js';
 
 test.skip(process.env.E2E_TEST_HOOKS !== '1', 'requires an isolated local test server');
 async function start(page) {
@@ -89,4 +90,45 @@ test('touch can walk left while aiming the inhale up with the existing action co
   await page.screenshot({ path: test.info().outputPath('touch-independent-aim.png') });
   await page.evaluate(() => { window.aimEmit('pointerup', 21, 0, 0); window.aimEmit('pointerup', 22, 0, 0); });
   await expect.poll(async () => (await position(page)).inhaling).toBe(false);
+});
+
+test('held touch aim survives capturing a real peer while walking sideways', async ({ page, hasTouch, baseURL }) => {
+  test.skip(!hasTouch, 'touch capture transition');
+  await start(page);
+  await page.evaluate(() => {
+    window.loadingPanels = 0;
+    const fill = CanvasRenderingContext2D.prototype.fillText;
+    CanvasRenderingContext2D.prototype.fillText = function(text, ...args) {
+      if (/^Loading:/.test(String(text))) window.loadingPanels++;
+      return fill.call(this, text, ...args);
+    };
+  });
+  const roomId = await page.evaluate(() => window.game.currentGameMode.multiplayerManager.room.id);
+  const peer = await new Client(baseURL.replace(/^http/, 'ws')).joinById(roomId, { name: 'Aim regression' });
+  peer.onMessage('*', () => {});
+  try {
+    peer.send('test:moveTo', { x: 3000, y: 3000 }); peer.send('test:setGems', { count: 4 }); peer.send('test:protect', { ms: 0 });
+    await page.evaluate(() => {
+      const room = window.game.currentGameMode.multiplayerManager.room;
+      room.send('test:setGems', { count: 16 }); room.send('test:moveTo', { x: 1000, y: 1000 }); room.send('test:face', { angle: -Math.PI / 2 }); room.send('test:protect', { ms: 0 });
+      const c = document.querySelector('canvas'), r = c.getBoundingClientRect();
+      window.captureAimEmit = (type, id, x, y) => c.dispatchEvent(new PointerEvent(type, { pointerType: 'touch', pointerId: id, clientX: r.left + x, clientY: r.top + y, bubbles: true, cancelable: true }));
+      window.captureAimEmit('pointerdown', 31, r.width - 75, r.height - 80);
+      window.captureAimEmit('pointermove', 31, r.width - 75, r.height - 145);
+    });
+    await expect.poll(async () => (await position(page)).inhaling).toBe(true);
+    await page.waitForTimeout(200); // the server has received the pre-capture inhale aim
+    peer.send('test:moveTo', { x: 1012.75, y: 972.75 });
+    await page.waitForFunction(() => !!window.game.currentGameMode.multiplayerManager.getLocalPlayer().gulping);
+    const before = await position(page);
+    await page.evaluate(() => { const h = document.querySelector('canvas').getBoundingClientRect().height; window.captureAimEmit('pointerdown', 32, 110, h - 100); window.captureAimEmit('pointermove', 32, 55, h - 100); });
+    await page.waitForTimeout(700);
+    const after = await position(page);
+    expect(after.x).toBeLessThan(before.x - 15);
+    expect(await page.evaluate(() => window.loadingPanels)).toBe(0);
+    expect(Math.abs(after.facing + Math.PI / 2)).toBeLessThan(.1);
+    expect(await page.evaluate(() => !!window.game.currentGameMode.multiplayerManager.getLocalPlayer().gulping)).toBe(true);
+    await page.screenshot({ path: test.info().outputPath('touch-loaded-aim.png') });
+    await page.evaluate(() => { window.captureAimEmit('pointerup', 31, 0, 0); window.captureAimEmit('pointerup', 32, 0, 0); });
+  } finally { await peer.leave(); }
 });

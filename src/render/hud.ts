@@ -400,7 +400,7 @@ export function drawCapturePrompt(mode: MultiplayerMode, ctx: CanvasRenderingCon
     const u = compact ? mode.cssScale : 1
     const touch = Boolean(mode.controls?.touchDevice)
     const centerX = canvas.width / 2
-    const bottom = canvas.height - (touch ? 124 : 36) * u
+    const bottom = canvas.height - (touch ? 180 : 36) * u
     if (me.capturedBy) {
         const captor = state.players.get(me.capturedBy)
         const keys = String(me.escapeKeys ?? '').split('').filter(Boolean)
@@ -485,6 +485,8 @@ export function drawCapturePrompt(mode: MultiplayerMode, ctx: CanvasRenderingCon
         return
     }
     if (me.gulping) {
+        // The creature badge and action button already show this state. Keep thumb space clear.
+        if (compact) return
         const captive = state.players.get(me.gulping)
         if (!captive || captive.capturedBy !== me.sessionId) return
         const now = mode.worldNow(state, timestamp)
