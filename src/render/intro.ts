@@ -1,8 +1,11 @@
 import { FONT, GOLD } from './style'
 import { drawGem } from './world'
 
-/** The opening: how long it plays, and how long the HUD then takes to fade in */
-export const INTRO = { MS: 2300, HUD_FADE_MS: 450 } as const
+/**
+ * The opening: how long it plays (MS), and how long the HUD then takes to fade in. Its choreography
+ * below is written on a DESIGN_MS timeline and plays scaled to MS, so MS alone sets the pace.
+ */
+export const INTRO = { MS: 2000, DESIGN_MS: 2300, HUD_FADE_MS: 450 } as const
 
 export type IntroSpark = { x: number; y: number; color: string; size: number; delay: number; gem: boolean }
 
@@ -29,7 +32,9 @@ export function makeIntroSparks(): IntroSpark[] {
  * The opening, over the arena: ASCEND appears large, its letters spread apart; stars and gems are
  * drawn toward it; then the letters are pulled inward, crushed into a tiny glowing point, and pop.
  */
-export function drawIntro(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, t: number, sparks: IntroSpark[]): void {
+export function drawIntro(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, elapsed: number, sparks: IntroSpark[]): void {
+    // Where the choreography is (on its DESIGN_MS timeline), playing it in INTRO.MS
+    const t = elapsed * (INTRO.DESIGN_MS / INTRO.MS)
     const clamp = (v: number) => Math.max(0, Math.min(1, v))
     const ease = (v: number) => v * v * (3 - 2 * v)
     const w = canvas.width
