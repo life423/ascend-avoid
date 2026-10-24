@@ -25,7 +25,6 @@ import { drawBall, drawBomb, drawComet, drawGem, drawLaunchPuff, gemColor } from
 import { SMOOTHING, SNAP_DISTANCE, View } from '../render/shared'
 import { drawTopBar, drawLeaderboard, drawMinimap, drawBanner, drawShiftChip, drawTrafficChip, drawNotices, drawKnockedOut, drawMessage, drawCapturePrompt } from '../render/hud'
 import { drawGemBursts, drawVanishes, drawBlasts, drawBursts, drawPuffs, drawTheft } from '../render/effects'
-import { drawCores } from '../render/cores'
 import { drawTurbines, drawTurbineFlights } from '../render/turbines'
 import { drawFloor, drawShiftFloor, drawJackpot } from '../render/floor'
 import { captorOf, drawPlayer } from '../render/players'
@@ -531,9 +530,6 @@ export class MultiplayerMode extends GameMode {
     private cameraVelocity = { x: 0, y: 0 }
     /** Each creature's airflow while it inhales (see drawAirflow) */
     flows = new Map<string, Airflow>()
-    /** Where each Core is drawn: carrying on at its velocity, easing to each server update (see drawCores) */
-    coresDrawn = new Map<string, { x: number; y: number }>()
-    coresDrawnAt = 0
     /** Canvas pixels per screen point (the HUD on phones is laid out in screen points) */
     cssScale = 1
     /** The opening: when it started (null until then), and what it pulls in */
@@ -993,7 +989,6 @@ export class MultiplayerMode extends GameMode {
         const bottom = view.y + view.height / 2 + margin
         drawTurbines(this, ctx, state, timestamp)
         drawCannon(this, ctx, state, timestamp)
-        drawCores(this, ctx, state, timestamp)
         this.drawGems(ctx, state, left, right, top, bottom, timestamp)
         drawGemBursts(this, ctx)
         drawJackpot(this, ctx, state, localId, timestamp)

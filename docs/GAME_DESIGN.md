@@ -56,9 +56,9 @@ Carry all three or bring them within 72 world units to assemble. The complete we
 
 The HUD shows assembly progress, the builder's remaining claim, and a direction arrow. Individual H/R/B component markers track their real locations; nearby labels spread with short tethers to stay readable. The arrow points toward the nearest part the local player is not carrying. A pink square marks the completed weapon, and a waiting countdown announces the next set; the capture prompt takes priority over the weapon card.
 
-## Turbines, Cores and gem surges
+## Turbines and gem surges
 
-Turbine intakes strip and transport gems; exhausts fling gems and creatures across the arena. Glowing blue Core orbs are removed from normal play; their legacy physics fixtures remain for later cleanup.
+Turbine intakes strip and transport gems; exhausts fling gems and creatures across the arena. Glowing blue Core orbs have been retired completely from the active game.
 
 The first gem-surge warning starts after 30 seconds. An eight-second warning marks a location, usually near a turbine exhaust, on the minimap and HUD. For 18 seconds, bonus gems fall there every three seconds. A 40-gem jackpot appears in the final five seconds. A grounded, free creature claims it by standing there alone for 0.6 seconds; multiple claimants stop progress. After the event, there is a 60–90-second gap. Bonus gems expire, respect the global gem cap and do not disturb field-gem accounting. Experimental arena shifts own the jackpot when enabled, so the two events do not conflict.
 

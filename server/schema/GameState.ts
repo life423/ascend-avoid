@@ -14,7 +14,6 @@ import type { Layout } from "../game/layouts.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 import { exhaustAngle } from "../game/turbine.js";
 import type { Direction } from "../game/movement.js";
-import { updateCores } from "../systems/cores.js";
 import { updateLatches } from "../systems/latches.js";
 import { updateTurbines, clearanceAt } from "../systems/turbines.js";
 import { updateTraffic, reshuffleLanes, launchObstacle } from "../systems/traffic.js";
@@ -30,7 +29,7 @@ import { PinwheelSchema } from "./PinwheelSchema.js";
 import { updatePinwheel } from "../systems/pinwheel.js";
 import { PINWHEEL } from "../constants/gameConstants.js";
 
-const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS, COMETS, BOMBS, TURBINE, CORE, SURGE } = GAME_CONSTANTS;
+const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS, COMETS, BOMBS, TURBINE, SURGE } = GAME_CONSTANTS;
 /** Which way each of a bot's decisions steers it */
 const STEER: Record<Direction, { x: number; y: number }> = {
   up: { x: 0, y: -1 },
@@ -58,11 +57,8 @@ class GameState extends Schema {
   gems: schema.MapSchema<GemSchema>;
   /** Turbines, and the gems on their way through them (see updateTurbines) */
   turbines: schema.ArraySchema<TurbineSchema>;
-  /** Cores: heavy objects inhales push around (see game/corePhysics) */
+  /** Retired field kept empty to preserve network field numbering for existing clients. */
   cores: schema.ArraySchema<CoreSchema>;
-  /** Server-only: how many Cores this world keeps (test worlds ask for their own), and ids */
-  coreCount: number = CORE.COUNT;
-  nextCoreId = 1;
   flights: schema.MapSchema<TurbineFlightSchema>;
   worldWidth: number;
   worldHeight: number;
@@ -205,6 +201,7 @@ class GameState extends Schema {
     this.now = now;
     if (!this.startedAt) this.startedAt = now;
     this.time = Math.round(now - this.startedAt);
+    if (this.cores.length) this.cores.clear();
     this.players.forEach((player) => player.markTick());
     pruneBodyContacts(this);
     updateShift(this, deltaTime, now);
@@ -272,7 +269,6 @@ class GameState extends Schema {
       }
     });
 
-    updateCores(this, now, deltaTime);
 
     this.players.forEach((player) => {
       if (player.state !== PLAYER_STATE.ALIVE) {
@@ -493,24 +489,6 @@ class GameState extends Schema {
   /** ...and which way its mouth faces */
   mouthed(player: PlayerSchema): { x: number; y: number; width: number; facing: number } {
     return { ...this.bodyOf(player), facing: player.facing };
-  }
-
-  /** How many Cores this world keeps (test worlds: their own number, 0 unless they ask) */
-  setCoreCount(count: number): void {
-    this.coreCount = Math.max(0, Math.floor(count));
-    while (this.cores.length > this.coreCount) this.cores.pop();
-  }
-
-  /** Test worlds: put a Core (adding it if need be) at a spot, moving at a velocity */
-  placeCore(index: number, x: number, y: number, vx: number, vy: number): void {
-    while (this.cores.length <= index) this.cores.push(new CoreSchema(`c${this.nextCoreId++}`, x, y, CORE.RADIUS));
-    const core = this.cores[index];
-    if (!core) return;
-    core.x = x;
-    core.y = y;
-    core.vx = vx;
-    core.vy = vy;
-    core.touching.clear();
   }
 
   /** Test worlds: "auto" runs turbines as usual, "manual" only has the ones placed by hand, "off" has none */

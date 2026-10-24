@@ -7,8 +7,8 @@
 - [x] The missile player loses about 90% of their width on a player/wall impact, down to newborn size at minimum, once per flight. They survive and retain recapture protection.
 - [x] Charge 35% of a full breath meter for a gust, with clear low-breath feedback.
 - [x] Add brief collision staggering and separation without repeated contact stun-locks.
-- [x] Remove glowing blue Core orbs from normal play.
+- [x] Remove the glowing blue Core orbs: delete their renderer, physics, simulation, spawn/placement hooks and old tuning. Purge leftover objects on server ticks.
 - [ ] Bot cannonball shots need readable reaction time and imperfect aim; no instant, exact targeting.
-- [ ] Later cleanup: retire unused Core physics/rendering and legacy whole-swallow code after removing their dependencies and obsolete tests.
+- [ ] Later cleanup: retire legacy whole-swallow code after removing its dependencies and obsolete tests.
 
 The existing 1.8–2.4-second capture loading, 18-second builder claim, and three-second post-flight suction shield remain requirements.

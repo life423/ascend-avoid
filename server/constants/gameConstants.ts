@@ -128,6 +128,7 @@ export const GEMS = {
  * creatures slide less; contact staggering and rearming are handled by systems/bodies.
  */
 export const PUSH = {
+  STUN_IMMUNE_MS: 1200, // shared post-stun immunity for player impacts, gusts and body bumps
   DISTANCE: 140, // how far a shove sends someone your own weight (about two hops)...
   MIN_RATIO: 0.3, // ...scaled by your weight over theirs, kept within these limits
   MAX_RATIO: 3,
@@ -337,46 +338,6 @@ export const BOMBS = {
   LOOSE_MAX: 30,
   RESPAWN_MS: 6000,
   SPIT_COOLDOWN_MS: 400,
-} as const;
-
-/**
- * Cores (experimental): heavy objects anywhere in the arena that inhales push around (see
- * game/corePhysics). Inhale only ever applies force; momentum, swings and tug-of-war come from the
- * physics. Never swallowed, by anyone. A hard enough hit stuns (no gems lost).
- */
-export const CORE = {
-  COUNT: 0, // Core orbs retired from normal play; explicit physics fixtures can still create them
-  RADIUS: 24, // physical size (drawn at this size too); small enough for a newborn to work with
-  MASS: 3, // in newborns: a creature's mass is (its width / a newborn's) squared
-  DRAG: 0.35, // momentum fades by this share a second (exponentially): half its speed in about 2s, so launches carry
-  MAX_SPEED: 750, // the Core's own top speed, whoever moved it
-  WALL_RESTITUTION: 0.6, // share of its speed kept bouncing off the arena's edge
-  CORE_RESTITUTION: 0.8, // ...and off another Core
-  REACH: 140, // a Core feels an inhale from this far from the mouth to its near edge...
-  REACH_PER_SIZE: 2.5, // ...plus this times the inhaler's width (newborn 190, 5x 390, 10x 640)
-  FALLOFF_POWER: 1.3, // pull fades with distance across that reach as (1 - distance / reach) ^ this
-  SUCTION: 3000, // pull (divided by MASS for acceleration), times how much of the Core is in the airflow: a newborn close up, about 1000 a second each second (enough to drag it along at a run)...
-  PULL_GROWTH: 0.4, // ...times (width / a newborn's) ^ this for bigger creatures...
-  PULL_MAX: 2.5, // ...up to this
-  NEAR_ARC: 150, // near the body the airflow wraps wider: its arc grows from the inhale's own toward this many degrees either side
-  NEAR_SPAN: 4, // ...over this many times the falloff zone outside the equilibrium distance (a Core trailing beside you stays in your airflow)
-  DEFLECT: 2.5, // near the body, the air the body blocks is turned to flow round it the way it was already going (toward the mouth): how readily (no target angle; nothing when dead ahead)
-  NEAR_FIELD: 4500, // inside the equilibrium distance, compressed air pushes it back out this hard (times the same size factor)...
-  RADIAL_DAMPING: 4, // ...and its motion toward or away from the body (only that) is damped this much a second there, so the push adds no energy
-  SIDE_MULTIPLIER: 1.25, // equilibrium distance beside the body, as a multiple of (body radius + Core radius)...
-  FRONT_MULTIPLIER: 1.7, // ...and in front of the mouth
-  FALLOFF: 0.8, // the inward pull fades smoothly to nothing over this share of the equilibrium distance outside it
-  STUN_MOMENTUM: 750, // a hit (MASS x the speed it comes at you) stuns from this momentum (250 a second)...
-  STUN_FULL_MOMENTUM: 1950, // ...for longer up to this one (650 a second)
-  STUN_MIN_MS: 300,
-  STUN_MAX_MS: 850,
-  STUN_IMMUNE_MS: 1200, // after a stun wears off, no more stuns for this long...
-  SEPARATE: 6, // ...and a Core has to come away by this much before it can stun the same player again
-  IMPACT_BOUNCE: 0.35, // how springy a Core is hitting a player (it loses speed, so it can't ricochet through everyone)
-  SPAWN_CLEAR: 600, // spawned at least this far from any player...
-  SPAWN_GAP: 1000, // ...from other Cores...
-  SPAWN_TURBINE_GAP: 500, // ...and from turbines
-  DEBUG: false, // development only: draw each Core's velocity, speed and equilibrium distances
 } as const;
 
 /**
@@ -736,7 +697,6 @@ export const DESKTOP_SETTINGS = DEVICE_SETTINGS.DESKTOP;
 // Bundle all constants for convenient access
 export const GAME_CONSTANTS = {
   SURGE,
-  CORE,
   LATCH,
   CAMERA,
   CANNON,

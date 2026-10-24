@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { GameState } from '../schema/GameState.js';
+import { CoreSchema } from '../schema/CoreSchema.js';
 import { CANNON, EXHALE, GEMS, SURGE } from '../constants/gameConstants.js';
 import { moveSpeed } from '../game/movement.js';
 import { escapePress, escapeSteer, exhale, fireCaptive, stealWeight, updateHolds, updateInhales } from '../systems/inhale.js';
@@ -15,7 +16,6 @@ function world() {
   const state = new GameState(0);
   state.botFill = 0;
   state.surgesOn = false;
-  state.setCoreCount(0);
   state.setTurbines('off');
   state.update(0, NOW);
   return state;
@@ -54,6 +54,9 @@ assert.equal(captureLoadMs(5), 2400);
   const normal = new GameState(0); normal.botFill = 0;
   normal.update(1 / 30, NOW);
   assert.equal(normal.cores.length, 0, 'Core orbs no longer spawn in normal worlds');
+  normal.cores.push(new CoreSchema('retired', 1000, 1000, 24));
+  normal.update(1 / 30, NOW + 33);
+  assert.equal(normal.cores.length, 0, 'leftover Core objects are cleared rather than kept alive');
 }
 
 {

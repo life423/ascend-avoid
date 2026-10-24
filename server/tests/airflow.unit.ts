@@ -1,11 +1,10 @@
 /**
- * Unit checks for the shared airflow and Core physics (pure functions, exact numbers): run with
+ * Unit checks for the shared airflow, camera and cannonball physics (pure functions, exact numbers): run with
  * `npm run test:unit` (part of `npm test`).
  */
-import { airflowOnCore, stepCore, type CoreBody, type Inhaler } from "../game/corePhysics.js";
 import { airflowQuality, breathRate, cleanAir, latchSizeFactor } from "../game/airflow.js";
 import { turnRate, turnStep } from "../game/movement.js";
-import { CAMERA, CANNON, CORE, INHALE, LATCH } from "../constants/gameConstants.js";
+import { CAMERA, CANNON, INHALE, LATCH } from "../constants/gameConstants.js";
 import { canCatch, canSwallowWhole, flightStep, holdFirmness, impactGems, launchAngle, launchSpeed, swallowPenalty, sweptHit } from "../game/cannon.js";
 import { intakePull, noReturnGap } from "../game/turbine.js";
 import { CameraRig, lookAhead, springStep, viewShort } from "../game/camera.js";
@@ -17,44 +16,6 @@ function check(ok: boolean, label: string): void {
   console.log(`${ok ? "\u2713" : "\u2717"} ${label}`);
   if (!ok) failed++;
 }
-
-const newborn: Inhaler = { x: 0, y: 0, width: 20, facing: 0, inhaling: true };
-const giant: Inhaler = { ...newborn, width: 143 };
-const core = (x: number, y: number): CoreBody => ({ x, y, vx: 0, vy: 0, radius: CORE.RADIUS });
-const pullOn = (who: Inhaler, body: CoreBody): number => {
-  const { ax, ay } = airflowOnCore(who, body);
-  return Math.hypot(ax, ay);
-};
-
-// Cores
-const early = core(150, 0);
-check(pullOn(newborn, early) > 100 && airflowOnCore(newborn, early).ax < 0, `a newborn pulls a Core hard well before the air's balance point (${pullOn(newborn, early).toFixed(0)} a second each second at 150)`);
-const mouthGap = 160;
-const edgeOff = (INHALE.ARC * Math.PI) / 180 + 0.6 * Math.asin(CORE.RADIUS / mouthGap);
-const edgeIn = core(6 + Math.cos(edgeOff) * mouthGap, Math.sin(edgeOff) * mouthGap);
-const allOut = core(6 + Math.cos(edgeOff + 0.6) * mouthGap, Math.sin(edgeOff + 0.6) * mouthGap);
-check(pullOn(newborn, edgeIn) > 0 && pullOn(newborn, allOut) === 0, "radius-aware: a Core whose middle is outside the airflow but whose edge is in still feels it (and one wholly outside doesn't)");
-check(pullOn(newborn, core(300, 0)) === 0 && pullOn(giant, core(300, 0)) > 0, "a giant's airflow reaches a Core a newborn's can't");
-const strongest = (who: Inhaler): number => {
-  let best = 0;
-  for (let d = 30; d <= 900; d += 2) best = Math.max(best, pullOn(who, core(d, 0)));
-  return best;
-};
-check(strongest(giant) > strongest(newborn) * 1.5, `a giant pulls harder (strongest pull ${strongest(giant).toFixed(0)} vs a newborn's ${strongest(newborn).toFixed(0)})`);
-const fast = { ...core(0, 0), vx: 5000 };
-stepCore(fast, 0, 0, 0.05, 1e6, 1e6);
-check(Math.abs(Math.hypot(fast.vx, fast.vy) - CORE.MAX_SPEED) < 1e-6, "a Core's top speed is its own (whatever moved it)");
-check(pullOn({ ...giant, inhaling: false }, core(150, 0)) === 0, "not inhaling, no force at all: letting go adds nothing");
-let worst = 0;
-let previous: number | null = null;
-for (let d = 260; d >= 30; d -= 1) {
-  const ax = airflowOnCore(newborn, core(d, 0)).ax;
-  if (previous !== null) worst = Math.max(worst, Math.abs(ax - previous));
-  previous = ax;
-}
-check(worst < 60, `the pull changes smoothly coming into the air's balance zone (largest change ${worst.toFixed(1)} per unit)`);
-const ahead = airflowOnCore(newborn, core(70, 0));
-check(Math.abs(ahead.ay) < 1e-6, "dead ahead the airflow pushes it nowhere sideways (no pull toward a preferred spot)");
 
 // Player airflow quality
 const attacker = { x: 0, y: 0, width: 92, facing: 0 };

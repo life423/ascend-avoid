@@ -6,7 +6,7 @@ import { breathRate } from "../game/airflow.js";
 import { CANNON } from "../constants/gameConstants.js";
 import type { Box, Direction } from "../game/movement.js";
 
-const { ARENA_RULES, BOTS, GEMS, INHALE, PLAYER_STATE, PUSH, WORLD, CORE } = GAME_CONSTANTS;
+const { ARENA_RULES, BOTS, GEMS, INHALE, PLAYER_STATE, PUSH, WORLD } = GAME_CONSTANTS;
 
 
 /** A creature's size: small to start, growing with the square root of its gems, with no ceiling */
@@ -483,7 +483,7 @@ class PlayerSchema extends Schema {
   stun(now: number, ms: number): void {
     this.stunned = true;
     this.stunEndsAt = now + ms;
-    this.stunImmuneUntil = now + ms + CORE.STUN_IMMUNE_MS;
+    this.stunImmuneUntil = now + ms + PUSH.STUN_IMMUNE_MS;
     this.stopInhale(now);
     this.dropLatch();
     this.walkX = this.walkY = this.spin = 0;
