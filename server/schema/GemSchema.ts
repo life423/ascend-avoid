@@ -171,7 +171,8 @@ class GemSchema extends Schema {
       if (x !== this.x) this.x = x;
       if (y !== this.y) this.y = y;
     }
-    const expiring = this.expiresAt - now < EXPIRY_WARNING_MS;
+    // (only a sprayed gem expires; a field gem, even one blown about, never blinks)
+    const expiring = this.sprayed && this.expiresAt - now < EXPIRY_WARNING_MS;
     if (expiring !== this.expiring) this.expiring = expiring;
     return true;
   }
