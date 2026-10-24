@@ -565,6 +565,10 @@
     row-gap: var(--space-xs);
 }
 
+.mode-switch[hidden] {
+    display: none; /* Solo is off the page for now: everyone plays online */
+}
+
 .mode-switch {
     display: inline-flex;
     border: 1px solid var(--accent-primary);

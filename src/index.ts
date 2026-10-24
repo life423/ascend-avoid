@@ -84,7 +84,8 @@ type GameModeName = 'singlePlayer' | 'multiplayer'
 /**
  * The Solo | Online switch in the header. Online (the default) is the shared game: you
  * play solo until someone else is on the site, then a match starts for everyone.
- * Solo stays offline.
+ * Solo stays offline, and for now stays off the page too (the switch is hidden in
+ * index.html), so nobody lands in it by accident; its code is all still here.
  */
 function setupModeSwitch(): void {
     document.querySelectorAll<HTMLButtonElement>('.mode-option').forEach((button) => {

@@ -73,8 +73,6 @@ export class DrawerUI {
                         <h4>Arena shifts</h4>
                         <p>Every few minutes the floor changes shape. Get onto it before the rest drops away.</p>
 
-                        <h4>Solo</h4>
-                        <p>Reach the top without getting hit. <span class="highlight">R</span> restarts.</p>
                     </div>
                 </div>
             </div>
