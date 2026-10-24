@@ -422,7 +422,9 @@ try {
     alice.send('exhale');
     check(heldNotEaten, 'a much smaller creature is pulled to your mouth and held there, not eaten at once');
     const bobPenalty = Math.min(15, Math.ceil(bobCaught * 0.25));
-    check(bobGulped && bobOut && !bobDied && bobAfter === bobCaught - bobPenalty, `held there (and pinned), it's gulped, then pops back out alive, a quarter of its gems lighter (Bob ${bobCaught} to ${bobAfter}, gulped ${bobGulped}, out ${bobOut}, knocked out ${bobDied})`);
+    const gulpNote = alice.messages.filter((m) => m.type === 'credit' && m.message?.how === 'gulped' && m.message?.targetId === bob.sessionId).pop();
+    // (the server says what it lost; it pops out onto whatever gems lie there and may pick a stray one up the same instant)
+    check(bobGulped && bobOut && !bobDied && Number(gulpNote?.message?.gems) === bobPenalty && bobAfter >= bobCaught - bobPenalty, `held there (and pinned), it's gulped, then pops back out alive, a quarter of its gems lighter (Bob ${bobCaught} to ${bobAfter}, lost ${gulpNote?.message?.gems ?? 'nothing'}, gulped ${bobGulped}, out ${bobOut}, knocked out ${bobDied})`);
     await waitFor(() => bobState().state === 'alive' && !bobState().spawnProtected, 6000, 'Bob is back');
     // ...but running straight away breaks free (robbed on the way out, but not swallowed)
     bob.send('test:setGems', { count: 30 });
@@ -1428,7 +1430,30 @@ try {
     const kidStates = new Set();
     const watchKid = setInterval(() => { const k = mine(kid); if (k) kidStates.add(k.state); }, 20);
     // Caught, it isn't drained any more: whatever it holds, it keeps while it's held
-    caughtNow = await catchKid(340, 80);
+    captor.send('cancel');
+    kid.send('steer', { x: 0, y: 0 });
+    for (let i = 0; i < 80 && (mine(kid).flying || mine(kid).capturedBy); i++) await sleep(50);
+    for (let i = 0; i < 120 && (mine(captor).state !== 'alive' || mine(kid).state !== 'alive'); i++) await sleep(50);
+    captor.send('test:protect', { ms: 0 });
+    kid.send('test:protect', { ms: 0 });
+    captor.send('test:setGems', { count: 700 });
+    kid.send('test:setGems', { count: 60 });
+    captor.send('test:breath', { stamina: 1 });
+    await sleep(1700);
+    captor.send('test:moveTo', { x: 500, y: lineY - mine(captor).width / 2 });
+    captor.send('test:face', { angle: 0 });
+    await sleep(250);
+    // (a captive this big is slow to be drawn in: set it right where the hold pins it, so the swallow has time to finish)
+    const holdX = 500 + mine(captor).width / 2 + mine(captor).width * 0.3 + mine(kid).width * 0.45;
+    kid.send('test:moveTo', { x: holdX - mine(kid).width / 2, y: lineY - mine(kid).width / 2 });
+    await sleep(250);
+    kid.messages.length = 0;
+    captor.send('inhale');
+    caughtNow = false;
+    for (let i = 0; i < 80 && !caughtNow; i++) {
+        await sleep(25);
+        caughtNow = mine(kid).capturedBy === captor.sessionId;
+    }
     const atCatch = mine(kid).gems;
     await sleep(400);
     check(caughtNow && mine(kid).capturedBy === captor.sessionId && mine(kid).gems >= atCatch, `a captive isn't drained: its gems hold while it's held (${atCatch} then ${mine(kid).gems})`);
@@ -1440,7 +1465,6 @@ try {
         await sleep(20);
         insideNow = mine(kid).state === 'gulped' && mine(kid).insideOf === captor.sessionId;
     }
-    kid.messages.length = 0;
     let popped = false;
     let afterPop = -1;
     for (let i = 0; i < 100 && !popped; i++) {
@@ -1450,9 +1474,9 @@ try {
             afterPop = mine(kid).gems;
         }
     }
-    const bigPenalty = Math.min(15, Math.ceil(beforeGulp * 0.25));
-    const scatter = kid.messages.find((m) => m.type === 'burst');
-    check(insideNow && popped && beforeGulp - afterPop === bigPenalty && bigPenalty === 15 && scatter?.message?.count === bigPenalty && !mine(kid).flying && !mine(kid).capturedBy, `held on, it's gulped, then pops back out alive, a quarter of its gems lighter but never more than 15, scattered (${beforeGulp} to ${afterPop}, ${scatter?.message?.count ?? 0} scattered)`);
+    const bigNote = kid.messages.filter((m) => m.type === 'credit' && m.message?.how === 'gulped' && m.message?.targetId === kid.sessionId).pop();
+    const scatter = kid.messages.find((m) => m.type === 'burst' && m.message?.count === 15);
+    check(insideNow && popped && Number(bigNote?.message?.gems) === 15 && !!scatter && afterPop >= beforeGulp - 15 && !mine(kid).flying && !mine(kid).capturedBy, `held on, it's gulped, then pops back out alive, a quarter of its gems lighter but never more than 15, scattered (${beforeGulp} to ${afterPop}, lost ${bigNote?.message?.gems ?? 'nothing'}, scattered ${scatter ? 15 : 0})`);
     // Just out, it can't be caught again straight away, even pressed right against the mouth
     captor.send('test:breath', { stamina: 1 });
     captor.send('test:face', { angle: 0 });
