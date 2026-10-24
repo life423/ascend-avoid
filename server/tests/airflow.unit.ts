@@ -6,7 +6,7 @@ import { airflowOnCore, stepCore, type CoreBody, type Inhaler } from "../game/co
 import { airflowQuality, breathRate, cleanAir, latchSizeFactor } from "../game/airflow.js";
 import { turnRate, turnStep } from "../game/movement.js";
 import { CAMERA, CANNON, CORE, INHALE, LATCH } from "../constants/gameConstants.js";
-import { flightStep, impactGems, launchSpeed, struggleStrength } from "../game/cannon.js";
+import { canSwallowWhole, flightStep, holdFirmness, impactGems, launchAngle, launchSpeed } from "../game/cannon.js";
 import { intakePull, noReturnGap } from "../game/turbine.js";
 import { CameraRig, lookAhead, springStep, viewShort } from "../game/camera.js";
 import { dangerRadius, lethalShare, pressureBuild, scaleDrain, streamLook } from "../game/airflow.js";
@@ -126,9 +126,11 @@ check(lateGame / viewShort(lateGame) > 0.24 && (20 / lateGame) * (lateGame / vie
 check(scaleDrain(20, 548) === LATCH.SCALE_MIN && scaleDrain(60, 120) === 1 && scaleDrain(20, 100) > LATCH.SCALE_MIN && scaleDrain(20, 100) < 1, "a tiny attacker on a giant is a mosquito: its drain fades with the size gap");
 
 // The living cannonball
-check(struggleStrength(56, 80) > 0.85 && struggleStrength(20, 300) === CANNON.STRUGGLE_MIN, "a captive near its captor's size struggles hard; a tiny one barely");
+check(holdFirmness(80, 56) < 1 && holdFirmness(300, 20) === CANNON.HOLD_MAX && holdFirmness(300, 20) < 1.5, "a near-size captive can push straight out of a hold; a giant holds a tiny one firmly, but never so firmly that slipping round its side can't break it");
+check(!canSwallowWhole(80, 56, 5) && canSwallowWhole(120, 56, 5) && canSwallowWhole(80, 56, 0), "swallowing needs a real size advantage, not just a catch (an empty creature has nothing to gain from, so anyone can)");
+check(Math.abs(launchAngle(0, 0, 1) - CANNON.LAUNCH_INFLUENCE) < 1e-9 && launchAngle(0, 1, 0) === 0, "the captive can shift its launch a little sideways, never turn it around");
 check(launchSpeed(200) > launchSpeed(40), "a bigger captor launches harder");
-check(impactGems(120, 900) > impactGems(20, 900) && impactGems(120, 900) >= 15 && impactGems(0, 900) === 0, `a cannonball knocks the most gems out of a giant (${impactGems(120, 900)} of 120)`);
+check(impactGems(1000, 900, 20) > impactGems(120, 900, 20) && impactGems(1000, 900, 20) / 1000 < impactGems(120, 900, 20) / 120 && impactGems(10, 900, 20) <= 3 && impactGems(120, 900, 60) > impactGems(120, 900, 20) && impactGems(120, 450, 20) < impactGems(120, 900, 20), `a cannonball's damage grows with speed and the flier's mass, with diminishing returns against giants (${impactGems(120, 900, 20)} of 120, ${impactGems(1000, 900, 20)} of 1000)`);
 const straightOn = flightStep(900, 0, 1, 0, 0.1);
 const bentFlight = flightStep(900, 0, 0, 1, 0.1);
 check(Math.hypot(straightOn.vx, straightOn.vy) < 900 && Math.abs(straightOn.vy) < 1e-9 && bentFlight.vy > 0 && Math.hypot(bentFlight.vx, bentFlight.vy) <= Math.hypot(straightOn.vx, straightOn.vy) + 1e-6, "a flier can bend its path, never speed it up or stop it");

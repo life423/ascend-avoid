@@ -420,23 +420,34 @@ export const CAMERA = {
 } as const;
 
 /**
- * Capture and the living cannonball. A creature pulled to the mouth of one big enough to swallow it is
- * caught and held there briefly: still inhaling when the hold ends, the captor swallows it; letting go
- * first launches it along the captor's facing, a projectile that can steer a little but can't stop or
- * turn around. The captive struggles meanwhile (pushing away fills a meter, faster the closer it is in
- * size; pushing sideways twists the captor's aim). A flying creature that hits another knocks more of
- * its gems loose than a normal attack would (a giant spills the most), both bounce, the target is
- * briefly stunned, and the flier survives to grab what spilled.
+ * Capture and the living cannonball. A creature pulled to the mouth of one at least INHALE.EAT_RATIO
+ * wider is caught and held there, for CANNON.HOLD_MS at most. The hold is physical: the captor pulls
+ * its captive back to its mouth at the captive's own speed times how firmly it holds (more the bigger
+ * it is) times how squarely it faces it, while the captive's stick moves it, so pushing straight out
+ * fights the hold, and pushing sideways twists the captor's aim and slips round to where its hold is
+ * weak. Slip far enough and you're free. A captor at least SWALLOW_RATIO wider that keeps its captive
+ * pinned for SWALLOW_MS swallows it (keeping a share of its gems; the rest spray out); otherwise the hold
+ * ends and the captive goes free. Letting go first launches it, a projectile that steers a little.
+ * One damaging hit per launch; its target can't be hit again for a moment; and anyone launched, let go
+ * or broken free can't be caught (by a mouth or a turbine) again for RECAPTURE_MS.
  */
 export const CANNON = {
-  HOLD_MS: 1250, // a capture lasts at most this long: still inhaling then, the captive is swallowed
+  HOLD_MS: 1250, // a capture lasts at most this long; a captive not swallowed by then goes free
   LAUNCH_MIN_MS: 120, // let go after holding at least this long to launch (sooner: just released)
-  STRUGGLE_RATE: 1.6, // a full-strength push away fills the break-free meter at this rate a second...
-  STRUGGLE_MIN: 0.3, // ...scaled by the captive's size against its captor's (just swallowable: full), never below this
-  STRUGGLE_SIDEWAYS: 0.4, // sideways pushing counts this much toward breaking free...
-  AIM_TWIST: 1.4, // ...and twists the captor's aim up to this many radians a second
-  BREAK_PUSH: 70, // breaking free pushes you this far from the mouth...
-  RECAPTURE_MS: 1500, // ...and you can't be caught again for this long
+  HOLD_RATIO: 1, // the captor pulls its captive back to its mouth at this times the captive's own top speed...
+  HOLD_MIN: 0.5, // ...times its firmness: this when just big enough to catch it (a near-size captive can simply push out)...
+  HOLD_PER_DOUBLING: 0.35, // ...rising this much every time the captor is twice as big again...
+  HOLD_MAX: 1.4, // ...up to this; and times how squarely it faces its captive (sideways slips weaken it)
+  AIM_TWIST: 1.4, // pushing sideways twists the captor's aim up to this many radians a second (less for a much smaller captive)
+  BREAK_GAP: 0.7, // pushed out this share of its own width past the hold point (or past where it was caught, if further)...
+  BREAK_MARGIN: 12, // ...plus this many units, the captive breaks free...
+  BREAK_PUSH: 70, // ...pushed this far clear
+  SWALLOW_RATIO: 2, // swallowing needs the captor this many times wider (unless the captive is empty: nothing to gain)...
+  SWALLOW_MS: 900, // ...and the captive pinned (within SUBDUED) this long in all during the hold
+  SUBDUED: 0.25, // pinned: within this share of its width of the hold point (8 units at least)
+  SWALLOW_KEEP: 0.3, // a swallower keeps this share of the victim's gems; the rest spray out for anyone
+  RECAPTURE_MS: 1500, // launched (after landing), let go or broken free: can't be caught by a mouth or a turbine for this long
+  LAUNCH_INFLUENCE: 0.35, // the captive's sideways push as it's launched shifts its direction up to this many radians
   SPEED: 760, // launch speed (units a second)...
   SPEED_PER_WIDTH: 2.2, // ...plus this per unit of the captor's width
   DRAG: 1.1, // a flight loses this share of its speed a second...
@@ -444,12 +455,14 @@ export const CANNON = {
   MAX_MS: 1400, // ...or after this long
   STEER: 520, // a flier's sideways steering (units a second squared): it bends the path, never speeds it up, stops or reverses it
   LAUNCHER_GRACE_MS: 300, // a projectile can't hit its launcher this soon
-  IMPACT_BASE: 3, // a hit knocks this many of the target's gems loose...
-  IMPACT_SHARE: 0.16, // ...plus this share of them, times how fast the hit was against IMPACT_SPEED_REF (a giant spills the most)
+  IMPACT_BASE: 2, // a hit knocks this many of the target's gems loose...
+  IMPACT_PER_ROOT: 1.4, // ...plus this times the square root of its gems (diminishing against giants), times the hit's speed against IMPACT_SPEED_REF and the flier's mass...
   IMPACT_SPEED_REF: 900,
+  IMPACT_MAX_SHARE: 0.3, // ...never more than this share of them
+  IMPACT_IMMUNE_MS: 1200, // a creature just hit can't be hit by another flier for this long
   IMPACT_STUN_MS: 450, // the target is stunned this long...
-  TARGET_SHOVE: 120, // ...and knocked this far along the hit; the flier bounces back off it
-  BOUNCE: 0.35, // keeping this share of its speed
+  TARGET_SHOVE: 120, // ...and knocked up to this far along the hit (less the heavier it is than the flier)
+  BOUNCE: 0.35, // the flier bounces back keeping this share of its speed; one damaging hit per launch
 } as const;
 
 export const SHIFT = {

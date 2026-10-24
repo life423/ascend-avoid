@@ -128,6 +128,13 @@ class PlayerSchema extends Schema {
   /** When this creature caught its current captive, and when it can next be caught itself */
   captureStartedAt = 0;
   recaptureAfter = 0;
+  /** How long this captor has kept its current captive pinned (swallowing needs CANNON.SWALLOW_MS) */
+  swallowHeld = 0;
+  /** How far from its captor's mouth this creature was when caught (escaping means getting out past it) */
+  captureDistance = 0;
+  /** This flight has already hit someone (one damaging hit per launch); hit by a flier, immune to another until then */
+  flightHit = false;
+  impactImmuneUntil = 0;
   /** Server-only: when this breath runs out, and when you can spit again */
   inhaleStopAt = 0;
   /** Server-only: how much breath is left (0-1) as of staminaAt: it drains while inhaling and refills from wherever it is */
@@ -376,6 +383,7 @@ class PlayerSchema extends Schema {
     this.flightStartedAt = now;
     this.flightEndsAt = now + maxMs;
     this.launchedBy = by;
+    this.flightHit = false;
     this.capturedBy = "";
     this.struggle = 0;
     this.stopInhale(now);

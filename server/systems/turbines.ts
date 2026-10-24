@@ -81,7 +81,7 @@ export function runTurbine(state: GameState, turbine: TurbineSchema, now: number
     if (bd < r + radius && bd > 1e-6) player.nudge((bx / bd) * (r + radius - bd), (by / bd) * (r + radius - bd), state.worldWidth, state.worldHeight);
     if (player.spawnProtected) return;
     // Already flying, or caught in a mouth: the turbine leaves it be
-    if (player.flying || player.capturedBy) return;
+    if (player.flying || player.capturedBy || now < player.recaptureAfter) return;
     // In front of the intake: pulled in, and close up, gems ripped out of you one by one
     const dx = px - mouthX;
     const dy = py - mouthY;

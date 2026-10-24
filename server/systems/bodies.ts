@@ -16,6 +16,8 @@ export function keepApart(state: GameState, player: PlayerSchema) : void {
   if (player.state !== PLAYER_STATE.ALIVE) return;
   state.players.forEach((other) => {
     if (other === player || other.state !== PLAYER_STATE.ALIVE) return;
+    // A captive is held where its captor's mouth puts it (see holdCaptive), not pushed off its body
+    if (other.capturedBy === player.sessionId || player.capturedBy === other.sessionId) return;
     const dx = other.x + other.width / 2 - (player.x + player.width / 2);
     const dy = other.y + other.height / 2 - (player.y + player.height / 2);
     const distance = Math.hypot(dx, dy);

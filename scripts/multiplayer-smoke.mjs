@@ -407,7 +407,7 @@ try {
     await sleep(1600); // held through the whole capture (CANNON.HOLD_MS); letting go sooner would launch Bob
     alice.send('exhale');
     check(heldNotEaten, 'a much smaller creature is pulled to your mouth and held there, not eaten at once');
-    check(bobState().state !== 'alive' && me().gems >= aliceBeforeGulp + 4, `held there a moment, it's swallowed whole (Alice ${aliceBeforeGulp} then ${me().gems}, Bob ${bobState().state})`);
+    check(bobState().state !== 'alive' && me().gems >= aliceBeforeGulp, `held there (and pinned), it's swallowed whole, the swallower keeping a share of its gems (Alice ${aliceBeforeGulp} then ${me().gems}, Bob ${bobState().state})`);
     await waitFor(() => bobState().state === 'alive' && !bobState().spawnProtected, 6000, 'Bob is back');
     // ...but running straight away breaks free (robbed on the way out, but not swallowed)
     bob.send('test:setGems', { count: 30 });
