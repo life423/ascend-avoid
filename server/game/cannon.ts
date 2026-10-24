@@ -35,13 +35,19 @@ export function launchAngle(facing: number, steerX: number, steerY: number): num
   return facing + clamp(side, -1, 1) * CANNON.LAUNCH_INFLUENCE;
 }
 
-/** How many gems a flier this wide hitting at this speed knocks out of a target holding this many: diminishing (square root) against giants, never more than IMPACT_MAX_SHARE of them */
+/**
+ * How many gems a flier this wide hitting at this speed knocks out of a target holding this many: a flat
+ * amount plus one growing with the square root of its gems (times speed and the flier's mass), or
+ * IMPACT_SHARE of everything it holds (times speed), whichever is more, so a giant that's hit really
+ * shrinks; never more than IMPACT_MAX_SHARE of them
+ */
 export function impactGems(targetGems: number, speed: number, flierWidth: number): number {
   if (targetGems <= 0) return 0;
   const pace = clamp(speed / CANNON.IMPACT_SPEED_REF, 0.5, 1.25);
   const mass = clamp(Math.sqrt(flierWidth / 20), 1, 2.5);
   const knocked = Math.round(CANNON.IMPACT_BASE + CANNON.IMPACT_PER_ROOT * pace * mass * Math.sqrt(targetGems));
-  return Math.min(targetGems, Math.ceil(targetGems * CANNON.IMPACT_MAX_SHARE), knocked);
+  const share = Math.round(targetGems * CANNON.IMPACT_SHARE * pace);
+  return Math.min(targetGems, Math.ceil(targetGems * CANNON.IMPACT_MAX_SHARE), Math.max(knocked, share));
 }
 
 /** One step of a flight: drag slows it, and only the sideways part of the flier's steering bends it */
