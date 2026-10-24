@@ -47,8 +47,9 @@ assert.equal(escapeLength(39, 20), 3);
 assert.equal(escapeLength(40, 20), 4);
 assert.equal(escapeLength(80, 20), 5);
 assert.equal(escapeLength(800, 20), 5);
-assert.equal(captureLoadMs(3), 1800);
-assert.equal(captureLoadMs(5), 2400);
+assert.equal(captureLoadMs(3), 2800);
+assert.equal(captureLoadMs(4), 3100);
+assert.equal(captureLoadMs(5), 3400);
 
 {
   const normal = new GameState(0); normal.botFill = 0;
@@ -90,20 +91,22 @@ assert.equal(captureLoadMs(5), 2400);
   b.placeAt(1300, 1000); pruneBodyContacts(s);
   assert.equal(s.bodyContacts.size, 0, 'separation rearms the pair');
 }
-for (const protectedTarget of [false, true]) {
-  const s = world(), flier = player(s, 'missile', 4), target = player(s, 'small-target', 12, 1100, 1000);
+for (const targetGems of [12, 40]) for (const protectedTarget of [false, true]) {
+  const s = world(), flier = player(s, 'missile', 4), target = player(s, 'small-target', targetGems, 1100, 1000);
   target.spawnProtected = protectedTarget;
   flier.placeAt(1000, target.y + target.height / 2 - flier.height / 2);
   flier.launch(NOW, 1400, 0, 'shooter', CANNON.FLIGHT_MS);
   updateFlights(s, NOW + 100, 0.1);
   assert.equal(target.state, protectedTarget ? 'alive' : 'dead');
-  assert.equal(flier.state, 'alive', 'the missile player survives');
+  assert.equal(flier.state, 'dead', 'a spent missile player is knocked out rather than kept alive at minimum size');
+  assert(!flier.flying);
+  assert.equal(flier.respawnAt, NOW + 100 + 2000);
   if (!protectedTarget) {
     assert.equal(target.gems, 0);
     s.update(0, target.respawnAt);
     assert.equal(target.state, 'alive'); assert(target.spawnProtected);
     assert.equal(target.width, 20, 'a small missile victim returns at newborn size');
-  } else assert.equal(target.gems, 12, 'spawn protection blocks missile damage and knockout');
+  } else assert.equal(target.gems, targetGems, 'spawn protection blocks missile damage and knockout');
 }
 {
   const s = world(), flier = player(s, 'large-missile', 1000), target = player(s, 'large-target', 1000, 1800, 1000);
@@ -123,14 +126,14 @@ for (const protectedTarget of [false, true]) {
 for (const gems of [16, 32, 80]) {
   const { state, captor, captive } = capture(gems);
   fireCaptive(state, captor, NOW); // the captor queues the earliest possible shot
-  let elapsed = CANNON.CAPTIVE_STUN_MS + 250;
+  let elapsed = CANNON.CAPTIVE_STUN_MS + 650;
   for (const key of captive.escapeKeys) {
     state.time = elapsed;
     escapePress(state, captive, key);
     updateHolds(state, NOW + elapsed);
-    elapsed += 250;
+    elapsed += 500;
   }
-  assert.equal(captive.capturedBy, '', 'a human can react and type the sequence before a queued shot');
+  assert.equal(captive.capturedBy, '', 'after a 650ms reaction, a human can type at 500ms per direction before a queued shot');
   assert.equal(captive.flying, false);
 }
 
@@ -171,8 +174,10 @@ for (const gems of [16, 32, 80]) {
   const events: Array<{ type: string; data: Record<string, unknown> }> = [];
   state.onEvent = (type, data) => events.push({ type, data });
   assert.equal(fireCaptive(state, captor, NOW + CANNON.ARM_MS - 1), false);
+  captive.steer(0, 1);
   assert.equal(fireCaptive(state, captor, NOW + CANNON.ARM_MS), true);
   assert(captive.flying);
+  assert.equal(captive.flightVy, 0, 'holding sideways during launch cannot spoil the captor\'s aim');
   const target = player(state, 'target', 100, 1270, 984.25);
   const had = target.gems;
   for (let step = 1; step <= 5; step++) updateFlights(state, NOW + CANNON.ARM_MS + step * 100, 0.1);
@@ -180,7 +185,36 @@ for (const gems of [16, 32, 80]) {
   assert(events.some(e => e.type === 'launch'));
   assert(events.some(e => e.type === 'impact' && e.data.projectileId === captive.sessionId));
   assert(events.some(e => e.type === 'credit' && e.data.byId === captor.sessionId && e.data.how === 'cannon'));
-  assert.equal(captive.state, 'alive');
+  assert.equal(captive.state, 'dead', 'a missile impact is a knockout when no growth remains');
+}
+for (const facing of [0, Math.PI / 3, -Math.PI / 2]) {
+  const { state, captor, captive } = capture();
+  captor.facing = facing;
+  captive.steer(-Math.sin(facing), Math.cos(facing));
+  fireCaptive(state, captor, NOW + CANNON.ARM_MS);
+  const start = { x: captive.x, y: captive.y };
+  for (let step = 1; step <= 30; step++) {
+    const sign = step % 2 ? 1 : -1;
+    captive.steer(-Math.sin(facing) * sign, Math.cos(facing) * sign);
+    updateFlights(state, NOW + CANNON.ARM_MS + step * 20, 0.02);
+    const lateral = -(captive.x - start.x) * Math.sin(facing) + (captive.y - start.y) * Math.cos(facing);
+    assert(Math.abs(lateral) < 1e-7, 'changing direction inputs cannot bend a player-fired missile');
+  }
+  assert(captive.flying);
+}
+{
+  const state = world(), flier = player(state, 'turbine-flier');
+  flier.launch(NOW, 900, 0, '', 1400, 0.35, 'turbine');
+  flier.steer(0, 1);
+  updateFlights(state, NOW + 100, 0.1);
+  assert(flier.flightVy > 0, 'turbine throws retain their existing steering');
+  flier.land();
+  flier.launch(NOW + 200, 900, 0, 'captor', CANNON.FLIGHT_MS);
+  updateFlights(state, NOW + 300, 0.1);
+  assert.equal(flier.flightVy, 0, 'a later player-fired shot resets the turbine steering permission');
+  flier.land();
+  flier.updateMovement(state.worldWidth, state.worldHeight, NOW + 400, 0.1);
+  assert(flier.y > 1000, 'normal movement input works after landing');
 }
 {
   const { state, captive } = capture();
@@ -240,7 +274,7 @@ for (const gems of [16, 32, 80]) {
 }
 for (const ending of ['impact', 'wall', 'timeout']) {
   const state = world();
-  const flier = player(state, 'flier', 4);
+  const flier = player(state, 'flier', ending === 'timeout' ? 4 : 1000);
   if (ending === 'impact') player(state, 'impact-target', 100, 1190, 950);
   if (ending === 'wall') flier.placeAt(state.worldWidth - flier.width - 10, 1000);
   flier.launch(NOW, 1400, 0, 'old-captor', ending === 'timeout' ? 50 : CANNON.FLIGHT_MS);
@@ -277,6 +311,26 @@ for (const ending of ['impact', 'wall', 'timeout']) {
   state.now += 1;
   updateInhales(state, state.now, 0.01);
   assert.equal(flier.capturedBy, hunter.sessionId, 'normal capture returns when recovery ends');
+}
+for (const gems of [0, 297, 298, 1000]) {
+  const state = world(), flier = player(state, 'wall-missile', gems);
+  flier.placeAt(state.worldWidth - flier.width - 1, 1000);
+  flier.launch(NOW, 1400, 0, 'captor', CANNON.FLIGHT_MS);
+  updateFlights(state, NOW + 100, 0.1);
+  assert.equal(flier.state, gems < 298 ? 'dead' : 'alive', 'wall impacts knock out only missiles with no growth left');
+  assert(!flier.flying);
+  if (flier.state === 'dead') {
+    state.update(0, flier.respawnAt);
+    assert.equal(flier.state, 'alive');
+    assert(flier.spawnProtected && flier.width === 20, 'a spent missile respawns normally at newborn size');
+  } else assert(flier.launchSafeUntil > state.time, 'a surviving missile gets its landing shield');
+}
+{
+  const state = world(), flier = player(state, 'turbine-landing');
+  flier.placeAt(state.worldWidth - flier.width - 1, 1000);
+  flier.launch(NOW, 900, 0, '', 1400, 0.35, 'turbine');
+  updateFlights(state, NOW + 100, 0.1);
+  assert.equal(flier.state, 'alive', 'turbine throws do not inherit the new player-missile knockout rule');
 }
 {
   const state = world();

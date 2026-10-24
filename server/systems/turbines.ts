@@ -237,5 +237,5 @@ function pullThrough(state: GameState, turbine: TurbineSchema, player: PlayerSch
   const px = player.x + player.width / 2;
   const py = player.y + player.height / 2;
   player.nudge(nozzleX + ex * (radius + 6) - px, nozzleY + ey * (radius + 6) - py, state.worldWidth, state.worldHeight);
-  player.launch(now, ex * TURBINE.EXHAUST_LAUNCH, ey * TURBINE.EXHAUST_LAUNCH, "", TURBINE.PLAYER_FLIGHT_MS, TURBINE.PLAYER_DRAG);
+  player.launch(now, ex * TURBINE.EXHAUST_LAUNCH, ey * TURBINE.EXHAUST_LAUNCH, "", TURBINE.PLAYER_FLIGHT_MS, TURBINE.PLAYER_DRAG, 'turbine');
 }

@@ -484,7 +484,7 @@ export function drawCapturePrompt(mode: MultiplayerMode, ctx: CanvasRenderingCon
         ctx.font = `700 ${14 * u}px ${FONT}`
         ctx.fillStyle = GOLD
         ctx.textAlign = 'center'
-        ctx.fillText('YOU ARE THE CANNONBALL — steer sideways to land a hit!', centerX, bottom - 20 * u, canvas.width - 32 * u)
+        ctx.fillText('YOU ARE THE CANNONBALL — hang on until you land!', centerX, bottom - 20 * u, canvas.width - 32 * u)
         ctx.restore()
         return
     }

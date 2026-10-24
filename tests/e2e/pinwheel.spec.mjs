@@ -2,6 +2,30 @@ import { test, expect } from '@playwright/test';
 
 test.skip(process.env.E2E_TEST_HOOKS !== '1', 'requires an isolated local test server');
 
+test('gliding over a weapon part collects it without inhaling', async ({ page }) => {
+  await page.route('**/matchmake/joinOrCreate/game_room', route => route.continue({
+    url: route.request().url().replace('/joinOrCreate/', '/create/'),
+    postData: JSON.stringify({ ...route.request().postDataJSON(), testBots: 0, testFieldGems: 0 }),
+  }));
+  await page.goto('/');
+  await page.waitForFunction(() => window.game?.currentGameMode?.multiplayerManager?.room?.state?.players?.size === 1);
+  await expect.poll(() => page.evaluate(() => document.body.classList.contains('intro-playing'))).toBe(false);
+  await page.evaluate(() => {
+    const room = window.game.currentGameMode.multiplayerManager.room;
+    room.send('test:moveTo', { x: 2150, y: 2090 });
+    room.send('test:pinwheel', { x: 2100, y: 2100 });
+  });
+  await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.room.state.pinwheel.parts.length === 3);
+  await page.keyboard.down('ArrowRight');
+  try {
+    await page.waitForFunction(() => {
+      const room = window.game.currentGameMode.multiplayerManager.room;
+      return room.state.pinwheel.parts.some(p => p.carriedBy === room.sessionId);
+    });
+  } finally { await page.keyboard.up('ArrowRight'); }
+  expect(await page.evaluate(() => window.game.currentGameMode.multiplayerManager.getLocalPlayer().inhaling)).toBe(false);
+});
+
 test('collect, carry and deliberately place a pinwheel with a button or E', async ({ page, hasTouch }) => {
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
@@ -85,6 +109,8 @@ test('a collected part stays carried after release, movement and turning; gust s
     m.localFacing = 0; m.localSpin = 0; m.facing = { x: 1, y: 0 };
   });
   await page.keyboard.down('Space');
+  // Touch pickup may happen immediately; still hold long enough to inhale rather than tap a gust.
+  await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getLocalPlayer().inhaling);
   await page.waitForFunction(() => {
     const r = window.game.currentGameMode.multiplayerManager.room;
     return r.state.pinwheel.parts.some(p => p.carriedBy === r.sessionId);
