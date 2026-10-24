@@ -4,22 +4,29 @@
  */
 import Player from '../entities/Player'
 import { InputState } from '../types'
-import { getSprite } from '../utils/sprites'
 import { GameEvents } from '../constants/client-constants'
-import { ARENA_RULES, BOMBS, CORE, GEMS, INHALE, LATCH, PLAYER_COLORS, SHIFT, TURBINE, WORLD } from '../../server/constants/gameConstants'
-import { airflowOnCore } from '../../server/game/corePhysics'
-import { breathRate, cleanAir, latchSizeFactor, streamLook } from '../../server/game/airflow'
+import { ARENA_RULES, BOMBS, GEMS, INHALE, LATCH, PLAYER_COLORS, SHIFT, WORLD } from '../../server/constants/gameConstants'
+import { breathRate } from '../../server/game/airflow'
 import { CameraRig } from '../../server/game/camera'
-import { moveSpeed, turnStep, walk } from '../../server/game/movement'
-import { exhaustAngle, launchDuration, launchPosition } from '../../server/game/turbine'
+import { turnStep, walk } from '../../server/game/movement'
+import { launchDuration, launchPosition } from '../../server/game/turbine'
 import { OnlineControls } from './OnlineControls'
 import type { Breath } from './OnlineControls'
 import type { MultiplayerManager } from '../managers/MultiplayerManager'
-import { Airflow, INHALE_LOOK, onCurve, suctionPower } from '../render/airflow'
-import { bounce, drawBreath, drawCreature } from '../render/creatures'
+import { Airflow } from '../render/airflow'
+import { bounce } from '../render/creatures'
 import { INTRO, IntroSpark, drawIntro, makeIntroSparks } from '../render/intro'
-import { COMPACT, FONT, GOLD, drawCrown, drawPeople, drawRobot, hudPanel, roundedRect } from '../render/style'
-import { drawBall, drawBomb, drawComet, drawCrystal, drawExhaustWind, drawGem, drawIntakeWind, drawLaunchPuff, drawTurbineBody, drawTurbineWarning, gemColor } from '../render/world'
+import { COMPACT, GOLD } from '../render/style'
+import { drawBall, drawBomb, drawComet, drawGem, drawLaunchPuff, gemColor } from '../render/world'
+import { SMOOTHING, SNAP_DISTANCE, View } from '../render/shared'
+import { drawTopBar, drawLeaderboard, drawMinimap, drawBanner, drawShiftChip, drawTrafficChip, drawNotices, drawKnockedOut, drawMessage } from '../render/hud'
+import { drawGemBursts, drawGulps, drawVanishes, drawBlasts, drawBursts, drawTheft } from '../render/effects'
+import { drawCores } from '../render/cores'
+import { drawTurbines, drawTurbineFlights } from '../render/turbines'
+import { drawFloor, drawShiftFloor, drawJackpot } from '../render/floor'
+import { drawPlayer } from '../render/players'
+import { drawObstacle } from '../render/obstacles'
+import { drawPickups } from '../render/pickups'
 
 // Forward reference for the Game type to avoid circular dependencies
 interface Game {
@@ -459,39 +466,15 @@ export class SinglePlayerMode extends GameMode {
     }
 }
 
-/**
- * Implementation of multiplayer game mode.
- */
-/** How much of the gap to the server position another player's drawing closes each frame */
-const SMOOTHING = 0.35
-/** Jump straight to the server position when it's this far off (world units), e.g. a respawn */
-const SNAP_DISTANCE = 150
 /** Wait this long before trying the server again */
 const RECONNECT_DELAY_MS = 3000
-/** How long a notice (someone joined, a shove, the jackpot) stays up */
-const JOIN_NOTICE_MS = 3500
-/** Grid spacing on the arena floor (world units) */
-const GRID = 100
 /** Your drawn position jumps to the server's when they're this far apart (a respawn) */
 const PREDICTION_SNAP = 150
-/** How long a hit's burst ring lasts */
-const BURST_MS = 500
 /** How long the screen shakes when you're hit */
 const SHAKE_MS = 300
-/** How long "+1" floats above you after grabbing gems */
-const PICKUP_TEXT_MS = 800
 /** Traffic is drawn at most this far ahead (seconds), in case updates stall */
 const MAX_TRAFFIC_LEAD = 0.4
 type ConnectionStatus = 'connecting' | 'connected' | 'reconnecting'
-
-/** The part of the world on screen: its center, size (world units) and scale (pixels per unit) */
-interface View {
-    x: number
-    y: number
-    width: number
-    height: number
-    scale: number
-}
 
 /** It plays once per page load */
 let introPlayed = false
@@ -503,47 +486,47 @@ let introPlayed = false
  * bursts when someone is hit or shoved, a leaderboard and a minimap.
  */
 export class MultiplayerMode extends GameMode {
-    private multiplayerManager: MultiplayerManager | null = null
+    multiplayerManager: MultiplayerManager | null = null
     private status: ConnectionStatus = 'connecting'
     private disposed = false
     private reconnectTimer: ReturnType<typeof setTimeout> | null = null
     /** Where each other player is drawn, eased toward the server position */
-    private drawnPositions = new Map<string, { x: number; y: number }>()
+    drawnPositions = new Map<string, { x: number; y: number }>()
     /** Your own position, hopped on your screen right away */
-    private predicted: { x: number; y: number } | null = null
+    predicted: { x: number; y: number } | null = null
     /** The world point at the center of the screen */
     private camera: { x: number; y: number } | null = null
     private lastRenderAt = 0
     /** Each player's drawn size, springing toward their real size so growing and shrinking pop */
-    private drawnSizes = new Map<string, { size: number; speed: number }>()
+    drawnSizes = new Map<string, { size: number; speed: number }>()
     /** Each creature's growth pop: when it last gained a gem and how big the pop was (see drawPlayer) */
-    private gemPops = new Map<string, { at: number; amount: number }>()
+    gemPops = new Map<string, { at: number; amount: number }>()
     /** The camera rig, and the creature's last middle and smoothed velocity it follows */
     private cameraRig = new CameraRig()
     private cameraFrom: { x: number; y: number } | null = null
     private cameraVelocity = { x: 0, y: 0 }
     /** Each creature's airflow while it inhales (see drawAirflow) */
-    private flows = new Map<string, Airflow>()
+    flows = new Map<string, Airflow>()
     /** Where each Core is drawn: carrying on at its velocity, easing to each server update (see drawCores) */
-    private coresDrawn = new Map<string, { x: number; y: number }>()
-    private coresDrawnAt = 0
+    coresDrawn = new Map<string, { x: number; y: number }>()
+    coresDrawnAt = 0
     /** Canvas pixels per screen point (the HUD on phones is laid out in screen points) */
-    private cssScale = 1
+    cssScale = 1
     /** The opening: when it started (null until then), and what it pulls in */
     private introStart: number | null = null
     private introSparks: IntroSpark[] = []
     /** When your player was knocked out, for the "back in" countdown */
-    private knockedOutAt: number | null = null
+    knockedOutAt: number | null = null
     /** The last time someone got you (and how), for the knocked-out screen: "Swallowed by Drew" */
-    private knockoutCause: { how: string; by: string; at: number } | null = null
+    knockoutCause: { how: string; by: string; at: number } | null = null
     /** Messages at the top right: who joined, who shoved whom off the edge, who took the jackpot */
-    private notices: { text: string; at: number; strong: boolean }[] = []
+    notices: { text: string; at: number; strong: boolean }[] = []
     /** When each dropping gem was first seen, to draw its fall */
     private fallingSince = new Map<string, number>()
     /** Whether everyone is protected right now (a shift's grace period) */
-    private inGrace = false
+    inGrace = false
     /** The joystick, INHALE button and mouse steering (drawn on the canvas) */
-    private controls: OnlineControls | null = null
+    controls: OnlineControls | null = null
     /** Your walking velocity */
     private velocity = { x: 0, y: 0 }
     /** Holding the button: inhaling (it never changes how you move) */
@@ -551,18 +534,18 @@ export class MultiplayerMode extends GameMode {
     private aim = { x: 0, y: -1 }
     /** The aim last sent (your eyes turn toward it for everyone), and which way you face */
     private sentAim = { x: 0, y: 0 }
-    private localFacing = -Math.PI / 2
+    localFacing = -Math.PI / 2
     /** How fast your creature is turning (radians a second; see turnStep) */
     private localSpin = 0
     /** Your breath, tracked from when the server starts and stops your inhale (see breathOf) */
     /** Your breath (0-1), worked out like the server does: drains while you inhale, refills from wherever it is */
-    private stamina = 1
+    stamina = 1
     private staminaAt = 0
-    private breath: Breath = { phase: 'ready' }
+    breath: Breath = { phase: 'ready' }
     /** Gem bursts and hard hits to draw, the banner for hits you cause, and the shake they bring */
-    private gemBursts: { x: number; y: number; count: number; at: number }[] = []
-    private impacts: { x: number; y: number; size: number; at: number }[] = []
-    private banner: { title: string; sub: string; at: number } | null = null
+    gemBursts: { x: number; y: number; count: number; at: number }[] = []
+    impacts: { x: number; y: number; size: number; at: number }[] = []
+    banner: { title: string; sub: string; at: number } | null = null
     private hitShake = { until: 0, strength: 0 }
     private facing = { x: 0, y: -1 }
     /** The steering last sent to the server */
@@ -572,7 +555,7 @@ export class MultiplayerMode extends GameMode {
     private lastMoveAt = 0
     /** The view as last drawn, to find your player on screen for mouse steering */
     private lastView: View | null = null
-    private minimapBottom = 0
+    minimapBottom = 0
     /**
      * Our clock minus the world's clock for the quickest update seen: lining the two up this way
      * places traffic by the server's own timing rather than by when updates happen to land
@@ -582,15 +565,15 @@ export class MultiplayerMode extends GameMode {
     private drawnGems = new Map<string, { x: number; y: number }>()
     /** Each player as of the last frame, to spot hits and pickups */
     private lastSeen = new Map<string, { alive: boolean; recovering: boolean; sliding: boolean; gems: number; cx: number; cy: number }>()
-    private bursts: { x: number; y: number; size: number; color: string; at: number }[] = []
+    bursts: { x: number; y: number; size: number; color: string; at: number }[] = []
     /** Bomb blasts going off: a flash and a ring racing out to the blast's edge */
-    private blasts: { x: number; y: number; radius: number; at: number }[] = []
+    blasts: { x: number; y: number; radius: number; at: number }[] = []
     /** Gravity theft on screen: each victim's gems last frame, and the stolen gems in flight */
-    private theftGems = new Map<string, number>()
+    theftGems = new Map<string, number>()
     /** Drained creatures shrinking away to nothing */
-    private vanishes: { x: number; y: number; size: number; color: string; facing: number; at: number }[] = []
-    private theftParticles: { from: string; to: string; at: number; angle: number; flight: number; power: number }[] = []
-    private pickups: { amount: number; at: number }[] = []
+    vanishes: { x: number; y: number; size: number; color: string; facing: number; at: number }[] = []
+    theftParticles: { from: string; to: string; at: number; angle: number; flight: number; power: number }[] = []
+    pickups: { amount: number; at: number }[] = []
     private shakeUntil = 0
     /** Gems shown in the header (as Score), and the most you've held this visit (as High Score) */
     private shownGems = -1
@@ -867,7 +850,7 @@ export class MultiplayerMode extends GameMode {
     }
 
     /** Where your breath is: draining over INHALE.MAX_MS while you inhale, refilling over INHALE.REFILL_MS from wherever it is */
-    private breathOf(inhaling: boolean, now: number, beamQuality = 0): Breath {
+    breathOf(inhaling: boolean, now: number, beamQuality = 0): Breath {
         // A step at most a quarter second long, so coming back to a paused tab does not empty (or fill) it at once
         const elapsed = Math.min(250, Math.max(0, now - this.staminaAt))
         this.staminaAt = now
@@ -893,7 +876,7 @@ export class MultiplayerMode extends GameMode {
         if (!ctx || !canvas) return
         const state = this.worldState()
         if (!state || !state.worldWidth) {
-            this.drawMessage(ctx, canvas, this.status === 'reconnecting' ? 'Reconnecting…' : 'Connecting…', 'Joining the arena')
+            drawMessage(this, ctx, canvas, this.status === 'reconnecting' ? 'Reconnecting…' : 'Connecting…', 'Joining the arena')
             return
         }
         const localId = this.multiplayerManager?.localSessionId ?? null
@@ -919,24 +902,24 @@ export class MultiplayerMode extends GameMode {
             canvas.width / 2 - view.x * view.scale,
             canvas.height / 2 - view.y * view.scale
         )
-        this.drawFloor(ctx, state, view)
-        this.drawShiftFloor(ctx, state, view, timestamp)
+        drawFloor(this, ctx, state, view)
+        drawShiftFloor(this, ctx, state, view, timestamp)
         const margin = 120
         const left = view.x - view.width / 2 - margin
         const right = view.x + view.width / 2 + margin
         const top = view.y - view.height / 2 - margin
         const bottom = view.y + view.height / 2 + margin
-        this.drawTurbines(ctx, state, timestamp)
-        this.drawCores(ctx, state, timestamp)
+        drawTurbines(this, ctx, state, timestamp)
+        drawCores(this, ctx, state, timestamp)
         this.drawGems(ctx, state, left, right, top, bottom, timestamp)
-        this.drawGemBursts(ctx)
-        this.drawJackpot(ctx, state, localId, timestamp)
+        drawGemBursts(this, ctx)
+        drawJackpot(this, ctx, state, localId, timestamp)
         const lead = this.trafficLead(timestamp)
         state.obstacles.forEach((obstacle: any) => {
             const x = obstacle.x + (obstacle.vx ?? 0) * lead
             const y = obstacle.y + (obstacle.vy ?? 0) * lead
             if (x > right || x + obstacle.width < left || y > bottom || y + obstacle.height < top) return
-            this.drawObstacle(ctx, { x, y, width: obstacle.width, height: obstacle.height, variant: obstacle.variant }, timestamp)
+            drawObstacle(this, ctx, { x, y, width: obstacle.width, height: obstacle.height, variant: obstacle.variant }, timestamp)
         })
         const rolling = state.trafficWave === 'wave'
         state.balls?.forEach((ball: any) => {
@@ -967,7 +950,7 @@ export class MultiplayerMode extends GameMode {
         const present = new Set<string>()
         state.players.forEach((player: any, sessionId: string) => {
             present.add(sessionId)
-            this.drawPlayer(ctx, player, sessionId, sessionId === localId, sessionId === leaderId, timestamp)
+            drawPlayer(this, ctx, player, sessionId, sessionId === localId, sessionId === leaderId, timestamp)
         })
         for (const id of this.drawnPositions.keys()) {
             if (!present.has(id)) this.drawnPositions.delete(id)
@@ -982,13 +965,13 @@ export class MultiplayerMode extends GameMode {
             if (!present.has(id)) this.gemPops.delete(id)
         }
 
-        this.drawTheft(ctx, state, timestamp)
-        this.drawTurbineFlights(ctx, state, timestamp)
-        this.drawGulps(ctx, state, timestamp)
-        this.drawVanishes(ctx, timestamp)
-        this.drawBlasts(ctx, timestamp)
-        this.drawBursts(ctx, timestamp)
-        this.drawPickups(ctx, me, timestamp)
+        drawTheft(this, ctx, state, timestamp)
+        drawTurbineFlights(this, ctx, state, timestamp)
+        drawGulps(this, ctx, state, timestamp)
+        drawVanishes(this, ctx, timestamp)
+        drawBlasts(this, ctx, timestamp)
+        drawBursts(this, ctx, timestamp)
+        drawPickups(this, ctx, me, timestamp)
 
         // Screen-space overlays: hidden while the opening plays, then fading in
         ctx.setTransform(1, 0, 0, 1, 0, 0)
@@ -996,15 +979,15 @@ export class MultiplayerMode extends GameMode {
         const hud = this.runIntro(ctx, canvas, timestamp)
         if (hud > 0) {
             ctx.globalAlpha = hud
-            if (COMPACT.matches) this.drawTopBar(ctx, canvas, state, me)
-            this.drawMinimap(ctx, canvas, state, view, localId, leaderId)
-            this.drawLeaderboard(ctx, canvas, state, localId, leaderId)
-            this.drawNotices(ctx, canvas)
-            this.drawShiftChip(ctx, canvas, state, timestamp)
-            this.drawTrafficChip(ctx, canvas, state, timestamp)
-            this.drawBanner(ctx, canvas)
+            if (COMPACT.matches) drawTopBar(this, ctx, canvas, state, me)
+            drawMinimap(this, ctx, canvas, state, view, localId, leaderId)
+            drawLeaderboard(this, ctx, canvas, state, localId, leaderId)
+            drawNotices(this, ctx, canvas)
+            drawShiftChip(this, ctx, canvas, state, timestamp)
+            drawTrafficChip(this, ctx, canvas, state, timestamp)
+            drawBanner(this, ctx, canvas)
             this.controls?.draw(ctx, timestamp, this.breath)
-            if (me && me.state !== 'alive') this.drawKnockedOut(ctx, canvas)
+            if (me && me.state !== 'alive') drawKnockedOut(this, ctx, canvas)
             ctx.globalAlpha = 1
         }
         ctx.restore()
@@ -1063,289 +1046,8 @@ export class MultiplayerMode extends GameMode {
         return Math.max(0, Math.min(MAX_TRAFFIC_LEAD, (sinceTick + roundTrip) / 1000))
     }
 
-    /** The arena floor: a faint grid, and the wall around the world */
-    private drawFloor(ctx: CanvasRenderingContext2D, state: any, view: View): void {
-        const left = Math.max(0, view.x - view.width / 2)
-        const right = Math.min(state.worldWidth, view.x + view.width / 2)
-        const top = Math.max(0, view.y - view.height / 2)
-        const bottom = Math.min(state.worldHeight, view.y + view.height / 2)
-        ctx.save()
-        ctx.strokeStyle = 'rgba(79, 209, 197, 0.09)'
-        ctx.lineWidth = 1 / view.scale
-        ctx.beginPath()
-        for (let x = Math.ceil(left / GRID) * GRID; x <= right; x += GRID) {
-            ctx.moveTo(x, top)
-            ctx.lineTo(x, bottom)
-        }
-        for (let y = Math.ceil(top / GRID) * GRID; y <= bottom; y += GRID) {
-            ctx.moveTo(left, y)
-            ctx.lineTo(right, y)
-        }
-        ctx.stroke()
-        ctx.strokeStyle = 'rgba(79, 209, 197, 0.75)'
-        ctx.lineWidth = 6
-        ctx.strokeRect(0, 0, state.worldWidth, state.worldHeight)
-        ctx.restore()
-    }
-
-    /** Obstacles use the solo sprites; vertical ones are drawn turned on their side */
-    private drawObstacle(ctx: CanvasRenderingContext2D, obstacle: any, timestamp: number): void {
-        const sprite = getSprite('obstacle', obstacle.variant, timestamp)
-        if (obstacle.height <= obstacle.width) {
-            ctx.drawImage(sprite, obstacle.x, obstacle.y, obstacle.width, obstacle.height)
-            return
-        }
-        ctx.save()
-        ctx.translate(obstacle.x + obstacle.width / 2, obstacle.y + obstacle.height / 2)
-        ctx.rotate(Math.PI / 2)
-        ctx.drawImage(sprite, -obstacle.height / 2, -obstacle.width / 2, obstacle.height, obstacle.width)
-        ctx.restore()
-    }
-
-    private drawPlayer(
-        ctx: CanvasRenderingContext2D,
-        player: any,
-        sessionId: string,
-        isLocal: boolean,
-        isLeader: boolean,
-        timestamp: number
-    ): void {
-        if (player.state !== 'alive') return // knocked out: gone until they're back
-
-        // Your own player is drawn where your hops put it; other players ease toward the
-        // server position so ~20 updates a second still look smooth at 60 fps
-        let drawn = this.drawnPositions.get(sessionId)
-        if (isLocal && this.predicted) {
-            drawn = { x: this.predicted.x, y: this.predicted.y }
-            this.drawnPositions.set(sessionId, drawn)
-        } else if (!drawn || Math.hypot(player.x - drawn.x, player.y - drawn.y) > SNAP_DISTANCE) {
-            drawn = { x: player.x, y: player.y }
-            this.drawnPositions.set(sessionId, drawn)
-        } else {
-            drawn.x += (player.x - drawn.x) * SMOOTHING
-            drawn.y += (player.y - drawn.y) * SMOOTHING
-        }
-
-        ctx.save()
-        if (player.spawnProtected || this.inGrace) {
-            // Just back in: translucent inside a soft bubble until the protection wears off
-            ctx.globalAlpha = 0.45 + 0.15 * Math.sin(timestamp / 90)
-            ctx.strokeStyle = 'rgba(160, 235, 255, 0.95)'
-            ctx.lineWidth = 3
-            ctx.beginPath()
-            ctx.arc(drawn.x + player.width / 2, drawn.y + player.height / 2, player.width * 0.85, 0, Math.PI * 2)
-            ctx.stroke()
-        }
-        if (player.recovering) {
-            // Just hit: blink until traffic can touch you again
-            ctx.globalAlpha = Math.floor(timestamp / 90) % 2 ? 0.25 : 0.9
-        }
-        // Size changes pop: a quick overshoot and settle, centered on where the player is
-        let grow = this.drawnSizes.get(sessionId)
-        if (!grow) {
-            grow = { size: player.width, speed: 0 }
-            this.drawnSizes.set(sessionId, grow)
-        }
-        grow.speed = (grow.speed + (player.width - grow.size) * 0.3) * 0.6
-        grow.size += grow.speed
-        // ...plus a little pop for every gem it gains (settling over 130ms), however big it already is
-        const gemPop = this.gemPops.get(sessionId)
-        const pop = gemPop ? 1 + gemPop.amount * Math.max(0, 1 - (timestamp - gemPop.at) / 130) : 1
-        const size = Math.max(4, grow.size) * pop
-        const left = drawn.x + (player.width - size) / 2
-        const top = drawn.y + (player.height - size) / 2
-        const centerX = drawn.x + player.width / 2
-        const centerY = drawn.y + player.height / 2
-        if (player.inhaling) {
-            // Draining someone (harder the bigger it is next to them) or holding someone to swallow: the inhale looks stronger
-            const world = this.multiplayerManager?.getState()
-            const victim = player.stealingFrom ? world?.players?.get(player.stealingFrom) : null
-            const grip = victim ? Math.min(INHALE.BODY_PULL_MAX, Math.max(0.3, player.width / victim.width)) : 0
-            const intensity = player.gulping ? 1.8 : victim ? 1 + 0.5 * grip : 1
-            this.drawAirflow(ctx, sessionId, player, centerX, centerY, size, isLocal ? this.localFacing : (player.facing ?? -Math.PI / 2), timestamp, intensity, isLocal)
-        } else {
-            const flow = this.flows.get(sessionId)
-            if (flow) flow.inhaling = false
-        }
-        if (isLocal) {
-            // Your breath: draining around you while you inhale, refilling while you catch it
-            this.breath = this.breathOf(Boolean(player.inhaling), performance.now(), Number(player.beamQuality) || 0)
-            drawBreath(ctx, centerX, centerY, size, this.breath, timestamp)
-        }
-        if (isLocal && player.gems < GEMS.SURVIVE_AT) {
-            // One hit from behind from being knocked out: a cracked red ring
-            ctx.save()
-            ctx.setLineDash([5, 4])
-            ctx.strokeStyle = `rgba(255, 90, 90, ${0.45 + 0.25 * Math.sin(timestamp / 250)})`
-            ctx.lineWidth = 2
-            ctx.beginPath()
-            ctx.arc(left + size / 2, top + size / 2, size / 2 + 4, 0, Math.PI * 2)
-            ctx.stroke()
-            ctx.restore()
-        }
-        if (player.sliding) {
-            // Dust kicked up by a slide or a skid
-            ctx.fillStyle = 'rgba(200, 210, 220, 0.35)'
-            for (let i = 0; i < 3; i++) {
-                ctx.beginPath()
-                ctx.arc(left + size * (0.2 + 0.3 * i), top + size + 3 + Math.sin(timestamp / 60 + i * 2) * 2, size * 0.14, 0, Math.PI * 2)
-                ctx.fill()
-            }
-        }
-        // A round creature whose eyes show which way it faces (its back is where it's vulnerable)
-        const facing = isLocal ? this.localFacing : (player.facing ?? -Math.PI / 2)
-        // Pressed against someone, the body gives a little along the line of contact
-        const squash = this.squashFor(sessionId, left + size / 2, top + size / 2, size)
-        ctx.save()
-        if (squash.amount > 0) {
-            ctx.translate(left + size / 2, top + size / 2)
-            ctx.rotate(squash.angle)
-            ctx.scale(1 - squash.amount, 1 + squash.amount * 0.5)
-            ctx.rotate(-squash.angle)
-            ctx.translate(-(left + size / 2), -(top + size / 2))
-        }
-        drawCreature(ctx, left + size / 2, top + size / 2, size, isLocal ? '#ffffff' : PLAYER_COLORS[player.playerIndex % PLAYER_COLORS.length], facing, timestamp, player.mouth ?? '', Boolean(player.inhaling))
-        ctx.restore()
-        // Stunned by a Core: a few little stars wheeling over its head
-        if (player.stunned) {
-            ctx.save()
-            ctx.fillStyle = 'rgba(255, 228, 130, 0.95)'
-            for (let i = 0; i < 3; i++) {
-                const a = timestamp / 220 + (i * Math.PI * 2) / 3
-                const sx = left + size / 2 + Math.cos(a) * size * 0.42
-                const sy = top - 4 + Math.sin(a) * size * 0.12
-                const star = 2.5 + size * 0.025
-                ctx.beginPath()
-                ctx.moveTo(sx, sy - star * 1.6)
-                ctx.lineTo(sx + star * 0.5, sy - star * 0.5)
-                ctx.lineTo(sx + star * 1.6, sy)
-                ctx.lineTo(sx + star * 0.5, sy + star * 0.5)
-                ctx.lineTo(sx, sy + star * 1.6)
-                ctx.lineTo(sx - star * 0.5, sy + star * 0.5)
-                ctx.lineTo(sx - star * 1.6, sy)
-                ctx.lineTo(sx - star * 0.5, sy - star * 0.5)
-                ctx.closePath()
-                ctx.fill()
-            }
-            ctx.restore()
-        }
-        ctx.globalAlpha = 1
-        ctx.font = `600 16px ${FONT}`
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'bottom'
-        ctx.fillStyle = isLocal ? '#ffffff' : '#cfd8dc'
-        const label = String(player.name ?? '')
-        const labelX = drawn.x + player.width / 2
-        ctx.fillText(label, labelX, drawn.y - 6)
-        if (player.isBot) drawRobot(ctx, labelX - ctx.measureText(label).width / 2 - 11, drawn.y - 14, 12)
-        if (isLeader) {
-            drawCrown(ctx, drawn.x + player.width / 2, drawn.y - 26, 22)
-            // What the leader is worth
-            ctx.font = `800 14px ${FONT}`
-            ctx.fillStyle = GOLD
-            ctx.fillText(`${player.gems}`, drawn.x + player.width / 2, drawn.y - 50)
-        }
-        ctx.restore()
-    }
-
-    /** The whole world in a corner: everyone in it, and the part your screen shows */
-    private drawMinimap(
-        ctx: CanvasRenderingContext2D,
-        canvas: HTMLCanvasElement,
-        state: any,
-        view: View,
-        localId: string | null,
-        leaderId: string | null
-    ): void {
-        const size = Math.round(Math.min(150, Math.max(84, Math.min(canvas.width, canvas.height) * 0.24)))
-        const scale = size / Math.max(state.worldWidth, state.worldHeight)
-        const width = state.worldWidth * scale
-        const height = state.worldHeight * scale
-        const x = canvas.width - width - (COMPACT.matches ? 10 * this.cssScale : 12)
-        // On phones and tablets it sits under the menu button; elsewhere, on a touchscreen the INHALE button has the bottom right, so it moves to the top
-        const y = COMPACT.matches ? Math.round(54 * this.cssScale) : this.controls?.touchDevice ? 34 : canvas.height - height - 12
-        this.minimapBottom = y + height
-        ctx.save()
-        ctx.fillStyle = 'rgba(5, 12, 24, 0.72)'
-        roundedRect(ctx, x - 4, y - 4, width + 8, height + 8, 10)
-        ctx.fill()
-        ctx.strokeStyle = 'rgba(79, 209, 197, 0.5)'
-        ctx.lineWidth = 1.5
-        ctx.stroke()
-        ctx.lineWidth = 1
-        ctx.strokeStyle = 'rgba(79, 209, 197, 0.55)'
-        ctx.strokeRect(x, y, width, height)
-        if (state.floor) {
-            // The (new) floor: the void is dark, or red while it's still coming
-            const tile = width / SHIFT.GRID
-            ctx.fillStyle = state.shiftPhase === 'grace' ? 'rgba(255, 90, 90, 0.35)' : 'rgba(0, 0, 0, 0.75)'
-            for (let i = 0; i < state.floor.length; i++) {
-                if (state.floor[i] === '0') ctx.fillRect(x + (i % SHIFT.GRID) * tile, y + Math.floor(i / SHIFT.GRID) * tile, tile, tile)
-            }
-        }
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)'
-        ctx.strokeRect(
-            x + (view.x - view.width / 2) * scale,
-            y + (view.y - view.height / 2) * scale,
-            view.width * scale,
-            view.height * scale
-        )
-        let playing = 0
-        state.players.forEach((player: any, sessionId: string) => {
-            playing++
-            if (player.state !== 'alive') return
-            const isLocal = sessionId === localId
-            const position = isLocal && this.predicted ? this.predicted : player
-            ctx.fillStyle = isLocal ? '#ffffff' : PLAYER_COLORS[player.playerIndex % PLAYER_COLORS.length]
-            ctx.beginPath()
-            ctx.arc(
-                x + (position.x + player.width / 2) * scale,
-                y + (position.y + player.height / 2) * scale,
-                // Sized like they really are, scaled up 2.5x so the differences show on so small a map
-                1.5 + (player.width / 2) * scale * 2.5,
-                0,
-                Math.PI * 2
-            )
-            ctx.fill()
-            if (sessionId === leaderId) {
-                drawCrown(ctx, x + (position.x + player.width / 2) * scale, y + (position.y + player.height / 2) * scale - (3.5 + (player.width / 2) * scale * 2.5), 10)
-            }
-        })
-        state.turbines?.forEach((turbine: any) => {
-            // Turbines: a ring, with a tick for where the intake points (gold while one is about to switch on)
-            const tx = x + turbine.x * scale
-            const ty = y + turbine.y * scale
-            ctx.strokeStyle = turbine.phase === 'warning' ? 'rgba(255, 209, 102, 0.95)' : 'rgba(160, 220, 255, 0.95)'
-            ctx.lineWidth = 1.5
-            ctx.beginPath()
-            ctx.arc(tx, ty, 3.5, 0, Math.PI * 2)
-            ctx.moveTo(tx, ty)
-            ctx.lineTo(tx + Math.cos(turbine.intake) * 7, ty + Math.sin(turbine.intake) * 7)
-            ctx.stroke()
-        })
-        if (state.jackpotOn) {
-            // The jackpot is the one thing the minimap points out
-            const jx = x + state.jackpotX * scale
-            const jy = y + state.jackpotY * scale
-            ctx.fillStyle = GOLD
-            ctx.beginPath()
-            ctx.moveTo(jx, jy - 5)
-            ctx.lineTo(jx + 4, jy)
-            ctx.lineTo(jx, jy + 5)
-            ctx.lineTo(jx - 4, jy)
-            ctx.closePath()
-            ctx.fill()
-        }
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
-        ctx.font = `600 11px ${FONT}`
-        ctx.textAlign = 'right'
-        ctx.textBaseline = 'bottom'
-        if (!COMPACT.matches) ctx.fillText(`${playing} playing`, x + width, y - 8)
-        ctx.restore()
-    }
-
     /** Our best guess at the world's clock right now */
-    private worldNow(state: any, timestamp: number): number {
+    worldNow(state: any, timestamp: number): number {
         return Number.isFinite(this.clockGap) ? timestamp - this.clockGap : state.time
     }
 
@@ -1424,353 +1126,10 @@ export class MultiplayerMode extends GameMode {
         return { x: Math.sin(now * 0.09) * amount, y: Math.cos(now * 0.13) * amount }
     }
 
-    /** Bursts of gems (a flash, a ring and sparks, bigger for bigger piles) and shockwaves from hits */
-    private drawGemBursts(ctx: CanvasRenderingContext2D): void {
-        const now = performance.now()
-        this.gemBursts = this.gemBursts.filter((burst) => now - burst.at < 500)
-        this.impacts = this.impacts.filter((impact) => now - impact.at < 320)
-        ctx.save()
-        for (const burst of this.gemBursts) {
-            const t = (now - burst.at) / 500
-            const reach = 24 + t * Math.min(260, 50 + burst.count * 7)
-            if (t < 0.3) {
-                ctx.fillStyle = `rgba(255, 236, 160, ${(0.3 - t) * 1.6})`
-                ctx.beginPath()
-                ctx.arc(burst.x, burst.y, reach * 0.6, 0, Math.PI * 2)
-                ctx.fill()
-            }
-            ctx.strokeStyle = `rgba(255, 209, 102, ${0.8 * (1 - t)})`
-            ctx.lineWidth = 3
-            ctx.beginPath()
-            ctx.arc(burst.x, burst.y, reach, 0, Math.PI * 2)
-            ctx.stroke()
-            const sparks = Math.min(28, 6 + burst.count)
-            ctx.lineWidth = 2
-            for (let i = 0; i < sparks; i++) {
-                const angle = (i / sparks) * Math.PI * 2 + burst.count
-                ctx.beginPath()
-                ctx.moveTo(burst.x + Math.cos(angle) * reach * 0.7, burst.y + Math.sin(angle) * reach * 0.7)
-                ctx.lineTo(burst.x + Math.cos(angle) * reach * 1.05, burst.y + Math.sin(angle) * reach * 1.05)
-                ctx.stroke()
-            }
-        }
-        for (const impact of this.impacts) {
-            const t = (now - impact.at) / 320
-            ctx.strokeStyle = `rgba(255, 255, 255, ${0.7 * (1 - t)})`
-            ctx.lineWidth = 2 + impact.size * 0.06
-            ctx.beginPath()
-            ctx.arc(impact.x, impact.y, impact.size * (0.5 + t * 2), 0, Math.PI * 2)
-            ctx.stroke()
-        }
-        ctx.restore()
-    }
-
-    /** The big banner for hits you caused: it pops in, holds, and fades */
-    private drawBanner(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement): void {
-        if (!this.banner) return
-        const age = performance.now() - this.banner.at
-        if (age > 1700) {
-            this.banner = null
-            return
-        }
-        const pop = age < 160 ? 1.35 - (age / 160) * 0.35 : 1
-        ctx.save()
-        ctx.setTransform(1, 0, 0, 1, 0, 0)
-        ctx.globalAlpha = age > 1350 ? Math.max(0, 1 - (age - 1350) / 350) : 1
-        ctx.translate(canvas.width / 2, canvas.height * 0.3)
-        ctx.scale(pop, pop)
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'middle'
-        ctx.lineJoin = 'round'
-        ctx.font = `900 ${Math.round(Math.min(34, canvas.width / 14))}px ${FONT}`
-        ctx.lineWidth = 6
-        ctx.strokeStyle = 'rgba(5, 12, 24, 0.85)'
-        ctx.strokeText(this.banner.title, 0, 0)
-        ctx.fillStyle = GOLD
-        ctx.fillText(this.banner.title, 0, 0)
-        if (this.banner.sub) {
-            ctx.font = `800 ${Math.round(Math.min(15, canvas.width / 28))}px ${FONT}`
-            ctx.lineWidth = 4
-            ctx.strokeText(this.banner.sub, 0, 30)
-            ctx.fillStyle = '#ffffff'
-            ctx.fillText(this.banner.sub, 0, 30)
-        }
-        ctx.restore()
-    }
-
-    /**
-     * The shift on the floor: during the grace period the tiles about to drop away pulse red,
-     * faster as time runs out; during the shift they're a dark void. The floor's edge is outlined.
-     */
-    private drawShiftFloor(ctx: CanvasRenderingContext2D, state: any, view: View, timestamp: number): void {
-        const floor: string = state.floor
-        if (!floor) return
-        const grid = SHIFT.GRID
-        const tile = state.worldWidth / grid
-        const grace = state.shiftPhase === 'grace'
-        let fill = 'rgba(1, 3, 8, 0.93)'
-        if (grace) {
-            const left = Math.max(0, Math.min(1, (state.phaseEndsAt - this.worldNow(state, timestamp)) / SHIFT.GRACE_MS))
-            const speed = 4 + (1 - left) * 14
-            fill = `rgba(255, 80, 80, ${0.16 + 0.16 * (0.5 + 0.5 * Math.sin((timestamp / 1000) * speed))})`
-        }
-        const firstCol = Math.max(0, Math.floor((view.x - view.width / 2) / tile))
-        const lastCol = Math.min(grid - 1, Math.floor((view.x + view.width / 2) / tile))
-        const firstRow = Math.max(0, Math.floor((view.y - view.height / 2) / tile))
-        const lastRow = Math.min(grid - 1, Math.floor((view.y + view.height / 2) / tile))
-        const isVoid = (row: number, col: number) => row >= 0 && row < grid && col >= 0 && col < grid && floor[row * grid + col] === '0'
-        ctx.save()
-        ctx.fillStyle = fill
-        for (let row = firstRow; row <= lastRow; row++) {
-            for (let col = firstCol; col <= lastCol; col++) {
-                if (isVoid(row, col)) ctx.fillRect(col * tile, row * tile, tile, tile)
-            }
-        }
-        ctx.strokeStyle = grace ? 'rgba(255, 130, 130, 0.9)' : 'rgba(79, 209, 197, 0.7)'
-        ctx.lineWidth = 4
-        ctx.setLineDash(grace ? [16, 10] : [])
-        ctx.beginPath()
-        for (let row = firstRow; row <= lastRow; row++) {
-            for (let col = firstCol; col <= lastCol; col++) {
-                if (isVoid(row, col)) continue
-                const x = col * tile
-                const y = row * tile
-                if (isVoid(row - 1, col)) { ctx.moveTo(x, y); ctx.lineTo(x + tile, y) }
-                if (isVoid(row + 1, col)) { ctx.moveTo(x, y + tile); ctx.lineTo(x + tile, y + tile) }
-                if (isVoid(row, col - 1)) { ctx.moveTo(x, y); ctx.lineTo(x, y + tile) }
-                if (isVoid(row, col + 1)) { ctx.moveTo(x + tile, y); ctx.lineTo(x + tile, y + tile) }
-            }
-        }
-        ctx.stroke()
-        ctx.restore()
-    }
-
-    /** The jackpot crystal: a shadow while it drops, then a big crystal with a ring showing the claim */
-    private drawJackpot(ctx: CanvasRenderingContext2D, state: any, localId: string | null, timestamp: number): void {
-        if (!state.jackpotOn) return
-        const x = state.jackpotX
-        const y = state.jackpotY
-        const untilLanding = state.jackpotLandsAt - this.worldNow(state, timestamp)
-        ctx.save()
-        if (untilLanding > 0) {
-            const fall = 1 - Math.min(1, untilLanding / (SHIFT.DROP_MS * 1.5))
-            ctx.fillStyle = `rgba(0, 0, 0, ${0.2 + 0.35 * fall})`
-            ctx.beginPath()
-            ctx.ellipse(x, y + 16, 20 + 30 * fall, 8 + 12 * fall, 0, 0, Math.PI * 2)
-            ctx.fill()
-            drawCrystal(ctx, x, y - (1 - fall) * 160, 30)
-            ctx.restore()
-            return
-        }
-        drawCrystal(ctx, x, y, 30 * (1 + 0.06 * Math.sin(timestamp / 150)))
-        if (state.jackpotProgress > 0) {
-            ctx.strokeStyle = state.jackpotHolder === localId ? GOLD : '#ffffff'
-            ctx.lineWidth = 5
-            ctx.beginPath()
-            ctx.arc(x, y, 44, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * state.jackpotProgress)
-            ctx.stroke()
-        }
-        ctx.font = `700 16px ${FONT}`
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'bottom'
-        ctx.fillStyle = GOLD
-        ctx.fillText(`+${SHIFT.JACKPOT_VALUE}`, x, y - 40)
-        ctx.restore()
-    }
-
-    /** A chip at the top: a shift coming up, its grace period, or how long until the arena returns */
-    private drawShiftChip(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, state: any, timestamp: number): void {
-        // Arena shifts switched off: no countdown, no warnings
-        if (!state.shiftsOn) return
-        const left = Math.max(0, Math.ceil((state.phaseEndsAt - this.worldNow(state, timestamp)) / 1000))
-        let text = ''
-        if (state.shiftPhase === 'grace') text = `New floor! Get on it · ${left}`
-        else if (state.shiftPhase === 'shift') text = `Arena returns in ${left}`
-        else if (left <= 10) text = `Arena shift in ${left}`
-        if (!text) return
-        const urgent = state.shiftPhase === 'grace'
-        // On narrow screens the chip sits below the leaderboard
-        const y = canvas.width < 560 ? 30 + Math.min(6, state.players.size) * 18 : 12
-        ctx.save()
-        ctx.font = `700 ${urgent ? 15 : 13}px ${FONT}`
-        const width = ctx.measureText(text).width + 32
-        ctx.fillStyle = urgent ? 'rgba(120, 20, 20, 0.85)' : 'rgba(5, 12, 24, 0.8)'
-        roundedRect(ctx, (canvas.width - width) / 2, y, width, 30, 15)
-        ctx.fill()
-        ctx.strokeStyle = urgent ? 'rgba(255, 130, 130, 0.9)' : 'rgba(79, 209, 197, 0.7)'
-        ctx.lineWidth = 1.5
-        ctx.stroke()
-        ctx.fillStyle = '#ffffff'
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'middle'
-        ctx.fillText(text, canvas.width / 2, y + 15)
-        ctx.restore()
-    }
-
-    /** "Traffic incoming 3" just before a traffic wave */
-    private drawTrafficChip(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, state: any, timestamp: number): void {
-        if (state.trafficWave !== 'warning') return
-        const left = Math.max(1, Math.ceil((state.waveAt - this.worldNow(state, timestamp)) / 1000))
-        const text = `Traffic incoming ${left}`
-        const y = canvas.width < 560 ? 30 + Math.min(6, state.players.size) * 18 : 12
-        ctx.save()
-        ctx.font = `700 14px ${FONT}`
-        const width = ctx.measureText(text).width + 32
-        ctx.fillStyle = 'rgba(60, 38, 5, 0.85)'
-        roundedRect(ctx, (canvas.width - width) / 2, y, width, 30, 15)
-        ctx.fill()
-        ctx.strokeStyle = 'rgba(255, 196, 64, 0.9)'
-        ctx.lineWidth = 1.5
-        ctx.stroke()
-        ctx.fillStyle = '#ffffff'
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'middle'
-        ctx.fillText(text, canvas.width / 2, y + 15)
-        ctx.restore()
-    }
-
-    /**
-     * Gravity theft: every gem stolen pops out of the victim and arcs into the thief's mouth, so you
-     * can watch them shrink, with a faint gold tether between the two while the stream runs
-     */
-    /** Someone held at a mouth, about to be swallowed: a red ring closes in on them (they're still free if they get away first) */
-    private drawGulps(ctx: CanvasRenderingContext2D, state: any, timestamp: number): void {
-        const now = this.worldNow(state, timestamp)
-        state.players?.forEach((eater: any) => {
-            if (!eater.gulping) return
-            const prey = state.players.get(eater.gulping)
-            if (!prey || prey.state !== 'alive') return
-            const left = Math.max(0, Math.min(1, (eater.gulpEndsAt - now) / INHALE.GULP_MS))
-            const at = this.centerOf(eater.gulping, prey)
-            ctx.save()
-            ctx.strokeStyle = `rgba(255, 107, 107, ${0.55 + 0.45 * (1 - left)})`
-            ctx.lineWidth = 3
-            ctx.beginPath()
-            ctx.arc(at.x, at.y, prey.width / 2 + 4 + 24 * left, 0, Math.PI * 2)
-            ctx.stroke()
-            ctx.restore()
-        })
-    }
-
-    /** Drained creatures: each shrinks away to nothing where it was, with a last ring of gold */
-    private drawVanishes(ctx: CanvasRenderingContext2D, timestamp: number): void {
-        const now = performance.now()
-        const VANISH_MS = 550
-        this.vanishes = this.vanishes.filter((v) => now - v.at < VANISH_MS)
-        for (const v of this.vanishes) {
-            const k = (now - v.at) / VANISH_MS
-            ctx.save()
-            ctx.globalAlpha = 1 - k * 0.6
-            drawCreature(ctx, v.x, v.y, Math.max(1, v.size * Math.pow(1 - k, 1.6)), v.color, v.facing, timestamp)
-            ctx.globalAlpha = (1 - k) * 0.8
-            ctx.strokeStyle = '#ffd166'
-            ctx.lineWidth = 2
-            ctx.beginPath()
-            ctx.arc(v.x, v.y, v.size * 0.5 + 30 * k, 0, Math.PI * 2)
-            ctx.stroke()
-            ctx.restore()
-        }
-    }
-
-    private drawTheft(ctx: CanvasRenderingContext2D, state: any, timestamp: number): void {
-        const now = performance.now()
-        // Who is robbing whom (a thief can rob several at once): a faint dashed tether from each victim to each thief
-        const robbers = new Map<string, string[]>()
-        state.players.forEach((thief: any, id: string) => {
-            for (const victimId of String(thief.robbing ?? '').split(',')) {
-                const victim = victimId ? state.players.get(victimId) : null
-                if (!victim) continue
-                const list = robbers.get(victimId) ?? []
-                list.push(id)
-                robbers.set(victimId, list)
-                const a = this.centerOf(victimId, victim)
-                const b = this.centerOf(id, thief)
-                ctx.save()
-                ctx.strokeStyle = 'rgba(255, 209, 102, 0.25)'
-                ctx.lineWidth = 2
-                ctx.setLineDash([4, 8])
-                ctx.lineDashOffset = -timestamp / 20
-                ctx.beginPath()
-                ctx.moveTo(a.x, a.y)
-                ctx.lineTo(b.x, b.y)
-                ctx.stroke()
-                ctx.restore()
-            }
-        })
-        // Each gem a victim just lost pops out of it and heads for one of the thieves robbing it
-        state.players.forEach((victim: any, victimId: string) => {
-            const total = Number(victim.robbedTotal) || 0
-            const had = this.theftGems.get(victimId) ?? total
-            this.theftGems.set(victimId, total)
-            const thieves = robbers.get(victimId)
-            if (!thieves || total <= had) return
-            for (let i = 0; i < Math.min(8, total - had); i++) {
-                const to = thieves[i % thieves.length] as string
-                const power = suctionPower(state.players.get(to)?.width ?? ARENA_RULES.PLAYER_SIZE)
-                this.theftParticles.push({ from: victimId, to, at: now + i * 45, angle: Math.random() * Math.PI * 2, flight: INHALE_LOOK.THEFT_FLIGHT_MS / Math.sqrt(power), power })
-            }
-        })
-        for (const id of [...this.theftGems.keys()]) if (!state.players.has(id)) this.theftGems.delete(id)
-        // The stolen gems in flight: out of the victim's body, a little arc, then sucked into the mouth
-        this.theftParticles = this.theftParticles.filter((p) => now - p.at < p.flight)
-        for (const p of this.theftParticles) {
-            const t = (now - p.at) / p.flight
-            if (t < 0) continue
-            const victim = state.players.get(p.from)
-            const thief = state.players.get(p.to)
-            if (!victim || !thief) continue
-            const a = this.centerOf(p.from, victim)
-            const b = this.centerOf(p.to, thief)
-            const facing = thief.facing ?? 0
-            const mouthX = b.x + Math.cos(facing) * thief.width * 0.35
-            const mouthY = b.y + Math.sin(facing) * thief.width * 0.35
-            const startX = a.x + Math.cos(p.angle) * victim.width * 0.45
-            const startY = a.y + Math.sin(p.angle) * victim.width * 0.45
-            const ease = t * t
-            const lift = Math.sin(t * Math.PI) * 18
-            const x = startX + (mouthX - startX) * ease
-            const y = startY + (mouthY - startY) * ease - lift
-            const g = 6.5 * (0.9 + 0.1 * p.power) * (1 - t * 0.5)
-            ctx.save()
-            ctx.shadowColor = 'rgba(255, 209, 102, 0.9)'
-            ctx.shadowBlur = 6 + 4 * p.power
-            ctx.fillStyle = '#ffd166'
-            ctx.beginPath()
-            ctx.moveTo(x, y - g)
-            ctx.lineTo(x + g * 0.7, y)
-            ctx.lineTo(x, y + g)
-            ctx.lineTo(x - g * 0.7, y)
-            ctx.closePath()
-            ctx.fill()
-            ctx.restore()
-        }
-    }
-
     /** Where a player is drawn this frame (its center) */
-    private centerOf(id: string, player: any): { x: number; y: number } {
+    centerOf(id: string, player: any): { x: number; y: number } {
         const at = this.drawnPositions.get(id) ?? player
         return { x: at.x + player.width / 2, y: at.y + player.height / 2 }
-    }
-
-    /** Bomb blasts: a bright flash, then a ring racing out to the edge of the blast */
-    private drawBlasts(ctx: CanvasRenderingContext2D, timestamp: number): void {
-        this.blasts = this.blasts.filter((blast) => timestamp - blast.at < 500)
-        for (const blast of this.blasts) {
-            const t = Math.max(0, (timestamp - blast.at) / 500)
-            ctx.save()
-            if (t < 0.3) {
-                ctx.fillStyle = `rgba(255, 220, 150, ${0.55 * (1 - t / 0.3)})`
-                ctx.beginPath()
-                ctx.arc(blast.x, blast.y, blast.radius * (0.4 + t), 0, Math.PI * 2)
-                ctx.fill()
-            }
-            ctx.strokeStyle = `rgba(255, 140, 80, ${0.9 * (1 - t)})`
-            ctx.lineWidth = 6 * (1 - t) + 1
-            ctx.beginPath()
-            ctx.arc(blast.x, blast.y, blast.radius * Math.min(1, 0.3 + t * 1.2), 0, Math.PI * 2)
-            ctx.stroke()
-            ctx.restore()
-        }
     }
 
     /** Whoever has the most gems (nobody, until someone has one) */
@@ -1836,73 +1195,6 @@ export class MultiplayerMode extends GameMode {
         for (const id of this.lastSeen.keys()) {
             if (!seen.has(id)) this.lastSeen.delete(id)
         }
-    }
-
-    /** Gems lying around, and sprayed ones sliding to a stop (eased, like other players) */
-    /** Turbines, under the gems and players: warnings, the intake's suction, the exhaust's wind, and the machines */
-    private drawTurbines(ctx: CanvasRenderingContext2D, state: any, timestamp: number): void {
-        if (!state.turbines?.length) return
-        const now = this.worldNow(state, timestamp)
-        state.turbines.forEach((turbine: any) => {
-            if (turbine.phase === 'warning') {
-                const progress = Math.max(0, Math.min(1, 1 - (turbine.phaseEndsAt - now) / TURBINE.WARNING_MS))
-                drawTurbineWarning(ctx, turbine.x, turbine.y, turbine.intake, progress, timestamp)
-                return
-            }
-            const power = turbine.phase === 'ending' ? Math.max(0, Math.min(1, (turbine.phaseEndsAt - now) / TURBINE.POWER_DOWN_MS)) : 1
-            const exhaust = exhaustAngle(turbine.intake, turbine.sweepFrom, now)
-            drawIntakeWind(ctx, turbine.x, turbine.y, turbine.intake, power, timestamp)
-            drawExhaustWind(ctx, turbine.x, turbine.y, exhaust, power, timestamp)
-            drawTurbineBody(ctx, turbine.x, turbine.y, turbine.intake, exhaust, power, timestamp)
-        })
-    }
-
-    /**
-     * Gems on their way through turbines, over everything: out of the victim's body (a pop where it
-     * leaves), rushing into the intake, then across the machine to the exhaust. Everyone sees the
-     * same ones, timed by the server; once fired, the gem itself takes over (see drawGems).
-     */
-    private drawTurbineFlights(ctx: CanvasRenderingContext2D, state: any, timestamp: number): void {
-        if (!state.flights?.size) return
-        const now = this.worldNow(state, timestamp)
-        const turbines = new Map<string, any>()
-        state.turbines?.forEach((turbine: any) => turbines.set(turbine.id, turbine))
-        const r = TURBINE.BODY_RADIUS
-        state.flights.forEach((flight: any) => {
-            const turbine = turbines.get(flight.turbine)
-            if (!turbine || now >= flight.fireAt) return
-            const mouthX = turbine.x + Math.cos(turbine.intake) * r
-            const mouthY = turbine.y + Math.sin(turbine.intake) * r
-            if (now < flight.arriveAt) {
-                const k = Math.max(0, Math.min(1, (now - flight.startAt) / Math.max(1, flight.arriveAt - flight.startAt)))
-                if (k < 0.25) {
-                    // Popping out of the victim
-                    ctx.strokeStyle = `rgba(255, 209, 102, ${0.8 * (1 - k * 4)})`
-                    ctx.lineWidth = 2
-                    ctx.beginPath()
-                    ctx.arc(flight.fromX, flight.fromY, 6 + 40 * k, 0, Math.PI * 2)
-                    ctx.stroke()
-                }
-                for (let back = 2; back >= 0; back--) {
-                    const e = Math.max(0, k - back * 0.06) ** 2
-                    ctx.globalAlpha = back ? 0.25 / back : 1
-                    drawGem(ctx, flight.fromX + (mouthX - flight.fromX) * e, flight.fromY + (mouthY - flight.fromY) * e, GEMS.RADIUS * (1 - back * 0.15))
-                }
-                ctx.globalAlpha = 1
-                return
-            }
-            // Across the machine, from the intake to where the exhaust will be pointing when it fires
-            const k = (now - flight.arriveAt) / Math.max(1, flight.fireAt - flight.arriveAt)
-            const out = exhaustAngle(turbine.intake, turbine.sweepFrom, flight.fireAt)
-            const nx = turbine.x + Math.cos(out) * r
-            const ny = turbine.y + Math.sin(out) * r
-            const a = (1 - k) * (1 - k)
-            const b = 2 * (1 - k) * k
-            const c = k * k
-            ctx.globalAlpha = 0.85
-            drawGem(ctx, a * mouthX + b * turbine.x + c * nx, a * mouthY + b * turbine.y + c * ny, GEMS.RADIUS * 0.75)
-            ctx.globalAlpha = 1
-        })
     }
 
     private drawGems(
@@ -1972,22 +1264,6 @@ export class MultiplayerMode extends GameMode {
         }
     }
 
-    /** Rings bursting out where someone was hit (gold) or knocked out (red) */
-    private drawBursts(ctx: CanvasRenderingContext2D, timestamp: number): void {
-        this.bursts = this.bursts.filter((burst) => timestamp - burst.at < BURST_MS)
-        for (const burst of this.bursts) {
-            const t = (timestamp - burst.at) / BURST_MS
-            ctx.save()
-            ctx.globalAlpha = 1 - t
-            ctx.strokeStyle = burst.color
-            ctx.lineWidth = 2 + 6 * (1 - t)
-            ctx.beginPath()
-            ctx.arc(burst.x, burst.y, burst.size * (0.6 + 2.2 * t), 0, Math.PI * 2)
-            ctx.stroke()
-            ctx.restore()
-        }
-    }
-
     /** Whether anyone is stealing gems from this player right now */
     private beingRobbed(state: any, id: string): boolean {
         let robbed = false
@@ -1995,616 +1271,6 @@ export class MultiplayerMode extends GameMode {
             if (String(other.robbing ?? '').split(',').includes(id)) robbed = true
         })
         return robbed
-    }
-
-    /** "+1" rising above you when you grab gems, and a red "-1" for each one someone steals */
-    private drawPickups(ctx: CanvasRenderingContext2D, me: any, timestamp: number): void {
-        this.pickups = this.pickups.filter((pickup) => timestamp - pickup.at < PICKUP_TEXT_MS)
-        if (!me || this.pickups.length === 0) return
-        const position = this.predicted ?? me
-        ctx.save()
-        ctx.font = `700 18px ${FONT}`
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'bottom'
-        ctx.fillStyle = GOLD
-        for (const pickup of this.pickups) {
-            const t = (timestamp - pickup.at) / PICKUP_TEXT_MS
-            if (t < 0) continue
-            ctx.globalAlpha = 1 - t
-            ctx.fillStyle = pickup.amount > 0 ? GOLD : '#ff6b6b'
-            ctx.fillText(pickup.amount > 0 ? `+${pickup.amount}` : `${pickup.amount}`, position.x + me.width / 2, position.y - 30 - t * 34)
-        }
-        ctx.restore()
-    }
-
-    /** The top five by gems, top left, with you added below if you're further down */
-    private drawLeaderboard(
-        ctx: CanvasRenderingContext2D,
-        _canvas: HTMLCanvasElement,
-        state: any,
-        localId: string | null,
-        leaderId: string | null
-    ): void {
-        const ranked: { id: string; name: string; gems: number; isBot: boolean }[] = []
-        state.players.forEach((player: any, id: string) => {
-            ranked.push({ id, name: String(player.name), gems: player.gems, isBot: player.isBot === true })
-        })
-        ranked.sort((a, b) => b.gems - a.gems)
-        const compact = COMPACT.matches
-        const top = compact ? 3 : 5
-        const rows = ranked.slice(0, top).map((entry, index) => ({ ...entry, rank: index + 1 }))
-        const mine = ranked.findIndex((entry) => entry.id === localId)
-        const apart = mine >= top
-        const me = ranked[mine]
-        if (apart && me) rows.push({ ...me, rank: mine + 1 })
-        // Sizes in screen points on phones, so it lines up with everything else there
-        const u = compact ? this.cssScale : 1
-        const x = (compact ? 10 : 12) * u
-        const y = (compact ? 10 : 12) * u
-        const width = (compact ? 132 : 190) * u
-        const rowHeight = (compact ? 21 : 24) * u
-        const gapForYou = apart ? 7 * u : 0
-        ctx.save()
-        hudPanel(ctx, x, y, width, rows.length * rowHeight + 10 * u + gapForYou, 10 * u)
-        ctx.font = `600 ${(compact ? 11.5 : 13) * u}px ${FONT}`
-        ctx.textBaseline = 'middle'
-        let rowY = y + 5 * u + rowHeight / 2
-        rows.forEach((row, index) => {
-            const isLocal = row.id === localId
-            if (apart && index === rows.length - 1) {
-                // You, further down: set apart by a line
-                ctx.strokeStyle = 'rgba(79, 209, 197, 0.35)'
-                ctx.lineWidth = 1
-                ctx.beginPath()
-                ctx.moveTo(x + 8 * u, rowY - rowHeight / 2 + 3 * u)
-                ctx.lineTo(x + width - 8 * u, rowY - rowHeight / 2 + 3 * u)
-                ctx.stroke()
-                rowY += gapForYou
-            }
-            if (row.id === leaderId) {
-                drawCrown(ctx, x + 14 * u, rowY + 4 * u, 12 * u)
-            } else {
-                ctx.fillStyle = 'rgba(207, 216, 220, 0.7)'
-                ctx.textAlign = 'center'
-                ctx.fillText(String(row.rank), x + 14 * u, rowY)
-            }
-            let nameX = x + 27 * u
-            if (row.isBot) {
-                drawRobot(ctx, x + 33 * u, rowY, 9 * u)
-                nameX += 13 * u
-            } else if (isLocal) {
-                drawCreature(ctx, x + 33 * u, rowY, 14 * u, '#ffffff', -0.7)
-                nameX += 13 * u
-            }
-            ctx.fillStyle = isLocal ? '#4fd1c5' : 'rgba(225, 235, 240, 0.92)'
-            ctx.textAlign = 'left'
-            ctx.fillText(row.name, nameX, rowY, width - (nameX - x) - 34 * u)
-            ctx.fillStyle = isLocal ? '#4fd1c5' : GOLD
-            ctx.textAlign = 'right'
-            ctx.fillText(String(row.gems), x + width - 9 * u, rowY)
-            rowY += rowHeight
-        })
-        ctx.restore()
-    }
-
-    /**
-     * An inhale drawn as moving air rather than a fixed cone: streaks flowing into the mouth along
-     * curved lines, always inside the real pull area (which is only hinted at, with a dotted edge
-     * where the pull ends). At rest the flow is shorter and broader; going forward it stretches long
-     * and narrow; turning, its far end trails behind and swings round; draining someone, it tightens
-     * into a channel and leans toward them. Big creatures pull a wide, heavy, turbulent flow, small
-     * ones a quick narrow stream; low on breath it thins, flickers and breaks up; and little side
-     * streams peel off to each gem and creature it's pulling.
-     */
-    private drawAirflow(
-        ctx: CanvasRenderingContext2D,
-        id: string,
-        player: any,
-        x: number,
-        y: number,
-        size: number,
-        facing: number,
-        timestamp: number,
-        intensity: number,
-        isLocal: boolean
-    ): void {
-        const reach = INHALE.REACH + size * INHALE.REACH_PER_SIZE
-        const arc = (INHALE.ARC * Math.PI) / 180
-        const power = Math.min(6, suctionPower(size) * intensity)
-        // 1 for a newborn, up to 3 for a giant
-        const heft = Math.min(3, Math.sqrt(size / ARENA_RULES.PLAYER_SIZE))
-        let flow = this.flows.get(id)
-        if (!flow) {
-            flow = { heading: facing, along: 0, x, y, at: timestamp, inhaling: false, since: timestamp, hookId: '', hookedAt: timestamp, coherence: 0 }
-            this.flows.set(id, flow)
-        }
-        if (!flow.inhaling) {
-            flow.inhaling = true
-            flow.since = timestamp
-            flow.heading = facing
-        }
-        const dt = Math.min(0.1, Math.max(0.001, (timestamp - flow.at) / 1000))
-        // The far end trails the mouth through a turn (a small creature's catches up faster)
-        const turn = Math.atan2(Math.sin(facing - flow.heading), Math.cos(facing - flow.heading))
-        flow.heading += turn * Math.min(1, dt * (14 / heft))
-        // How fast it's going forward, as a share of its top speed
-        const forward = ((x - flow.x) * Math.cos(facing) + (y - flow.y) * Math.sin(facing)) / dt / moveSpeed(size)
-        flow.along += (Math.max(-1, Math.min(1, forward)) - flow.along) * Math.min(1, dt * 6)
-        flow.x = x
-        flow.y = y
-        flow.at = timestamp
-        // Breath: yours exactly; anyone else's guessed from how long they've been inhaling
-        const breath = isLocal ? this.stamina : Math.max(0, 1 - (timestamp - flow.since) / INHALE.MAX_MS)
-        const weak = breath < 0.3 ? 1 - breath / 0.3 : 0
-        // The shape, always inside the real pull area
-        const ahead = Math.max(0, flow.along)
-        const tight = Math.min(1, Math.max(0, (intensity - 1) / 0.8))
-        const length = reach * (0.72 + 0.28 * ahead)
-        // (and the cone itself narrows as its air goes into a stream)
-        const spread = arc * (1 - 0.35 * ahead) * (1 - 0.4 * tight) * (1 - 0.6 * Math.max(0, Math.min(1, (flow.coherence - LATCH.BEAM_FOCUS_FROM) / (LATCH.BEAM_FULL_AT - LATCH.BEAM_FOCUS_FROM))))
-        // It leans toward whoever it's draining
-        const world = this.multiplayerManager?.getState()
-        // Focused on its latched creature if it has one, else whoever it's robbing
-        const target = player.latchTarget ? world?.players?.get(player.latchTarget) : player.stealingFrom ? world?.players?.get(player.stealingFrom) : null
-        const mouthX = x + Math.cos(facing) * size * 0.3
-        const mouthY = y + Math.sin(facing) * size * 0.3
-        let lean = 0
-        let toward = facing
-        let hookLength = length
-        if (target) {
-            const tx = target.x + target.width / 2
-            const ty = target.y + target.height / 2
-            toward = Math.atan2(ty - mouthY, tx - mouthX)
-            lean = Math.max(-arc, Math.min(arc, Math.atan2(Math.sin(toward - facing), Math.cos(toward - facing)))) * 0.6
-            hookLength = Math.min(reach, Math.hypot(tx - mouthX, ty - mouthY))
-        }
-        // Hooked on someone a while (the lock building), the curling air straightens into beams
-        // running from them straight into the mouth; it curls again the moment the hook breaks
-        const hookId = target ? String(player.stealingFrom) : ''
-        if (hookId !== flow.hookId) {
-            flow.hookId = hookId
-            flow.hookedAt = timestamp
-        }
-        // How focused the stream is: the latch's airflow quality, from the server (it frays back into a cone as that falls)
-        // The cone's own streaks stay a cone; the connection to a latched creature is its own stream (drawStream)
-        const straight = 0
-        // Coherence follows the latch's real airflow quality; it rises smoothly but falls fast, so a broken latch frays straight back into the cone
-        const latchedQuality = player.latchTarget ? Math.max(0, Math.min(1, Number(player.latchQuality) || 0)) : 0
-        flow.coherence = latchedQuality >= flow.coherence
-            ? flow.coherence + (latchedQuality - flow.coherence) * Math.min(1, dt * 8)
-            : Math.max(latchedQuality, flow.coherence - dt * 4)
-        const fraying = Math.max(0, flow.coherence - latchedQuality)
-        const coherent = Math.max(0, Math.min(1, (flow.coherence - LATCH.BEAM_FOCUS_FROM) / (LATCH.BEAM_FULL_AT - LATCH.BEAM_FOCUS_FROM)))
-        const beamShare = coherent * coherent * (3 - 2 * coherent)
-        // ...pinching tighter the longer the hold (as the drain escalates)
-        const pinch = 1 - 0.5 * straight
-        ctx.save()
-        // The real pull area, only hinted at
-        const hint = ctx.createRadialGradient(mouthX, mouthY, 0, mouthX, mouthY, reach)
-        hint.addColorStop(0, `rgba(180, 230, 255, ${Math.min(0.07, 0.025 + 0.008 * power) * (1 - 0.6 * Math.max(0, Math.min(1, (flow.coherence - LATCH.BEAM_FOCUS_FROM) / (LATCH.BEAM_FULL_AT - LATCH.BEAM_FOCUS_FROM))))})`)
-        hint.addColorStop(0.6, 'rgba(180, 230, 255, 0)')
-        ctx.fillStyle = hint
-        ctx.beginPath()
-        ctx.moveTo(mouthX, mouthY)
-        ctx.arc(mouthX, mouthY, reach, facing - arc, facing + arc)
-        ctx.closePath()
-        ctx.fill()
-        ctx.strokeStyle = 'rgba(200, 240, 255, 0.16)'
-        ctx.lineWidth = 1
-        ctx.setLineDash([3, 9])
-        ctx.beginPath()
-        ctx.arc(mouthX, mouthY, reach, facing - arc, facing + arc)
-        ctx.stroke()
-        ctx.setLineDash([])
-        // The streaks, each riding a curved line from far out into the mouth
-        const far = flow.heading + lean
-        // (as the stream forms, the cone gives its air to it)
-        const streaks = Math.max(3, Math.round((8 + 5 * heft + 3 * power) * (1 - 0.6 * weak) * (1 - 0.7 * beamShare)))
-        const period = (length / (INHALE_LOOK.STREAK_SPEED * power * (1.6 / heft))) * 1000
-        const turbulence = 0.06 * heft * (1 - 0.5 * tight) + 0.12 * weak
-        const segment = 0.1 + 0.04 * power
-        ctx.lineCap = 'round'
-        ctx.strokeStyle = 'rgba(220, 245, 255, 1)'
-        for (let i = 0; i < streaks; i++) {
-            // Low on breath, the flow breaks up
-            if (weak > 0 && (i + Math.floor(timestamp / 120)) % 3 === 0) continue
-            const lane = Math.sin(i * 2.3 + 0.7)
-            const t = (((timestamp / period + i / streaks + 0.37 * Math.sin(i * 1.7)) % 1) + 1) % 1
-            // Curling in from the flow, or (hooked) a straight beam from the victim
-            const curled = far + lane * spread
-            const beam = toward + lane * spread * 0.2 * pinch
-            const startAngle = curled + Math.atan2(Math.sin(beam - curled), Math.cos(beam - curled)) * straight
-            const span = length + (hookLength - length) * straight
-            const ax = mouthX + Math.cos(startAngle) * span
-            const ay = mouthY + Math.sin(startAngle) * span
-            const bendAngle = facing + lane * spread * 0.5 + lean * 0.5
-            const wobble = Math.sin(timestamp / (180 * heft) + i * 1.9) * turbulence * span * (1 - straight)
-            const curveX = mouthX + Math.cos(bendAngle) * span * 0.45 - Math.sin(facing) * wobble
-            const curveY = mouthY + Math.sin(bendAngle) * span * 0.45 + Math.cos(facing) * wobble
-            const bx = curveX + ((ax + mouthX) / 2 - curveX) * straight
-            const by = curveY + ((ay + mouthY) / 2 - curveY) * straight
-            const reachOf = segment * (1 + 0.8 * straight)
-            const from = onCurve(ax, ay, bx, by, mouthX, mouthY, t)
-            const mid = onCurve(ax, ay, bx, by, mouthX, mouthY, Math.min(1, t + reachOf / 2))
-            const to = onCurve(ax, ay, bx, by, mouthX, mouthY, Math.min(1, t + reachOf))
-            const flicker = weak > 0 ? 0.5 + 0.5 * Math.sin(timestamp / 40 + i) : 1
-            ctx.globalAlpha = Math.min(0.95, (0.45 + 0.08 * power) * (1 + 0.4 * straight)) * Math.min(1, t * 4) * (1 - 0.6 * weak * (1 - flicker))
-            ctx.lineWidth = (0.8 + 0.45 * power) * (0.55 + 0.25 * heft) * (1 + 0.3 * straight) * (1 - 0.5 * weak)
-            ctx.beginPath()
-            ctx.moveTo(from.x, from.y)
-            ctx.quadraticCurveTo(mid.x, mid.y, to.x, to.y)
-            ctx.stroke()
-        }
-        // The stream to a latched creature, drawn from the real airflow numbers
-        const streamTarget = player.latchTarget ? world?.players?.get(player.latchTarget) : null
-        if (streamTarget && flow.coherence > 0.02) {
-            this.drawStream(ctx, id, player, streamTarget, mouthX, mouthY, facing, timestamp, flow.coherence, fraying, power, heft, flow, dt)
-        }
-        // Side streams peeling off to each creature it's robbing and each gem in its pull
-        const pulled: { x: number; y: number; color: string }[] = []
-        for (const victimId of String(player.robbing ?? '').split(',')) {
-            const victim = victimId ? world?.players?.get(victimId) : null
-            if (victim) pulled.push({ x: victim.x + victim.width / 2, y: victim.y + victim.height / 2, color: 'rgba(220, 245, 255, 1)' })
-        }
-        world?.gems?.forEach((gem: any, gemId: string) => {
-            if (pulled.length >= 8) return
-            const dx = gem.x - mouthX
-            const dy = gem.y - mouthY
-            const d = Math.hypot(dx, dy)
-            if (d > reach || d < 1) return
-            const off = Math.acos(Math.max(-1, Math.min(1, (dx * Math.cos(facing) + dy * Math.sin(facing)) / d)))
-            if (off <= arc) pulled.push({ x: gem.x, y: gem.y, color: gemColor(gemId) })
-        })
-        ctx.lineWidth = 1.5
-        pulled.forEach((source, j) => {
-            const side = j % 2 ? 1 : -1
-            const dx = mouthX - source.x
-            const dy = mouthY - source.y
-            const bx = (source.x + mouthX) / 2 - dy * 0.2 * side
-            const by = (source.y + mouthY) / 2 + dx * 0.2 * side
-            ctx.strokeStyle = source.color
-            for (let k = 0; k < 2; k++) {
-                const t = (timestamp / 520 + k / 2 + j * 0.13) % 1
-                const from = onCurve(source.x, source.y, bx, by, mouthX, mouthY, t)
-                const to = onCurve(source.x, source.y, bx, by, mouthX, mouthY, Math.min(1, t + 0.14))
-                ctx.globalAlpha = 0.7 * Math.min(1, t * 3) * (1 - 0.5 * weak)
-                ctx.beginPath()
-                ctx.moveTo(from.x, from.y)
-                ctx.lineTo(to.x, to.y)
-                ctx.stroke()
-            }
-        })
-        // The mouth glows and throbs, harder and faster the stronger the pull
-        ctx.globalAlpha = 1 - 0.5 * weak
-        const throb = 0.5 + 0.5 * Math.sin((timestamp / 1000) * Math.PI * 2 * (2 + power))
-        const core = (size / 2) * (0.35 + 0.1 * power) * (0.85 + 0.15 * throb) * 2
-        const rush = ctx.createRadialGradient(mouthX, mouthY, 0, mouthX, mouthY, core)
-        rush.addColorStop(0, `rgba(235, 250, 255, ${Math.min(0.7, 0.22 + 0.1 * power)})`)
-        rush.addColorStop(1, 'rgba(235, 250, 255, 0)')
-        ctx.fillStyle = rush
-        ctx.beginPath()
-        ctx.arc(mouthX, mouthY, core, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.restore()
-    }
-
-    /** Pressed against another creature: how much this one squishes, and along which line (lighter ones squish more) */
-    private squashFor(id: string, x: number, y: number, size: number): { angle: number; amount: number } {
-        const state = this.multiplayerManager?.getState()
-        if (!state) return { angle: 0, amount: 0 }
-        let angle = 0
-        let amount = 0
-        state.players.forEach((other: any, otherId: string) => {
-            if (otherId === id || other.state !== 'alive') return
-            const at = this.drawnPositions.get(otherId) ?? other
-            const ox = at.x + other.width / 2
-            const oy = at.y + other.height / 2
-            const d = Math.hypot(ox - x, oy - y)
-            const overlap = (size + other.width) / 2 - d
-            if (overlap <= 0 || d < 1e-6) return
-            const squash = Math.min(0.14, (overlap / size) * (other.width / (other.width + size)) * 1.6)
-            if (squash > amount) {
-                amount = squash
-                angle = Math.atan2(oy - y, ox - x)
-            }
-        })
-        return { angle, amount }
-    }
-
-    /**
-     * The Cores: dense, heavy orbs with a metal rim and a glowing heart (teal at rest, hot orange when
-     * moving fast enough to stun), turning rings, and a trail at speed. Drawn a little ahead of the
-     * server (carrying on at their velocity, easing to each update). Where someone's airflow is holding
-     * one off, the squeezed air shows: a crescent between them and streams bending round the Core.
-     */
-    private drawCores(ctx: CanvasRenderingContext2D, state: any, timestamp: number): void {
-        if (!state.cores) return
-        const dt = Math.min(0.1, Math.max(0, (timestamp - this.coresDrawnAt) / 1000))
-        this.coresDrawnAt = timestamp
-        const localId = this.multiplayerManager?.localSessionId
-        const present = new Set<string>()
-        state.cores.forEach((core: any) => {
-            present.add(core.id)
-            let drawn = this.coresDrawn.get(core.id)
-            if (!drawn) {
-                drawn = { x: core.x, y: core.y }
-                this.coresDrawn.set(core.id, drawn)
-            }
-            drawn.x += core.vx * dt
-            drawn.y += core.vy * dt
-            const ease = Math.min(1, dt * 12)
-            drawn.x += (core.x - drawn.x) * ease
-            drawn.y += (core.y - drawn.y) * ease
-            if (Math.hypot(core.x - drawn.x, core.y - drawn.y) > 200) {
-                drawn.x = core.x
-                drawn.y = core.y
-            }
-            const x = drawn.x
-            const y = drawn.y
-            const r = core.radius
-            const speed = Math.hypot(core.vx, core.vy)
-            const danger = Math.min(1, Math.max(0, (speed * CORE.MASS - CORE.STUN_MOMENTUM * 0.6) / (CORE.STUN_MOMENTUM * 0.4)))
-            ctx.save()
-            // Squeezed air between it and anyone whose airflow is holding it off
-            state.players.forEach((player: any, id: string) => {
-                if (!player.inhaling || player.state !== 'alive') return
-                const isLocal = id === localId
-                const at = isLocal && this.predicted ? this.predicted : (this.drawnPositions.get(id) ?? player)
-                const inhaler = { x: at.x + player.width / 2, y: at.y + player.height / 2, width: player.width, facing: isLocal ? this.localFacing : player.facing, inhaling: true }
-                const { pressure } = airflowOnCore(inhaler, { x, y, vx: core.vx, vy: core.vy, radius: r })
-                if (pressure < 0.05) return
-                const toward = Math.atan2(inhaler.y - y, inhaler.x - x)
-                ctx.lineCap = 'round'
-                ctx.strokeStyle = `rgba(200, 240, 255, ${0.15 + 0.45 * pressure})`
-                ctx.lineWidth = 2 + 3 * pressure
-                ctx.beginPath()
-                ctx.arc(x, y, r + 7, toward - 0.9, toward + 0.9)
-                ctx.stroke()
-                ctx.lineWidth = 1.5
-                const phase = (timestamp / 400) % 1
-                for (const side of [-1, 1]) {
-                    ctx.globalAlpha = 0.5 * pressure
-                    ctx.beginPath()
-                    ctx.arc(x, y, r + 14 + 6 * phase, toward + side * 0.6, toward + side * (0.6 + 1.6 * (1 - phase)), side < 0)
-                    ctx.stroke()
-                }
-                ctx.globalAlpha = 1
-            })
-            // A trail when it's really moving (hot when it could stun)
-            if (speed > 120) {
-                const tailX = x - core.vx * 0.12
-                const tailY = y - core.vy * 0.12
-                const trail = ctx.createLinearGradient(tailX, tailY, x, y)
-                trail.addColorStop(0, 'rgba(120, 200, 255, 0)')
-                trail.addColorStop(1, danger > 0 ? `rgba(255, 150, 80, ${0.1 + 0.35 * danger})` : 'rgba(120, 200, 255, 0.2)')
-                ctx.strokeStyle = trail
-                ctx.lineWidth = r * 1.4
-                ctx.lineCap = 'round'
-                ctx.beginPath()
-                ctx.moveTo(tailX, tailY)
-                ctx.lineTo(x, y)
-                ctx.stroke()
-            }
-            // Its shadow, then a dense dark body with a metal rim
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.35)'
-            ctx.beginPath()
-            ctx.ellipse(x + r * 0.15, y + r * 0.25, r * 1.05, r * 0.95, 0, 0, Math.PI * 2)
-            ctx.fill()
-            const body = ctx.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.1, x, y, r)
-            body.addColorStop(0, '#3a4a66')
-            body.addColorStop(0.6, '#1a2235')
-            body.addColorStop(1, '#0a0e18')
-            ctx.fillStyle = body
-            ctx.beginPath()
-            ctx.arc(x, y, r, 0, Math.PI * 2)
-            ctx.fill()
-            ctx.strokeStyle = 'rgba(170, 195, 220, 0.75)'
-            ctx.lineWidth = 2.5
-            ctx.stroke()
-            // Two slow rings turning around it (faster when it moves)
-            const spin = timestamp / 1600 + (core.vx + core.vy) / 2000
-            ctx.strokeStyle = 'rgba(140, 200, 255, 0.35)'
-            ctx.lineWidth = 1.5
-            for (const tilt of [0.35, 1.9]) {
-                ctx.beginPath()
-                ctx.ellipse(x, y, r * 0.78, r * 0.3, spin + tilt, 0, Math.PI * 2)
-                ctx.stroke()
-            }
-            // The heart: teal at rest, hot orange when fast enough to stun
-            const pulse = 0.85 + 0.15 * Math.sin(timestamp / 260)
-            const red = Math.round(79 + 176 * danger)
-            const green = Math.round(227 - 87 * danger)
-            const blue = Math.round(217 - 157 * danger)
-            const heart = ctx.createRadialGradient(x, y, 0, x, y, r * 0.55 * pulse)
-            heart.addColorStop(0, `rgba(${red}, ${green}, ${blue}, 0.95)`)
-            heart.addColorStop(1, `rgba(${red}, ${green}, ${blue}, 0)`)
-            ctx.fillStyle = heart
-            ctx.beginPath()
-            ctx.arc(x, y, r * 0.55 * pulse, 0, Math.PI * 2)
-            ctx.fill()
-            // Development only: velocity and speed
-            if (CORE.DEBUG) {
-                ctx.strokeStyle = '#ff4fd8'
-                ctx.lineWidth = 2
-                ctx.beginPath()
-                ctx.moveTo(x, y)
-                ctx.lineTo(x + core.vx * 0.3, y + core.vy * 0.3)
-                ctx.stroke()
-                ctx.fillStyle = '#ff4fd8'
-                ctx.font = `12px ${FONT}`
-                ctx.fillText(`${Math.round(speed)} u/s`, x + r + 6, y - r)
-            }
-            ctx.restore()
-        })
-        for (const id of [...this.coresDrawn.keys()]) if (!present.has(id)) this.coresDrawn.delete(id)
-    }
-
-    /**
-     * The stream between an inhaler and its latched creature, drawn only from the airflow numbers
-     * (game/airflow streamLook): it narrows and smooths as quality rises, bends as the creature slips
-     * off your facing (the air leaves your mouth along it and curves to them), runs continuous when the
-     * beam is efficient on breath and breaks up when it's wasteful, churns where bodies press together,
-     * and, between two inhaling each other, the flows meet in a turbulent pressure zone pushed toward
-     * whichever side is losing. Coherence, not brightness, says how strong it is.
-     */
-    private drawStream(ctx: CanvasRenderingContext2D, id: string, player: any, target: any, mouthX: number, mouthY: number, facing: number, timestamp: number, coherence: number, fraying: number, power: number, heft: number, flow: Airflow, dt: number): void {
-        const at = this.drawnPositions.get(player.latchTarget) ?? target
-        const tx = at.x + target.width / 2
-        const ty = at.y + target.height / 2
-        const dx = tx - mouthX
-        const dy = ty - mouthY
-        const dist = Math.hypot(dx, dy)
-        if (dist < 1) return
-        const nx = -dy / dist
-        const ny = dx / dist
-        const me = this.drawnPositions.get(id) ?? player
-        const mutual = Boolean(target.inhaling) && target.latchTarget === id
-        const mine = coherence * latchSizeFactor(player.width, target.width)
-        const theirs = mutual ? (Number(target.latchQuality) || 0) * latchSizeFactor(target.width, player.width) : 0
-        const look = streamLook({
-            quality: coherence,
-            beamQuality: Number(player.beamQuality) || 0,
-            clean: cleanAir({ x: me.x + player.width / 2, y: me.y + player.height / 2, width: player.width }, { x: tx, y: ty, width: target.width }),
-            mine,
-            theirs,
-            fraying,
-        })
-        // Where my air comes from: the creature, or (inhaling each other) where our flows meet
-        const sourceX = mouthX + dx * look.boundary
-        const sourceY = mouthY + dy * look.boundary
-        const span = dist * look.boundary
-        // The stream is a rope of air: it leaves your mouth along your facing, its far end holds on its
-        // source, and in between it eases toward a smooth curve, the far part slowly (slowest when the
-        // stream is coherent), so turning winds it and a tight line holds its curve before relaxing
-        const points = 10
-        const rest = (u: number) => {
-            const k = 1 - u
-            const bx = mouthX + Math.cos(facing) * span * 0.45
-            const by = mouthY + Math.sin(facing) * span * 0.45
-            const cx = sourceX + (mouthX - sourceX) * 0.25
-            const cy = sourceY + (mouthY - sourceY) * 0.25
-            return {
-                x: k * k * k * mouthX + 3 * k * k * u * bx + 3 * k * u * u * cx + u * u * u * sourceX,
-                y: k * k * k * mouthY + 3 * k * k * u * by + 3 * k * u * u * cy + u * u * u * sourceY,
-            }
-        }
-        const last = flow.rope?.[points]
-        if (!flow.rope || flow.rope.length !== points + 1 || !last || Math.hypot(last.x - sourceX, last.y - sourceY) > 300) {
-            flow.rope = Array.from({ length: points + 1 }, (_, i) => rest(i / points))
-        }
-        const rope = flow.rope
-        const knot = (i: number) => rope[i] as { x: number; y: number }
-        rope[0] = { x: mouthX, y: mouthY }
-        rope[points] = { x: sourceX, y: sourceY }
-        for (let i = 1; i < points; i++) {
-            const u = i / points
-            const goal = rest(u)
-            const rate = 14 * (1 - u) + (1.2 + 6 * (1 - look.coherence)) * u
-            const ease = 1 - Math.exp(-rate * Math.min(0.1, Math.max(0, dt)))
-            knot(i).x += (goal.x - knot(i).x) * ease
-            knot(i).y += (goal.y - knot(i).y) * ease
-        }
-        // A point along the rope: u 0 at its source, 1 at the mouth (the way the air travels)
-        const along = (u: number) => {
-            const f = (1 - Math.max(0, Math.min(1, u))) * points
-            const i = Math.min(points - 1, Math.floor(f))
-            const r = f - i
-            return { x: knot(i).x + (knot(i + 1).x - knot(i).x) * r, y: knot(i).y + (knot(i + 1).y - knot(i).y) * r }
-        }
-        const width = target.width * 0.5 * (1 - 0.85 * look.coherence) + 1.5
-        const lanes = Math.round(4 + 8 * look.efficiency + 2 * heft)
-        const segment = 0.12 + 0.25 * look.coherence + 0.15 * look.efficiency
-        const period = (Math.max(30, span) / (INHALE_LOOK.STREAK_SPEED * Math.max(1, power) * (0.8 + 0.6 * look.coherence))) * 1000
-        ctx.save()
-        ctx.lineCap = 'round'
-        ctx.strokeStyle = look.recharging ? 'rgba(190, 255, 235, 1)' : 'rgba(220, 245, 255, 1)'
-        ctx.lineWidth = 1.1 + 1.3 * look.coherence
-        const pointAt = (u: number, lane: number, phase: number) => {
-            const base = along(u)
-            const ahead = along(u + 0.03)
-            const behind = along(u - 0.03)
-            const tangent = Math.hypot(ahead.x - behind.x, ahead.y - behind.y)
-            const sideX = tangent > 1e-6 ? -(ahead.y - behind.y) / tangent : nx
-            const sideY = tangent > 1e-6 ? (ahead.x - behind.x) / tangent : ny
-            const offset = width * lane * (1 - u * 0.8) + Math.sin(timestamp / 70 + phase + u * 6) * look.turbulence * width * 0.8
-            return { x: base.x + sideX * offset, y: base.y + sideY * offset }
-        }
-        for (let i = 0; i < lanes; i++) {
-            // A wasteful beam is broken up; an efficient one runs unbroken
-            if (look.efficiency < 0.5 && look.coherence < 0.6 && (i + Math.floor(timestamp / 90)) % 3 === 0) continue
-            const lane = lanes > 1 ? (i / (lanes - 1)) * 2 - 1 : 0
-            const t = (((timestamp / period + i * 0.37) % 1) + 1) % 1
-            const end = Math.min(1, t + segment)
-            const from = pointAt(t, lane, i * 2.1)
-            const mid = pointAt((t + end) / 2, lane, i * 2.1)
-            const to = pointAt(end, lane, i * 2.1)
-            ctx.globalAlpha = (0.3 + 0.5 * look.coherence) * Math.min(1, t * 4)
-            ctx.beginPath()
-            ctx.moveTo(from.x, from.y)
-            ctx.quadraticCurveTo(mid.x, mid.y, to.x, to.y)
-            ctx.stroke()
-        }
-        // Smothered: where the bodies press together, the air bunches up and churns
-        const churn = (cx: number, cy: number, radius: number, strength: number, seed: number) => {
-            ctx.lineWidth = 1.5
-            ctx.strokeStyle = 'rgba(220, 240, 255, 1)'
-            const count = Math.round(4 + 6 * strength)
-            for (let j = 0; j < count; j++) {
-                const a = timestamp / (160 + 40 * (j % 3)) + j * 1.7 + seed
-                const r = radius * (0.4 + 0.6 * ((j * 0.618) % 1))
-                ctx.globalAlpha = 0.25 + 0.45 * strength
-                ctx.beginPath()
-                ctx.arc(cx + Math.cos(a * 0.7) * r * 0.5, cy + Math.sin(a * 0.9) * r * 0.5, r * 0.45, a, a + 1.6 + strength)
-                ctx.stroke()
-            }
-        }
-        const smother = 1 - cleanAir({ x: me.x + player.width / 2, y: me.y + player.height / 2, width: player.width }, { x: tx, y: ty, width: target.width })
-        if (smother > 0.02) churn((mouthX + tx) / 2, (mouthY + ty) / 2, Math.min(player.width, target.width) * 0.6, smother, 0)
-        // Inhaling each other: a turbulent pressure zone where the flows meet (drawn once per pair), bigger the more even the contest
-        if (mutual && look.boundary < 0.98 && id < player.latchTarget) {
-            const balance = 1 - Math.abs(mine - theirs) / Math.max(1e-6, mine + theirs)
-            churn(sourceX, sourceY, Math.min(player.width, target.width) * (0.5 + 0.7 * balance), 0.4 + 0.6 * balance, 1.3)
-        }
-        ctx.restore()
-    }
-
-    /** Phones and tablets: the score in a pill at the top middle, and how many are playing beside the menu button */
-    private drawTopBar(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, state: any, me: any): void {
-        const u = this.cssScale
-        ctx.save()
-        ctx.textBaseline = 'middle'
-        ctx.textAlign = 'left'
-        const top = 10 * u
-        // The score
-        const label = 'Score'
-        const value = String(me?.gems ?? 0)
-        ctx.font = `600 ${12.5 * u}px ${FONT}`
-        const labelWidth = ctx.measureText(label).width
-        ctx.font = `800 ${18 * u}px ${FONT}`
-        const valueWidth = ctx.measureText(value).width
-        const pillHeight = 34 * u
-        const pillWidth = labelWidth + valueWidth + 36 * u
-        const pillX = canvas.width / 2 - pillWidth / 2
-        hudPanel(ctx, pillX, top, pillWidth, pillHeight, pillHeight / 2)
-        ctx.font = `600 ${12.5 * u}px ${FONT}`
-        ctx.fillStyle = '#e8f4f8'
-        ctx.fillText(label, pillX + 14 * u, top + pillHeight / 2)
-        ctx.font = `800 ${18 * u}px ${FONT}`
-        ctx.fillStyle = '#4fd1c5'
-        ctx.fillText(value, pillX + 22 * u + labelWidth, top + pillHeight / 2 + 1 * u)
-        // How many are playing, beside the menu button
-        const text = `${state.players?.size ?? 0} playing`
-        ctx.font = `600 ${11 * u}px ${FONT}`
-        const textWidth = ctx.measureText(text).width
-        const height = 28 * u
-        const width = textWidth + 34 * u
-        const x = canvas.width - (10 + 36 + 8) * u - width
-        const y = top + (36 * u - height) / 2
-        hudPanel(ctx, x, y, width, height, height / 2)
-        drawPeople(ctx, x + 14 * u, y + height / 2, 14 * u, '#cfe8ee')
-        ctx.fillStyle = '#e8f4f8'
-        ctx.fillText(text, x + 25 * u, y + height / 2)
-        ctx.restore()
     }
 
     /**
@@ -2638,77 +1304,12 @@ export class MultiplayerMode extends GameMode {
         return this.introStart !== null && this.introSparks.length > 0
     }
 
-    /** Recent notices at the top right, newest first, fading out */
-    private drawNotices(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement): void {
-        const now = performance.now()
-        this.notices = this.notices.filter((notice) => now - notice.at < JOIN_NOTICE_MS)
-        let y = this.controls?.touchDevice || COMPACT.matches ? this.minimapBottom + 12 : 12
-        ctx.save()
-        for (const notice of [...this.notices].reverse()) {
-            ctx.globalAlpha = Math.min(1, (JOIN_NOTICE_MS - (now - notice.at)) / 500)
-            ctx.font = `${notice.strong ? 700 : 600} ${notice.strong ? 14 : 13}px ${FONT}`
-            // Leave room for the leaderboard on the left
-            const width = Math.min(canvas.width - 150, ctx.measureText(notice.text).width + 28)
-            ctx.fillStyle = notice.strong ? 'rgba(60, 40, 0, 0.85)' : 'rgba(5, 12, 24, 0.75)'
-            roundedRect(ctx, canvas.width - width - 12, y, width, 26, 13)
-            ctx.fill()
-            ctx.fillStyle = notice.strong ? GOLD : '#ffffff'
-            ctx.textAlign = 'center'
-            ctx.textBaseline = 'middle'
-            ctx.fillText(notice.text, canvas.width - width / 2 - 12, y + 13, width - 20)
-            y += 32
-        }
-        ctx.restore()
-    }
-
     private trackKnockout(me: any): void {
         if (me && me.state !== 'alive') {
             if (this.knockedOutAt === null) this.knockedOutAt = performance.now()
         } else {
             this.knockedOutAt = null
         }
-    }
-
-    private drawKnockedOut(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement): void {
-        const elapsed = this.knockedOutAt === null ? 0 : performance.now() - this.knockedOutAt
-        const seconds = Math.ceil((WORLD.RESPAWN_DELAY_MS - elapsed) / 1000)
-        // The credit and the knockout can land a frame or two apart, in either order
-        const cause = this.knockoutCause
-        const credited = cause !== null && this.knockedOutAt !== null && Math.abs(cause.at - this.knockedOutAt) < 1500
-        const verb =
-            cause?.how === 'ate' ? 'Swallowed'
-            : cause?.how === 'drained' ? 'Drained'
-            : cause?.how === 'turbine' ? 'Fed to a turbine'
-            : cause?.how === 'bomb' ? 'Blown up'
-            : cause?.how === 'edge' ? 'Shoved off'
-            : cause?.how === 'traffic' ? 'Wrecked'
-            : 'Knocked out'
-        const title = credited && cause ? `${verb} by ${cause.by}` : 'Hit!'
-        this.drawMessage(ctx, canvas, title, seconds > 0 ? `Back in ${seconds}` : 'Back in a moment')
-    }
-
-    /** Dim the screen and show a centered title and subtitle */
-    private drawMessage(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, title: string, subtitle: string): void {
-        ctx.save()
-        ctx.setTransform(1, 0, 0, 1, 0, 0)
-        ctx.fillStyle = 'rgba(5, 12, 24, 0.55)'
-        ctx.fillRect(0, 0, canvas.width, canvas.height)
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'middle'
-        ctx.fillStyle = '#4fd1c5'
-        // Shrink a long title (like one with a long player name) to fit, rather than squashing it
-        let titleSize = Math.round(Math.min(canvas.height * 0.09, canvas.width * 0.1))
-        ctx.font = `700 ${titleSize}px ${FONT}`
-        const titleWidth = ctx.measureText(title).width
-        if (titleWidth > canvas.width * 0.9) {
-            titleSize = Math.floor((titleSize * canvas.width * 0.9) / titleWidth)
-            ctx.font = `700 ${titleSize}px ${FONT}`
-        }
-        ctx.fillText(title, canvas.width / 2, canvas.height * 0.45, canvas.width * 0.9)
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
-        ctx.font = `500 ${Math.max(13, Math.round(canvas.height * 0.03))}px ${FONT}`
-        ctx.fillText(subtitle, canvas.width / 2, canvas.height * 0.55, canvas.width * 0.9)
-        ctx.restore()
     }
 
     postUpdate(): void {
