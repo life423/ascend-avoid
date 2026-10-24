@@ -14,7 +14,7 @@ export function randomIntFromInterval(min: number, max: number): number {
 }
 
 // Global scaling factor for game elements
-export let SCALE_FACTOR = 1;
+export const SCALE_FACTOR = 1;
 
 // Base canvas dimensions - will be used as a reference for scaling
 export const BASE_CANVAS_WIDTH = 560;
