@@ -81,6 +81,7 @@ export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
         ctx.stroke()
     }
     if (state.jackpotOn) {
+        // Other arena objectives are marked separately below.
         // The jackpot is the one thing the minimap points out
         const jx = x + state.jackpotX * scale
         const jy = y + state.jackpotY * scale
@@ -94,6 +95,12 @@ export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
         ctx.fill()
     }
     ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
+    if (state.pinwheel && state.pinwheel.phase !== 'waiting') {
+        const wx = x + state.pinwheel.x * scale, wy = y + state.pinwheel.y * scale;
+        ctx.fillStyle = '#ffa8be'; ctx.strokeStyle = '#fff2cf'; ctx.lineWidth = 1.5;
+        ctx.fillRect(wx - 4, wy - 4, 8, 8); ctx.strokeRect(wx - 4, wy - 4, 8, 8);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+    }
     ctx.font = `600 11px ${FONT}`
     ctx.textAlign = 'right'
     ctx.textBaseline = 'bottom'

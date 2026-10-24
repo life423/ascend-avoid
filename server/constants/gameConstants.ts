@@ -457,7 +457,7 @@ export const CANNON = {
   ESCAPE_NEUTRAL: 0.3, // ...after coming back within this, so holding a direction is one push, not many
   ESCAPE_PUSH: 110, // out, it pops from the mouth this hard (and can't be caught again for RECAPTURE_MS)
   LAUNCH_MIN_MS: 120, // (the old release rule; firing is gated by ARM_MS now)
-  ARM_MS: 1200, // base loading; each extra escape input adds 200ms, up to 1.6 seconds
+  ARM_MS: 1800, // base loading; each extra escape input adds 300ms, up to 2.4 seconds
   HOLD_RATIO: 1, // the captor pulls its captive back to its mouth at this times the captive's own top speed...
   HOLD_MIN: 0.5, // ...times its firmness: this when just big enough to catch it (a near-size captive can simply push out)...
   HOLD_PER_DOUBLING: 0.35, // ...rising this much every time the captor is twice as big again...
@@ -583,6 +583,28 @@ export const TURBINE = {
  * front of it are blown away, and creatures in it are shoved back by weight. The inhale's opposite, and
  * the small creature's answer to being robbed: a shove out of a mouth's reach.
  */
+export const PINWHEEL = {
+  ENABLED: true,
+  CLAIM_MS: 18000,
+  FIRST_MS: 20000,
+  RESPAWN_MS: 45000,
+  PARTS_MS: 60000,
+  SNAP: 72,
+  PART_RADIUS: 22,
+  PULL_SPEED: 260,
+  GUST_SPEED: 600,
+  CHARGE_MS: 1200,
+  ACTIVE_MS: 8000,
+  SHOT_MS: 600,
+  SPIN: Math.PI * 0.65,
+  BOLT_SPEED: 620,
+  BOLT_RANGE: 650,
+  BOLT_RADIUS: 8,
+  HIT_PUSH: 65,
+  HIT_MAX_GEMS: 6,
+  HIT_IMMUNE_MS: 500,
+} as const;
+
 export const EXHALE = {
   REACH: 160, // the puff reaches this far from the mouth, plus REACH_PER_SIZE times your width (about 200 for a newborn, 450 at 100 gems)
   REACH_PER_SIZE: 2,

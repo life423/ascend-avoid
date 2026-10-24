@@ -46,8 +46,22 @@ assert.equal(escapeLength(39, 20), 3);
 assert.equal(escapeLength(40, 20), 4);
 assert.equal(escapeLength(80, 20), 5);
 assert.equal(escapeLength(800, 20), 5);
-assert.equal(captureLoadMs(3), 1200);
-assert.equal(captureLoadMs(5), 1600);
+assert.equal(captureLoadMs(3), 1800);
+assert.equal(captureLoadMs(5), 2400);
+
+for (const gems of [16, 32, 80]) {
+  const { state, captor, captive } = capture(gems);
+  fireCaptive(state, captor, NOW); // the captor queues the earliest possible shot
+  let elapsed = CANNON.CAPTIVE_STUN_MS + 250;
+  for (const key of captive.escapeKeys) {
+    state.time = elapsed;
+    escapePress(state, captive, key);
+    updateHolds(state, NOW + elapsed);
+    elapsed += 250;
+  }
+  assert.equal(captive.capturedBy, '', 'a human can react and type the sequence before a queued shot');
+  assert.equal(captive.flying, false);
+}
 
 {
   const { state, captor, captive } = capture();

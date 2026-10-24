@@ -26,6 +26,9 @@ import { updateShift, startGrace, startShift, endShift, fall } from "../systems/
 import { collectGems, sprayGems, topUpField } from "../systems/gems.js";
 import { keepApart } from "../systems/bodies.js";
 import { updateSurges } from "../systems/surges.js";
+import { PinwheelSchema } from "./PinwheelSchema.js";
+import { updatePinwheel } from "../systems/pinwheel.js";
+import { PINWHEEL } from "../constants/gameConstants.js";
 
 const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS, COMETS, BOMBS, TURBINE, CORE, SURGE } = GAME_CONSTANTS;
 /** Which way each of a bot's decisions steers it */
@@ -89,6 +92,8 @@ class GameState extends Schema {
   surgeJackpotDropped = false;
   /** Server clock of the current simulation tick. */
   now = Date.now();
+  pinwheel = new PinwheelSchema();
+  weaponsOn: boolean = PINWHEEL.ENABLED;
 
   /** Server-only: whether traffic hits players (the automated test turns this off) */
   trafficHits = true;
@@ -204,6 +209,7 @@ class GameState extends Schema {
     updateSurges(this, deltaTime, now);
     updateTraffic(this);
     updateInhales(this, now, deltaTime);
+    updatePinwheel(this, deltaTime, now);
     updateFlights(this, now, deltaTime);
     updateLatches(this, now, deltaTime);
     updateBombs(this, now, deltaTime);
@@ -654,5 +660,6 @@ type("string")(GameState.prototype, "surgePhase");
 type("number")(GameState.prototype, "surgeAt");
 type("number")(GameState.prototype, "surgeX");
 type("number")(GameState.prototype, "surgeY");
+type(PinwheelSchema)(GameState.prototype, "pinwheel");
 
 export { GameState };

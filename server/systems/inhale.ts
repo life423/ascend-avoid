@@ -9,6 +9,7 @@ import { canCatch, launchAngle, launchSpeed, swallowPenalty, escapeLength, captu
 
 const { PLAYER_STATE, INHALE, LATCH, BOTS } = GAME_CONSTANTS;
 import { sprayGems } from "./gems.js";
+import { puffWeaponParts } from "./pinwheel.js";
 
 /** Knocked out: any last gems burst out where the player was */
 export function knockOutWithGems(state: GameState, player: PlayerSchema, now: number) : void {
@@ -331,6 +332,7 @@ export function exhale(state: GameState, player: PlayerSchema, now: number) : vo
   const reach = EXHALE.REACH + player.width * EXHALE.REACH_PER_SIZE;
   const cone = Math.cos((EXHALE.ARC * Math.PI) / 180);
   state.onEvent?.("exhale", { id: player.sessionId, x: Math.round(mouthX), y: Math.round(mouthY), facing: Math.round(player.facing * 100) / 100, reach: Math.round(reach) });
+  puffWeaponParts(state, player);
   state.gems.forEach((gem) => {
     const dx = gem.x - mouthX;
     const dy = gem.y - mouthY;

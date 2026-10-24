@@ -8,7 +8,7 @@ export function escapeLength(captorWidth: number, captiveWidth: number): number 
 }
 
 export function captureLoadMs(keys: number): number {
-  return CANNON.ARM_MS + Math.max(0, Math.min(2, keys - 3)) * 200;
+  return CANNON.ARM_MS + Math.max(0, Math.min(2, keys - 3)) * 300;
 }
 
 /** How firmly a captor this wide holds a captive this wide: HOLD_MIN when just big enough to catch it, more each time it's twice as big again, up to HOLD_MAX */
