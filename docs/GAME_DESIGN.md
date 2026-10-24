@@ -32,7 +32,7 @@ The captor's facing and captive's lateral input determine launch direction. Capt
 
 ## Defensive gust
 
-Tap with an empty mouth to puff in a 110-degree cone. Knockback scales gently by mass with a meaningful minimum ratio and a maximum distance. A successful puff into an incoming inhale creates at least 150 units of intended separation, clears that suction connection, and protects its user from suction for one second. The puff cooldown is 1.8 seconds. Protection ends when a creature inhales, puffs or fires.
+Tap with an empty mouth to puff in a 110-degree cone. Knockback scales gently by mass: base shove 400 units, capped at 500. A successful puff into an incoming inhale creates at least 200 units of intended separation, clears that suction connection, and protects its user from suction for one second. The puff cooldown is 1.8 seconds. Protection ends when a creature inhales, puffs or fires.
 
 A gust hit stuns its target for 800ms: no steering or inhaling, while knockback still carries it away. Spiral pupils, a slight wobble and orbiting sparks show the stun. Existing 1.2-second immunity after a stun prevents repeated extensions. Spawn protection still blocks gust hits.
 
