@@ -1,0 +1,11 @@
+<!-- save as public/favicon.svg -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Border box – neon teal stroke -->
+  <rect x="2" y="2" width="60" height="60" rx="8" fill="#001B34" stroke="#00D4E0" stroke-width="4"></rect>
+  
+  <!-- Up‑arrow (ascend) -->
+  <path d="M32 17 L44 31 H36 V47 H28 V31 H20 Z" fill="#FFFFFF"></path>
+
+  <!-- Tiny “avoid” obstacle – orange dash above arrow -->
+  <rect x="28" y="10" width="8" height="4" rx="2" fill="#FF9E58"></rect>
+</svg>
