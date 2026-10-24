@@ -3,6 +3,7 @@ import { ARENA_RULES, EXHALE } from '../../server/constants/gameConstants'
 import { INHALE_LOOK, suctionPower } from './airflow'
 import { drawCreature, mouthOf, mouthRadius } from './creatures'
 import { BURST_MS } from './shared'
+import { wedge } from './style'
 import type { SyncedGameState, SyncedPlayer } from '../types/synced'
 
 /** Bursts of gems (a flash, a ring and sparks, bigger for bigger piles) and shockwaves from hits */
@@ -215,25 +216,42 @@ export function drawBursts(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
     }
 }
 
-/** Exhales: three arcs of air rolling out of the mouth through the puff's cone, fading as they go */
+/**
+ * Exhales: a gust out of the mouth through the puff's cone. A soft wedge of air flashes, a dozen streaks
+ * race out along it and fade, and a ring rolls out to the edge of the reach
+ */
 export function drawPuffs(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, timestamp: number) : void {
-    const PUFF_MS = 320
+    const PUFF_MS = 380
     const arc = (EXHALE.ARC * Math.PI) / 180
     mode.puffs = mode.puffs.filter((puff) => timestamp - puff.at < PUFF_MS)
     for (const puff of mode.puffs) {
         const t = Math.max(0, (timestamp - puff.at) / PUFF_MS)
         ctx.save()
+        // The air itself: a wedge that swells out and thins away
+        ctx.fillStyle = `rgba(200, 230, 255, ${0.28 * (1 - t)})`
+        wedge(ctx, puff.x, puff.y, puff.reach * (0.25 + 0.75 * Math.min(1, t * 1.6)), puff.facing, arc * (1 - 0.25 * t))
+        ctx.fill()
+        // Streaks racing out along it, each on its own line, longer and fainter as they go
         ctx.lineCap = 'round'
-        for (const lag of [0, 0.12, 0.24]) {
-            const k = t - lag
-            if (k <= 0) continue
-            const out = k / (1 - lag)
-            ctx.strokeStyle = `rgba(220, 240, 255, ${0.75 * (1 - out)})`
-            ctx.lineWidth = 4 * (1 - out) + 1
+        for (let i = 0; i < 12; i++) {
+            const spread = ((i * 7919) % 101) / 100 - 0.5 // spread across the cone, the same way every frame
+            const a = puff.facing + spread * 2 * arc * 0.9
+            const pace = 0.75 + ((i * 104729) % 53) / 100 // some streaks quicker than others
+            const head = puff.reach * Math.min(1, (0.1 + t * 1.3) * pace)
+            const tail = Math.max(puff.reach * 0.08, head - puff.reach * (0.18 + 0.1 * t))
+            ctx.strokeStyle = `rgba(230, 245, 255, ${0.9 * (1 - t) * (1 - 0.6 * Math.abs(spread))})`
+            ctx.lineWidth = 3.5 * (1 - t) + 1
             ctx.beginPath()
-            ctx.arc(puff.x, puff.y, puff.reach * (0.12 + 0.88 * out), puff.facing - arc * (1 - 0.3 * out), puff.facing + arc * (1 - 0.3 * out))
+            ctx.moveTo(puff.x + Math.cos(a) * tail, puff.y + Math.sin(a) * tail)
+            ctx.lineTo(puff.x + Math.cos(a) * head, puff.y + Math.sin(a) * head)
             ctx.stroke()
         }
+        // The front of the gust: a ring rolling out to the edge of the reach
+        ctx.strokeStyle = `rgba(220, 240, 255, ${0.8 * (1 - t)})`
+        ctx.lineWidth = 5 * (1 - t) + 1
+        ctx.beginPath()
+        ctx.arc(puff.x, puff.y, puff.reach * (0.15 + 0.85 * t), puff.facing - arc * (1 - 0.3 * t), puff.facing + arc * (1 - 0.3 * t))
+        ctx.stroke()
         ctx.restore()
     }
 }
