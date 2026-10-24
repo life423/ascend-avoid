@@ -48,7 +48,7 @@ export function drawCreature(ctx: CanvasRenderingContext2D, x: number, y: number
         ctx.stroke()
         ctx.fillStyle = '#10151f'
         ctx.beginPath()
-        ctx.arc(ex + fx * r * 0.1, ey + fy * r * 0.1, r * 0.13, 0, Math.PI * 2)
+        ctx.arc(ex, ey, r * 0.13, 0, Math.PI * 2)
         ctx.fill()
     }
     // The mouth: wide open while inhaling (drawn where the server has it, so a captive held there is really in it), bulging with a rock when full
