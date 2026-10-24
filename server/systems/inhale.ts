@@ -4,7 +4,7 @@ import { airflowQuality, cleanAir, drainRamp, lethalShare, pressureBuild, pressu
 import { moveSpeed } from "../game/movement.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 
-import { CANNON } from "../constants/gameConstants.js";
+import { CANNON, EXHALE } from "../constants/gameConstants.js";
 import { canCatch, launchAngle, launchSpeed, swallowPenalty } from "../game/cannon.js";
 
 const { PLAYER_STATE, INHALE, LATCH } = GAME_CONSTANTS;
@@ -308,6 +308,41 @@ function clashStrength(state: GameState, thief: PlayerSchema, victim: PlayerSche
   if (weight <= 0) return 0;
   const held = thief.heldFor.get(victim.sessionId) ?? 0;
   return weight * stealStrength(state, thief, victim) * drainRamp(held) * pressureBuild(held, thief.width) * scaleDrain(thief.width, victim.width) * (LATCH.OVERLAP_DRAIN_MIN + (1 - LATCH.OVERLAP_DRAIN_MIN) * cleanAir(state.bodyOf(thief), state.bodyOf(victim)));
+}
+
+/**
+ * Exhaling: the button tapped with nothing in your mouth. A short puff out of the mouth: loose gems in
+ * front of it are blown away, and creatures in it are shoved back (hard if they're lighter than you,
+ * barely if they're much heavier), which pushes a robber out of its own inhale's reach. Free, with a
+ * pause before the next one (EXHALE.COOLDOWN_MS).
+ */
+export function exhale(state: GameState, player: PlayerSchema, now: number) : void {
+  if (player.state !== PLAYER_STATE.ALIVE || player.stunned || player.flying || player.capturedBy || player.inhaling || now < player.exhaleReadyAt) return;
+  player.exhaleReadyAt = now + EXHALE.COOLDOWN_MS;
+  const fx = Math.cos(player.facing);
+  const fy = Math.sin(player.facing);
+  const mouthX = player.x + player.width / 2 + fx * player.width * 0.3;
+  const mouthY = player.y + player.height / 2 + fy * player.width * 0.3;
+  const reach = EXHALE.REACH + player.width * EXHALE.REACH_PER_SIZE;
+  const cone = Math.cos((EXHALE.ARC * Math.PI) / 180);
+  state.onEvent?.("exhale", { id: player.sessionId, x: Math.round(mouthX), y: Math.round(mouthY), facing: Math.round(player.facing * 100) / 100, reach: Math.round(reach) });
+  state.gems.forEach((gem) => {
+    const dx = gem.x - mouthX;
+    const dy = gem.y - mouthY;
+    const d = Math.hypot(dx, dy);
+    if (d < 1e-6 || d > reach || (dx * fx + dy * fy) / d < cone) return;
+    gem.blow(Math.atan2(dy, dx), EXHALE.GEM_PUSH * (1 - d / reach));
+  });
+  state.players.forEach((other) => {
+    if (other === player || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected || other.flying || other.capturedBy) return;
+    const ox = other.x + other.width / 2 - mouthX;
+    const oy = other.y + other.height / 2 - mouthY;
+    const d = Math.hypot(ox, oy);
+    const gap = Math.max(0, d - other.width / 2);
+    if (d < 1e-6 || gap > reach || (ox * fx + oy * fy) / d < cone) return;
+    const ratio = Math.min(EXHALE.PUSH_RATIO_MAX, Math.max(EXHALE.PUSH_RATIO_MIN, player.weight() / other.weight()));
+    other.skid(ox / d, oy / d, EXHALE.BODY_PUSH * ratio * (1 - gap / reach));
+  });
 }
 
 /** A run of stealing ends (or switches to someone else): a big one gets a banner and a line in the feed */

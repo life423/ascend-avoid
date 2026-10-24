@@ -2,7 +2,7 @@ import { Room, Client } from "colyseus";
 import { GAME_CONSTANTS } from "../constants/serverConstants";
 import logger from "../utils/logger";
 import { GameState } from "../schema/GameState";
-import { fireCaptive } from "../systems/inhale";
+import { exhale, fireCaptive } from "../systems/inhale";
 
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
@@ -88,7 +88,7 @@ export class GameRoom extends Room<GameState> {
       else player.startInhale(Date.now());
     });
     // A quick tap (the button let go within the browser's tap window, so never an inhale): fires a
-    // captive, or spits a bomb, along the creature's facing
+    // captive, spits a bomb, or, with an empty mouth, exhales a puff, all along the creature's facing
     this.onMessage("tap", (client) => {
       if (!this.allowMessage(client)) return;
       const player = this.state.players.get(client.sessionId);
@@ -96,6 +96,7 @@ export class GameRoom extends Room<GameState> {
       const now = Date.now();
       if (player.gulping) fireCaptive(this.state, player, now);
       else if (player.mouth) this.state.spit(player, Math.cos(player.facing), Math.sin(player.facing), now);
+      else exhale(this.state, player, now);
     });
     this.onMessage("exhale", (client) => {
       if (!this.allowMessage(client)) return;

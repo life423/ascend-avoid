@@ -155,6 +155,8 @@ class PlayerSchema extends Schema {
   /** This flight has already hit someone (one damaging hit per launch); hit by a flier, immune to another until then */
   flightHit = false;
   impactImmuneUntil = 0;
+  /** Server-only: when the next exhale (a tap with an empty mouth) is allowed */
+  exhaleReadyAt = 0;
   /** Server-only: when this breath runs out, and when you can spit again */
   inhaleStopAt = 0;
   /** Server-only: how much breath is left (0-1) as of staminaAt: it drains while inhaling and refills from wherever it is */

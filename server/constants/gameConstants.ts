@@ -560,6 +560,22 @@ export const TURBINE = {
   PLAYER_CLEARANCE: 450, // or a player
 } as const;
 
+/**
+ * Exhaling: the button tapped with nothing in your mouth. A short puff out of the mouth: loose gems in
+ * front of it are blown away, and creatures in it are shoved back by weight. The inhale's opposite, and
+ * the small creature's answer to being robbed: a shove out of a mouth's reach.
+ */
+export const EXHALE = {
+  REACH: 160, // the puff reaches this far from the mouth, plus REACH_PER_SIZE times your width (about 200 for a newborn, 450 at 100 gems)
+  REACH_PER_SIZE: 2,
+  ARC: 40, // degrees either side of where you face
+  GEM_PUSH: 420, // loose gems right at the mouth are blown away at this (units a second), easing to nothing at the reach
+  BODY_PUSH: 150, // a creature your own weight right at the mouth skids this far, easing to nothing at the reach...
+  PUSH_RATIO_MIN: 0.15, // ...times your weight over theirs, kept within these (a newborn barely nudges a giant; a giant sends a newborn flying)
+  PUSH_RATIO_MAX: 2.5,
+  COOLDOWN_MS: 500, // then a pause before the next puff
+} as const;
+
 export const ARENA_RULES = {
   PLAYER_SIZE: 20, // a new player's size; gems make you bigger (GEMS.BASE_MASS)
   HOP: 60, // one tap = one hop, while you're small...

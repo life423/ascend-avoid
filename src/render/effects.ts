@@ -1,5 +1,5 @@
 import type { MultiplayerMode } from '../core/GameModes'
-import { ARENA_RULES } from '../../server/constants/gameConstants'
+import { ARENA_RULES, EXHALE } from '../../server/constants/gameConstants'
 import { INHALE_LOOK, suctionPower } from './airflow'
 import { drawCreature, mouthOf, mouthRadius } from './creatures'
 import { BURST_MS } from './shared'
@@ -211,6 +211,29 @@ export function drawBursts(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
         ctx.beginPath()
         ctx.arc(burst.x, burst.y, burst.size * (0.6 + 2.2 * t), 0, Math.PI * 2)
         ctx.stroke()
+        ctx.restore()
+    }
+}
+
+/** Exhales: three arcs of air rolling out of the mouth through the puff's cone, fading as they go */
+export function drawPuffs(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, timestamp: number) : void {
+    const PUFF_MS = 320
+    const arc = (EXHALE.ARC * Math.PI) / 180
+    mode.puffs = mode.puffs.filter((puff) => timestamp - puff.at < PUFF_MS)
+    for (const puff of mode.puffs) {
+        const t = Math.max(0, (timestamp - puff.at) / PUFF_MS)
+        ctx.save()
+        ctx.lineCap = 'round'
+        for (const lag of [0, 0.12, 0.24]) {
+            const k = t - lag
+            if (k <= 0) continue
+            const out = k / (1 - lag)
+            ctx.strokeStyle = `rgba(220, 240, 255, ${0.75 * (1 - out)})`
+            ctx.lineWidth = 4 * (1 - out) + 1
+            ctx.beginPath()
+            ctx.arc(puff.x, puff.y, puff.reach * (0.12 + 0.88 * out), puff.facing - arc * (1 - 0.3 * out), puff.facing + arc * (1 - 0.3 * out))
+            ctx.stroke()
+        }
         ctx.restore()
     }
 }
