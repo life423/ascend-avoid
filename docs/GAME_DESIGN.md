@@ -6,7 +6,7 @@ Collect gems, grow, steal from other creatures, capture someone smaller, aim and
 
 ## World and presentation
 
-The finite arena is 4200 × 4200 units. The camera is pinned to the local creature, including during hits, flights and at boundaries. The floor and entities stop at a thin blue edge. A lighter blue decorative surround fills extra screen space; the world does not wrap.
+The finite arena is 4200 × 4200 units. On wide desktops the camera stays pinned to the creature, including at boundaries, with a thin blue edge and lighter blue surround. On compact screens the view stays inside the arena, including during knockouts, rotation and extreme zoom, so empty exterior never fills the play area. The creature stays centered away from boundaries; near a compact screen's map edge the camera stops and the creature can move off-center. The world does not wrap.
 
 Bots fill the population to 20 and yield places to arriving humans. Crowded bots disengage for 6–8 seconds and head toward less occupied space. At most two bots pursue a given target. Traffic, bombs and floor shifts remain experimental, explicitly enabled in test worlds.
 
@@ -32,11 +32,11 @@ The captor's facing alone determines launch direction. Captive input cannot chan
 
 Current loading is 2.8/3.1/3.4 seconds for three/four/five inputs. Earlier 1.8/2.1/2.4-second tuning still left too little human reaction time after the 600ms daze. Early FIRE still queues, and slow, imperfect bot escape attempts remain unchanged.
 
-## Shockwave Drum and shared weapon assembly
+## Pulsar Array and shared weapon assembly
 
-The first weapon recipe is the Shockwave Drum, made from a drum body, spring and piston. The minimap marks D/S/P. It shares contact/inhale pickup, persistent carrying, the 18-second builder claim, gust disruption and explicit E/Place weapon placement with the Pinwheel. Only one recipe is on the map at a time. When a build expires or finishes, the next set alternates between Drum and Pinwheel after the existing 20-second wait.
+The first weapon recipe is the Pulsar Array, made from a plasma cell, field coil and emitter. The minimap marks C/F/E. Its angular three-fin reactor replaces the earlier Drum theme. It shares contact/inhale pickup, persistent carrying, the 18-second builder claim, gust disruption and explicit E/Place weapon placement with the Pinwheel. Only one recipe is on the map at a time. When a build expires or finishes, the next set alternates between Pulsar and Pinwheel after the existing 20-second wait.
 
-After placement the Drum charges for 1.2 seconds. Each beat has a 700ms compression warning. Four waves launch 2.2 seconds apart over an 8.3-second active lifetime, expanding from radius 44 to 404 over 900ms. The faint outer boundary previews their reach. A wave pushes each rival once, about 210 units for a newborn and at least 110 for a giant. It does not stun or remove gems. The owner, spawn-protected, captured, flying and dead players are excluded. A player crossing the wave between simulation ticks still gets hit; expiring waves finish their final swept segment. Disconnect removes the deployed weapon.
+After placement the Array charges for 1.2 seconds. Each pulse has a 700ms inward-charging warning. Four plasma waves launch 2.2 seconds apart over an 8.3-second active lifetime, expanding from radius 44 to 404 over 900ms. The faint outer boundary previews their reach. Each wave hits a rival once, spending 25% of their gems (rounded up, minimum six, never more than they have). Below three gems after damage means knockout and normal respawn. All lost gems spill with the usual pickup lock. Survivors get a mass-scaled shove with base distance 420 and a 220-unit floor, twice the earlier Drum tuning. The wave does not stun. Builder attribution, impact flash/sound and knockout feedback identify the hit. The owner, spawn-protected, captured, flying and dead players are excluded. Swept wave checks cover crossing players and the final segment. Disconnect removes the deployed weapon.
 
 On phones the old three-line weapon banner is replaced by a 238x36 CSS-pixel progress pill, above the sticks in portrait and between them in landscape. It shows recipe and component progress, while minimap letters and world icons identify pieces. A complete locally carried weapon hides the pill and shows the existing Place weapon button. Capture prompts take priority. Redundant floating completed-weapon labels are omitted on phones to keep faces clear.
 

@@ -567,7 +567,7 @@ export const PINWHEEL = {
   HIT_IMMUNE_MS: 500,
 } as const;
 
-/** Shared assembly controls; the drum spends its short lifetime dispersing crowds, without stuns. */
+/** A deployed Pulsar Array releases four damaging plasma shockwaves, without movement-locking stuns. */
 export const SHOCKWAVE = {
   CHARGE_MS: 1200,
   ACTIVE_MS: 8300,
@@ -576,13 +576,16 @@ export const SHOCKWAVE = {
   WAVE_MS: 900,
   START_RADIUS: 44,
   RANGE: 360,
-  PUSH: 210,
-  MIN_PUSH: 110,
+  PUSH: 420,
+  MIN_PUSH: 220,
+  DAMAGE_SHARE: 0.25,
+  DAMAGE_MIN_GEMS: 6,
+  KO_GEMS: 3,
 } as const;
 
 export const WEAPON_RECIPES = {
   pinwheel: { name: 'Pinwheel', title: 'PINWHEEL CANNON', parts: ['HUB', 'ROTOR', 'BARREL'], letters: ['H', 'R', 'B'] },
-  drum: { name: 'Shockwave Drum', title: 'SHOCKWAVE DRUM', parts: ['DRUM', 'SPRING', 'PISTON'], letters: ['D', 'S', 'P'] },
+  pulsar: { name: 'Pulsar Array', title: 'PULSAR ARRAY', parts: ['PLASMA CELL', 'FIELD COIL', 'EMITTER'], letters: ['C', 'F', 'E'] },
 } as const;
 export type WeaponKind = keyof typeof WEAPON_RECIPES;
 

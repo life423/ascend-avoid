@@ -152,7 +152,7 @@ export class GameRoom extends Room<GameState> {
     if (!IS_PRODUCTION) {
       this.onMessage("test:pinwheel", (_client, data: { x?: number; y?: number; kind?: string }) => {
         this.state.weaponsOn = true;
-        spawnWeapon(this.state, Number(data?.x) || 2100, Number(data?.y) || 2100, data?.kind === 'drum' ? 'drum' : 'pinwheel');
+        spawnWeapon(this.state, Number(data?.x) || 2100, Number(data?.y) || 2100, data?.kind === 'pulsar' ? 'pulsar' : 'pinwheel');
       });
       const playerOf = (client: Client) => this.state.players.get(client.sessionId);
       const { worldWidth, worldHeight } = this.state;

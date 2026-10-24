@@ -7,7 +7,7 @@ import { turnRate, turnStep } from "../game/movement.js";
 import { CAMERA, CANNON, INHALE, LATCH } from "../constants/gameConstants.js";
 import { canCatch, canSwallowWhole, flightStep, holdFirmness, impactGems, launchSpeed, swallowPenalty, sweptHit } from "../game/cannon.js";
 import { intakePull, noReturnGap } from "../game/turbine.js";
-import { CameraRig, lookAhead, springStep, viewShort } from "../game/camera.js";
+import { CameraRig, constrainArenaView, lookAhead, springStep, viewShort } from "../game/camera.js";
 import { dangerRadius, lethalShare, pressureBuild, scaleDrain, streamLook } from "../game/airflow.js";
 import { moveSpeed } from "../game/movement.js";
 
@@ -80,6 +80,14 @@ rig.update(running, 1 / 60);
 for (let i = 0; i < 30; i++) rig.update({ ...running, x: running.x + 320 * (i + 1) / 60 }, 1 / 60);
 const behind = running.x + 320 * 30 / 60 - rig.x;
 check(CAMERA.LOCKED ? Math.abs(behind) < 1e-6 : Math.abs(behind) > 1 && Math.abs(behind) < CAMERA.MAX_OFFSET * viewShort(20) + 1, CAMERA.LOCKED ? `locked on you, you stay dead center while moving (${behind.toFixed(0)} units off)` : `moving, you drift a little within the frame, not welded to its center (${behind.toFixed(0)} units off center)`);
+
+// Compact views: map edges and extreme zoom must not expose the exterior.
+for (const size of [{ width: 600, height: 1200 }, { width: 1200, height: 600 }, { width: 6000, height: 12000 }]) {
+  for (const center of [{ x: 0, y: 0 }, { x: 4200, y: 4200 }, { x: 2100, y: 2100 }]) {
+    const v = constrainArenaView({ ...size, ...center, scale: 2 }, 4200, 4200);
+    check(v.x - v.width / 2 >= -1e-9 && v.y - v.height / 2 >= -1e-9 && v.x + v.width / 2 <= 4200 + 1e-9 && v.y + v.height / 2 <= 4200 + 1e-9 && Math.abs(v.width * v.scale - size.width * 2) < 1e-8 && Math.abs(v.height * v.scale - size.height * 2) < 1e-8, 'compact view stays inside the arena and fills the same screen, even at extreme zoom');
+  }
+}
 
 // Late game: scale separation
 const lateGame = 20 * Math.sqrt(1 + 1500 / 2);

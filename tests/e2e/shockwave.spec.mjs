@@ -3,7 +3,7 @@ import { Client } from 'colyseus.js';
 
 test.skip(process.env.E2E_TEST_HOOKS !== '1', 'requires an isolated local test server');
 
-test('collect and place a Shockwave Drum; compact mobile progress and visible pulses', async ({ page, hasTouch, baseURL }) => {
+test('collect and place a Pulsar Array; compact mobile progress and visible pulses', async ({ page, hasTouch, baseURL }) => {
   const errors = []; page.on('pageerror', error => errors.push(error.message));
   await page.route('**/matchmake/joinOrCreate/game_room', route => route.continue({
     url: route.request().url().replace('/joinOrCreate/', '/create/'),
@@ -15,13 +15,13 @@ test('collect and place a Shockwave Drum; compact mobile progress and visible pu
   await page.evaluate(() => {
     const room = window.game.currentGameMode.multiplayerManager.room;
     room.send('test:moveTo', { x: 2000, y: 2100 });
-    room.send('test:pinwheel', { x: 2100, y: 2100, kind: 'drum' });
+    room.send('test:pinwheel', { x: 2100, y: 2100, kind: 'pulsar' });
   });
-  await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.room.state.pinwheel.kind === 'drum' && window.game.currentGameMode.multiplayerManager.room.state.pinwheel.parts.length === 3);
-  await page.screenshot({ path: test.info().outputPath('drum-parts-portrait.png') });
+  await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.room.state.pinwheel.kind === 'pulsar' && window.game.currentGameMode.multiplayerManager.room.state.pinwheel.parts.length === 3);
+  await page.screenshot({ path: test.info().outputPath('pulsar-parts-portrait.png') });
   if (hasTouch) {
     await page.setViewportSize({ width: 851, height: 393 }); await page.waitForTimeout(100);
-    await page.screenshot({ path: test.info().outputPath('drum-parts-landscape.png') });
+    await page.screenshot({ path: test.info().outputPath('pulsar-parts-landscape.png') });
     await page.setViewportSize({ width: 393, height: 851 });
   }
   await page.evaluate(() => window.game.currentGameMode.multiplayerManager.room.send('test:setGems', { count: 200 }));
@@ -43,17 +43,23 @@ test('collect and place a Shockwave Drum; compact mobile progress and visible pu
   peer.onMessage('*', () => {});
   try {
     await expect.poll(() => peer.state.players?.size).toBe(2);
-    await page.screenshot({ path: test.info().outputPath('drum-placement.png') });
+    peer.send('test:setGems', { count: 100 });
+    await expect.poll(() => peer.state.players.get(peer.sessionId)?.gems).toBe(100);
+    await page.screenshot({ path: test.info().outputPath('pulsar-placement.png') });
     if (hasTouch) await button.tap(); else await page.keyboard.press('e');
     await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.room.state.pinwheel.phase === 'charging');
     const position = await page.evaluate(() => {
-      const w = window.game.currentGameMode.multiplayerManager.room.state.pinwheel; return { x: w.x + 150, y: w.y - 10 };
+      const w = window.game.currentGameMode.multiplayerManager.room.state.pinwheel; return { x: w.x + 150, y: w.y };
     });
+    position.x -= peer.state.players.get(peer.sessionId).width / 2;
+    position.y -= peer.state.players.get(peer.sessionId).height / 2;
     peer.send('test:moveTo', position); peer.send('test:protect', { ms: 0 });
     await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.room.state.pinwheel.pulseAt > 0);
     await page.waitForTimeout(250);
-    await page.screenshot({ path: test.info().outputPath('drum-wave.png') });
-    await expect.poll(() => peer.state.players.get(peer.sessionId)?.x).toBeGreaterThan(position.x + 40);
+    await page.screenshot({ path: test.info().outputPath('pulsar-wave.png') });
+    await expect.poll(() => peer.state.players.get(peer.sessionId)?.x).toBeGreaterThan(position.x + 100);
+    expect(peer.state.players.get(peer.sessionId).gems).toBe(75);
+    expect(await page.evaluate(() => window.game.currentGameMode.banner?.title)).toBe('Pulsar hit!');
     expect(peer.state.players.get(peer.sessionId).stunned).toBe(false);
     await expect(button).toBeHidden();
     expect(errors).toEqual([]);
