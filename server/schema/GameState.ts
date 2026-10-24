@@ -25,8 +25,9 @@ import { updateBombs } from "../systems/bombs.js";
 import { updateShift, startGrace, startShift, endShift, fall } from "../systems/shift.js";
 import { collectGems, sprayGems, topUpField } from "../systems/gems.js";
 import { keepApart } from "../systems/bodies.js";
+import { updateSurges } from "../systems/surges.js";
 
-const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS, COMETS, BOMBS, TURBINE, CORE } = GAME_CONSTANTS;
+const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS, COMETS, BOMBS, TURBINE, CORE, SURGE } = GAME_CONSTANTS;
 /** Which way each of a bot's decisions steers it */
 const STEER: Record<Direction, { x: number; y: number }> = {
   up: { x: 0, y: -1 },
@@ -79,6 +80,15 @@ class GameState extends Schema {
   jackpotLandsAt: number;
   jackpotHolder: string;
   jackpotProgress: number;
+  surgePhase = "waiting";
+  surgeAt: number = SURGE.FIRST_MS;
+  surgeX = 0;
+  surgeY = 0;
+  surgesOn = true;
+  surgeShowerAt = 0;
+  surgeJackpotDropped = false;
+  /** Server clock of the current simulation tick. */
+  now = Date.now();
 
   /** Server-only: whether traffic hits players (the automated test turns this off) */
   trafficHits = true;
@@ -186,10 +196,12 @@ class GameState extends Schema {
 
   /** One server tick: move traffic, gems and players, collect gems, decide hits, bring players back */
   update(deltaTime: number, now: number = Date.now()): void {
+    this.now = now;
     if (!this.startedAt) this.startedAt = now;
     this.time = Math.round(now - this.startedAt);
     this.players.forEach((player) => player.markTick());
     updateShift(this, deltaTime, now);
+    updateSurges(this, deltaTime, now);
     updateTraffic(this);
     updateInhales(this, now, deltaTime);
     updateFlights(this, now, deltaTime);
@@ -638,5 +650,9 @@ type("number")(GameState.prototype, "jackpotY");
 type("number")(GameState.prototype, "jackpotLandsAt");
 type("string")(GameState.prototype, "jackpotHolder");
 type("number")(GameState.prototype, "jackpotProgress");
+type("string")(GameState.prototype, "surgePhase");
+type("number")(GameState.prototype, "surgeAt");
+type("number")(GameState.prototype, "surgeX");
+type("number")(GameState.prototype, "surgeY");
 
 export { GameState };

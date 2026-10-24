@@ -6,6 +6,9 @@ import Player from '../entities/Player'
 import { InputState } from '../types'
 import { GameEvents } from '../constants/client-constants'
 import { ARENA_RULES, BOMBS, CAMERA, GEMS, INHALE, LATCH, PLAYER_COLORS, SHIFT, WORLD } from '../../server/constants/gameConstants'
+import { sound } from './Sound'
+import { FirstSessionGuide } from '../ui/FirstSessionGuide'
+import { drawSurge, drawSurgeHud } from '../render/surge'
 import { breathRate } from '../../server/game/airflow'
 import { CameraRig } from '../../server/game/camera'
 import { turnStep, walk } from '../../server/game/movement'
@@ -488,6 +491,19 @@ let introPlayed = false
  * bursts when someone is hit or shoved, a leaderboard and a minimap.
  */
 export class MultiplayerMode extends GameMode {
+    private firstGuide: FirstSessionGuide | null = null
+    private wasLoaded = false
+    private wasCaptured = false
+    private releaseControls = (): void => {
+        this.controls?.reset()
+        this.sendSteer({ x: 0, y: 0 })
+        this.multiplayerManager?.sendMessage('cancel', {})
+        this.resetMotion()
+    }
+    private visibilityChanged = (): void => { if (document.hidden) this.releaseControls() }
+    private textFocused = (event: FocusEvent): void => {
+        if ((event.target as HTMLElement | null)?.matches('input, textarea, [contenteditable="true"]')) this.releaseControls()
+    }
     multiplayerManager: MultiplayerManager | null = null
     private status: ConnectionStatus = 'connecting'
     private disposed = false
@@ -595,6 +611,10 @@ export class MultiplayerMode extends GameMode {
         this.game.gameState = this.game.config.STATE.PLAYING
         // Touch and mouse controls drawn on the canvas; the D-pad and swipes are for solo
         if (this.game.canvas) this.controls = new OnlineControls(this.game.canvas)
+        this.firstGuide = new FirstSessionGuide()
+        window.addEventListener('blur', this.releaseControls)
+        document.addEventListener('visibilitychange', this.visibilityChanged)
+        document.addEventListener('focusin', this.textFocused)
         document.body.classList.add('online-mode')
         const inputManager = (this.game as any).inputManager
         if (inputManager) inputManager.swipesEnabled = false
@@ -636,6 +656,18 @@ export class MultiplayerMode extends GameMode {
             })
         })
         eventBus.on('multiplayer:impact', (data: any) => this.noteImpact(data))
+        eventBus.on('multiplayer:launch', (data: { byId?: string; id?: string }) => {
+            const id = this.multiplayerManager?.localSessionId
+            if (data?.byId === id || data?.id === id) sound.play('launch')
+            if (data?.byId === id) this.firstGuide?.launched()
+        })
+        eventBus.on('multiplayer:parry', (data: { id?: string }) => {
+            if (data?.id === this.multiplayerManager?.localSessionId) { sound.play('parry'); this.addNotice('Suction broken! Move clear.') }
+        })
+        eventBus.on('multiplayer:surge', (data: { phase?: string }) => {
+            sound.play('surge')
+            this.addNotice(data?.phase === 'warning' ? 'Gem surge incoming — follow the gold marker!' : 'Gem surge! Jackpot in the final seconds.', true)
+        })
         eventBus.on('multiplayer:blast', (data: any) => this.blasts.push({ x: Number(data?.x) || 0, y: Number(data?.y) || 0, radius: Number(data?.radius) || BOMBS.BLAST_RADIUS, at: performance.now() }))
         eventBus.on('multiplayer:exhale', (data: any) => this.puffs.push({ by: String(data?.id ?? ''), x: Number(data?.x) || 0, y: Number(data?.y) || 0, facing: Number(data?.facing) || 0, reach: Number(data?.reach) || 200, at: performance.now() }))
         eventBus.on('multiplayer:jackpot', (data: any) => {
@@ -655,6 +687,8 @@ export class MultiplayerMode extends GameMode {
             this.clockGap = Infinity // a new world has its own clock
             this.predicted = null
             this.camera = null
+            this.resetMotion()
+            this.sentSteer = { x: 2, y: 2 } // force fresh input into the new session
         } else if (!this.multiplayerManager.isConnected()) {
             this.reconnectSoon()
         }
@@ -697,14 +731,14 @@ export class MultiplayerMode extends GameMode {
     }
 
     /** Tell the server where you're steering, whenever it changes */
-    private sendSteer(steer: { x: number; y: number }): void {
+    private sendSteer(steer: { x: number; y: number }, escape = false): void {
         const x = Math.round(steer.x * 100) / 100
         const y = Math.round(steer.y * 100) / 100
         const wasStill = this.sentSteer.x === 0 && this.sentSteer.y === 0
         const still = x === 0 && y === 0
         if (still === wasStill && Math.abs(x - this.sentSteer.x) < 0.04 && Math.abs(y - this.sentSteer.y) < 0.04) return
         this.sentSteer = { x, y }
-        this.multiplayerManager?.sendMessage('steer', { x, y })
+        this.multiplayerManager?.sendMessage('steer', { x, y, escape })
     }
 
     private resetMotion(): void {
@@ -734,6 +768,7 @@ export class MultiplayerMode extends GameMode {
         const now = performance.now()
         // The button: hold to inhale (taken every frame, so nothing waits for later)
         const events = this.controls?.takeEvents() ?? []
+        const escapeKeys = this.controls?.takeEscapeKeys() ?? []
         if (this.introPlaying) events.length = 0
         const deltaTime = this.lastMoveAt ? Math.min(0.1, (now - this.lastMoveAt) / 1000) : 0
         this.lastMoveAt = now
@@ -745,10 +780,21 @@ export class MultiplayerMode extends GameMode {
             this.predicted = null
             return
         }
+        // Send releases before any disabled-movement early return, including while stunned or flying.
+        for (const event of events.filter(event => event === 'cancel' || event === 'exhale')) {
+            this.inhaleHeld = false
+            this.multiplayerManager?.sendMessage(event, {})
+        }
         // Stunned (by a Core), you can't steer, just like on the server
-        const steer = this.introPlaying || me.stunned ? { x: 0, y: 0 } : this.steerVector(input, me)
+        const keyX = Number(input.right) - Number(input.left)
+        const keyY = Number(input.down) - Number(input.up)
+        const keyLength = Math.hypot(keyX, keyY)
+        const steer = this.introPlaying || me.stunned ? { x: 0, y: 0 } : me.capturedBy && keyLength > 0 ? { x: keyX / keyLength, y: keyY / keyLength } : this.steerVector(input, me)
+        if (me.capturedBy && !this.introPlaying) {
+            for (const key of escapeKeys) this.multiplayerManager?.sendMessage('escape', { key })
+        }
         // Inhaling never slows you down: you always steer exactly as usual
-        this.sendSteer(steer)
+        this.sendSteer(steer, Boolean(me.capturedBy && !keyLength && this.controls?.isPointerSteering))
         if (me.state !== 'alive') {
             this.predicted = { x: me.x, y: me.y }
             this.resetMotion()
@@ -807,7 +853,7 @@ export class MultiplayerMode extends GameMode {
             const d = Math.max(1e-6, Math.hypot(dx, dy))
             aimed = { x: intent.x + (dx / d) * LATCH.ASSIST * me.latchPull, y: intent.y + (dy / d) * LATCH.ASSIST * me.latchPull }
         }
-        const turn = turnStep(this.localFacing, this.localSpin, Math.hypot(aimed.x, aimed.y) > 0.25 ? Math.atan2(aimed.y, aimed.x) : null, me.width, this.inhaleHeld, deltaTime)
+        const turn = turnStep(this.localFacing, this.localSpin, Math.hypot(aimed.x, aimed.y) > 0.25 ? Math.atan2(aimed.y, aimed.x) : null, me.width, Boolean(me.inhaling), deltaTime)
         this.localFacing = turn.facing
         this.localSpin = turn.spin
         walk(box, this.velocity, steer, deltaTime, state.worldWidth, state.worldHeight)
@@ -906,14 +952,13 @@ export class MultiplayerMode extends GameMode {
         this.trackKnockout(me)
         this.trackEvents(state, localId, timestamp)
         const view = this.updateCamera(canvas, state, me, timestamp)
-        if (timestamp < this.shakeUntil) {
+        if (!CAMERA.LOCKED && timestamp < this.shakeUntil) {
             const strength = ((this.shakeUntil - timestamp) / SHAKE_MS) * 8
             view.x += (Math.random() - 0.5) * 2 * strength
             view.y += (Math.random() - 0.5) * 2 * strength
         }
         const jolt = this.extraShake()
-        view.x += jolt.x
-        view.y += jolt.y
+        if (!CAMERA.LOCKED) { view.x += jolt.x; view.y += jolt.y }
         this.lastView = view
         const leaderId = this.leaderId(state)
         this.inGrace = state.shiftPhase === 'grace'
@@ -925,6 +970,10 @@ export class MultiplayerMode extends GameMode {
             canvas.height / 2 - view.y * view.scale
         )
         drawFloor(this, ctx, state, view)
+        ctx.save()
+        ctx.beginPath()
+        ctx.rect(0, 0, state.worldWidth, state.worldHeight)
+        ctx.clip()
         drawShiftFloor(this, ctx, state, view, timestamp)
         const margin = 120
         const left = view.x - view.width / 2 - margin
@@ -937,6 +986,7 @@ export class MultiplayerMode extends GameMode {
         this.drawGems(ctx, state, left, right, top, bottom, timestamp)
         drawGemBursts(this, ctx)
         drawJackpot(this, ctx, state, localId, timestamp)
+        drawSurge(this, ctx, state, timestamp)
         const lead = this.trafficLead(timestamp)
         state.obstacles.forEach((obstacle: SyncedObstacle) => {
             const x = obstacle.x + (obstacle.vx ?? 0) * lead
@@ -1002,6 +1052,7 @@ export class MultiplayerMode extends GameMode {
         drawPuffs(this, ctx, timestamp)
         drawBursts(this, ctx, timestamp)
         drawPickups(this, ctx, me, timestamp)
+        ctx.restore()
 
         // Screen-space overlays: hidden while the opening plays, then fading in
         ctx.setTransform(1, 0, 0, 1, 0, 0)
@@ -1017,6 +1068,18 @@ export class MultiplayerMode extends GameMode {
             drawTrafficChip(this, ctx, canvas, state, timestamp)
             drawBanner(this, ctx, canvas)
             drawCapturePrompt(this, ctx, canvas, state, me, timestamp)
+            drawSurgeHud(this, ctx, canvas, state, view, timestamp)
+            const loaded = Boolean(me?.gulping) && this.worldNow(state, timestamp) >= me.fireReadyAt
+            if (loaded && !this.wasLoaded) sound.play('ready')
+            this.wasLoaded = loaded
+            const captured = Boolean(me?.capturedBy || me?.gulping)
+            if (captured && !this.wasCaptured) sound.play('capture')
+            this.wasCaptured = captured
+            if (this.controls) {
+                this.controls.action = me?.gulping ? (me.fireQueued ? 'QUEUED' : loaded ? 'FIRE' : 'LOADING') : me?.mouth ? 'SPIT' : 'INHALE'
+                this.controls.puffCooldown = Math.max(0, ((me?.puffReadyAt ?? 0) - this.worldNow(state, timestamp)) / 1000)
+            }
+            this.firstGuide?.update(me, this.introPlaying)
             this.controls?.draw(ctx, timestamp, this.breath)
             if (me && me.state === 'gulped') drawMessage(this, ctx, canvas, `Gulped by ${this.nameOf(me.insideOf, 'someone')}`, 'Hang on: you pop back out in a moment')
             else if (me && me.state !== 'alive') drawKnockedOut(this, ctx, canvas)
@@ -1100,6 +1163,13 @@ export class MultiplayerMode extends GameMode {
         const targetIsYou = data?.targetId === localId
         const target = targetIsYou ? 'you' : String(data?.target ?? 'someone')
         const how = String(data?.how ?? '')
+        if (how === 'cannon') {
+            const shotByYou = data?.byId === localId
+            const flownByYou = data?.projectileId === localId
+            if (shotByYou || flownByYou) this.banner = { title: flownByYou ? 'Direct hit! You steered it!' : 'Cannonball hit!', sub: `${Number(data?.gems) || 0} GEMS SPILLED`, at: performance.now() }
+            else this.addNotice(`${String(data?.by ?? 'Someone')} landed a cannonball hit on ${target}!`)
+            return
+        }
         if (targetIsYou && how !== 'stole' && how !== 'gulped') {
             this.knockoutCause = { how, by: String(data?.by ?? 'Someone'), at: performance.now() }
         }
@@ -1141,7 +1211,10 @@ export class MultiplayerMode extends GameMode {
         this.impacts.push({ x, y, size, at: performance.now() })
         if (this.impacts.length > 12) this.impacts.shift()
         const localId = this.multiplayerManager?.localSessionId
-        if (data?.byId === localId || data?.targetId === localId) this.addShake(3 + size * 0.08)
+        if (data?.byId === localId || data?.targetId === localId || data?.projectileId === localId) {
+            this.addShake(Math.min(12, 3 + size * 0.08))
+            sound.play('impact')
+        }
     }
 
     private addShake(strength: number): void {
@@ -1193,6 +1266,7 @@ export class MultiplayerMode extends GameMode {
                     this.bursts.push({ x: before.cx, y: before.cy, size: player.width, color, at: timestamp })
                     if (id === localId) this.shakeUntil = timestamp + SHAKE_MS
                 } else if (id === localId && player.gems > before.gems) {
+                    sound.play('gem')
                     // Stealing: a "+1" for each gem coming in (head-on, whoever is winning the exchange); otherwise what you grabbed
                     const gained = player.gems - before.gems
                     if (player.stealingFrom) for (let i = 0; i < gained; i++) this.pickups.push({ amount: 1, at: timestamp + i * 70 })
@@ -1358,6 +1432,10 @@ export class MultiplayerMode extends GameMode {
     }
 
     dispose(): void {
+        window.removeEventListener('blur', this.releaseControls)
+        document.removeEventListener('visibilitychange', this.visibilityChanged)
+        document.removeEventListener('focusin', this.textFocused)
+        this.firstGuide?.dispose()
         this.disposed = true
         if (this.reconnectTimer) clearTimeout(this.reconnectTimer)
         this.reconnectTimer = null

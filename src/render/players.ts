@@ -1,7 +1,7 @@
 import type { MultiplayerMode } from '../core/GameModes'
 import { CANNON, GEMS, INHALE, PLAYER_COLORS } from '../../server/constants/gameConstants'
-import { MOUTH_OFFSET, drawBreath, drawCreature, drawProjectile, mouthOf, mouthRadius } from './creatures'
-import { FONT, GOLD, drawCrown, drawRobot } from './style'
+import { drawBreath, drawCreature, drawProjectile, mouthOf } from './creatures'
+import { FONT, GOLD, drawCrown, drawRobot, roundedRect } from './style'
 import { SMOOTHING, SNAP_DISTANCE } from './shared'
 import { drawAirflow } from './stream'
 import type { SyncedGameState, SyncedPlayer } from '../types/synced'
@@ -27,8 +27,6 @@ export function captorOf(state: SyncedGameState, player: SyncedPlayer, sessionId
     return { id: player.capturedBy, captor }
 }
 
-/** True while a captor is drawing its captive, so a captive never draws one of its own (the server never allows it; the loop must still end) */
-let drawingMouthful = false
 
 /** Which way each flying creature is heading, frame to frame (kept from the last frame that moved it enough to tell) */
 const headings = new Map<string, number>()
@@ -217,146 +215,68 @@ export function drawPlayer(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
     ctx.restore()
 }
 
-/**
- * The captive in this captor's mouth. Just caught, it slides from where it was down the throat and out of
- * sight in SUCK_MS, shrinking as it goes (seen through the mouth opening and wherever it still pokes out
- * past the body; the body hides the rest). Then it's gone from the map: a lump under the skin shows where
- * it's pushing (it slides sideways as the captive slips sideways), and one small arc at the mouth shows
- * progress: gold as it works free, red (only if it can be swallowed) as the swallow builds.
- */
+/** A compact loading badge below the body keeps the face and eyes unobscured. */
 function drawMouthful(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, captor: SyncedPlayer, cx: number, cy: number, size: number, facing: number, timestamp: number): void {
-    if (drawingMouthful) return
     const state = mode.multiplayerManager?.getState() as SyncedGameState | undefined
-    const captiveId = captor.gulping
-    const captive = state?.players.get(captiveId)
-    if (!state || !captive || !captorOf(state, captive, captiveId)) return
-    const r = size / 2
+    const id = captor.gulping
+    const captive = state?.players.get(id)
+    if (!state || !captive || !captorOf(state, captive, id)) return
+    const localId = mode.multiplayerManager?.localSessionId
+    const own = captor.sessionId === localId
     const m = mouthOf(cx, cy, size, facing)
-    const localId = mode.multiplayerManager?.localSessionId ?? null
-    // Just caught: remember when, and where it was, so it can be seen sliding in from there
-    let caught = mode.captures.get(captiveId)
-    if (!caught) {
-        const from = mode.centerOf(captiveId, captive)
-        caught = { at: timestamp, x: from.x, y: from.y }
-        mode.captures.set(captiveId, caught)
+    if (!mode.captures.has(id)) {
+        const from = mode.centerOf(id, captive)
+        mode.captures.set(id, { at: timestamp, x: from.x, y: from.y })
     }
-    // Where the server holds it, relative to the server's mouth: along the facing (pushing straight out; the
-    // hold wants it 0.45 of its width out) and across it (slipping sideways), which is how its struggle shows
-    const serverFacing = captor.facing ?? facing
-    const sfx = Math.cos(serverFacing)
-    const sfy = Math.sin(serverFacing)
-    const ox = captive.x + captive.width / 2 - (captor.x + captor.width / 2 + sfx * captor.width * MOUTH_OFFSET)
-    const oy = captive.y + captive.height / 2 - (captor.y + captor.height / 2 + sfy * captor.width * MOUTH_OFFSET)
-    const along = ox * sfx + oy * sfy - 0.45 * captive.width
-    const across = -ox * sfy + oy * sfx
-    const fx = Math.cos(facing)
-    const fy = Math.sin(facing)
-    // The lump: just inside the mouth when subdued, moving with the struggle (half as far along, fully across)
-    const lx = m.x + fx * (along * 0.5 - size * 0.08) - fy * across
-    const ly = m.y + fy * (along * 0.5 - size * 0.08) + fx * across
-    // Its drawn position stays at the mouth, so when it comes back out it starts from there; your breath still shows
-    mode.drawnPositions.set(captiveId, { x: m.x - captive.width / 2, y: m.y - captive.height / 2 })
-    if (captiveId === localId) mode.breath = mode.breathOf(false, performance.now(), 0)
-
-    const aperture = Math.min(r * 0.42, mouthRadius(size) * 1.25)
-    const outline = Math.max(1.5, size * 0.06)
-    const k = Math.min(1, (timestamp - caught.at) / SUCK_MS)
-
+    mode.drawnPositions.set(id, { x: m.x - captive.width / 2, y: m.y - captive.height / 2 })
+    if (id === localId) mode.breath = mode.breathOf(false, performance.now(), 0)
+    const u = 1 / Math.max(0.001, Math.abs(ctx.getTransform().a))
+    const width = (own ? 118 : 76) * u
+    const height = (own ? 38 : 28) * u
+    const x = cx - width / 2
+    const y = cy + size / 2 + 12 * u
+    const now = mode.worldNow(state, timestamp)
+    const duration = Math.max(1, captor.fireReadyAt - (captor.gulpEndsAt - CANNON.HOLD_MS))
+    const loading = Math.max(0, Math.min(1, 1 - (captor.fireReadyAt - now) / duration))
+    const ready = loading >= 1
     ctx.save()
-    // The dark of the throat
-    ctx.fillStyle = '#10151f'
-    ctx.beginPath()
-    ctx.arc(m.x, m.y, aperture, 0, Math.PI * 2)
+    ctx.fillStyle = 'rgba(9, 19, 32, 0.95)'
+    roundedRect(ctx, x, y, width, height, 10 * u)
     ctx.fill()
-    if (k < 1) {
-        // Sliding in: from where it was to the mouth, shrinking as it goes down the throat; seen through the
-        // opening and wherever it's still outside the body, which hides the rest
-        const ease = k * k
-        const px = caught.x + (m.x - caught.x) * ease
-        const py = caught.y + (m.y - caught.y) * ease
-        ctx.save()
-        ctx.beginPath()
-        const pad = size * 3
-        ctx.rect(cx - pad, cy - pad, pad * 2, pad * 2)
-        ctx.moveTo(cx + r, cy)
-        ctx.arc(cx, cy, r, 0, Math.PI * 2)
-        ctx.moveTo(m.x + aperture, m.y)
-        ctx.arc(m.x, m.y, aperture, 0, Math.PI * 2)
-        ctx.clip('evenodd')
-        drawingMouthful = true
-        try {
-            drawPlayer(mode, ctx, captive, captiveId, captiveId === localId, false, timestamp, { x: px, y: py, scale: 1 - 0.85 * ease })
-        } finally {
-            drawingMouthful = false
-        }
-        ctx.restore()
-    } else {
-        // Inside: a lump under the skin where it's pushing
-        ctx.save()
-        ctx.beginPath()
-        ctx.arc(cx, cy, Math.max(1, r - outline * 0.5), 0, Math.PI * 2)
-        ctx.clip()
-        const lump = captive.width * 0.45
-        ctx.fillStyle = 'rgba(16, 21, 31, 0.22)'
-        ctx.beginPath()
-        ctx.arc(lx, ly, lump, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)'
-        ctx.lineWidth = Math.max(1.5, size * 0.03)
-        ctx.beginPath()
-        ctx.arc(lx, ly, lump, 0, Math.PI * 2)
-        ctx.stroke()
-        ctx.restore()
-    }
-    // The lip: a shadow just inside the opening, and the body's outline carrying on round it
-    ctx.lineWidth = outline
-    ctx.strokeStyle = 'rgba(16, 21, 31, 0.55)'
-    ctx.beginPath()
-    ctx.arc(m.x, m.y, Math.max(1, aperture - outline * 0.6), 0, Math.PI * 2)
+    ctx.strokeStyle = ready ? GOLD : 'rgba(255,255,255,0.3)'
+    ctx.lineWidth = u
     ctx.stroke()
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)'
-    ctx.beginPath()
-    ctx.arc(m.x, m.y, aperture, 0, Math.PI * 2)
-    ctx.stroke()
-    // Progress, at the mouth: gold as the captive works free; red, outside it, as the swallow builds
-    const ring = aperture + outline + 4
-    ctx.lineCap = 'round'
-    ctx.lineWidth = 3
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'
-    ctx.beginPath()
-    ctx.arc(m.x, m.y, ring, 0, Math.PI * 2)
-    ctx.stroke()
-    if (captive.struggle > 0) {
-        ctx.strokeStyle = GOLD
+    drawCreature(ctx, x + 16 * u, y + height / 2 - 2 * u, 16 * u, id === localId ? '#ffffff' : PLAYER_COLORS[captive.playerIndex % PLAYER_COLORS.length], -Math.PI / 2)
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'middle'
+    ctx.font = '700 ' + 10 * u + 'px ' + FONT
+    ctx.fillStyle = ready ? GOLD : '#dce8ee'
+    const label = captor.fireQueued ? 'QUEUED' : ready ? 'READY' : 'LOADING'
+    ctx.fillText(label, x + 30 * u, y + (own ? 13 : 10) * u)
+    const barX = x + 30 * u
+    const barY = y + height - 9 * u
+    const barW = width - 40 * u
+    ctx.fillStyle = 'rgba(255,255,255,0.12)'
+    roundedRect(ctx, barX, barY, barW, 3 * u, 1.5 * u)
+    ctx.fill()
+    ctx.fillStyle = GOLD
+    roundedRect(ctx, barX, barY, Math.max(u, barW * loading), 3 * u, 1.5 * u)
+    ctx.fill()
+    // The aim line begins beyond the body, so it never crosses the eyes either.
+    if (own) {
+        const fx = Math.cos(facing), fy = Math.sin(facing)
+        const from = size / 2 + 10 * u
+        const reach = from + 420
+        const fade = ctx.createLinearGradient(cx + fx * from, cy + fy * from, cx + fx * reach, cy + fy * reach)
+        fade.addColorStop(0, 'rgba(255,209,102,.75)')
+        fade.addColorStop(1, 'rgba(255,209,102,0)')
+        ctx.strokeStyle = fade
+        ctx.lineWidth = 2 * u
+        ctx.setLineDash([6 * u, 8 * u])
         ctx.beginPath()
-        ctx.arc(m.x, m.y, ring, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, captive.struggle))
+        ctx.moveTo(cx + fx * from, cy + fy * from)
+        ctx.lineTo(cx + fx * reach, cy + fy * reach)
         ctx.stroke()
-    }
-    // ...and red, outside it, the gun loading: once it's full the captive can be fired (a race both can see)
-    const armedAt = captor.gulpEndsAt - CANNON.HOLD_MS + CANNON.ARM_MS
-    const loading = Math.max(0, Math.min(1, 1 - (armedAt - mode.worldNow(state, timestamp)) / CANNON.ARM_MS))
-    if (loading > 0) {
-        ctx.strokeStyle = loading >= 1 ? `rgba(255, 70, 70, ${0.6 + 0.35 * Math.sin(timestamp / 120)})` : 'rgba(255, 70, 70, 0.95)'
-        ctx.beginPath()
-        ctx.arc(m.x, m.y, ring + 6, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * loading)
-        ctx.stroke()
-    }
-    if (captor.sessionId === localId) {
-        // Loaded: your shot, a dotted line out of the mouth the way you're facing, fading with distance
-        const reach = 820
-        const line = ctx.createLinearGradient(m.x, m.y, m.x + fx * reach, m.y + fy * reach)
-        line.addColorStop(0, 'rgba(255, 209, 102, 0.85)')
-        line.addColorStop(1, 'rgba(255, 209, 102, 0)')
-        ctx.strokeStyle = line
-        ctx.lineWidth = 3
-        ctx.lineCap = 'butt'
-        ctx.setLineDash([10, 14])
-        ctx.lineDashOffset = -((timestamp / 18) % 24)
-        ctx.beginPath()
-        ctx.moveTo(m.x + fx * (ring + 10), m.y + fy * (ring + 10))
-        ctx.lineTo(m.x + fx * reach, m.y + fy * reach)
-        ctx.stroke()
-        ctx.setLineDash([])
     }
     ctx.restore()
 }

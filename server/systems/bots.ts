@@ -2,7 +2,7 @@ import type { GameState } from "../schema/GameState.js";
 import { PlayerSchema } from "../schema/PlayerSchema.js";
 import { BotBrain } from "../game/bots.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
-import { CANNON } from "../constants/gameConstants.js";
+import { captureLoadMs } from "../game/cannon.js";
 import { escapePress, fireCaptive } from "./inhale.js";
 
 const { PLAYER_STATE, BOTS, INHALE, BOMBS } = GAME_CONSTANTS;
@@ -42,6 +42,10 @@ export function botMouth(state: GameState, bot: PlayerSchema, now: number) : voi
     } else if (aim && Math.random() < 0.03) {
       state.spit(bot, aim.x + aim.width / 2 - cx + (Math.random() - 0.5) * 60, aim.y + aim.height / 2 - cy + (Math.random() - 0.5) * 60, now);
     }
+    return;
+  }
+  if (state.brains.get(bot.sessionId)?.isDisengaging(now)) {
+    bot.stopInhale(now);
     return;
   }
   // Inhaling: keep the mouth on whoever it's robbing or swallowing for as long as its breath lasts,
@@ -190,8 +194,8 @@ function botFire(state: GameState, bot: PlayerSchema, cx: number, cy: number, no
     const dy = aim.y + aim.height / 2 - cy;
     const d = Math.hypot(dx, dy) || 1;
     bot.steer(dx / d, dy / d);
-    if (held >= CANNON.ARM_MS && Math.abs(angleGap(bot.facing, Math.atan2(dy, dx))) <= BOTS.FIRE_AIM) fireCaptive(state, bot, now);
-  } else if (held >= Math.max(CANNON.ARM_MS, BOTS.FIRE_WAIT_MS)) {
+    if (held >= captureLoadMs(captive.escapeKeys.length) && Math.abs(angleGap(bot.facing, Math.atan2(dy, dx))) <= BOTS.FIRE_AIM) fireCaptive(state, bot, now);
+  } else if (held >= captureLoadMs(captive.escapeKeys.length)) {
     fireCaptive(state, bot, now);
   }
 }

@@ -1,52 +1,46 @@
-# 🚀 Ascend Avoid
+# Ascend Avoid
 
-> A thrilling multiplayer browser game where players race to the top while dodging obstacles in an ever-shrinking arena!
+A real-time multiplayer browser arena: collect gems, grow your creature, steal from rivals, and fire captured players as steerable living cannonballs.
 
-![Game Screenshot](./screenshot.png)
-*[Add your game screenshot here]*
+- WASD, arrow keys, a touch joystick, or hold the mouse button to move.
+- Hold Space/the action button to inhale; tap to puff, or fire a captive.
+- Follow the directional prompts to escape a capture. Larger captors require more inputs.
+- Steer sideways in flight to hit another creature and collect spilled gems.
+- Follow gold markers to gem surges and contested jackpots.
+- Use Help & settings for the full rules, starter tips and sound controls.
 
-## 🎮 Game Overview
+## Local development
 
-**Ascend Avoid** is a fast-paced, competitive browser game that combines skill, strategy, and survival. Navigate your character upward through a field of moving obstacles while competing against up to 30 other players in real-time multiplayer battles.
+Requires Node.js 20+ and npm.
 
-### 🌟 Key Features
+```sh
+npm ci
+npm --prefix server ci
+npm run dev
+```
 
-- **🏆 Multiplayer Mayhem**: Battle royale with up to 30 players
-- **📱 Cross-Platform**: Seamless gameplay on desktop and mobile
-- **🎯 Progressive Difficulty**: Obstacles increase as you score higher  
-- **⚡ Real-Time Action**: Powered by WebSocket technology
-- **🎨 Responsive Design**: Adapts to any screen size
-- **🔥 Shrinking Arena**: Battle royale mechanics keep the action intense
+Vite serves the client on port 5173; Colyseus runs on port 3000. For a production build:
 
-## 🕹️ How to Play
+```sh
+npm run build
+npm run start:prod
+```
 
-### Single Player Mode
-- Use **Arrow Keys** or **WASD** to move your character
-- Reach the **green dashed line** at the top to score points
-- Avoid the **blue obstacles** moving across the screen
-- Press **R** to restart after game over
+## Checks
 
-### Multiplayer Mode  
-- Connect to a game server and compete with other players
-- Last player standing wins!
-- Arena shrinks over time, forcing players closer together
-- Eliminated players can spectate the remaining action
+```sh
+npm run type-check
+npm run lint
+node scripts/gen-synced-types.mjs --check
+npm test
+```
 
-## 🚀 Quick Start
+Browser checks target production by default. To test a local build, set `E2E_URL` to its URL. The capture regression also requires `E2E_TEST_HOOKS=1` and a server started with `NODE_ENV=test`. Production disables placement and test hooks.
 
-### Prerequisites
-- Node.js 16+ 
-- npm or yarn
+```sh
+npm run test:browsers
+node scripts/capture-balance.cjs 100
+npm run sim:crowd
+```
 
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/ascend-avoid.git
-cd ascend-avoid
-
-# Install dependencies
-npm install
-
-# Install server dependencies
-cd server && npm install && cd ..
+Current rules: [Game design](docs/GAME_DESIGN.md). Accepted scope: [Implementation plan](docs/FUN_PASS_PLAN.md). Product direction: [Our ten best ideas](docs/TOP_10_IDEAS.md).

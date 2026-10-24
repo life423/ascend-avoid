@@ -1,4 +1,6 @@
 import { playerName, setPlayerName } from '../core/PlayerName';
+import { GAME_RULES } from './GameRules';
+import { sound } from '../core/Sound';
 
 /** Large screens: the drawer sizes itself to its content (see fitToScreen) */
 const DESKTOP = '(min-width: 1200px)';
@@ -56,24 +58,13 @@ export class DrawerUI {
                 <div class="menu-section">
                     <h3>How to Play</h3>
                     <div class="instructions">
-                        <p>Grab <span class="highlight">gems</span> to grow. Bigger is stronger, smaller is faster.</p>
-
-                        <h4>Move</h4>
-                        <p><span class="highlight">Joystick</span> on phones; <span class="highlight">arrow keys</span>, WASD or the mouse on computers.</p>
-
-                        <h4>Inhale</h4>
-                        <p>Hold <span class="highlight">Space</span> or the inhale button to steal gems from anyone in front of you. Take their last gem and they're out. Much smaller creatures can be swallowed: hold them at your mouth.</p>
-
-                        <h4>Bodies</h4>
-                        <p>Creatures are solid: block, corner and crowd each other, but nobody gets shoved.</p>
-
-                        <h4>Turbines</h4>
-                        <p>The <span class="highlight">intake</span> rips gems out of anyone close; the <span class="highlight">exhaust</span> fires them across the arena.</p>
-
-                        <h4>Arena shifts</h4>
-                        <p>Every few minutes the floor changes shape. Get onto it before the rest drops away.</p>
-
+                        ${GAME_RULES}
                     </div>
+                </div>
+                <div class="menu-section">
+                    <h3>Settings</h3>
+                    <button type="button" class="sound-toggle" aria-label="Mute sound" aria-pressed="${sound.muted}">Sound ${sound.muted ? 'off' : 'on'}</button>
+                    <button type="button" class="replay-guide">Show starter tips</button>
                 </div>
             </div>
         `;
@@ -85,6 +76,16 @@ export class DrawerUI {
     }
 
     private attachEventListeners(): void {
+        const soundButton = this.drawer.querySelector<HTMLButtonElement>('.sound-toggle');
+        soundButton?.addEventListener('click', () => {
+            sound.toggle();
+            soundButton.textContent = `Sound ${sound.muted ? 'off' : 'on'}`;
+            soundButton.setAttribute('aria-pressed', String(sound.muted));
+        });
+        this.drawer.querySelector('.replay-guide')?.addEventListener('click', () => {
+            window.dispatchEvent(new Event('ascend:replay-guide'));
+            this.close();
+        });
         // Toggle drawer on hamburger click
         this.hamburgerBtn.addEventListener('click', () => this.toggle());
         

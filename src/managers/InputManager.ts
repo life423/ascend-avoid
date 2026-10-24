@@ -74,6 +74,9 @@ export default class InputManager {
         // Keyboard events
         document.addEventListener('keydown', this.handleKeyDown)
         document.addEventListener('keyup', this.handleKeyUp)
+        window.addEventListener('blur', this.reset)
+        document.addEventListener('visibilitychange', this.onVisibility)
+        document.addEventListener('focusin', this.onFocus)
     }
 
     /**
@@ -94,6 +97,9 @@ export default class InputManager {
         // Remove keyboard events
         document.removeEventListener('keydown', this.handleKeyDown)
         document.removeEventListener('keyup', this.handleKeyUp)
+        window.removeEventListener('blur', this.reset)
+        document.removeEventListener('visibilitychange', this.onVisibility)
+        document.removeEventListener('focusin', this.onFocus)
 
         // Can't remove touch events here since we don't store canvas reference
         // This should be handled in dispose() with a stored canvas reference
@@ -155,8 +161,6 @@ export default class InputManager {
      * @param e - The keyboard event
      */
     private handleKeyUp(e: KeyboardEvent): void {
-        const target = e.target as HTMLElement | null
-        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return
         // Release movement keys
         if (this.keyMappings.UP.includes(e.key) || e.keyCode === 38) {
             this.keys.up = false
@@ -261,6 +265,16 @@ export default class InputManager {
         // Exclude restart from InputState interface
         const { up, down, left, right } = this.keys
         return { up, down, left, right }
+    }
+
+    reset = (): void => {
+        this.keys = { up: false, down: false, left: false, right: false, restart: false, shoot: false }
+    }
+
+    private onVisibility = (): void => { if (document.hidden) this.reset() }
+    private onFocus = (event: FocusEvent): void => {
+        const target = event.target as HTMLElement | null
+        if (target?.matches('input, textarea, [contenteditable="true"]')) this.reset()
     }
 
     /**

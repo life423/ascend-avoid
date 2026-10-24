@@ -26,7 +26,7 @@ export function updateLatches(state: GameState, now: number, deltaTime: number) 
     let bestQuality = 0;
     state.players.forEach((target) => {
       const id = target.sessionId;
-      if (target === attacker || target.state !== PLAYER_STATE.ALIVE || target.spawnProtected) {
+      if (target === attacker || target.state !== PLAYER_STATE.ALIVE || target.spawnProtected || target.capturedBy || target.flying || now < target.suctionSafeUntil) {
         attacker.airQuality.delete(id);
         return;
       }

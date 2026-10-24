@@ -1,129 +1,51 @@
-# Game design
+# Ascend Avoid
 
-Working title: Ascend Avoid (a new name comes later).
+## Core loop
 
-## The pitch
+Collect gems, grow, steal from other creatures, capture someone smaller, aim and fire them as a steerable living cannonball, then compete for spilled gems. The world is continuous: no lobby or round wait.
 
-One big open arena that everyone on the site shares. Hop around, grab gems, shove people into
-traffic, and don't get caught when the arena closes in. Open the page and you're playing: no
-lobby, no waiting, and you're back two seconds after a knockout.
+## World and presentation
 
-## World and camera
+The finite arena is 4200 × 4200 units. The camera is pinned to the local creature, including during hits, flights and at boundaries. The floor and entities stop at a thin blue edge. A lighter blue decorative surround fills extra screen space; the world does not wrap.
 
-- A big open arena about 3×3 screens across (2100×2100 world units), walled at the edges.
-- The camera follows you. Every screen sees the same amount of world (`WORLD.VIEW_AREA`), shaped
-  to the screen within limits (aspect 0.6–1.8), so a big monitor gets no extra warning.
-- The canvas fills whatever space the page gives it, on desktop and on phones.
-- A minimap in a corner shows you, everyone else, what your screen covers and, once gems exist,
-  the leader's crown.
+Bots fill the population to 20 and yield places to arriving humans. Crowded bots disengage for 6–8 seconds and head toward less occupied space. At most two bots pursue a given target. Traffic, bombs and floor shifts remain experimental, explicitly enabled in test worlds.
 
-## Movement
+## Movement and growth
 
-- Tap a direction to hop once (60 units). Hold it to keep hopping: the first repeat comes after
-  0.2 seconds, then six hops a second.
-- Your browser decides when you hop and moves you on screen instantly; the server applies the
-  same hops (one per direction every 60 ms at most, four queued at most) and decides hits.
-- Hops grow with you as you collect gems, so one hop always clears your own body.
+Continuous analog walking supports WASD, arrows, a touch stick or holding the mouse button. Directional speed is normalized. The mouth turns toward movement/aim with bounded angular speed and acceleration. Large creatures turn slower, with responsive acceleration.
 
-## Hazards
+Width is `20 * sqrt(1 + gems / 2)`, rounded to half a unit. Speed is `max(130, 320 * (20 / width)^0.3)`. This retains a small creature's speed advantage while making growth playable. Big human creatures decay gently above 300 gems; bots decay sooner and faster.
 
-- Traffic crosses the arena in all four directions, in lanes (14 across, 14 down, 150 units
-  apart), each with its own direction and speed, reshuffled at every arena shift. Obstacles in a
-  lane keep a gap wider than the biggest player, and neighboring lanes are staggered so traffic
-  never lines up into a wall; an obstacle waits out of sight until a lane is safe to enter.
-- The spawner always leaves gaps wide enough for the biggest possible player.
-- Five balls roll diagonally and bounce off the arena's walls, cutting across the lanes; hits
-  use their true circle.
-- Later: bouncing balls, spiky mines you can shove people into, and narrow gaps between posts that
-  only small players fit through.
+## Inhale, capture and escape
 
-## Gems
+Hold Space or the touch button to inhale. A cone pulls gems and steals weight, preserving the victim's last gem. Good airflow can form a focused beam; close range, alignment and clean separation determine effectiveness.
 
-- Scattered around the arena. They're your score and your weight.
-- Everyone starts small (20 units) and grows with the square root of their gems: 26 at one gem,
-  50 at 25, 80 at 100, capped at 100. Size changes pop. What traffic hits is what you see (minus
-  a sliver of grace), so being big means being a bigger target. Bigger players are heavier
-  (harder to push, and they push harder) and hold a slower rhythm (six hops a second when small,
-  four at full size); hops are 60 units while small, then a little more than your own size.
-- The camera widens as you grow: small players see a closer view, big players about 60% more
-  (about 30% farther than the base view).
-- Very big players slowly shed gems, like Agar's mass decay, so sitting on a pile isn't safe.
-- A live top-5 leaderboard; the leader wears a crown on everyone's minimap.
+A creature at least 1.3 times wider can capture a smaller one at its mouth. Captives remain alive. After a 600ms daze, they enter a directional escape sequence: three inputs below a 2x captor width advantage, four at 2x, five at 4x or greater. A wrong input resets progress. Keyboard edges are transmitted explicitly; touch flicks return to neutral between inputs, and their edges are processed on message arrival.
 
-## Hits
+Loading takes 1.2, 1.4 or 1.6 seconds for those respective sequences. Tapping FIRE early queues a shot for the end of loading. Releasing the original inhale simply stops inhaling. The captor can keep aiming. A hold ends after 4.5 seconds, or sooner when the captive escapes or the captor is incapacitated/leaves. Focus loss clears input and cancels a queued shot.
 
-- A hit sprays out half your gems, which burst physically outward and scatter, so everyone
-  nearby abandons what they were doing and dives into the pile. This is a signature moment.
-- A hit that costs gems sends you skidding about two body-lengths (along a car's path, away
-  from a ball, or back onto the floor after a fall) and you can't hop for 0.8 seconds. Your own
-  spilled gems wait 1.5 seconds before you can grab them back, so whoever shoved you (or anyone
-  quick) gets first crack. A skid never carries you off an edge.
-- You're only knocked out when you're hit with no gems left. Knocked out, you're back in about
-  two seconds.
+Bots take 500ms to read after the daze, attempt an input every 450ms, and choose correctly 65% of the time. These values deliberately give the captor a usable shot window.
 
-## Pushing
+## Flights and hits
 
-- Hop into someone to shove them. They slide about two hops: farther if you're heavier, less if
-  they are (weight grows with size, from 1 to 2.25), and they can't hop until they stop.
-- Two players shoving the same target add their pushes.
-- Shoving the leader knocks a tenth of their gems loose (2 to 8, at most every 1.5 seconds), so
-  small players can chip away at them.
-- Players who just arrived can't be shoved, and shoving someone ends your own protection.
+The captor's facing and captive's lateral input determine launch direction. Captives can steer sideways during flight. Swept collision checks prevent tunneling. A hit spills gems, stuns briefly, and bounces the projectile. The flier survives. Impact events identify the launcher, flier and target, and both launcher and flier receive recognition. The capture badge sits below the body so faces remain readable.
 
-## The B button: dash and slingshot
+## Defensive gust
 
-- **Tap: dash.** A long hop that costs a gem.
-- **Hold: slingshot.** Charge for 0.4–1.5 seconds, clearly telegraphed (a pull-back and a charge
-  ring everyone can see), then release to launch several hops in a straight line without
-  steering. The knockback ignores the victim's weight but not physics: a huge impulse that still
-  slides and can be dodged, not a guaranteed yeet. It costs gems (more for heavier players) and
-  has a 4-second cooldown after firing, so small players can't chain-launch the leader.
+Tap with an empty mouth to puff in a 110-degree cone. Knockback scales gently by mass with a meaningful minimum ratio and a maximum distance. A successful puff into an incoming inhale creates at least 150 units of intended separation, clears that suction connection, and protects its user from suction for one second. The puff cooldown is 1.8 seconds. Protection ends when a creature inhales, puffs or fires.
 
-## Power-ups
+## Turbines, Cores and gem surges
 
-- **Bubble Shield:** absorbs exactly one hit and visibly cracks when it does. No timed
-  invincibility; one-hit protection builds confidence without removing the danger.
-- Power-ups are map pickups, separate from gems.
+Turbine intakes strip and transport gems; exhausts fling gems and creatures across the arena. Cores can be swung by airflow and stun on hard impacts.
 
-## Respawning
+The first gem-surge warning starts after 30 seconds. An eight-second warning marks a location, usually near a turbine exhaust, on the minimap and HUD. For 18 seconds, bonus gems fall there every three seconds. A 40-gem jackpot appears in the final five seconds. A grounded, free creature claims it by standing there alone for 0.6 seconds; multiple claimants stop progress. After the event, there is a 60–90-second gap. Bonus gems expire, respect the global gem cap and do not disturb field-gem accounting. Experimental arena shifts own the jackpot when enabled, so the two events do not conflict.
 
-- Respawn away from hazards and the leader, choosing the best of several candidate spots.
-- About 1.5 seconds of translucent protection, which ends the moment you ram, dash or slingshot.
+## UI and accessibility
 
-## The arena shift (an event; the arena always returns)
+Desktop controls have text labels and visible keyboard shortcuts. Names save with a button, Enter or blur, and expose a confirmation. The activity feed stays below collapsed controls. Phones use canvas controls with contextual Inhale/Loading/Queued/Fire labels. First-session hints are dismissible and replayable from help. Sounds are gesture-unlocked, throttled and optional; mute is remembered.
 
-Not a battle royale: nobody is eliminated and the arena never stays small.
+The shell reserves the final canvas/header layout before initialization, uses local system font fallbacks, and supplies a description and semantic score labels. Local Lighthouse measurements are recorded separately from production results.
 
-- Every few minutes the floor reshapes. A 10-second heads-up, then the new shape is shown with an
-  8-second grace period in which nobody can be hurt; gems drop onto the new floor to lead the
-  way, and the tiles about to vanish pulse red, faster as time runs out.
-- Then the rest of the arena drops away into a void for 45 seconds. Going over the edge counts as
-  a hit: half your gems burst out and you land back on the nearest floor (with none, you're
-  knocked out and back in two seconds). Gem showers land on the floor every few seconds, richer
-  as the shift goes on.
-- With 12 seconds left a jackpot crystal (20 gems) drops. Stand on it alone for 0.6 seconds to
-  claim it; a shove resets your claim, and while two or more are on it nobody's claim moves.
-- Then the whole arena returns until the next shift.
-- Shapes come from a 10x10 grid of tiles: half hand-made (plus, ring, twin islands, hourglass,
-  stairs; turned and mirrored), half generated. Every shape covers 35-65% of the arena, is all
-  connected, has room to stand around in, and is within reach of everywhere during the grace
-  period. The floor grows slower than the player count. Several candidates are tried and the
-  best is used; sometimes it's near everyone, sometimes everyone has to cross the arena.
-- Bots stay on the floor, get hungrier and pushier during a shift, and the poorer (or reckless)
-  ones go for the jackpot.
-- Whoever shoved you just before you fell or were hit gets the credit, shown to everyone.
+## Validation
 
-## Always playable
-
-- No rounds and no lobbies. Bots, marked with a robot, fill in until six are playing and make
-  room as people arrive. They hop by the same rules as people, dodge the traffic they see
-  coming, chase gems and shove now and then (always the leader).
-- Solo becomes the same world offline with bots; until then it's the classic solo game.
-
-## Build order
-
-1. Big arena, following camera, canvas filling the page, instant respawn with protection. **Done.**
-2. Gems: size, weight, pushing, hits that spray gems, leaderboard, minimap crown. **Done.**
-3. Bots. **Done.**
-4. The arena shift and its warnings. **Done.**
-5. Dash, slingshot, Bubble Shield, new hazards.
+`npm run type-check`, `npm run lint`, `node scripts/gen-synced-types.mjs --check`, `npm run build`, and `npm test` validate the branch. Browser regressions against a local test server cover keyboard/touch escapes, focus cancellation, centering, names, controls and sound settings. `scripts/capture-balance.cjs` and `scripts/bot-crowd.cjs` measure real simulation behavior for future tuning.

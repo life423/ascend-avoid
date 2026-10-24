@@ -36,21 +36,6 @@ export function drawCreature(ctx: CanvasRenderingContext2D, x: number, y: number
     ctx.stroke()
     const fx = Math.cos(facing)
     const fy = Math.sin(facing)
-    for (const side of [-1, 1]) {
-        const ex = x + fx * r * 0.42 - fy * r * 0.36 * side
-        const ey = y + fy * r * 0.42 + fx * r * 0.36 * side
-        ctx.fillStyle = '#ffffff'
-        ctx.beginPath()
-        ctx.arc(ex, ey, r * 0.26, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.strokeStyle = 'rgba(16, 21, 31, 0.55)'
-        ctx.lineWidth = Math.max(1, size * 0.025)
-        ctx.stroke()
-        ctx.fillStyle = '#10151f'
-        ctx.beginPath()
-        ctx.arc(ex, ey, r * 0.13, 0, Math.PI * 2)
-        ctx.fill()
-    }
     // The mouth: wide open while inhaling (drawn where the server has it, so a captive held there is really in it), bulging with a rock when full
     const m = mouthOf(x, y, size, facing)
     if (inhaling) {
@@ -76,6 +61,22 @@ export function drawCreature(ctx: CanvasRenderingContext2D, x: number, y: number
             ctx.fill()
         }
     }
+    for (const side of [-1, 1]) {
+        const ex = x + fx * r * 0.42 - fy * r * 0.36 * side
+        const ey = y + fy * r * 0.42 + fx * r * 0.36 * side
+        ctx.fillStyle = '#ffffff'
+        ctx.beginPath()
+        ctx.arc(ex, ey, r * 0.26, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.strokeStyle = 'rgba(16, 21, 31, 0.55)'
+        ctx.lineWidth = Math.max(1, size * 0.025)
+        ctx.stroke()
+        ctx.fillStyle = '#10151f'
+        ctx.beginPath()
+        ctx.arc(ex, ey, r * 0.13, 0, Math.PI * 2)
+        ctx.fill()
+    }
+
 }
 
 /**

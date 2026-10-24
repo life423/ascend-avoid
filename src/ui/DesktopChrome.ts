@@ -19,15 +19,15 @@ export class DesktopChrome {
         const header = document.querySelector('.app-header')
         if (!header) return
 
-        const actions = document.createElement('div')
+        const actions = header.querySelector<HTMLDivElement>('.bar-actions') ?? document.createElement('div')
         actions.className = 'bar-actions'
         actions.innerHTML = `
-            <button type="button" class="bar-button" data-action="help" aria-label="Menu" title="Menu: how to play (H)">${MENU}</button>
-            <button type="button" class="bar-button" data-action="hide" aria-label="Hide the bar" title="Hide the bar (F)">${CHEVRON_UP}</button>
+            <button type="button" class="bar-button bar-help" data-action="help" title="Help & settings (H)">${MENU}<span>Help & settings</span><kbd>H</kbd></button>
+            <button type="button" class="bar-button bar-view" data-action="hide" title="Focus view (F)">${CHEVRON_UP}<span>Focus view</span></button>
         `
-        const nameField = document.createElement('label')
+        const nameField = header.querySelector<HTMLFormElement>('.bar-name') ?? document.createElement('form')
         nameField.className = 'bar-name'
-        nameField.innerHTML = `<span>Name</span><input class="bar-name-input" type="text" maxlength="20" spellcheck="false" autocomplete="off" aria-label="Your name" title="Everyone sees it above your creature and on the leaderboard">`
+        nameField.innerHTML = `<label for="player-name">Name</label><input id="player-name" class="bar-name-input" type="text" maxlength="20" spellcheck="false" autocomplete="off" aria-label="Your name" title="Everyone sees it above your creature and on the leaderboard"><button type="submit" class="name-save-button">Save name</button><span class="name-status sr-only" role="status"></span>`
         header.appendChild(nameField)
         const nameInput = nameField.querySelector<HTMLInputElement>('.bar-name-input')
         if (nameInput) this.setUpName(nameInput)
@@ -36,8 +36,8 @@ export class DesktopChrome {
         const tab = document.createElement('div')
         tab.className = 'bar-tab'
         tab.innerHTML = `
-            <button type="button" class="bar-button" data-action="help" aria-label="Menu" title="Menu: how to play (H)">${MENU}</button>
-            <button type="button" class="bar-button" data-action="show" aria-label="Show the bar" title="Show the bar (F)">${CHEVRON_DOWN}</button>
+            <button type="button" class="bar-button bar-help" data-action="help" title="Help & settings (H)">${MENU}<span>Help & settings</span></button>
+            <button type="button" class="bar-button bar-view" data-action="show" title="Show controls (F)">${CHEVRON_DOWN}<span>Show controls</span><kbd>F</kbd></button>
         `
         document.body.appendChild(tab)
 
@@ -62,8 +62,23 @@ export class DesktopChrome {
     /** Your name, right in the bar: Enter or clicking away saves it (it glows for a moment), Esc puts it back */
     private setUpName(input: HTMLInputElement): void {
         input.value = playerName()
+        const form = input.closest('.bar-name')
+        const button = form?.querySelector<HTMLButtonElement>('.name-save-button')
+        const status = form?.querySelector('.name-status')
+        const save = () => {
+            const name = setPlayerName(input.value)
+            input.value = name ?? playerName()
+            if (!name) return
+            if (button) button.textContent = 'Saved ✓'
+            if (status) status.textContent = `Name saved as ${name}`
+            input.classList.add('saved')
+            window.setTimeout(() => { input.classList.remove('saved'); if (button) button.textContent = 'Save name' }, 1500)
+        }
+        form?.addEventListener('submit', event => { event.preventDefault(); save(); input.blur() })
         input.addEventListener('keydown', (e: KeyboardEvent) => {
             if (e.key === 'Enter') {
+                e.preventDefault()
+                save()
                 input.blur()
             } else if (e.key === 'Escape') {
                 input.value = playerName()
@@ -75,11 +90,7 @@ export class DesktopChrome {
                 input.value = playerName()
                 return
             }
-            const name = setPlayerName(input.value)
-            input.value = name ?? playerName()
-            if (!name) return
-            input.classList.add('saved')
-            window.setTimeout(() => input.classList.remove('saved'), 900)
+            save()
         })
         // Renamed some other way: keep the bar in step
         window.addEventListener(NAME_EVENT, (e: Event) => {
@@ -89,6 +100,7 @@ export class DesktopChrome {
 
     private setBarHidden(hidden: boolean): void {
         document.body.classList.toggle('bar-hidden', hidden)
+        document.documentElement.classList.remove('bar-start-hidden')
         try {
             localStorage.setItem(STORAGE_KEY, hidden ? '1' : '0')
         } catch {

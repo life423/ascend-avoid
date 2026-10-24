@@ -83,6 +83,9 @@ export class BotBrain {
   /** The chase it's on (who, since when), and creatures it has given up on for a while (until when) */
   private hunt: { id: string; since: number } | null = null;
   private readonly shunned = new Map<string, number>();
+  private disperseUntil = 0;
+  private disperseGoal = { x: 0, y: 0 };
+  isDisengaging(now: number): boolean { return now < this.disperseUntil; }
 
   constructor() {
     this.thinkMs = BOTS.THINK_MS_MIN + Math.random() * (BOTS.THINK_MS_MAX - BOTS.THINK_MS_MIN);
@@ -95,7 +98,8 @@ export class BotBrain {
     if (now < this.nextThinkAt) return null;
     this.nextThinkAt = now + this.thinkMs * (0.8 + Math.random() * 0.4);
     if (bot.state !== PLAYER_STATE.ALIVE || bot.sliding || bot.recovering) return null;
-    if (Math.random() < this.mistakeChance) {
+    this.spreadOut(bot, world, now);
+    if (!this.isDisengaging(now) && Math.random() < this.mistakeChance) {
       // A careless hop (misjudging traffic), though never straight over the edge
       const careless = MOVES[Math.floor(Math.random() * MOVES.length)];
       if (!careless || !world.shiftsOn || world.shiftPhase === "normal") return careless;
@@ -140,6 +144,7 @@ export class BotBrain {
     this.victim = null;
     const cx = bot.x + bot.width / 2;
     const cy = bot.y + bot.height / 2;
+    if (this.isDisengaging(now)) return this.disperseGoal;
     // A new floor is coming: get onto it
     if (world.shiftsOn && world.shiftPhase !== "normal" && !world.isFloorAt(cx, cy)) return world.nearestFloorPoint(cx, cy);
     // Something big enough to swallow it close by: get away (smaller, it's faster). Robbers get robbed back (see GameState)
@@ -245,7 +250,6 @@ export class BotBrain {
     const cy = bot.y + bot.height / 2;
     const leader = world.leader();
     const range = BOTS.HUNT_RANGE * (0.6 + this.aggression);
-    const reach = INHALE.REACH + bot.width * INHALE.REACH_PER_SIZE;
     if (this.hunt && now - this.hunt.since > BOTS.HUNT_GIVE_UP_MS) {
       this.shunned.set(this.hunt.id, now + BOTS.SHUN_MS);
       this.hunt = null;
@@ -264,6 +268,7 @@ export class BotBrain {
       world.brains.forEach((brain, id) => {
         if (id !== bot.sessionId && brain.victim === other) pursuers++;
       });
+      if (pursuers >= BOTS.MAX_PURSUERS) return;
       const appeal = ((edible ? 2 : 1) * (other === leader && this.aggression > 0.15 ? 1.2 : 1) * (other.gems + 5) * (0.8 + 0.4 * this.liking(other))) / ((distance + 100) * (1 + BOTS.PURSUIT_PENALTY * pursuers));
       if (appeal > bestAppeal) {
         bestAppeal = appeal;
@@ -275,8 +280,6 @@ export class BotBrain {
       this.hunt = null;
     } else if (!this.hunt || this.hunt.id !== pick.sessionId) {
       this.hunt = { id: pick.sessionId, since: now };
-    } else if (Math.hypot(pick.x + pick.width / 2 - cx, pick.y + pick.height / 2 - cy) - pick.width / 2 <= reach) {
-      this.hunt.since = now; // within reach: the chase has closed, the mouth takes it from here
     }
     return pick;
   }
@@ -285,6 +288,33 @@ export class BotBrain {
   private liking(other: PlayerSchema): number {
     const v = Math.sin((other.playerIndex + 1) * 12.9898 + this.taste * 78.233) * 43758.5453;
     return v - Math.floor(v);
+  }
+
+  /** Crowded fights have an end: withdraw toward a less occupied part of the arena. */
+  private spreadOut(bot: PlayerSchema, world: GameState, now: number): void {
+    if (this.isDisengaging(now) || bot.capturedBy || bot.gulping || bot.flying) return;
+    const cx = bot.x + bot.width / 2;
+    const cy = bot.y + bot.height / 2;
+    const neighbors = [...world.players.values()].filter(other => other !== bot && other.state === PLAYER_STATE.ALIVE && !other.capturedBy && Math.hypot(other.x + other.width / 2 - cx, other.y + other.height / 2 - cy) < (bot.width + other.width) / 2 + BOTS.CROWD_SPACE);
+    if (neighbors.length < BOTS.DISPERSE_NEIGHBORS) return;
+    let best = { x: cx, y: cy };
+    let bestScore = -Infinity;
+    for (let attempt = 0; attempt < 16; attempt++) {
+      const angle = Math.random() * Math.PI * 2;
+      const x = Math.max(180, Math.min(world.worldWidth - 180, cx + Math.cos(angle) * 800));
+      const y = Math.max(180, Math.min(world.worldHeight - 180, cy + Math.sin(angle) * 800));
+      if (!world.isFloorAt(x, y)) continue;
+      let score = 0;
+      world.players.forEach(other => { if (other !== bot && other.state === PLAYER_STATE.ALIVE) score -= 1 / Math.max(40, Math.hypot(other.x + other.width / 2 - x, other.y + other.height / 2 - y)); });
+      if (score > bestScore) { bestScore = score; best = { x, y }; }
+    }
+    this.disperseGoal = best;
+    this.disperseUntil = now + BOTS.DISPERSE_MS + Math.random() * 2000;
+    this.hunt = null;
+    this.victim = null;
+    this.goal = null;
+    bot.stopInhale(now);
+    bot.dropLatch();
   }
 
   /** Whoever is robbing this bot right now, if anyone */

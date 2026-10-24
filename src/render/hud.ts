@@ -13,7 +13,7 @@ export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
     const height = state.worldHeight * scale
     const x = canvas.width - width - (COMPACT.matches ? 10 * mode.cssScale : 12)
     // On phones and tablets it sits under the menu button; elsewhere, on a touchscreen the INHALE button has the bottom right, so it moves to the top
-    const y = COMPACT.matches ? Math.round(54 * mode.cssScale) : mode.controls?.touchDevice ? 34 : canvas.height - height - 12
+    const y = COMPACT.matches ? Math.round(54 * mode.cssScale) : mode.controls?.touchDevice ? 76 : canvas.height - height - 12
     mode.minimapBottom = y + height
     ctx.save()
     ctx.fillStyle = 'rgba(5, 12, 24, 0.72)'
@@ -73,6 +73,13 @@ export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
         ctx.lineTo(tx + Math.cos(turbine.intake) * 7, ty + Math.sin(turbine.intake) * 7)
         ctx.stroke()
     })
+    if (state.surgePhase === 'warning' || state.surgePhase === 'active') {
+        ctx.strokeStyle = GOLD
+        ctx.lineWidth = 2
+        ctx.beginPath()
+        ctx.arc(x + state.surgeX * scale, y + state.surgeY * scale, 7, 0, Math.PI * 2)
+        ctx.stroke()
+    }
     if (state.jackpotOn) {
         // The jackpot is the one thing the minimap points out
         const jx = x + state.jackpotX * scale
@@ -286,6 +293,9 @@ export function drawNotices(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
     const now = performance.now()
     mode.notices = mode.notices.filter((notice) => now - notice.at < JOIN_NOTICE_MS)
     let y = mode.controls?.touchDevice || COMPACT.matches ? mode.minimapBottom + 12 : 12
+    if (!COMPACT.matches && document.body.classList.contains('bar-hidden')) y = 72
+    const phase = mode.multiplayerManager?.getState()?.surgePhase
+    if (COMPACT.matches && (phase === 'warning' || phase === 'active')) y += 54 * mode.cssScale
     ctx.save()
     for (const notice of [...mode.notices].reverse()) {
         ctx.globalAlpha = Math.min(1, (JOIN_NOTICE_MS - (now - notice.at)) / 500)
@@ -363,8 +373,9 @@ export function drawCapturePrompt(mode: MultiplayerMode, ctx: CanvasRenderingCon
         const now = mode.worldNow(state, timestamp)
         const dazed = now < me.dazedUntil
         // When the captor can first fire: the hold's safety net ends HOLD_MS after the catch, the gun loads ARM_MS after it
-        const armedAt = captor ? captor.gulpEndsAt - CANNON.HOLD_MS + CANNON.ARM_MS : 0
-        const loading = captor ? Math.max(0, Math.min(1, 1 - (armedAt - now) / CANNON.ARM_MS)) : 1
+        const armedAt = captor?.fireReadyAt ?? 0
+        const loadMs = captor ? armedAt - (captor.gulpEndsAt - CANNON.HOLD_MS) : CANNON.ARM_MS
+        const loading = captor ? Math.max(0, Math.min(1, 1 - (armedAt - now) / loadMs)) : 1
         const sinceMiss = now - me.escapeMissAt
         const missed = me.escapeMissAt > 0 && sinceMiss < 380
         const cell = 46 * u
@@ -429,12 +440,22 @@ export function drawCapturePrompt(mode: MultiplayerMode, ctx: CanvasRenderingCon
         ctx.restore()
         return
     }
+    if (me.flying) {
+        ctx.save()
+        ctx.font = `700 ${14 * u}px ${FONT}`
+        ctx.fillStyle = GOLD
+        ctx.textAlign = 'center'
+        ctx.fillText('YOU ARE THE CANNONBALL — steer sideways to land a hit!', centerX, bottom - 20 * u, canvas.width - 32 * u)
+        ctx.restore()
+        return
+    }
     if (me.gulping) {
         const captive = state.players.get(me.gulping)
         if (!captive || captive.capturedBy !== me.sessionId) return
         const now = mode.worldNow(state, timestamp)
-        const armedAt = me.gulpEndsAt - CANNON.HOLD_MS + CANNON.ARM_MS
-        const loading = Math.max(0, Math.min(1, 1 - (armedAt - now) / CANNON.ARM_MS))
+        const armedAt = me.fireReadyAt
+        const loadMs = armedAt - (me.gulpEndsAt - CANNON.HOLD_MS)
+        const loading = Math.max(0, Math.min(1, 1 - (armedAt - now) / loadMs))
         const armed = loading >= 1
         const width = 270 * u
         const height = 64 * u
@@ -468,7 +489,7 @@ export function drawCapturePrompt(mode: MultiplayerMode, ctx: CanvasRenderingCon
         ctx.fillText(`${armed ? 'Loaded' : 'Loading'}: ${String(captive.name ?? '')}`, x + 44 * u, y + 22 * u, width - 56 * u)
         ctx.font = `600 ${12 * u}px ${FONT}`
         ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
-        const ready = armed ? (touch ? 'Face your target, then tap the button to fire' : 'Face your target, then tap to fire') : `Ready to fire in ${Math.max(0, (armedAt - now) / 1000).toFixed(1)} s`
+        const ready = me.fireQueued ? 'Shot queued — keep aiming' : armed ? (touch ? 'Face your target, then tap the button to fire' : 'Face your target, then tap to fire') : `Ready in ${Math.max(0, (armedAt - now) / 1000).toFixed(1)}s · tap to queue`
         ctx.fillText(ready, x + 44 * u, y + 41 * u, width - 56 * u)
         ctx.restore()
     }
