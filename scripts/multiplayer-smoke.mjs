@@ -1277,6 +1277,15 @@ try {
     check(second.every((s) => first.every((f) => Math.hypot(s.x - f.x, s.y - f.y) > 50)), 'somewhere else');
     clearInterval(phases);
     await ann.leave();
+
+    // A client that floods messages is cut off (every other check here plays normally under the same limit)
+    const flooder = await join('Flood');
+    let floodLeftWith = null;
+    flooder.onLeave((code) => { floodLeftWith = code; });
+    for (let i = 0; i < 3000; i++) flooder.send('steer', { x: i % 2 ? 1 : -1, y: 0 });
+    await sleep(1500);
+    check(floodLeftWith === 4002, `a client flooding messages is disconnected (left with ${floodLeftWith})`);
+    if (floodLeftWith === null) await flooder.leave();
 } catch (error) {
     check(false, `unexpected error: ${error.message}`);
 } finally {

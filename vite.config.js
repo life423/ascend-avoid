@@ -51,6 +51,8 @@ export default defineConfig(({ mode }) => {
         process:    'process',
       },
     },
+    // Production builds drop console.log/info/debug calls (warnings and errors stay)
+    esbuild: mode === 'production' ? { pure: ['console.log', 'console.info', 'console.debug'] } : undefined,
     build: {
       outDir: '../dist',
       emptyOutDir: true,
