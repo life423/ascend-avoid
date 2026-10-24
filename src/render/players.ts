@@ -154,7 +154,10 @@ export function drawPlayer(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
     // Holding someone inside: the body quivers with their struggle; someone swallowed whole riding inside: it bulges, pulsing, until they pop back out
     const holding = player.gulping ? world?.players.get(player.gulping) : undefined
     const quiver = holding ? 1 + 0.02 * Math.sin(timestamp / 45) * (0.4 + 0.6 * Math.min(1, holding.struggle)) : 1
-    const bulge = (swallowedInside(world, sessionId) ? 1 + 0.05 * (0.6 + 0.4 * Math.sin(timestamp / 90)) : 1) * quiver
+    // Exhaling: the body puffs out as the air goes, then settles
+    const puff = mode.puffs.find((p) => p.by === sessionId)
+    const puffed = puff ? 1 + 0.14 * Math.sin(Math.PI * Math.min(1, (timestamp - puff.at) / 260)) : 1
+    const bulge = (swallowedInside(world, sessionId) ? 1 + 0.05 * (0.6 + 0.4 * Math.sin(timestamp / 90)) : 1) * quiver * puffed
     ctx.save()
     if (squash.amount > 0 || bulge !== 1) {
         ctx.translate(left + size / 2, top + size / 2)

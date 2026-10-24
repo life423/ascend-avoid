@@ -575,7 +575,7 @@ export class MultiplayerMode extends GameMode {
     /** Bomb blasts going off: a flash and a ring racing out to the blast's edge */
     blasts: { x: number; y: number; radius: number; at: number }[] = []
     /** Exhales: a puff of air out of a mouth, arcs rolling out through its cone */
-    puffs: { x: number; y: number; facing: number; reach: number; at: number }[] = []
+    puffs: { by: string; x: number; y: number; facing: number; reach: number; at: number }[] = []
     /** Gravity theft on screen: each victim's gems last frame, and the stolen gems in flight */
     theftGems = new Map<string, number>()
     /** Swallowed creatures sliding down the throat, shrinking away (see drawVanishes) */
@@ -637,7 +637,7 @@ export class MultiplayerMode extends GameMode {
         })
         eventBus.on('multiplayer:impact', (data: any) => this.noteImpact(data))
         eventBus.on('multiplayer:blast', (data: any) => this.blasts.push({ x: Number(data?.x) || 0, y: Number(data?.y) || 0, radius: Number(data?.radius) || BOMBS.BLAST_RADIUS, at: performance.now() }))
-        eventBus.on('multiplayer:exhale', (data: any) => this.puffs.push({ x: Number(data?.x) || 0, y: Number(data?.y) || 0, facing: Number(data?.facing) || 0, reach: Number(data?.reach) || 200, at: performance.now() }))
+        eventBus.on('multiplayer:exhale', (data: any) => this.puffs.push({ by: String(data?.id ?? ''), x: Number(data?.x) || 0, y: Number(data?.y) || 0, facing: Number(data?.facing) || 0, reach: Number(data?.reach) || 200, at: performance.now() }))
         eventBus.on('multiplayer:jackpot', (data: any) => {
             this.addNotice(`${this.nameOf(data?.byId, data?.by)} took the jackpot! +${data?.value ?? ''}`, true)
         })
