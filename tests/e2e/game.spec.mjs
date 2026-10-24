@@ -5,33 +5,43 @@ function me(page) {
   return page.evaluate(() => {
     const room = window.game?.currentGameMode?.multiplayerManager?.room;
     const p = room?.state?.players?.get(room.sessionId);
-    return p
-      ? { x: p.x, y: p.y, inhaling: Boolean(p.inhaling), state: p.state, capturedBy: p.capturedBy || '', flying: Boolean(p.flying), stunned: Boolean(p.stunned) }
-      : null;
+    return p ? { x: p.x, y: p.y, inhaling: Boolean(p.inhaling) } : null;
   });
 }
 
 /**
- * Waits, at most `timeout` ms, until your creature is free to act: alive, and not caught in a mouth,
- * flying or stunned. On the live server a bot can catch or hit a test creature at any moment, which
- * blocks moving and inhaling until it's over. If it never comes free, the test fails (with the reason)
- * rather than skipping the check.
+ * Why your creature can't act right now, or 'ready'. It must be alive, and not caught in a mouth,
+ * flying, stunned, sliding or recovering (on the live server a bot can catch, launch or hit a test
+ * creature at any moment); and, to inhale, a full breath, the breath meter's 'ready' (breath isn't
+ * synced: this reads the page's own copy, kept by the same rules as the server's; full is stricter than
+ * the server's minimum, so a ready creature can always start inhaling).
  */
-async function waitUntilFree(page, timeout = 10_000) {
+function readiness(page, needBreath) {
+  return page.evaluate(
+    (needBreath) => {
+      const mode = window.game?.currentGameMode;
+      const room = mode?.multiplayerManager?.room;
+      const p = room?.state?.players?.get(room.sessionId);
+      if (!p) return 'not in the world';
+      if (p.state !== 'alive') return `not alive (${p.state})`;
+      if (p.capturedBy) return 'caught in a mouth';
+      if (p.flying) return 'flying';
+      if (p.stunned) return 'stunned';
+      if (p.sliding) return 'sliding';
+      if (p.recovering) return 'recovering';
+      const breath = typeof mode.stamina === 'number' ? mode.stamina : 1;
+      if (needBreath && breath < 0.999) return `catching its breath (${breath.toFixed(2)})`;
+      return 'ready';
+    },
+    needBreath,
+  );
+}
+
+/** Waits, at most `timeout` ms, until your creature can act (see readiness); if it never can, the test fails with the reason rather than skipping the check */
+async function waitUntilReady(page, { needBreath }, timeout = 10_000) {
   await expect
-    .poll(
-      async () => {
-        const p = await me(page);
-        if (!p) return 'not in the world';
-        if (p.state !== 'alive') return `not alive (${p.state})`;
-        if (p.capturedBy) return 'caught in a mouth';
-        if (p.flying) return 'flying';
-        if (p.stunned) return 'stunned';
-        return 'free';
-      },
-      { message: 'your creature becomes free to act (alive, and not caught, flying or stunned)', timeout },
-    )
-    .toBe('free');
+    .poll(() => readiness(page, needBreath), { message: `your creature is ready to ${needBreath ? 'inhale' : 'move'}`, timeout })
+    .toBe('ready');
 }
 
 /** Press a touch pointer on the canvas at this share of its width and height; returns a function that lifts it */
@@ -87,7 +97,7 @@ test('the game loads, connects, draws, fits the screen, moves and inhales', asyn
   expect(view.canvasWidth, 'the canvas fills most of the screen').toBeGreaterThan(view.viewportWidth * 0.5);
   expect(view.overflow, 'nothing spills off the side of the screen').toBeLessThanOrEqual(1);
 
-  await waitUntilFree(page);
+  await waitUntilReady(page, { needBreath: false });
   // You can move: the arrow keys on a desktop, the joystick (a thumb on the left half) on a touchscreen
   const before = await me(page);
   if (hasTouch) {
@@ -107,7 +117,7 @@ test('the game loads, connects, draws, fits the screen, moves and inhales', asyn
   const after = await me(page);
   expect(after.x - before.x, 'your creature moves right').toBeGreaterThan(30);
 
-  await waitUntilFree(page);
+  await waitUntilReady(page, { needBreath: true });
   // You can inhale: space on a desktop, holding the right half of a touchscreen; letting go stops it
   if (hasTouch) await touchDown(page, 2, 0.8, 0.6);
   else await page.keyboard.down('Space');

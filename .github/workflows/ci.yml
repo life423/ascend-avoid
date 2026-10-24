@@ -49,7 +49,19 @@ jobs:
         ls -la server/dist/
 
     - name: Run the multiplayer smoke test
-      # Every deploy is guarded: the built server plus scripted players checking every game rule.
-      # If any check fails, the deploy job below never runs.
+      # The built server plus scripted players checking every game rule
       timeout-minutes: 10
       run: npm test
+
+    - name: Install browsers for the browser and device tests
+      run: npx playwright install --with-deps chromium webkit firefox
+
+    - name: Browser and device tests against this branch's build
+      # This branch's own production build, served locally, so the check covers the code being
+      # merged rather than whatever is live
+      timeout-minutes: 10
+      run: |
+        NODE_ENV=production PORT=3300 node server/dist/index.js > /tmp/e2e-server.log 2>&1 &
+        for i in $(seq 1 50); do curl -sf http://localhost:3300/health > /dev/null && break; sleep 0.2; done
+        curl -sf http://localhost:3300/health > /dev/null || { cat /tmp/e2e-server.log; exit 1; }
+        E2E_URL=http://localhost:3300 npx playwright test
