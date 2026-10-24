@@ -5,7 +5,6 @@ import { TurbineSchema } from "../schema/TurbineSchema.js";
 import { distanceToRect } from "../game/geometry.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 
-import { CANNON } from "../constants/gameConstants.js";
 import { intakePull } from "../game/turbine.js";
 
 const { GEMS, PLAYER_STATE, TURBINE } = GAME_CONSTANTS;
@@ -238,5 +237,5 @@ function pullThrough(state: GameState, turbine: TurbineSchema, player: PlayerSch
   const px = player.x + player.width / 2;
   const py = player.y + player.height / 2;
   player.nudge(nozzleX + ex * (radius + 6) - px, nozzleY + ey * (radius + 6) - py, state.worldWidth, state.worldHeight);
-  player.launch(now, ex * TURBINE.EXHAUST_LAUNCH, ey * TURBINE.EXHAUST_LAUNCH, "", CANNON.MAX_MS);
+  player.launch(now, ex * TURBINE.EXHAUST_LAUNCH, ey * TURBINE.EXHAUST_LAUNCH, "", TURBINE.PLAYER_FLIGHT_MS, TURBINE.PLAYER_DRAG);
 }

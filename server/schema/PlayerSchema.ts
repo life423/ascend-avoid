@@ -3,6 +3,7 @@ const { Schema, type } = schema;
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 import { turnStep, walk } from "../game/movement.js";
 import { breathRate } from "../game/airflow.js";
+import { CANNON } from "../constants/gameConstants.js";
 import type { Box, Direction } from "../game/movement.js";
 
 const { ARENA_RULES, BOTS, GEMS, INHALE, PLAYER_STATE, PUSH, WORLD, CORE } = GAME_CONSTANTS;
@@ -135,6 +136,7 @@ class PlayerSchema extends Schema {
   /** In flight: its velocity, when it started and must end, and who launched it (it can't hit them straight away) */
   flightVx = 0;
   flightVy = 0;
+  flightDrag: number = CANNON.DRAG;
   flightStartedAt = 0;
   flightEndsAt = 0;
   launchedBy = "";
@@ -405,10 +407,11 @@ class PlayerSchema extends Schema {
   }
 
   /** Launched (out of a captor's mouth, or a turbine's exhaust): flying at this velocity until it slows down or `maxMs` passes, steering a little on the way */
-  launch(now: number, vx: number, vy: number, by: string, maxMs: number): void {
+  launch(now: number, vx: number, vy: number, by: string, maxMs: number, drag: number = CANNON.DRAG): void {
     this.flying = true;
     this.flightVx = vx;
     this.flightVy = vy;
+    this.flightDrag = drag;
     this.flightStartedAt = now;
     this.flightEndsAt = now + maxMs;
     this.launchedBy = by;

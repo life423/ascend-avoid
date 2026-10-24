@@ -132,6 +132,20 @@ check(canCatch(26.5, 20) && !canCatch(25.5, 20) && !canCatch(20, 20), "catching 
 check(swallowPenalty(0) === 0 && swallowPenalty(1) === 1 && swallowPenalty(20) === 5 && swallowPenalty(40) === 10 && swallowPenalty(100) === 15 && swallowPenalty(1000) === 15, "a swallow costs a quarter of the captive's gems (rounded up), never more than 15, nothing when it has none");
 check(Math.abs(launchAngle(0, 0, 1) - CANNON.LAUNCH_INFLUENCE) < 1e-9 && launchAngle(0, 1, 0) === 0, "the captive can shift its launch a little sideways, never turn it around");
 check(launchSpeed(200) > launchSpeed(40), "a bigger captor launches harder");
+check(launchSpeed(130, 100) === CANNON.LAUNCH_SPEED_MIN && launchSpeed(200, 100) > launchSpeed(130, 100) && launchSpeed(400, 100) > launchSpeed(200, 100) && launchSpeed(800, 100) > launchSpeed(400, 100) && launchSpeed(1600, 100) === launchSpeed(800, 100), "launch speed grows with the captor's size advantage and caps at LAUNCH_RATIO_CAP");
+// How far a captive's shot carries in the open: flightStep integrated with the shot's drag for FLIGHT_MS, from each launch speed
+const carries = (captorWidth: number, captiveWidth: number) => {
+  let vx = launchSpeed(captorWidth, captiveWidth), vy = 0, x = 0;
+  for (let t = 0; t < CANNON.FLIGHT_MS / 1000; t += 1 / 60) {
+    const next = flightStep(vx, vy, 0, 0, 1 / 60, CANNON.DRAG);
+    vx = next.vx;
+    vy = next.vy;
+    if (Math.hypot(vx, vy) < CANNON.STOP_SPEED) break;
+    x += vx / 60;
+  }
+  return x;
+};
+check(carries(130, 100) > 1100 && carries(130, 100) < 1250 && carries(200, 100) > 1250 && carries(200, 100) < 1450 && carries(400, 100) > 1550 && carries(400, 100) < 1750 && carries(800, 100) > 1850 && carries(800, 100) < 2050, `a shot carries about 1,200 units at the smallest size advantage and 2,000 at the largest, in the open (${Math.round(carries(130, 100))}, ${Math.round(carries(200, 100))}, ${Math.round(carries(400, 100))}, ${Math.round(carries(800, 100))})`);
 check(impactGems(1000, 900, 20) > impactGems(120, 900, 20) && impactGems(1000, 900, 20) >= 500 && impactGems(1000, 900, 20) / 1000 < impactGems(120, 900, 20) / 120 && impactGems(10, 900, 20) <= 6 && impactGems(400, 900, 60) > impactGems(400, 900, 20) && impactGems(400, 450, 20) < impactGems(400, 900, 20) && impactGems(120, 900, 20) <= 72, `a cannonball's damage grows with speed and the flier's mass, takes at least half of a giant, and never past 60% (${impactGems(120, 900, 20)} of 120, ${impactGems(400, 900, 20)} of 400, ${impactGems(1000, 900, 20)} of 1000)`);
 const straightOn = flightStep(900, 0, 1, 0, 0.1);
 const bentFlight = flightStep(900, 0, 0, 1, 0.1);
