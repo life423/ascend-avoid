@@ -3,7 +3,9 @@ import { PlayerSchema } from "../schema/PlayerSchema.js";
 import { BotBrain } from "../game/bots.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 import { captureLoadMs } from "../game/cannon.js";
-import { escapePress, fireCaptive } from "./inhale.js";
+import { escapePress, exhale, fireCaptive, stealWeight } from "./inhale.js";
+import { botPreyAvailable, botRobber } from '../game/botTargets.js';
+import { EXHALE } from '../constants/gameConstants.js';
 
 const { PLAYER_STATE, BOTS, INHALE, BOMBS } = GAME_CONSTANTS;
 
@@ -12,7 +14,7 @@ const { PLAYER_STATE, BOTS, INHALE, BOMBS } = GAME_CONSTANTS;
  * slow, or rooted while inhaling. A lit bomb in the mouth goes straight back out.
  */
 export function botMouth(state: GameState, bot: PlayerSchema, now: number) : void {
-  if (bot.state !== PLAYER_STATE.ALIVE || bot.sliding || bot.recovering) return;
+  if (bot.state !== PLAYER_STATE.ALIVE || bot.sliding || bot.recovering || bot.stunned || bot.flying) return;
   if (bot.capturedBy) {
     botEscape(state, bot, now);
     return;
@@ -44,17 +46,34 @@ export function botMouth(state: GameState, bot: PlayerSchema, now: number) : voi
     }
     return;
   }
-  if (state.brains.get(bot.sessionId)?.isDisengaging(now)) {
+  const brain = state.brains.get(bot.sessionId);
+  const robber = botRobber(state, bot, now);
+  if (brain?.gustDefense.ready(robber?.sessionId ?? '', now) && robber && now >= bot.exhaleReadyAt) {
+    const dx = robber.x + robber.width / 2 - cx, dy = robber.y + robber.height / 2 - cy;
+    // A human can hold/aim and release into a puff. Use that same turn rate and breath cost.
+    if (!bot.inhaling) bot.startInhale(now, INHALE.MAX_MS);
+    bot.aimAt(dx, dy);
+    if (Math.abs(angleGap(bot.facing, Math.atan2(dy, dx))) < BOTS.FIRE_AIM * 2) {
+      bot.stopInhale(now); exhale(state, bot, now); brain.gustDefense.attempted(now);
+    } else if (!bot.inhaling || bot.stamina < EXHALE.BREATH_COST) {
+      bot.stopInhale(now); brain.gustDefense.attempted(now);
+    }
+    return;
+  }
+  if (brain?.isDisengaging(now)) {
     bot.stopInhale(now);
     return;
   }
   // Inhaling: keep the mouth on whoever it's robbing or capturing for as long as its breath lasts,
   // and let go once nobody has been in its inhale for a moment (saving its breath)
   if (bot.inhaling) {
-    const held = bot.stealingFrom ? state.players.get(bot.stealingFrom) : undefined;
+    const primary = bot.stealingFrom ? state.players.get(bot.stealingFrom) : undefined;
+    const held = [primary, brain?.victim, state.players.get(bot.latchTarget)].find(other => other && botPreyAvailable(state, bot, other, now) && stealWeight(state, bot, other) > 0);
     if (held) {
       bot.aimAt(held.x + held.width / 2 - cx, held.y + held.height / 2 - cy);
       bot.inhaleIdleSince = 0;
+    } else if (primary && !botPreyAvailable(state, bot, primary, now)) {
+      bot.stopInhale(now); bot.inhaleIdleSince = 0;
     } else if (!bot.inhaleIdleSince) {
       bot.inhaleIdleSince = now;
     } else if (now - bot.inhaleIdleSince > 700) {
@@ -64,25 +83,11 @@ export function botMouth(state: GameState, bot: PlayerSchema, now: number) : voi
     return;
   }
   if (Math.random() > 0.12) return;
-  // Someone stealing from this bot: clearly bigger than the robber, it inhales back (and wins the clash);
-  // otherwise it doesn't stand in the cone trading breath: its brain slips it sideways out of reach
-  let thief: PlayerSchema | null = null;
-  state.players.forEach((other) => {
-    if (other.robbing.split(",").includes(bot.sessionId)) thief = other;
-  });
-  const robber = thief as PlayerSchema | null;
-  if (robber) {
-    if (bot.width >= robber.width * BOTS.FIGHT_BACK_RATIO && Math.random() < 0.8) {
-      bot.startInhale(now, INHALE.MAX_MS);
-      bot.aimAt(robber.x + robber.width / 2 - cx, robber.y + robber.height / 2 - cy);
-    }
-    return;
-  }
   const reach = INHALE.REACH + bot.width * INHALE.REACH_PER_SIZE;
   let want: { x: number; y: number } | null = null;
   let nearest = reach;
   state.players.forEach((other) => {
-    if (other === bot || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected || other.capturedBy || other.width * INHALE.EAT_RATIO > bot.width) return;
+    if (!botPreyAvailable(state, bot, other, now) || other.width * INHALE.EAT_RATIO > bot.width) return;
     if (robbersOf(state, other.sessionId) >= BOTS.MAX_ROBBERS) return;
     const d = Math.hypot(other.x + other.width / 2 - cx, other.y + other.height / 2 - cy);
     if (d < nearest) {
@@ -90,11 +95,11 @@ export function botMouth(state: GameState, bot: PlayerSchema, now: number) : voi
       want = { x: other.x + other.width / 2, y: other.y + other.height / 2 };
     }
   });
-  // Nothing to catch: rob someone in reach (they can rob back). Not into a clash it would lose, though: a
+  // Nothing to catch: rob an injured rival in reach. Not into a clash it would lose, though: a
   // creature it isn't clearly bigger than is robbed only from behind (outside its front cone), and never
   // one that MAX_ROBBERS are already on
   state.players.forEach((other) => {
-    if (want || other === bot || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected || other.capturedBy || other.gems < 1) return;
+    if (want || !botPreyAvailable(state, bot, other, now) || state.time >= other.injuredUntil || other.gems < 1) return;
     const ox = other.x + other.width / 2;
     const oy = other.y + other.height / 2;
     const d = Math.hypot(ox - cx, oy - cy);

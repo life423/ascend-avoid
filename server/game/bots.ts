@@ -1,6 +1,8 @@
 import { BOTS, INHALE, PLAYER_STATE, TURBINE } from "../constants/gameConstants.js";
-import { hop } from "./movement.js";
+import { hop, moveSpeed } from "./movement.js";
 import { BotCannonAim } from './botAim.js';
+import { BotGustDefense } from './botDefense.js';
+import { botPreyAvailable, botRobber } from './botTargets.js';
 import type { Box, Direction } from "./movement.js";
 import type { GameState } from "../schema/GameState.js";
 import type { PlayerSchema } from "../schema/PlayerSchema.js";
@@ -70,6 +72,7 @@ function timeToImpact(box: Box, world: GameState): number {
  */
 export class BotBrain {
   readonly cannonAim = new BotCannonAim();
+  readonly gustDefense = new BotGustDefense();
   /** When the bot next decides (it keeps steering the same way until then) */
   nextThinkAt = 0;
   /** Who the bot is hunting, if anyone (it runs into them to shove them) */
@@ -149,7 +152,7 @@ export class BotBrain {
     if (this.isDisengaging(now)) return this.disperseGoal;
     // A new floor is coming: get onto it
     if (world.shiftsOn && world.shiftPhase !== "normal" && !world.isFloorAt(cx, cy)) return world.nearestFloorPoint(cx, cy);
-    // Something big enough to capture it close by: get away (smaller, it's faster). Robbers get robbed back (see GameState)
+    // Something big enough to capture it close by: get away (smaller, it's faster).
     const threat = { x: 0, y: 0, distance: BOTS.FLEE_RANGE };
     world.players.forEach((other) => {
       if (other === bot || other.state !== PLAYER_STATE.ALIVE || other.width < bot.width * BOTS.FLEE_RATIO) return;
@@ -167,10 +170,9 @@ export class BotBrain {
       if (distance < TURBINE.DANGER_REACH + 160 && distance < threat.distance) Object.assign(threat, { x: mx, y: my, distance });
     });
     if (threat.distance < BOTS.FLEE_RANGE) return { x: cx + (cx - threat.x) * 3, y: cy + (cy - threat.y) * 3 };
-    // Robbed by someone it couldn't out-inhale: slip sideways out of their cone and back out of reach, the way
-    // people do, instead of standing in it trading breath (the mouth only inhales back at a smaller robber)
-    const robber = this.robberOf(bot, world);
-    if (robber && robber.width * BOTS.FIGHT_BACK_RATIO > bot.width) {
+    // Injury makes even a smaller healthy attacker dangerous. Leave the cone rather than trade breath.
+    const robber = botRobber(world, bot, now);
+    if (robber) {
       const rx = robber.x + robber.width / 2;
       const ry = robber.y + robber.height / 2;
       const fx = Math.cos(robber.facing);
@@ -259,13 +261,15 @@ export class BotBrain {
     let best: PlayerSchema | null = null;
     let bestAppeal = 0;
     world.players.forEach((other) => {
-      if (other === bot || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected || other.capturedBy) return;
+      if (!botPreyAvailable(world, bot, other, now)) return;
       if (other.width >= bot.width * INHALE.EAT_RATIO) return;
       if ((this.shunned.get(other.sessionId) ?? 0) > now) return;
       const distance = Math.hypot(other.x + other.width / 2 - cx, other.y + other.height / 2 - cy) - other.width / 2;
       if (distance > range) return;
       const edible = other.width * INHALE.EAT_RATIO <= bot.width;
-      if (!edible && world.time >= other.injuredUntil) return;
+      const reach = INHALE.REACH + bot.width * INHALE.REACH_PER_SIZE;
+      const arrivalMs = Math.max(0, distance - reach) / moveSpeed(bot.width) * 1000;
+      if (!edible && other.injuredUntil - world.time <= arrivalMs + BOTS.THINK_MS_MAX) return;
       if (!edible && other.gems < 3) return;
       let pursuers = 0;
       world.brains.forEach((brain, id) => {
@@ -318,15 +322,6 @@ export class BotBrain {
     this.goal = null;
     bot.stopInhale(now);
     bot.dropLatch();
-  }
-
-  /** Whoever is robbing this bot right now, if anyone */
-  private robberOf(bot: PlayerSchema, world: GameState): PlayerSchema | null {
-    let robber: PlayerSchema | null = null;
-    world.players.forEach((other) => {
-      if (other !== bot && other.state === PLAYER_STATE.ALIVE && other.robbing.split(",").includes(bot.sessionId)) robber = other;
-    });
-    return robber as PlayerSchema | null;
   }
 
   /**
