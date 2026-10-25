@@ -344,6 +344,7 @@ class GameState extends Schema {
     const lost = Math.max(1, Math.ceil(player.gems * GEMS.SPRAY_SHARE));
     const centerX = player.x + player.width / 2;
     const centerY = player.y + player.height / 2;
+    player.injure(this.time);
     player.setGems(player.gems - lost, this.worldWidth, this.worldHeight);
     player.recover(now);
     sprayGems(this, centerX, centerY, lost, now, player.sessionId);

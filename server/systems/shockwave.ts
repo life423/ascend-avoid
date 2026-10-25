@@ -28,6 +28,7 @@ export function updateShockwave(state: GameState, dt: number, now: number): void
     const out = p.gems - lost < SHOCKWAVE.KO_GEMS;
     if (out) { lost = p.gems; knockOutWithGems(state, p, now); }
     else {
+      p.injure(state.time);
       p.setGems(p.gems - lost, state.worldWidth, state.worldHeight);
       sprayGems(state, x, y, lost, now, p.sessionId);
     }

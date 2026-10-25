@@ -247,14 +247,14 @@ export function stealStrength(_state: GameState, thief: PlayerSchema, victim: Pl
  * covers more creatures without draining each one as fast. A victim's share drains at INHALE.STEAL_RATE a second,
  * whatever either one's size (mass resists being pulled, not being robbed). Two creatures inhaling
  * each other never both steal at once: only the stronger pull does (clashStrength, INHALE.CLASH_MARGIN), so a
- * clash has a winner instead of an endless exchange. Stealing never takes a creature's last gem
- * (INHALE.DRAIN_FLOOR): drained, it's weak, never gone.
+ * clash has a winner instead of an endless exchange. Only a damaging hit exposes gems; no shared
+ * allowance limits an injury window. Taking the last gem knocks out the injured victim.
  */
 export function steal(state: GameState, thief: PlayerSchema, now: number, deltaTime: number) : void {
   const victims: { victim: PlayerSchema; weight: number }[] = [];
   state.players.forEach((other) => {
     // (a captive isn't drained: the capture decides what happens to it)
-    if (other === thief || other.gems <= INHALE.DRAIN_FLOOR || other.capturedBy || other.flying) return;
+    if (other === thief || other.gems <= INHALE.DRAIN_FLOOR || state.time >= other.injuredUntil || other.capturedBy || other.flying) return;
     const weight = stealWeight(state, thief, other);
     if (weight > 0) victims.push({ victim: other, weight });
   });
@@ -266,7 +266,7 @@ export function steal(state: GameState, thief: PlayerSchema, now: number, deltaT
   // Progress toward the next gem is kept between inhales, and while someone slips out of the cone for a moment
   for (const id of [...thief.stealShares.keys()]) {
     const known = state.players.get(id);
-    if (!known || known.state !== PLAYER_STATE.ALIVE) thief.stealShares.delete(id);
+    if (!known || known.state !== PLAYER_STATE.ALIVE || state.time >= known.injuredUntil) thief.stealShares.delete(id);
   }
   const total = victims.reduce((sum, entry) => sum + entry.weight, 0);
   // Catching several at once pays more than one, though far less than one each
@@ -292,7 +292,12 @@ export function steal(state: GameState, thief: PlayerSchema, now: number, deltaT
       victim.robbedTotal += 1;
       if (victim.sessionId === thief.stealingFrom) thief.stolenRun += 1;
     }
-    thief.stealShares.set(victim.sessionId, Math.min(progress, 1));
+    if (victim.gems === 0 && victim.state === PLAYER_STATE.ALIVE) {
+      knockOutWithGems(state, victim, now);
+      state.credit(victim, 'drain', now, thief.sessionId, { out: true });
+      if (victim.sessionId === thief.stealingFrom) thief.stolenRun = 0;
+      thief.stealShares.delete(victim.sessionId);
+    } else thief.stealShares.set(victim.sessionId, Math.min(progress, 1));
   }
 }
 
@@ -363,7 +368,7 @@ export function exhale(state: GameState, player: PlayerSchema, now: number) : vo
 /** A run of stealing ends (or switches to someone else): a big one gets a banner and a line in the feed */
 export function endTheft(state: GameState, thief: PlayerSchema, now: number, next = "") : void {
   const victim = thief.stealingFrom ? state.players.get(thief.stealingFrom) : undefined;
-  if (victim && thief.stolenRun >= INHALE.STOLE_NOTICE) state.credit(victim, "stole", now, thief.sessionId, { gems: thief.stolenRun });
+  if (victim && thief.stolenRun >= INHALE.STOLE_NOTICE) state.credit(victim, "stole", now, thief.sessionId, { gems: thief.stolenRun, out: false });
   thief.stolenRun = 0;
   thief.stealProgress = 0;
   if (thief.stealingFrom !== next) thief.stealingFrom = next;

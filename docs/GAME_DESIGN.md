@@ -2,7 +2,7 @@
 
 ## Core loop
 
-Collect gems, grow, steal from other creatures, capture someone smaller, aim and fire them as a living cannonball, then compete for spilled gems. The captor controls the shot; the captive's chance is escaping before launch. The world is continuous: no lobby or round wait. The background field target is 950 gems, about 25% fewer than the former 1,270; combat spills are additional, within the overall 2,000-object cap. This is a field-density reduction, not a cap of 950 total objects after fights.
+Collect gems, grow, steal from injured creatures, capture someone smaller, aim and fire them as a living cannonball, then compete for spilled gems. The captor controls the shot; the captive's chance is escaping before launch. The world is continuous: no lobby or round wait. The background field target is 950 gems, about 25% fewer than the former 1,270; combat spills are additional, within the overall 2,000-object cap. This is a field-density reduction, not a cap of 950 total objects after fights.
 
 ## World and presentation
 
@@ -20,7 +20,17 @@ Width is `20 * sqrt(1 + gems / 2)`, rounded to half a unit. Speed is `max(130, 3
 
 ## Inhale, capture and escape
 
-Hold Space or the touch button to inhale. A cone pulls gems and steals weight, preserving the victim's last gem. Good airflow can form a focused beam; close range, alignment and clean separation determine effectiveness.
+Hold Space or the touch button to inhale. Loose gems remain collectible and healthy creatures can still be pulled and captured, but their gems cannot be stolen. Only injured creatures can lose gems to suction. Draining their final gem knocks them out, credits the final thief and starts the normal two-second protected respawn. Good airflow can form a focused beam; close range, alignment and clean separation determine effectiveness.
+
+## Injury and theft — approved October 25, 2026
+
+Damaging player-missile hits, Pinwheel bolts, Pulsar waves, bombs and traffic hits expose a surviving target's gems for five seconds. Ordinary bumps, gusts, passive decay, loose-gem collection and turbine transport do not cause injury. Another damaging hit refreshes the five-second window; inhaling and stealing never refresh it. Healing happens automatically at the deadline. Injury itself adds no stun, speed penalty or disabled input. Existing hit-specific stun/skid behavior, spawn protection, escape protection and landing suction shields still apply.
+
+There is no shared allowance or total theft cap per injury. Any attacker can steal, within the established breath, range, airflow and size-ratio rules. The defender can move away, fight back or spend breath on gust. The existing hit damage and growth curve remain unchanged for this first pass. Bots pursue healthy creatures only when they can capture them, rather than farming gems they cannot steal.
+
+The creature squashes briefly on impact; warm, branching fractures open along its rear shell rim, away from the eyes and puffed cheeks. They close near the end of the injury, with a brief sealing shimmer. Reduced motion keeps the readable fracture shape without the impact squash, ripple or shimmer. This is distinct from dizzy stun effects and the mint suction-protection ring. There is no injury banner, countdown, health bar or new control. Help stays concise and explains injury theft and gust defense.
+
+Validation: all six unit suites and all 13 isolated multiplayer scenarios pass. Browser coverage across seven Chromium/WebKit profiles passed 91 cases with 14 device-specific skips; the final fracture artwork then passed all 21 injury checks. Coverage includes healthy immunity, real-peer drain knockout/credit/protected respawn, automatic healing, movement, reduced motion, keyboard/touch capture and aiming, weapons, gust stun, fans and short Help. Rendered phone, tablet, desktop and landscape injury/healed/knockout states were inspected. Help is 125 source words. Lint has zero errors and 164 existing warnings. Physical-device readability and longer-term growth/knockout balance still need playtesting; this is not a claim of measured perfect balance or full accessibility conformance.
 
 A creature at least 1.3 times wider can capture a smaller one at its mouth. Captives remain alive. After a 600ms daze, they enter a directional escape sequence: three inputs below a 2x captor width advantage, four at 2x, five at 4x or greater. A wrong input resets progress. Keyboard edges are transmitted explicitly; touch flicks return to neutral between inputs, and their edges are processed on message arrival.
 

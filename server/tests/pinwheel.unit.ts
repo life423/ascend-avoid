@@ -106,6 +106,7 @@ function setup() {
   w.bolts.set('test', bolt);
   updateWeapons(s, 0.4, NOW);
   assert.equal(b.gems, 84, 'a swept bolt removes 16 gems from a 100-gem target');
+  assert(b.injuredUntil > s.time, 'a damaging Pinwheel hit exposes gems');
   assert.equal(a.gems, 0, 'the builder is not hit by their weapon');
   assert(!b.stunned, 'weapon bolts do not repeatedly stun targets');
   assert(!w.bolts.has('test'), 'each bolt hits once');

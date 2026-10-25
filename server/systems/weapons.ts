@@ -193,6 +193,7 @@ export function updateWeapons(state: GameState, dt: number, now: number): void {
       const out = p.gems - lost < PINWHEEL.KO_GEMS;
       if (out) { lost = p.gems; knockOutWithGems(state, p, now); }
       else {
+        p.injure(state.time);
         p.setGems(p.gems - lost, state.worldWidth, state.worldHeight);
         sprayGems(state, hitX, hitY, lost, now, p.sessionId);
         p.skid(Math.cos(bolt.angle), Math.sin(bolt.angle), PINWHEEL.HIT_PUSH);

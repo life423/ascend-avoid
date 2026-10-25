@@ -79,6 +79,7 @@ function impact(state: GameState, flier: PlayerSchema, target: PlayerSchema, spe
     spill = target.gems;
     knockOutWithGems(state, target, now);
   } else if (spill > 0) {
+    target.injure(state.time);
     target.setGems(target.gems - spill, state.worldWidth, state.worldHeight);
     sprayGems(state, target.x + target.width / 2, target.y + target.height / 2, spill, now, target.sessionId);
   }

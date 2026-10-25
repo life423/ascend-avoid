@@ -1196,6 +1196,11 @@ export class MultiplayerMode extends GameMode {
         const targetIsYou = data?.targetId === localId
         const target = targetIsYou ? 'you' : String(data?.target ?? 'someone')
         const how = String(data?.how ?? '')
+        if (how === 'drain') {
+            if (targetIsYou) this.knockoutCause = { how, by: String(data?.by ?? 'Someone'), at: performance.now() }
+            this.addNotice(`${this.nameOf(data?.byId, data?.by)} drained ${target} dry!`, true)
+            return
+        }
         if (how === 'burnup') {
             const x = Number(data?.x), y = Number(data?.y)
             if (Number.isFinite(x) && Number.isFinite(y) && !matchMedia('(prefers-reduced-motion: reduce)').matches) this.bursts.push({ x, y, size: Number(data?.size) || 20, color: GOLD, at: performance.now() })

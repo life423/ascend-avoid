@@ -269,7 +269,7 @@ export const SUCTION = {
 
 /**
  * Inhaling, the one button: everything in a cone in front of your mouth (longer the bigger you
- * are). Gems are pulled in and swallowed. Every creature in it is robbed of gems (STEAL_RATE) and
+ * are). Gems are pulled in and swallowed. Injured creatures can be robbed of gems (STEAL_RATE) and
  * pulled bodily toward your mouth, by mass: harder the heavier you are next to it, the closer it is
  * and the more squarely in front (BODY_PULL). One 1.3 times narrower or more (EAT_RATIO)
  * is caught once it's held right at your mouth (see CANNON). Size resists being pulled, not being
@@ -307,7 +307,7 @@ export const INHALE = {
   REFILL_MS: 3000, // ...and refills from empty in this long, starting from wherever it is (a short puff costs a short wait)
   MIN_BREATH: 0.1, // you can start inhaling with at least this share of a breath
   STEAL_RATE: 10, // gems a second pulled out of a creature in your inhale (shared out, weaker farther out or while it gets away), whatever either one's size
-  STEAL_EDGE_SHARE: 0.25, // everyone in an inhale is robbed, sharing its drain by how squarely they sit in the cone: dead center counts 1, the very edge this
+  STEAL_EDGE_SHARE: 0.25, // injured victims share the inhale's drain by how squarely they sit in the cone: dead center counts 1, the very edge this
   CONTACT_GAP: 4, // a creature touching you (within this many units) anywhere across your front...
   CONTACT_ARC: 100, // ...up to this many degrees either side of where you face, is caught by your inhale with no aiming...
   CONTACT_WEIGHT: 0.85, // ...as firmly as one this squarely in the cone (once there's a gap, aiming matters again)
@@ -315,7 +315,8 @@ export const INHALE = {
   STEAL_ESCAPE: 0.75, // getting away cuts the drain by up to this much...
   STEAL_ESCAPE_AWAY: 0.6, // ...counting speed straight away at this share, and speed across the cone in full (strafing escapes best)...
   STEAL_POINT_BLANK: 0.25, // ...but less and less within this share of the reach: right at the mouth there's no getting away
-  DRAIN_FLOOR: 1, // stealing never takes a creature's last gem: draining weakens, it never kills (an empty creature has nothing to take, and is fine)
+  INJURY_MS: 5000, // damaging hits expose gems for five seconds; inhaling never refreshes this
+  DRAIN_FLOOR: 0, // an injured creature drained completely is knocked out; healthy newborns are safe
   CLASH_MARGIN: 0.15, // two creatures inhaling each other never both siphon: only the stronger pull does, once it's ahead by this share (closer than that, whoever has held the other longer keeps the flow), so a clash has a winner, not an endless exchange
   STOLE_NOTICE: 5, // a theft this big gets a banner and a line in the feed
 } as const;

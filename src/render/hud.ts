@@ -351,6 +351,7 @@ export function drawKnockedOut(mode: MultiplayerMode, ctx: CanvasRenderingContex
         : cause?.how === 'bomb' ? 'Blown up'
         : cause?.how === 'edge' ? 'Shoved off'
         : cause?.how === 'traffic' ? 'Wrecked'
+        : cause?.how === 'drain' ? 'Drained'
         : 'Knocked out'
     const title = credited && cause ? cause.how === 'burnup' ? 'Burned up in flight' : `${verb} by ${cause.by}` : 'Hit!'
     drawMessage(mode, ctx, canvas, title, seconds > 0 ? `Back in ${seconds}` : 'Back in a moment')
