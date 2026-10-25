@@ -293,15 +293,14 @@ export const INHALE = {
   LOCK_MS: 1500, // holding a creature in your inhale builds a lock to full over this long...
   LOCK_DECAY_MS: 350, // ...that fades this fast once it's out of the cone (or you stop), so breaking the cone frees it
   LOCK_START: 0.25, // body pull starts at this share and grows with the lock squared: a warning, then dangerous, then full
-  // Held in your airflow without a break, gems come off more and more violently: by seconds held, the
-  // drain multiplier (steps: 1x, then 1.5x from 0.4s, 2.5x from 0.8s, 4x from 1.2s, 6x from 1.6s, 8x from 2s on)
+  // Sustained clean contact matters, but peaks at 3x so it cannot overwhelm relative-size resistance.
   DRAIN_RAMP: [
     [0, 1],
-    [0.4, 1.5],
-    [0.8, 2.5],
-    [1.2, 4],
-    [1.6, 6],
-    [2.0, 8],
+    [0.4, 1.25],
+    [0.8, 1.6],
+    [1.2, 2],
+    [1.6, 2.5],
+    [2.0, 3],
   ],
   HOLD_DECAY: 6, // ...and out of the airflow, the time held drains away this many times faster than it built (2s is gone in a third of a second)
   CLOSE_RANGE: 0.25, // the share of the reach nearest the mouth where the pull gets much stronger...
@@ -309,7 +308,7 @@ export const INHALE = {
   MAX_MS: 5000, // a full breath lasts this long while you inhale (time to build a lock and drag someone in)...
   REFILL_MS: 3000, // ...and refills from empty in this long, starting from wherever it is (a short puff costs a short wait)
   MIN_BREATH: 0.1, // you can start inhaling with at least this share of a breath
-  STEAL_RATE: 10, // gems a second pulled out of a creature in your inhale (shared out, weaker farther out or while it gets away), whatever either one's size
+  STEAL_RATE: 10, // base gems/s, modified by geometry, relative size, sustained contact and number of victims
   STEAL_EDGE_SHARE: 0.25, // injured victims share the inhale's drain by how squarely they sit in the cone: dead center counts 1, the very edge this
   CONTACT_GAP: 4, // a creature touching you (within this many units) anywhere across your front...
   CONTACT_ARC: 100, // ...up to this many degrees either side of where you face, is caught by your inhale with no aiming...
@@ -371,9 +370,9 @@ export const LATCH = {
   TIE: 0.1, // ...and from nothing, within this of each other, neither gets it
   OVERLAP_SMOTHER: 0.4, // bodies overlapping by this share of the smaller one's width smother the air completely
   OVERLAP_DRAIN_MIN: 0.25,
-  SCALE_FULL_RATIO: 0.35, // scale separation: an attacker at least this share of your width drains you fully...
-  SCALE_MIN_RATIO: 0.1, // ...one this small (or smaller) only at SCALE_MIN: a mosquito alone, dangerous only in numbers or through the arena
-  SCALE_MIN: 0.08, // smothered air still drains this share of gems
+  SCALE_FULL_RATIO: 0.85, // near-peer width is needed for full theft strength (about 72% of target mass)
+  SCALE_MIN_RATIO: 0.1, // very small thieves retain a little theft; larger rivals smoothly overcome resistance
+  SCALE_MIN: 0.08, // minimum size-based theft strength; no total allowance or guaranteed surviving gem
   RAMP_MIN_QUALITY: 0.35, // the drain ramp builds only on airflow at least this clean; below, it fades...
   RAMP_FADE: 1.5, // ...this many times as fast as it built
   BEAM_FOCUS_FROM: 0.25, // the cone starts focusing into a stream at this quality...
@@ -440,11 +439,10 @@ export const CANNON = {
   FLIGHT_MS: 2600, // ...or after this long (a turbine's throw has its own: TURBINE.PLAYER_DRAG, PLAYER_FLIGHT_MS)
   STEER: 520, // turbine throws only: lateral steering acceleration; player-fired missiles ignore input
   LAUNCHER_GRACE_MS: 300, // a projectile can't hit its launcher this soon
-  IMPACT_BASE: 10, // a hit knocks this many of the target's gems loose...
-  IMPACT_PER_ROOT: 7, // ...plus this times the square root of its gems (diminishing against giants), times the hit's speed against IMPACT_SPEED_REF and the flier's mass: a living cannonball is the big hit of the game (about 60 of 120, 150 of 400)...
-  IMPACT_SPEED_REF: 900,
-  IMPACT_SHARE: 0.75, // every player-missile hit removes at least this share of target mass
-  IMPACT_MAX_SHARE: 0.85, // speed/projectile mass can increase the loss to this share
+  IMPACT_SPEED_REF: 1250,
+  IMPACT_MASS_PIVOT: 3, // a projectile three times the target's mass reaches half the maximum damage share
+  IMPACT_MASS_EXPONENT: 0.8, // sublinear mass response preserves small fan attacks and giant resistance
+  IMPACT_MAX_SHARE: 0.85, // ceiling, not a damage floor; normal equal-mass hits remove about 25%
   IMPACT_KO_GEMS: 12, // heavily damaged targets below this mass are knocked out and return at a fresh spawn
   BURNUP_GEMS: 12, // a smaller player-fired missile also burns up at flight end if it misses
   MISSILE_WIDTH_KEEP: 0.1, // the missile player keeps one tenth of their width after impact, floored at newborn size

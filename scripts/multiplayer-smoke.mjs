@@ -165,10 +165,10 @@ scenario('a small missile burns up after missing and respawns protected', async 
   assert(a.messages.some(m => m.type === 'credit' && m.data.how === 'burnup' && m.data.targetId === kid.sessionId && m.data.byId === a.sessionId));
   await until(() => me(kid).state === 'alive' && me(kid).spawnProtected, 'burned missile respawns protected', 3000);
 });
-scenario('an armed shot emits launch, impact and shooter/projectile attribution', async (a, join) => {
+scenario('a small armed shot chips a giant, opens injury and preserves shot attribution', async (a, join) => {
   const kid = await capture(a, join);
   const target = await join('Target');
-  target.send('test:setGems', { count: 100 });
+  target.send('test:setGems', { count: 1000 });
   await sleep(100);
   target.send('test:moveTo', { x: 1270, y: 984.25 });
   target.send('test:protect', { ms: 0 });
@@ -179,7 +179,9 @@ scenario('an armed shot emits launch, impact and shooter/projectile attribution'
   await sleep(2800);
   a.send('tap');
   await until(() => a.messages.some(m => m.type === 'launch'), 'shot launched');
-  await until(() => me(target).gems < 100, 'shot hits the target despite the captive holding sideways');
+  await until(() => me(target).injuredUntil > target.state.time, 'shot hits the target despite the captive holding sideways');
+  assert(me(target).state === 'alive' && me(target).gems >= 970, 'the giant retains at least 97% against a tiny shot');
+  assert(me(target).injuredUntil > target.state.time, 'the small shot still creates an injury opportunity');
   await until(() => a.messages.some(m => m.type === 'impact' && m.data.projectileId === kid.sessionId), 'impact event arrives');
   assert(a.messages.some(m => m.type === 'credit' && m.data.how === 'cannon' && m.data.byId === a.sessionId));
   await until(() => me(kid).state === 'dead' && !me(kid).flying, 'spent missile is knocked out over the network');

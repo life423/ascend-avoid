@@ -124,16 +124,18 @@ for (const targetGems of [12, 40]) for (const protectedTarget of [false, true]) 
   flier.placeAt(1000, target.y + target.height / 2 - flier.height / 2);
   flier.launch(NOW, 1400, 0, 'shooter', CANNON.FLIGHT_MS);
   updateFlights(s, NOW + 100, 0.1);
-  assert.equal(target.state, protectedTarget ? 'alive' : 'dead');
+  const out = !protectedTarget && targetGems === 12;
+  assert.equal(target.state, out ? 'dead' : 'alive', 'a tiny shot finishes a weakened target but no longer erases a larger one');
   assert.equal(flier.state, 'dead', 'a spent missile player is knocked out rather than kept alive at minimum size');
   assert(!flier.flying);
   assert.equal(flier.respawnAt, NOW + 100 + 2000);
-  if (!protectedTarget) {
+  if (out) {
     assert.equal(target.gems, 0);
     s.update(0, target.respawnAt);
     assert.equal(target.state, 'alive'); assert(target.spawnProtected);
     assert.equal(target.width, 20, 'a small missile victim returns at newborn size');
-  } else assert.equal(target.gems, targetGems, 'spawn protection blocks missile damage and knockout');
+  } else if (protectedTarget) assert.equal(target.gems, targetGems, 'spawn protection blocks missile damage and knockout');
+  else assert(target.gems < targetGems && target.injuredUntil > s.time, 'a surviving target loses gems and opens a follow-up window');
 }
 {
   const s = world(), flier = player(s, 'large-missile', 1000), target = player(s, 'large-target', 1000, 1800, 1000);
@@ -142,7 +144,7 @@ for (const targetGems of [12, 40]) for (const protectedTarget of [false, true]) 
   updateFlights(s, NOW + 400, 0.4);
   assert(flier.flightHit && flier.width <= width * 0.11, 'the missile loses about 90% of its width on impact');
   assert.equal(flier.state, 'alive');
-  assert(target.width < width * 0.55, 'a giant target shrinks dramatically too');
+  assert(target.width > width * 0.8 && target.width < width * 0.97, 'a comparable shot hurts a giant while preserving most earned size');
   const gems = flier.gems;
   flier.placeAt(s.worldWidth - flier.width - 10, 1000); flier.flightVx = 1400; flier.flightVy = 0;
   updateFlights(s, NOW + 500, 0.1);

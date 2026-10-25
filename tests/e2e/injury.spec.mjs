@@ -69,3 +69,38 @@ test('reduced motion keeps the injury shape readable without an impact ripple', 
   await page.screenshot({ path: test.info().outputPath('injury-reduced-motion.png') });
   expect(await page.evaluate(() => window.injuryRipples)).toBe(0);
 });
+
+test('a real small shot wounds a giant while retaining earned size and a clear viewport', async ({ page, baseURL }) => {
+  await start(page);
+  const id = await page.evaluate(() => window.game.currentGameMode.multiplayerManager.room.id);
+  const client = new Client(baseURL.replace(/^http/, 'ws'));
+  const captor = await client.joinById(id, { name: 'Shot regression' }); captor.onMessage('*', () => {});
+  const missile = await client.joinById(id, { name: 'Small ammunition' }); missile.onMessage('*', () => {});
+  try {
+    await send(page, 'test:setGems', { count: 1000 });
+    await send(page, 'test:moveTo', { x: 1776, y: 1776 }); await send(page, 'test:protect', { ms: 0 });
+    captor.send('test:setGems', { count: 16 }); captor.send('test:moveTo', { x: 1200, y: 1970 }); captor.send('test:face', { angle: 0 }); captor.send('test:protect', { ms: 0 });
+    missile.send('test:setGems', { count: 4 }); missile.send('test:moveTo', { x: 1260, y: 1982.75 }); missile.send('test:protect', { ms: 0 });
+    await expect.poll(() => !!captor.state.players.get(missile.sessionId) && captor.state.players.get(missile.sessionId).gems === 4 && !captor.state.players.get(missile.sessionId).spawnProtected).toBe(true);
+    captor.send('inhale');
+    await expect.poll(() => missile.state.players.get(missile.sessionId)?.capturedBy).toBe(captor.sessionId);
+    captor.send('tap');
+    await page.waitForFunction(() => { const m = window.game.currentGameMode, p = m.multiplayerManager.getLocalPlayer(); return p.injuredUntil > m.multiplayerManager.room.state.time; });
+    const result = await page.evaluate(() => {
+      const m = window.game.currentGameMode, p = m.multiplayerManager.getLocalPlayer(), v = m.lastView, s = m.multiplayerManager.room.state;
+      const rect = document.querySelector('canvas').getBoundingClientRect();
+      return { gems: p.gems, state: p.state, width: p.width, cracks: window.crackStrokes, outside: Math.max(0, v.width / 2 - v.x, v.height / 2 - v.y, v.x + v.width / 2 - s.worldWidth, v.y + v.height / 2 - s.worldHeight), gap: Math.max(Math.abs(rect.left), Math.abs(rect.top), Math.abs(rect.width - visualViewport.width), Math.abs(rect.height - visualViewport.height)) };
+    });
+    expect(result.state).toBe('alive'); expect(result.gems).toBeGreaterThanOrEqual(970); expect(result.gems).toBeLessThan(1000);
+    expect(result.width).toBeGreaterThan(420); expect(result.outside).toBeLessThan(.1); expect(result.gap).toBeLessThan(.5);
+    await expect.poll(() => page.evaluate(() => window.crackStrokes)).toBeGreaterThan(0);
+    await page.screenshot({ path: test.info().outputPath('giant-after-small-shot.png') });
+    const desktopHelp = page.getByRole('button', { name: /Help & settings/ });
+    if (await desktopHelp.isVisible()) await desktopHelp.click();
+    else await page.getByRole('button', { name: 'Toggle menu', exact: true }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await expect(page.locator('.instructions')).toContainText('Bigger ammunition hits harder');
+    expect((await page.locator('.instructions').innerText()).trim().split(/\s+/).length).toBeLessThanOrEqual(129);
+    await page.getByRole('button', { name: 'Close', exact: true }).click();
+  } finally { await missile.leave(); await captor.leave(); }
+});
