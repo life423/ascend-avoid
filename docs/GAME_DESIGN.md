@@ -6,7 +6,9 @@ Collect gems, grow, steal from other creatures, capture someone smaller, aim and
 
 ## World and presentation
 
-The finite arena is 4200 × 4200 units. On wide desktops the camera stays pinned to the creature, including at boundaries, with a thin blue edge and lighter blue surround. On compact screens the view stays inside the arena, including during knockouts, rotation and extreme zoom, so empty exterior never fills the play area. The creature stays centered away from boundaries; near a compact screen's map edge the camera stops and the creature can move off-center. The world does not wrap.
+The finite arena is 4200 × 4200 units. The online canvas covers the entire visible browser viewport on phones, tablets, desktop and ultrawide windows, with no reserved header strip, padding, rounded corners or letterboxing. Desktop controls float over the arena; Focus view hides them without changing canvas size, and keeps mouse control and Help available. Small desktop windows retain the mouse preference in Help. Touch controls and contextual actions respect safe areas. Dynamic browser viewport changes, rotation and keyboard resizing refit the stage. Browser and operating-system chrome remain controlled by the browser.
+
+Every screen's camera view stays inside the arena, including during knockouts and extreme zoom. The creature stays centered in open space; near a boundary the camera stops and the creature can move off-center. This latest full-viewport request supersedes the earlier wide-desktop blue-surround preference. The world does not wrap, and wider screens retain the existing view-aspect limits.
 
 Bots fill the population to 20 and yield places to arriving humans. Crowded bots disengage for 6–8 seconds and head toward less occupied space. At most two bots pursue a given target. Traffic, bombs and floor shifts remain experimental, explicitly enabled in test worlds.
 
@@ -98,6 +100,14 @@ Unused whole-swallow/digestion/expel behavior, vanish visuals, unused physics he
 
 Growth per gem, small-to-large theft tuning, leader durability and black holes remain proposals in docs/TODO.md. The current branch does not change the growth formula or passive decay. Small-to-large drain already has a ratio multiplier, so the next task is to measure why its combined ramp/pressure still feels too generous, rather than adding a duplicate penalty blindly.
 Compact capture UI keeps the existing creature badge and action button and omits the duplicate loading footer. Escape prompts sit above the thumb-control region. Capturing a peer resets the client's sent-aim cache so an unchanged right-thumb aim is resent after the server ends the inhale.
+
+## Full-viewport arena follow-up
+
+The brief starter tip yields while Place weapon is available, keeping the creature and placement scene clear. This final visual correction passed placement checks in both phone browser engines.
+
+The canvas covers the visible browser viewport on every screen. ResizeObserver and coalesced window/visualViewport events refit it without repeated bitmap clears; fractional CSS sizes use a covering integer backing size. Desktop controls float above the map, and Focus view leaves mouse control and Help reachable without changing the canvas. Inactive controls are inert/hidden; a closed menu stays visually hidden across breakpoint changes. Phone score, minimap/player count, thumb controls and contextual placement respect safe areas. Short landscape escape prompts move above the creature; the captive does not also see the redundant captor loading badge. There are no new permanent weapon messages. Safe-area and simulated keyboard/toolbar viewport changes have browser coverage.
+
+Client/server production builds, types, schema and all five unit suites pass. Seven Chromium/WebKit device profiles exercised sizes from 320×568 through 5120×1080 and 1440×2560, corners, growth, knockout/respawn, rotation, capture/escape, independent aiming, menus, focus, mouse preference and weapon placement. The final affected-area matrix covered 72 applicable cases (five device-specific skips) across the release run and corrective checks, plus two final toolbar/menu layering checks. WebKit's unsupported viewport-key warning was removed; two weapon tests now recognize the same narrow, known caught Colyseus socket probe as the existing loading test. Fixed-delay movement/cargo checks now await settling without loosening their limits. Two local page-load checks overlapped a rebuild and passed against the fixed build. Lint has zero errors and 164 pre-existing warnings. Firefox could not launch on this Windows host (spawn UNKNOWN). No physical-device keyboard, assistive-technology certification or new Core Web Vitals result is claimed.
 
 ## Small-missile burnup, fitting fans and crystal spacing (approved follow-up)
 

@@ -29,9 +29,9 @@ export function drawSurgeHud(mode: MultiplayerMode, ctx: CanvasRenderingContext2
     if (mode.surgeNotice?.key !== key) mode.surgeNotice = { key, at: timestamp };
     if (timestamp - mode.surgeNotice.at >= 3000) return;
     const u = COMPACT.matches ? mode.cssScale : 1;
-    const width = Math.min(canvas.width - 24 * u, 290 * u);
+    const width = Math.min(canvas.width - mode.hudInsets.left - mode.hudInsets.right - 24 * u, 290 * u);
     const x = (canvas.width - width) / 2;
-    const y = COMPACT.matches ? Math.max(166 * u, mode.minimapBottom + 12 * u) : 14;
+    const y = COMPACT.matches ? Math.max(mode.hudInsets.top + 166 * u, mode.minimapBottom + 12 * u) : Math.max(mode.hudInsets.top + 14, mode.chromeBottom + 12);
     const seconds = Math.max(0, Math.ceil((state.surgeAt - mode.worldNow(state, timestamp)) / 1000));
     ctx.save();
     hudPanel(ctx, x, y, width, 42 * u, 12 * u);

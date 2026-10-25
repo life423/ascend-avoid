@@ -22,7 +22,7 @@ export function viewShort(width: number): number {
   return Math.max(width / share, 2 * threatHorizon(Math.min(width, CAMERA.THREAT_MAX_WIDTH), CAMERA.THREAT_RATIO, CAMERA.REACTION_S));
 }
 
-/** Keep compact screens filled with arena, including held knockout views and extreme zoom levels. */
+/** Keep every viewport filled with arena, including held knockout views and extreme zoom levels. */
 export function constrainArenaView(view: { x: number; y: number; width: number; height: number; scale: number }, worldWidth: number, worldHeight: number) {
   const zoom = Math.max(1, view.width / worldWidth, view.height / worldHeight);
   const width = view.width / zoom, height = view.height / zoom;

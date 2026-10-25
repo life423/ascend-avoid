@@ -1,6 +1,7 @@
 import { playerName, setPlayerName } from '../core/PlayerName';
 import { GAME_RULES } from './GameRules';
 import { sound } from '../core/Sound';
+import { mouseControlEnabled, setMouseControl } from '../core/MouseControl';
 
 /** Large screens: the drawer sizes itself to its content (see fitToScreen) */
 const DESKTOP = '(min-width: 1200px)';
@@ -69,6 +70,7 @@ export class DrawerUI {
                 </div>
                 <div class="menu-section">
                     <h3>Settings</h3>
+                    <button type="button" role="switch" class="mouse-preference" data-action="mouse" aria-label="Mouse control" aria-checked="${mouseControlEnabled()}">Mouse <span>${mouseControlEnabled() ? 'On' : 'Off'}</span></button>
                     <button type="button" class="sound-toggle" aria-label="Mute sound" aria-pressed="${sound.muted}">Sound ${sound.muted ? 'off' : 'on'}</button>
                     <button type="button" class="replay-guide">Show starter tips</button>
                 </div>
@@ -82,6 +84,7 @@ export class DrawerUI {
     }
 
     private attachEventListeners(): void {
+        this.drawer.querySelector('.mouse-preference')?.addEventListener('click', () => setMouseControl(!mouseControlEnabled()));
         const soundButton = this.drawer.querySelector<HTMLButtonElement>('.sound-toggle');
         soundButton?.addEventListener('click', () => {
             sound.toggle();

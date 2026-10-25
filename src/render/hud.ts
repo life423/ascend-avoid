@@ -1,7 +1,7 @@
 import type { MultiplayerMode } from '../core/GameModes'
 import { CANNON, PLAYER_COLORS, SHIFT, WORLD } from '../../server/constants/gameConstants'
 import { drawCreature } from './creatures'
-import { COMPACT, FONT, GOLD, drawCrown, drawPeople, drawRobot, hudPanel, roundedRect } from './style'
+import { COMPACT, FONT, GOLD, drawCrown, drawRobot, hudPanel, roundedRect } from './style'
 import { JOIN_NOTICE_MS, View } from './shared'
 import type { SyncedGameState, SyncedPlayer, SyncedTurbine } from '../types/synced'
 import { weaponRecipe } from './weaponStyle'
@@ -12,9 +12,9 @@ export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
     const scale = size / Math.max(state.worldWidth, state.worldHeight)
     const width = state.worldWidth * scale
     const height = state.worldHeight * scale
-    const x = canvas.width - width - (COMPACT.matches ? 10 * mode.cssScale : 12)
+    const x = canvas.width - width - mode.hudInsets.right - (COMPACT.matches ? 10 * mode.cssScale : 12)
     // On phones and tablets it sits under the menu button; elsewhere, on a touchscreen the INHALE button has the bottom right, so it moves to the top
-    const y = COMPACT.matches ? Math.round(54 * mode.cssScale) : mode.controls?.touchDevice ? 76 : canvas.height - height - 12
+    const y = COMPACT.matches ? mode.hudInsets.top + Math.round(76 * mode.cssScale) : mode.controls?.touchDevice ? Math.max(mode.hudInsets.top + 76, mode.chromeBottom + 24) : canvas.height - height - mode.hudInsets.bottom - 12
     mode.minimapBottom = y + height
     ctx.save()
     ctx.fillStyle = 'rgba(5, 12, 24, 0.72)'
@@ -130,7 +130,7 @@ export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
     ctx.font = `600 11px ${FONT}`
     ctx.textAlign = 'right'
     ctx.textBaseline = 'bottom'
-    if (!COMPACT.matches) ctx.fillText(`${playing} playing`, x + width, y - 8)
+    ctx.fillText(`${playing} playing`, x + width, y - 8)
     ctx.restore()
 }
 
@@ -226,7 +226,7 @@ export function drawLeaderboard(mode: MultiplayerMode, ctx: CanvasRenderingConte
     })
     ranked.sort((a, b) => b.gems - a.gems)
     const compact = COMPACT.matches
-    const top = compact ? 3 : 5
+    const top = _canvas.clientHeight < 500 ? 1 : compact ? 3 : 5
     const rows = ranked.slice(0, top).map((entry, index) => ({ ...entry, rank: index + 1 }))
     const mine = ranked.findIndex((entry) => entry.id === localId)
     const apart = mine >= top
@@ -234,9 +234,9 @@ export function drawLeaderboard(mode: MultiplayerMode, ctx: CanvasRenderingConte
     if (apart && me) rows.push({ ...me, rank: mine + 1 })
     // Sizes in screen points on phones, so it lines up with everything else there
     const u = compact ? mode.cssScale : 1
-    const x = (compact ? 10 : 12) * u
-    const y = (compact ? 10 : 12) * u
-    const width = (compact ? 132 : 190) * u
+    const x = mode.hudInsets.left + (compact ? 10 : 12) * u
+    const width = (compact ? (_canvas.clientWidth < 380 ? 104 : 132) : 190) * u
+    const y = Math.max(mode.hudInsets.top + (compact ? 10 : 12) * u, mode.chromeLeft < x + width + 12 * u ? mode.chromeBottom + 12 * u : 0)
     const rowHeight = (compact ? 21 : 24) * u
     const gapForYou = apart ? 7 * u : 0
     ctx.save()
@@ -282,23 +282,27 @@ export function drawLeaderboard(mode: MultiplayerMode, ctx: CanvasRenderingConte
     ctx.restore()
 }
 
-/** Phones and tablets: the score in a pill at the top middle, and how many are playing beside the menu button */
-export function drawTopBar(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, state: SyncedGameState, me: SyncedPlayer) : void {
+/** Phones and tablets: score between the leaderboard and menu; player count belongs to the minimap. */
+export function drawTopBar(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, _state: SyncedGameState, me: SyncedPlayer) : void {
     const u = mode.cssScale
+    if (canvas.clientWidth < 300 || (canvas.clientHeight < 500 && me.capturedBy)) return
     ctx.save()
     ctx.textBaseline = 'middle'
     ctx.textAlign = 'left'
-    const top = 10 * u
+    const top = mode.hudInsets.top + 10 * u
     // The score
     const label = 'Score'
-    const value = String(me?.gems ?? 0)
+    const gems = me?.gems ?? 0
+    const value = gems >= 10000 ? `${Math.floor(gems / 1000)}k` : String(gems)
     ctx.font = `600 ${12.5 * u}px ${FONT}`
     const labelWidth = ctx.measureText(label).width
     ctx.font = `800 ${18 * u}px ${FONT}`
     const valueWidth = ctx.measureText(value).width
     const pillHeight = 34 * u
     const pillWidth = labelWidth + valueWidth + 36 * u
-    const pillX = canvas.width / 2 - pillWidth / 2
+    const minX = mode.hudInsets.left + (canvas.clientWidth < 380 ? 126 : 154) * u
+    const maxX = canvas.width - mode.hudInsets.right - 64 * u - pillWidth
+    const pillX = Math.min(maxX, Math.max(minX, canvas.width / 2 - pillWidth / 2))
     hudPanel(ctx, pillX, top, pillWidth, pillHeight, pillHeight / 2)
     ctx.font = `600 ${12.5 * u}px ${FONT}`
     ctx.fillStyle = '#e8f4f8'
@@ -306,18 +310,6 @@ export function drawTopBar(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
     ctx.font = `800 ${18 * u}px ${FONT}`
     ctx.fillStyle = '#4fd1c5'
     ctx.fillText(value, pillX + 22 * u + labelWidth, top + pillHeight / 2 + 1 * u)
-    // How many are playing, beside the menu button
-    const text = `${state.players?.size ?? 0} playing`
-    ctx.font = `600 ${11 * u}px ${FONT}`
-    const textWidth = ctx.measureText(text).width
-    const height = 28 * u
-    const width = textWidth + 34 * u
-    const x = canvas.width - (10 + 36 + 8) * u - width
-    const y = top + (36 * u - height) / 2
-    hudPanel(ctx, x, y, width, height, height / 2)
-    drawPeople(ctx, x + 14 * u, y + height / 2, 14 * u, '#cfe8ee')
-    ctx.fillStyle = '#e8f4f8'
-    ctx.fillText(text, x + 25 * u, y + height / 2)
     ctx.restore()
 }
 
@@ -325,23 +317,22 @@ export function drawTopBar(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
 export function drawNotices(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) : void {
     const now = performance.now()
     mode.notices = mode.notices.filter((notice) => now - notice.at < JOIN_NOTICE_MS)
-    let y = mode.controls?.touchDevice || COMPACT.matches ? mode.minimapBottom + 12 : 12
-    if (!COMPACT.matches && document.body.classList.contains('bar-hidden')) y = 72
+    let y = mode.controls?.touchDevice || COMPACT.matches ? mode.minimapBottom + 12 : Math.max(mode.hudInsets.top + 12, mode.chromeBottom + 12)
     const phase = mode.multiplayerManager?.getState()?.surgePhase
-    if (COMPACT.matches && (phase === 'warning' || phase === 'active')) y += 54 * mode.cssScale
+    if (phase === 'warning' || phase === 'active') y += 54 * mode.cssScale
     ctx.save()
     for (const notice of [...mode.notices].reverse()) {
         ctx.globalAlpha = Math.min(1, (JOIN_NOTICE_MS - (now - notice.at)) / 500)
         ctx.font = `${notice.strong ? 700 : 600} ${notice.strong ? 14 : 13}px ${FONT}`
         // Leave room for the leaderboard on the left
-        const width = Math.min(canvas.width - 150, ctx.measureText(notice.text).width + 28)
+        const width = Math.min(canvas.width - mode.hudInsets.left - mode.hudInsets.right - 150, ctx.measureText(notice.text).width + 28)
         ctx.fillStyle = notice.strong ? 'rgba(60, 40, 0, 0.85)' : 'rgba(5, 12, 24, 0.75)'
-        roundedRect(ctx, canvas.width - width - 12, y, width, 26, 13)
+        roundedRect(ctx, canvas.width - mode.hudInsets.right - width - 12, y, width, 26, 13)
         ctx.fill()
         ctx.fillStyle = notice.strong ? GOLD : '#ffffff'
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
-        ctx.fillText(notice.text, canvas.width - width / 2 - 12, y + 13, width - 20)
+        ctx.fillText(notice.text, canvas.width - mode.hudInsets.right - width / 2 - 12, y + 13, width - 20)
         y += 32
     }
     ctx.restore()
@@ -400,7 +391,7 @@ export function drawCapturePrompt(mode: MultiplayerMode, ctx: CanvasRenderingCon
     const u = compact ? mode.cssScale : 1
     const touch = Boolean(mode.controls?.touchDevice)
     const centerX = canvas.width / 2
-    const bottom = canvas.height - (touch ? 180 : 36) * u
+    const bottom = canvas.height - mode.hudInsets.bottom - (touch ? 180 : 36) * u
     if (me.capturedBy) {
         const captor = state.players.get(me.capturedBy)
         const keys = String(me.escapeKeys ?? '').split('').filter(Boolean)
@@ -413,12 +404,14 @@ export function drawCapturePrompt(mode: MultiplayerMode, ctx: CanvasRenderingCon
         const loading = captor ? Math.max(0, Math.min(1, 1 - (armedAt - now) / loadMs)) : 1
         const sinceMiss = now - me.escapeMissAt
         const missed = me.escapeMissAt > 0 && sinceMiss < 380
-        const cell = 46 * u
-        const gap = 10 * u
-        const width = Math.max(240 * u, keys.length * (cell + gap) - gap + 48 * u)
-        const height = 120 * u
+        const short = canvas.clientHeight < 500
+        const gap = (short ? 6 : 10) * u
+        const available = canvas.width - mode.hudInsets.left - mode.hudInsets.right - 24 * u
+        const cell = Math.min((short ? 32 : 46) * u, (available - 48 * u - (keys.length - 1) * gap) / keys.length)
+        const width = Math.min(available, Math.max((short ? 224 : 240) * u, keys.length * (cell + gap) - gap + 48 * u))
+        const height = (short ? 96 : 120) * u
         const x = centerX - width / 2
-        const y = bottom - height
+        const y = short ? Math.max(mode.hudInsets.top + 8 * u, mode.chromeBottom + 8 * u) : bottom - height
         ctx.save()
         ctx.setTransform(1, 0, 0, 1, 0, 0)
         hudPanel(ctx, x, y, width, height, 16 * u)
@@ -433,14 +426,14 @@ export function drawCapturePrompt(mode: MultiplayerMode, ctx: CanvasRenderingCon
         ctx.font = `800 ${16 * u}px ${FONT}`
         ctx.fillStyle = dazed ? '#cfd8dc' : GOLD
         const who = captor ? String(captor.name ?? '') : 'someone'
-        ctx.fillText(dazed ? `Caught by ${who}!` : 'Wriggle out!', centerX, y + 22 * u, width - 24 * u)
+        ctx.fillText(dazed ? `Caught by ${who}!` : 'Wriggle out!', centerX, y + (short ? 16 : 22) * u, width - 24 * u)
         ctx.font = `600 ${12 * u}px ${FONT}`
         ctx.fillStyle = 'rgba(255, 255, 255, 0.75)'
         const hint = dazed ? 'Hang on…' : missed ? 'Wrong one: from the top' : loading >= 1 ? 'They can fire you now' : touch ? 'Flick the stick these ways, in order' : 'Tap these, in order (WASD or arrows)'
         ctx.fillStyle = loading >= 1 && !dazed && !missed ? 'rgba(255, 120, 120, 0.9)' : 'rgba(255, 255, 255, 0.75)'
-        ctx.fillText(hint, centerX, y + 42 * u, width - 24 * u)
+        ctx.fillText(hint, centerX, y + (short ? 34 : 42) * u, width - 24 * u)
         // The directions, lit as they're got; the next one pulses
-        const rowY = y + 82 * u
+        const rowY = y + (short ? 61 : 82) * u
         const startX = centerX - (keys.length * (cell + gap) - gap) / 2
         for (let i = 0; i < keys.length; i++) {
             const kx = startX + i * (cell + gap)

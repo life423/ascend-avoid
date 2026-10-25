@@ -50,6 +50,9 @@ export class OnlineControls {
     private events: ControlEvent[] = []
     private touchedOnce = false
     private escapeKeys: string[] = []
+    private insets = { top: 0, right: 0, bottom: 0, left: 0 }
+    setInsets(insets: typeof this.insets): void { this.insets = insets }
+    private get stickRadius(): number { return Math.max(40, STICK_RADIUS * Math.min(1, (this.canvas.width - this.insets.left - this.insets.right) / 320)) }
     get isPointerSteering(): boolean { return !!this.stick || !!this.mouse }
     takeEscapeKeys(): string[] { const keys = this.escapeKeys; this.escapeKeys = []; return keys }
 
@@ -116,8 +119,8 @@ export class OnlineControls {
      */
     vector(playerX: number, playerY: number, playerSize: number): { x: number; y: number } | null {
         if (this.stick) {
-            const dx = (this.stick.x - this.stick.originX) / STICK_RADIUS
-            const dy = (this.stick.y - this.stick.originY) / STICK_RADIUS
+            const dx = (this.stick.x - this.stick.originX) / this.stickRadius
+            const dy = (this.stick.y - this.stick.originY) / this.stickRadius
             const reach = Math.hypot(dx, dy)
             if (reach < DEAD_ZONE) return { x: 0, y: 0 }
             // Full speed a little before the edge of the stick
@@ -165,12 +168,12 @@ export class OnlineControls {
             ctx.font = `700 12px ${FONT}`
             ctx.fillStyle = inhaling ? breathColor : `rgba(255, 255, 255, ${recovering ? 0.35 : 0.65})`
             const hint = this.action === 'QUEUED' ? 'Shot queued — keep aiming' : this.action === 'LOADING' ? 'Loading… tap to queue a shot' : this.action === 'FIRE' ? 'SPACE  tap to FIRE' : this.action === 'SPIT' ? 'SPACE  tap to SPIT' : inhaling ? 'SPACE  inhaling' : `SPACE  hold to inhale · ${this.puffCooldown > 0 ? `puff in ${this.puffCooldown.toFixed(1)}s` : this.puffNeedsBreath ? 'puff needs 35% breath' : 'puff costs 35% breath'}`
-            ctx.fillText(hint, 14, height - 16)
+            ctx.fillText(hint, 14 + this.insets.left, height - this.insets.bottom - 16)
             if (inhaling || recovering) {
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.12)'
-                ctx.fillRect(14, height - 34, 140, 5)
+                ctx.fillRect(14 + this.insets.left, height - this.insets.bottom - 34, 140, 5)
                 ctx.fillStyle = breathColor
-                ctx.fillRect(14, height - 34, 140 * Math.max(0, Math.min(1, share)), 5)
+                ctx.fillRect(14 + this.insets.left, height - this.insets.bottom - 34, 140 * Math.max(0, Math.min(1, share)), 5)
             }
             ctx.restore()
             return
@@ -178,9 +181,9 @@ export class OnlineControls {
         this.drawStick(ctx, height, timestamp)
 
         // The button: lit while you inhale, dimmed while you catch your breath
-        const r = BUTTON_RADIUS
-        const x = width - r - 24
-        const y = height - r - 30
+        const r = Math.max(28, BUTTON_RADIUS * Math.min(1, (width - this.insets.left - this.insets.right) / 320))
+        const x = width - this.insets.right - r - 24
+        const y = height - this.insets.bottom - r - 30
         ctx.fillStyle = inhaling
             ? `rgba(160, 230, 255, ${0.16 + 0.1 * Math.sin(timestamp / 90)})`
             : recovering
@@ -224,32 +227,35 @@ export class OnlineControls {
     }
 
     private drawStick(ctx: CanvasRenderingContext2D, height: number, timestamp: number): void {
+        const radius = this.stickRadius, knob = Math.min(28, radius / 2)
         const drawStick = (x: number, y: number, knobX: number, knobY: number, alpha: number) => {
             ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.35})`
             ctx.beginPath()
-            ctx.arc(x, y, STICK_RADIUS, 0, Math.PI * 2)
+            ctx.arc(x, y, radius, 0, Math.PI * 2)
             ctx.fill()
             ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`
             ctx.lineWidth = 2
             ctx.stroke()
             ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(0.9, alpha * 1.8)})`
             ctx.beginPath()
-            ctx.arc(knobX, knobY, 28, 0, Math.PI * 2)
+            ctx.arc(knobX, knobY, knob, 0, Math.PI * 2)
             ctx.fill()
         }
         if (this.stick) {
             let dx = this.stick.x - this.stick.originX
             let dy = this.stick.y - this.stick.originY
             const reach = Math.hypot(dx, dy)
-            if (reach > STICK_RADIUS) {
-                dx *= STICK_RADIUS / reach
-                dy *= STICK_RADIUS / reach
+            if (reach > radius) {
+                dx *= radius / reach
+                dy *= radius / reach
             }
-            drawStick(this.stick.originX, this.stick.originY, this.stick.originX + dx, this.stick.originY + dy, 0.4)
+            const x = Math.max(this.insets.left + radius + knob, Math.min(this.canvas.width / 2 - radius - knob, this.stick.originX))
+            const y = Math.max(this.insets.top + radius + knob, Math.min(height - this.insets.bottom - radius - knob, this.stick.originY))
+            drawStick(x, y, x + dx, y + dy, 0.4)
         } else {
             // Where thumbs usually land; it pulses until the first touch
-            const x = STICK_RADIUS + 28
-            const y = height - STICK_RADIUS - 28
+            const x = this.insets.left + radius + 28
+            const y = height - this.insets.bottom - radius - 28
             drawStick(x, y, x, y, this.touchedOnce ? 0.18 : 0.24 + 0.14 * Math.sin(timestamp / 300))
         }
     }

@@ -22,8 +22,9 @@ export class DesktopChrome {
 
         const actions = header.querySelector<HTMLDivElement>('.bar-actions') ?? document.createElement('div')
         actions.className = 'bar-actions'
+        const mouseSwitch = `<button type="button" role="switch" class="bar-button bar-mouse" data-action="mouse" aria-label="Mouse control" aria-checked="${mouseControlEnabled()}" title="Follow the cursor without holding a button">Mouse <span>${mouseControlEnabled() ? 'On' : 'Off'}</span></button>`
         actions.innerHTML = `
-            <button type="button" role="switch" class="bar-button bar-mouse" data-action="mouse" aria-label="Mouse control" aria-checked="${mouseControlEnabled()}" title="Follow the cursor without holding a button">Mouse <span>${mouseControlEnabled() ? 'On' : 'Off'}</span></button>
+            ${mouseSwitch}
             <button type="button" class="bar-button bar-help" data-action="help" title="Help & settings (H)">${MENU}<span>Help & settings</span><kbd>H</kbd></button>
             <button type="button" class="bar-button bar-view" data-action="hide" title="Focus view (F)">${CHEVRON_UP}<span>Focus view</span></button>
         `
@@ -38,6 +39,7 @@ export class DesktopChrome {
         const tab = document.createElement('div')
         tab.className = 'bar-tab'
         tab.innerHTML = `
+            ${mouseSwitch}
             <button type="button" class="bar-button bar-help" data-action="help" title="Help & settings (H)">${MENU}<span>Help & settings</span></button>
             <button type="button" class="bar-button bar-view" data-action="show" title="Show controls (F)">${CHEVRON_DOWN}<span>Show controls</span><kbd>F</kbd></button>
         `
@@ -54,9 +56,6 @@ export class DesktopChrome {
                 const action = button.dataset.action
                 if (action === 'mouse') {
                     setMouseControl(!mouseControlEnabled())
-                    button.setAttribute('aria-checked', String(mouseControlEnabled()))
-                    const state = button.querySelector('span')
-                    if (state) state.textContent = mouseControlEnabled() ? 'On' : 'Off'
                 } else if (action === 'help') this.toggleHelp()
                 else this.setBarHidden(action === 'hide')
                 button.blur() // so space goes back to the game, not the button
@@ -113,6 +112,10 @@ export class DesktopChrome {
 
     private setBarHidden(hidden: boolean): void {
         document.body.classList.toggle('bar-hidden', hidden)
+        const header = document.querySelector<HTMLElement>('.app-header')
+        if (header) { header.inert = hidden; header.setAttribute('aria-hidden', String(hidden)) }
+        const tab = document.querySelector<HTMLElement>('.bar-tab')
+        if (tab) tab.hidden = !hidden
         document.documentElement.classList.remove('bar-start-hidden')
         try {
             localStorage.setItem(STORAGE_KEY, hidden ? '1' : '0')

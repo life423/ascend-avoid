@@ -63,7 +63,12 @@ export default class ResponsiveManager {
      * @param game - Reference to the game instance
      */
     private resizeObserver: ResizeObserver | null = null
-    private boundResize = (): void => this.handleResize()
+    private resizeFrame: number | null = null
+    safeArea = { top: 0, right: 0, bottom: 0, left: 0 }
+    private boundResize = (): void => {
+        if (this.resizeFrame !== null) return
+        this.resizeFrame = requestAnimationFrame(() => { this.resizeFrame = null; this.handleResize() })
+    }
     private boundVisibilityChange = (): void => this.handleVisibilityChange()
 
     constructor(game: Game) {
@@ -121,6 +126,8 @@ export default class ResponsiveManager {
     setupEventListeners(): void {
         window.addEventListener('resize', this.boundResize)
         window.addEventListener('orientationchange', this.boundResize)
+        window.visualViewport?.addEventListener('resize', this.boundResize)
+        window.visualViewport?.addEventListener('scroll', this.boundResize)
         document.addEventListener('visibilitychange', this.boundVisibilityChange)
 
         // Refit whenever the canvas's container changes size: rotation, mobile toolbars
@@ -136,6 +143,18 @@ export default class ResponsiveManager {
      * Handle window resize event
      */
     handleResize(): void {
+        if (document.body.classList.contains('online-mode')) {
+            const viewport = window.visualViewport
+            const visual = viewport && Math.abs(viewport.scale - 1) < 0.01 ? viewport : null
+            const root = document.documentElement
+            root.style.setProperty('--arena-width', `${Math.max(1, visual?.width ?? window.innerWidth)}px`)
+            root.style.setProperty('--arena-height', `${Math.max(1, visual?.height ?? window.innerHeight)}px`)
+            root.style.setProperty('--arena-left', `${visual?.offsetLeft ?? 0}px`)
+            root.style.setProperty('--arena-top', `${visual?.offsetTop ?? 0}px`)
+            root.style.setProperty('--arena-bottom', `${Math.max(0, window.innerHeight - (visual?.offsetTop ?? 0) - (visual?.height ?? window.innerHeight))}px`)
+            const style = getComputedStyle(root)
+            for (const side of ['top', 'right', 'bottom', 'left'] as const) this.safeArea[side] = parseFloat(style.getPropertyValue(`--arena-safe-${side}`)) || 0
+        }
         // Re-check device type
         const wasDesktop = this.isDesktop
         this.isDesktop = this.detectDesktop()
@@ -191,8 +210,8 @@ export default class ResponsiveManager {
     }
 
     /**
-     * Size the canvas to its frame (measured, so the header, touch controls and side panel keep
-     * their space). The online world fills the frame; solo keeps its 600×700 shape inside it.
+     * Size the canvas to its measured frame. The online frame covers the visible viewport;
+     * solo keeps its 600×700 shape inside its existing layout.
      * The canvas border sits inside its CSS size (border-box).
      */
     resizeCanvas(): void {
@@ -201,10 +220,9 @@ export default class ResponsiveManager {
         if (!container) return
 
         const box = getComputedStyle(container)
-        const availableWidth =
-            container.clientWidth - parseFloat(box.paddingLeft) - parseFloat(box.paddingRight)
-        const availableHeight =
-            container.clientHeight - parseFloat(box.paddingTop) - parseFloat(box.paddingBottom)
+        const rect = container.getBoundingClientRect()
+        const availableWidth = rect.width - parseFloat(box.paddingLeft) - parseFloat(box.paddingRight)
+        const availableHeight = rect.height - parseFloat(box.paddingTop) - parseFloat(box.paddingBottom)
         if (availableWidth <= 0 || availableHeight <= 0) return
 
         // The canvas border sits inside its CSS size (border-box), so leave room for it
@@ -214,10 +232,11 @@ export default class ResponsiveManager {
 
         let width: number
         let height: number
-        if (this.game?.currentGameMode?.wantsFullCanvas?.() || document.body.classList.contains('online-mode')) {
+        const full = this.game?.currentGameMode?.wantsFullCanvas?.() || document.body.classList.contains('online-mode')
+        if (full) {
             // The online world is bigger than the screen: use all the space there is
-            width = Math.max(1, Math.floor(availableWidth - borderX))
-            height = Math.max(1, Math.floor(availableHeight - borderY))
+            width = Math.max(1, Math.ceil(availableWidth - borderX))
+            height = Math.max(1, Math.ceil(availableHeight - borderY))
         } else {
             // Solo keeps its 600×700 shape, as large as fits
             const scale = Math.min(
@@ -234,11 +253,11 @@ export default class ResponsiveManager {
             pixelRatio: 1,
             reducedResolution: false,
         }
+        this.canvas.style.width = `${full ? availableWidth : width + borderX}px`
+        this.canvas.style.height = `${full ? availableHeight : height + borderY}px`
         // Resizing clears the canvas, so skip it when nothing changed
         if (this.canvas.width === width && this.canvas.height === height) return
 
-        this.canvas.style.width = `${width + borderX}px`
-        this.canvas.style.height = `${height + borderY}px`
         this.canvas.style.display = 'block'
         this.canvas.width = width
         this.canvas.height = height
@@ -350,6 +369,9 @@ export default class ResponsiveManager {
         // The same function objects that were added, so these actually remove them
         window.removeEventListener('resize', this.boundResize)
         window.removeEventListener('orientationchange', this.boundResize)
+        window.visualViewport?.removeEventListener('resize', this.boundResize)
+        window.visualViewport?.removeEventListener('scroll', this.boundResize)
+        if (this.resizeFrame !== null) cancelAnimationFrame(this.resizeFrame)
         document.removeEventListener('visibilitychange', this.boundVisibilityChange)
         this.resizeObserver?.disconnect()
         this.resizeObserver = null

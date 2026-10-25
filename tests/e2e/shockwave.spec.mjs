@@ -4,7 +4,8 @@ import { Client } from 'colyseus.js';
 test.skip(process.env.E2E_TEST_HOOKS !== '1', 'requires an isolated local test server');
 
 test('collect and place a Pulsar Array with a quiet HUD and visible pulses', async ({ page, hasTouch, baseURL }) => {
-  const errors = []; page.on('pageerror', error => errors.push(error.message));
+  const errors = []; // Same known caught Colyseus probe as game.spec; real connection failures still fail.
+  page.on('pageerror', error => { if (!/Wrong protocol for WebSocket '\[object Object\]'/.test(error.message)) errors.push(error.message); });
   await page.route('**/matchmake/joinOrCreate/game_room', route => route.continue({
     url: route.request().url().replace('/joinOrCreate/', '/create/'),
     postData: JSON.stringify({ ...route.request().postDataJSON(), testBots: 0, testFieldGems: 0 }),

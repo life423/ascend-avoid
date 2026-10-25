@@ -6,7 +6,7 @@ Updated October 24, 2026. This is the durable list of the user's requests and de
 
 1. **Finish the current controls, fairness and UI pass.** Verify mouse-follow without holding a button; retain WASD/arrows; add independent right-thumb aiming to the existing action control. Hold inhales, tap fires; aiming a loaded shot must not fire it accidentally. Keep phone controls clean and usable in both orientations.
 2. **Remove persistent interruptions.** The old weapon card is already removed on main; confirm fresh production clients. Pickup notices coalesce and expire. Gem-surge notices disappear after three seconds while the event continues. No replacement pinned pill. Help is at most one quarter its former length and remains readable, keyboard accessible and touch friendly.
-3. **Stop spawning beside empty exterior.** Keep new arrivals and respawns far enough inside the arena for a centered newborn view. Reset the camera zoom on respawn. Preserve the established desktop blue surround when someone deliberately reaches the boundary; phones always show playable map.
+3. **Fill every screen with the arena.** New arrivals and respawns remain inside the map, with newborn zoom reset. The latest user request supersedes the earlier desktop blue surround: canvas covers the visible browser viewport at every size; the camera yields centering at boundaries so all screens show playable map. Desktop controls float over play and Focus view does not resize it. Preserve touch safe areas, keyboard resizing and rotation.
 4. **Finish escape and bot fairness.** Two seconds of protection against suction, gem drain and recapture from every player after escape/release. Keep the three-second landing shield. Bots read shots periodically, commit to an imperfect aim and react after loading. Keep the existing human escape window; do not shorten loading.
 5. **Make the Pinwheel a lethal spinning machine gun.** Rapid straight bullets launched at rotating angles form outward spirals. Bolts can knock out weakened rivals, with credit and normal protected respawn. Damage scales less aggressively against giants; owner/spawn/capture/flight protections remain. Pulsar waves can finish weakened players too.
 6. **Tune small players stealing from larger players.** Highest-priority growth experiment. The user suspects this is the main reason growth is too easy. Measure current drain across size ratios, weaken disadvantaged stealing, retain responsive loose-gem pickup, then playtest growth time and leader survival. Not implemented yet.
@@ -25,7 +25,7 @@ Items 1–5 and the legacy cleanup in 13 are implemented. Items 6–10 contain p
 
 - Audit the code, fix confirmed issues, work on a new branch, verify before merging main; remember the plan and ten strongest ideas.
 - Large movement should be slower than small movement but responsive, not painfully sluggish.
-- Keep the player centered like Agar.io on wide desktops. Use a finite map, no Asteroids-style wrapping. A thin blue edge with a lighter blue exterior is intentional; the user subsequently objected to seeing that exterior immediately on spawn.
+- Keep the player centered in open space, with a finite map and no Asteroids-style wrapping. The latest full-viewport request replaces the earlier desktop blue exterior: clamp every view to the map and let the player move off-center near boundaries.
 - Compact/mobile screens stay filled with map, including edge knockouts and rotation.
 - Improve ambiguous top-right icons with understandable labeled desktop controls. Keep Help/settings and controls usable without crowding the activity feed.
 - Provide Save name plus Enter; retain the saved name and clear confirmation.
@@ -80,6 +80,7 @@ Percentage/mass-sensitive damage; ability to finish weakened rivals; burst/rapid
 
 ## Latest approved follow-up
 
+- Fill the entire visible browser viewport on every screen. Replace desktop reserved header/padding and blue exterior with floating controls and camera bounds. Keep mouse control/Help reachable in Focus view, preserve safe areas, resize/rotation/keyboard handling, and keep capture/placement clear. This supersedes the earlier wide-desktop surround decision.
 - Small player-cannon misses burn up at flight end (initial threshold: fewer than 12 gems); keep larger landings and small fan comeback launches.
 - Fan passage requires fitting through the visible 54-unit throat. Oversized creatures cannot become fan-fired weapons and can walk away from suction.
 - Desktop mouse-follow gets a labeled On/Off switch, default On, with persistence and keyboard support; WASD and touch remain usable.
