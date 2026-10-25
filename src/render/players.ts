@@ -249,7 +249,11 @@ function drawMouthful(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, capt
         mode.captures.set(id, { at: timestamp, x: from.x, y: from.y })
     }
     mode.drawnPositions.set(id, { x: m.x - captive.width / 2, y: m.y - captive.height / 2 })
-    if (id === localId) mode.breath = mode.breathOf(false, performance.now(), 0)
+    if (id === localId) {
+        mode.breath = mode.breathOf(false, performance.now(), 0)
+        // The captive's escape panel already contains loading progress. Keep its header clear.
+        return
+    }
     const u = 1 / Math.max(0.001, Math.abs(ctx.getTransform().a))
     const width = (own ? 118 : 76) * u
     const height = (own ? 38 : 28) * u

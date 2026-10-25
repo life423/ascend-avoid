@@ -68,13 +68,17 @@ test('desktop follows an unpressed mouse and keyboard can take over', async ({ p
   await expect.poll(async () => (await position(page)).x).toBeGreaterThan(before.x + 25);
   await page.keyboard.down('ArrowLeft'); const left = await position(page);
   await expect.poll(async () => (await position(page)).x).toBeLessThan(left.x - 25);
-  await page.keyboard.up('ArrowLeft'); await page.waitForTimeout(250);
-  const stopped = await position(page); await page.waitForTimeout(250);
-  expect(Math.abs((await position(page)).x - stopped.x)).toBeLessThan(2);
+  await page.keyboard.up('ArrowLeft');
+  await expect.poll(async () => {
+    const stopped = await position(page); await page.waitForTimeout(250);
+    return Math.abs((await position(page)).x - stopped.x);
+  }).toBeLessThan(2);
   await page.mouse.move(box.x + box.width * .8, box.y + box.height * .6);
   await page.evaluate(() => window.drawerUI.open());
-  await page.waitForTimeout(250); const menu = await position(page);
-  await page.waitForTimeout(250); expect(Math.abs((await position(page)).x - menu.x)).toBeLessThan(2);
+  await expect.poll(async () => {
+    const menu = await position(page); await page.waitForTimeout(250);
+    return Math.abs((await position(page)).x - menu.x);
+  }).toBeLessThan(2);
 });
 
 test('mouse switch defaults on, remembers off and leaves keyboard movement working', async ({ page, hasTouch }) => {

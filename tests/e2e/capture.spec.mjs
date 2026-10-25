@@ -109,7 +109,7 @@ test('WASD and arrow taps free a real captive; focus loss cancels movement and i
     expect(Math.abs(after.x - before.x)).toBeLessThan(30);
     await page.keyboard.up('ArrowRight');
     await page.keyboard.up('Space');
-    // Desktops stay centered; phones keep the entire visible rectangle inside the map.
+    // Every viewport stays inside the map; centering yields at the boundary.
     await send('test:setGems', { count: 100 });
     for (const position of [{ x: 8, y: 8 }, { x: 3900, y: 8 }, { x: 8, y: 3900 }, { x: 3900, y: 3900 }]) {
       await send('test:moveTo', position);
@@ -118,14 +118,10 @@ test('WASD and arrow taps free a real captive; focus loss cancels movement and i
       const framing = await page.evaluate(() => {
         const mode = window.game.currentGameMode;
         const room = mode.multiplayerManager.room;
-        const p = room.state.players.get(room.sessionId);
         const v = mode.lastView;
-        return { compact: matchMedia('(max-width: 1199px), (pointer: coarse)').matches,
-          outside: Math.max(0, v.width / 2 - v.x, v.height / 2 - v.y, v.x + v.width / 2 - room.state.worldWidth, v.y + v.height / 2 - room.state.worldHeight),
-          error: Math.hypot(mode.predicted.x + p.width / 2 - v.x, mode.predicted.y + p.height / 2 - v.y) };
+        return { outside: Math.max(0, v.width / 2 - v.x, v.height / 2 - v.y, v.x + v.width / 2 - room.state.worldWidth, v.y + v.height / 2 - room.state.worldHeight) };
       });
-      if (framing.compact) expect(framing.outside, 'phone shows only the playable map').toBeLessThan(.1);
-      else expect(framing.error, 'desktop player remains at the exact view center').toBeLessThan(0.1);
+      expect(framing.outside, 'every screen shows only the playable map').toBeLessThan(.1);
     }
     if (!hasTouch) {
       await page.locator('.bar-name-input').fill('Saved with button');

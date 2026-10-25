@@ -37,6 +37,7 @@ import { weaponRecipe } from '../render/weaponStyle'
 
 // Forward reference for the Game type to avoid circular dependencies
 interface Game {
+    responsiveManager: { safeArea: { top: number; right: number; bottom: number; left: number } }
     gameState: string
     isMultiplayerMode: boolean
     score: number
@@ -581,6 +582,9 @@ export class MultiplayerMode extends GameMode {
     /** The view as last drawn, to find your player on screen for mouse steering */
     private lastView: View | null = null
     minimapBottom = 0
+    hudInsets = { top: 0, right: 0, bottom: 0, left: 0 }
+    chromeBottom = 0
+    chromeLeft = Infinity
     /**
      * Our clock minus the world's clock for the quickest update seen: lining the two up this way
      * places traffic by the server's own timing rather than by when updates happen to land
@@ -1066,6 +1070,13 @@ export class MultiplayerMode extends GameMode {
         // Screen-space overlays: hidden while the opening plays, then fading in
         ctx.setTransform(1, 0, 0, 1, 0, 0)
         this.cssScale = canvas.width / Math.max(1, canvas.getBoundingClientRect().width)
+        const safe = this.game.responsiveManager.safeArea
+        for (const side of ['top', 'right', 'bottom', 'left'] as const) this.hudInsets[side] = safe[side] * this.cssScale
+        this.controls?.setInsets(this.hudInsets)
+        const chrome = document.querySelector<HTMLElement>(document.body.classList.contains('bar-hidden') ? '.bar-tab' : '.app-header')?.getBoundingClientRect()
+        const canvasBox = canvas.getBoundingClientRect()
+        this.chromeBottom = chrome && chrome.width > 0 ? Math.max(this.hudInsets.top, (chrome.bottom - canvasBox.top) * this.cssScale) : this.hudInsets.top
+        this.chromeLeft = chrome && chrome.width > 0 ? (chrome.left - canvasBox.left) * this.cssScale : canvas.width
         const hud = this.runIntro(ctx, canvas, timestamp)
         this.weaponPlacement?.update(state, localId, hud <= 0)
         this.trackWeapon(state, localId)
@@ -1129,16 +1140,8 @@ export class MultiplayerMode extends GameMode {
         this.camera = this.cameraRig.short ? { x: this.cameraRig.x, y: this.cameraRig.y } : (this.camera ?? { x: state.worldWidth / 2, y: state.worldHeight / 2 })
         this.lastRenderAt = timestamp
 
-        // Phones keep the arena filling the screen, including while dead. Wide desktops retain the surround.
-        if (COMPACT.matches) return constrainArenaView({ ...this.camera, width, height, scale }, state.worldWidth, state.worldHeight)
-        // Wide desktops keep the creature centered all the way to the edge.
-        const x = CAMERA.LOCKED ? this.camera.x : width >= state.worldWidth
-            ? state.worldWidth / 2
-            : Math.min(Math.max(this.camera.x, width / 2), state.worldWidth - width / 2)
-        const y = CAMERA.LOCKED ? this.camera.y : height >= state.worldHeight
-            ? state.worldHeight / 2
-            : Math.min(Math.max(this.camera.y, height / 2), state.worldHeight - height / 2)
-        return { x, y, width, height, scale }
+        // Every viewport stays filled with playable map, including held death views and ultrawide screens.
+        return constrainArenaView({ ...this.camera, width, height, scale }, state.worldWidth, state.worldHeight)
     }
 
     /**

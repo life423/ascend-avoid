@@ -953,3 +953,58 @@ body.online-mode .game-canvas { border: 0; border-radius: 12px; box-shadow: 0 0 
     .name-save-button:hover { background: #b5ffe8; }
     .name-save-button:focus-visible { outline: 2px solid white; outline-offset: 3px; }
 }
+
+/* The online arena is a viewport stage. Only controls reserve safe-area space. */
+:root {
+    --arena-safe-top: env(safe-area-inset-top, 0px);
+    --arena-safe-right: env(safe-area-inset-right, 0px);
+    --arena-safe-bottom: env(safe-area-inset-bottom, 0px);
+    --arena-safe-left: env(safe-area-inset-left, 0px);
+}
+body.online-mode { overflow: hidden; overscroll-behavior: none; }
+body.online-mode .app-root {
+    position: fixed; top: var(--arena-top, 0px); left: var(--arena-left, 0px);
+    width: var(--arena-width, 100vw); height: var(--arena-height, 100dvh);
+    max-width: none; margin: 0; padding: 0; display: block;
+}
+body.online-mode .game-main,
+body.online-mode .game-canvas-container,
+body.online-mode .canvas-frame { position: absolute; inset: 0; margin: 0; padding: 0; min-width: 0; min-height: 0; }
+body.online-mode .game-canvas-container { display: block; }
+body.online-mode .game-canvas { border: 0; border-radius: 0; box-shadow: none; }
+body.online-mode .drawer { top: var(--arena-top, 0px); height: var(--arena-height, 100dvh); }
+/* A breakpoint changes the drawer's slide direction. Never sweep a closed drawer across play. */
+body.online-mode .drawer[aria-hidden="true"] { visibility: hidden; pointer-events: none; }
+body.online-mode .hamburger-button { top: calc(10px + var(--arena-top, 0px) + var(--arena-safe-top)); right: calc(10px + var(--arena-safe-right)); }
+body.online-mode .bar-tab[hidden] { display: none !important; }
+body.online-mode .bar-tab { z-index: 30; }
+.drawer .mouse-preference { display: none; min-height: 44px; margin: 4px; padding: 8px 14px; border-radius: 8px; border: 1px solid #4fd1c5; background: #153746; color: white; font: inherit; cursor: pointer; }
+@media (any-pointer: fine) { .drawer .mouse-preference { display: inline-flex; gap: 8px; } }
+@media (min-width: 1200px) {
+    body.online-mode .app-header {
+        position: absolute; top: calc(12px + var(--arena-safe-top)); right: calc(12px + var(--arena-safe-right));
+        width: max-content; max-width: calc(100% - 24px - var(--arena-safe-left) - var(--arena-safe-right));
+        height: 60px; padding: 8px 12px; margin: 0; gap: 12px; z-index: 30;
+        border: 1px solid rgba(255,255,255,.15); border-radius: 12px; background: rgba(9,18,31,.94);
+        transition: transform 180ms ease, opacity 180ms ease;
+    }
+    body.online-mode .app-header h1 { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    body.online-mode .app-header .score-panel { flex: none; min-width: 160px; }
+    body.online-mode .bar-name-input, body.online-mode .name-save-button { min-height: 44px; }
+    body.online-mode.bar-hidden .app-header,
+    html.bar-start-hidden body.online-mode .app-header { margin: 0; transform: translateY(calc(-100% - 24px - var(--arena-safe-top))); opacity: 0; pointer-events: none; }
+    body.online-mode .bar-tab { top: calc(12px + var(--arena-top, 0px) + var(--arena-safe-top)); right: calc(12px + var(--arena-safe-right)); }
+    body.online-mode.bar-hidden .drawer .name-section { display: block; }
+}
+body.online-mode .first-session-guide { bottom: calc(var(--arena-bottom, 0px) + 60px + var(--arena-safe-bottom)); max-width: calc(100vw - 28px - var(--arena-safe-left) - var(--arena-safe-right)); }
+body.online-mode .weapon-place-button { bottom: calc(var(--arena-bottom, 0px) + 36px + var(--arena-safe-bottom)); }
+@media (max-width: 1199px), (pointer: coarse) {
+    body.online-mode .first-session-guide { bottom: calc(var(--arena-bottom, 0px) + 170px + var(--arena-safe-bottom)); }
+    body.online-mode .weapon-place-button { bottom: calc(var(--arena-bottom, 0px) + 184px + var(--arena-safe-bottom)); }
+}
+@media (max-height: 500px) and (pointer: coarse) {
+    body.online-mode .weapon-place-button { bottom: calc(var(--arena-bottom, 0px) + 12px + var(--arena-safe-bottom)); min-height: 48px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    body.online-mode .app-header, body.online-mode .bar-tab { transition: none; }
+}

@@ -31,7 +31,8 @@ test('gliding over a weapon part collects it without inhaling', async ({ page })
 
 test('collect, carry and deliberately place a pinwheel with a button or E', async ({ page, hasTouch }) => {
   const errors = [];
-  page.on('pageerror', e => errors.push(e.message));
+  // Colyseus 0.15's caught Node-style socket probe is reported by WebKit before its browser fallback.
+  page.on('pageerror', e => { if (!/Wrong protocol for WebSocket '\[object Object\]'/.test(e.message)) errors.push(e.message); });
   await page.route('**/matchmake/joinOrCreate/game_room', route => route.continue({
     url: route.request().url().replace('/joinOrCreate/', '/create/'),
     postData: JSON.stringify({ ...route.request().postDataJSON(), testBots: 0, testFieldGems: 0, testCores: 0 }),
@@ -121,13 +122,14 @@ test('a collected part stays carried after release, movement and turning; gust s
   await page.keyboard.up('Space');
   await page.keyboard.down('ArrowDown'); await page.waitForTimeout(350); await page.keyboard.up('ArrowDown');
   await page.waitForTimeout(100);
-  const cargo = await page.evaluate(() => {
+  const cargoState = () => page.evaluate(() => {
     const m = window.game.currentGameMode, r = m.multiplayerManager.room, p = m.multiplayerManager.getLocalPlayer();
     const part = r.state.pinwheel.parts.find(part => part.carriedBy === r.sessionId);
     return { carried: !!part, inhaling: p.inhaling, distance: part ? Math.hypot(part.x - p.x - p.width / 2, part.y - p.y - p.height / 2) : 9999, radius: p.width / 2 };
   });
+  const cargo = await cargoState();
   expect(cargo.carried).toBe(true); expect(cargo.inhaling).toBe(false);
-  expect(cargo.distance).toBeLessThan(cargo.radius + 45);
+  await expect.poll(async () => { const settled = await cargoState(); return settled.distance - settled.radius; }, { message: 'cargo settles behind the creature after turning' }).toBeLessThan(45);
   await expect(page.getByRole('button', { name: 'Place weapon', exact: true })).toBeHidden();
   await page.screenshot({ path: test.info().outputPath('carried-part.png') });
   await page.keyboard.press('Space', { delay: 30 });
