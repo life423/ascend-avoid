@@ -1,6 +1,6 @@
 /** Brief controls shared by Help surfaces. Detailed tuning belongs in project documentation. */
 export const GAME_RULES = `
-<p>Grow with gems. Capture smaller rivals and fire them.</p>
+<p>Grow with gems. Capture smaller rivals; fire them. Bigger ammunition hits harder.</p>
 <h4>Move & aim</h4><p>Mouse, WASD or arrows. Touch: left stick moves; drag right control to aim.</p>
 <h4>Inhale & fire</h4><p>Hold Space or INHALE. Aim a captive, then tap FIRE when loaded. Empty? Tap to puff (35% breath).</p>
 <h4>Escape</h4><p>Follow the arrows with keys or stick flicks; center the stick between directions. Escape gives two seconds safe from suction. Missiles cannot steer.</p>

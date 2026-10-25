@@ -92,7 +92,7 @@ for (const size of [{ width: 600, height: 1200 }, { width: 1200, height: 600 }, 
 // Late game: scale separation
 const lateGame = 20 * Math.sqrt(1 + 1500 / 2);
 check(lateGame / viewShort(lateGame) > 0.24 && (20 / lateGame) * (lateGame / viewShort(lateGame)) < 0.015, `late game, a 1500-gem giant fills about a quarter of the screen and a newborn beside it looks trivial (${((lateGame / viewShort(lateGame)) * 100).toFixed(0)}% vs ${(((20 / lateGame) * lateGame) / viewShort(lateGame) * 100).toFixed(1)}%)`);
-check(scaleDrain(20, 548) === LATCH.SCALE_MIN && scaleDrain(60, 120) === 1 && scaleDrain(20, 100) > LATCH.SCALE_MIN && scaleDrain(20, 100) < 1, "a tiny attacker on a giant is a mosquito: its drain fades with the size gap");
+check(scaleDrain(20, 548) === LATCH.SCALE_MIN && scaleDrain(110, 120) === 1 && scaleDrain(60, 120) < 0.65 && scaleDrain(20, 100) > LATCH.SCALE_MIN && scaleDrain(20, 100) < 1, "full theft needs near-peer size; small thieves retain a little exposed-gem drain");
 
 // The living cannonball
 check(canCatch(26.5, 20) && !canCatch(25.5, 20) && !canCatch(20, 20), "catching needs a mouth INHALE.EAT_RATIO (1.3x) wider, gems or none");
@@ -111,7 +111,7 @@ const carries = (captorWidth: number, captiveWidth: number) => {
   return x;
 };
 check(carries(130, 100) > 2000 && carries(130, 100) < 2300 && carries(200, 100) > 2300 && carries(200, 100) < 2600 && carries(400, 100) > 2800 && carries(400, 100) < 3100 && carries(800, 100) > 3300 && carries(800, 100) < 3550, `a shot carries about 2,100 units at the smallest size advantage and 3,400 at the largest, in the open (${Math.round(carries(130, 100))}, ${Math.round(carries(200, 100))}, ${Math.round(carries(400, 100))}, ${Math.round(carries(800, 100))})`);
-check(impactGems(1000, 900, 20) >= 750 && impactGems(1000, 900, 20) <= 850 && impactGems(400, 900, 60) > impactGems(400, 900, 20) && impactGems(400, 450, 20) < impactGems(400, 900, 20), `missile hits remove 75–85% of mass, with speed and projectile mass affecting severity (${impactGems(120, 900, 20)} of 120, ${impactGems(400, 900, 20)} of 400, ${impactGems(1000, 900, 20)} of 1000)`);
+check(impactGems(1000, 900, 20) > 0 && impactGems(1000, 900, 20) < 10 && impactGems(400, 900, 60) > impactGems(400, 900, 20) && impactGems(400, 900, 20) < impactGems(400, 1250, 20), 'tiny shots chip giants; projectile mass and impact speed still increase damage');
 const straightOn = flightStep(900, 0, 1, 0, 0.1);
 const bentFlight = flightStep(900, 0, 0, 1, 0.1);
 check(Math.hypot(straightOn.vx, straightOn.vy) < 900 && Math.abs(straightOn.vy) < 1e-9 && bentFlight.vy > 0 && Math.hypot(bentFlight.vx, bentFlight.vy) <= Math.hypot(straightOn.vx, straightOn.vy) + 1e-6, "turbine steering can bend a throw, never speed it up or stop it");

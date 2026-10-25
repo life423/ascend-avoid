@@ -33,14 +33,14 @@ export function missileMassAfterImpact(gems: number): number {
   return Math.max(0, Math.floor((gems + GEMS.BASE_MASS) * CANNON.MISSILE_WIDTH_KEEP ** 2 - GEMS.BASE_MASS));
 }
 
-/** Target damage is distinct from the missile player's own spent growth. */
+/** Pre-impact projectile mass sets the threat; a tiny shot chips a giant instead of erasing its growth. */
 export function impactGems(targetGems: number, speed: number, flierWidth: number): number {
   if (targetGems <= 0) return 0;
-  const pace = clamp(speed / CANNON.IMPACT_SPEED_REF, 0.5, 1.25);
-  const mass = clamp(Math.sqrt(flierWidth / 20), 1, 2.5);
-  const knocked = Math.round(CANNON.IMPACT_BASE + CANNON.IMPACT_PER_ROOT * pace * mass * Math.sqrt(targetGems));
-  const share = Math.ceil(targetGems * clamp(CANNON.IMPACT_SHARE + 0.08 * (pace - 0.5) + 0.02 * (mass - 1), CANNON.IMPACT_SHARE, CANNON.IMPACT_MAX_SHARE));
-  return Math.min(targetGems, Math.ceil(targetGems * CANNON.IMPACT_MAX_SHARE), Math.max(knocked, share));
+  const projectileMass = GEMS.BASE_MASS * (Math.max(0, flierWidth) / ARENA_RULES.PLAYER_SIZE) ** 2;
+  const relativeMass = (projectileMass / (targetGems + GEMS.BASE_MASS)) ** CANNON.IMPACT_MASS_EXPONENT;
+  const pace = clamp(speed / CANNON.IMPACT_SPEED_REF, 0.65, 1.15);
+  const share = CANNON.IMPACT_MAX_SHARE * relativeMass / (relativeMass + CANNON.IMPACT_MASS_PIVOT ** CANNON.IMPACT_MASS_EXPONENT);
+  return Math.min(targetGems, Math.max(1, Math.round(targetGems * Math.min(CANNON.IMPACT_MAX_SHARE, share * pace))));
 }
 
 /** One flight step. Player-fired missiles supply zero steering; turbine throws allow lateral input. */

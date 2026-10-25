@@ -137,14 +137,14 @@ export function streamLook(state: StreamState): { coherence: number; turbulence:
   };
 }
 
-/** Scale separation: how much of its drain an attacker this wide gets on a target this wide (full unless it's tiny by comparison, then a mosquito) */
+/** Theft resistance fades smoothly toward near-peer size; even a tiny attacker can take a few exposed gems. */
 export function scaleDrain(attackerWidth: number, targetWidth: number): number {
   const ratio = attackerWidth / Math.max(1, targetWidth);
   const v = Math.max(0, Math.min(1, (ratio - LATCH.SCALE_MIN_RATIO) / (LATCH.SCALE_FULL_RATIO - LATCH.SCALE_MIN_RATIO)));
   return LATCH.SCALE_MIN + (1 - LATCH.SCALE_MIN) * v * v * (3 - 2 * v);
 }
 
-/** How much harder gems come off someone held in an airflow this long without a break (INHALE.DRAIN_RAMP) */
+/** Clean sustained contact improves drain, capped independently of the size resistance. */
 export function drainRamp(held: number): number {
   let times = 1;
   for (const [at, multiplier] of INHALE.DRAIN_RAMP) if (held >= at) times = multiplier;

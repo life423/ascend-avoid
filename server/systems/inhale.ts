@@ -23,8 +23,8 @@ export function knockOutWithGems(state: GameState, player: PlayerSchema, now: nu
 
 /**
  * Inhaling: everything in a cone in front of the creature's mouth. Gems are pulled in and
- * swallowed; a bomb stays in the mouth (safe until it's spat). Every creature in it is robbed
- * (steal) and pulled bodily toward the mouth by mass; one 1.3 times
+ * swallowed; a bomb stays in the mouth (safe until it's spat). Injured creatures can be robbed;
+ * healthy creatures can still be pulled bodily toward the mouth by mass. One 1.3 times
  * narrower or more is caught there (see CANNON: escape, launch).
  */
 export function updateInhales(state: GameState, now: number, deltaTime: number) : void {
@@ -244,10 +244,11 @@ export function stealStrength(_state: GameState, thief: PlayerSchema, victim: Pl
  * Gravity theft: everyone in the inhale cone has gems pulled out into the thief (one small enough
  * to capture is pulled in bodily too). An inhale's drain is shared out by how squarely each victim
  * sits in the cone, and grows only with the square root of how many it catches, so a big cone
- * covers more creatures without draining each one as fast. A victim's share drains at INHALE.STEAL_RATE a second,
- * whatever either one's size (mass resists being pulled, not being robbed). Two creatures inhaling
+ * covers more creatures without draining each one as fast. INHALE.STEAL_RATE is the base rate before
+ * geometry, relative size and sustained contact. Two creatures inhaling
  * each other never both steal at once: only the stronger pull does (clashStrength, INHALE.CLASH_MARGIN), so a
- * clash has a winner instead of an endless exchange. Only a damaging hit exposes gems; no shared
+ * clash has a winner instead of an endless exchange. Relative size resists theft independently of
+ * the sustained-contact ramp. Only a damaging hit exposes gems; no shared
  * allowance limits an injury window. Taking the last gem knocks out the injured victim.
  */
 export function steal(state: GameState, thief: PlayerSchema, now: number, deltaTime: number) : void {
