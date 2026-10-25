@@ -103,6 +103,7 @@ export function drawExhaustWind(ctx: CanvasRenderingContext2D, x: number, y: num
 /** The machine: a fixed intake funnel, a nozzle that turns with the exhaust, and a fan that spins (slowing as it powers down) */
 export function drawTurbineBody(ctx: CanvasRenderingContext2D, x: number, y: number, intake: number, exhaust: number, power: number, timestamp: number): void {
     const r = TURBINE.BODY_RADIUS
+    const halfOpening = TURBINE.OPENING_WIDTH / 2
     ctx.save()
     ctx.translate(x, y)
     ctx.save()
@@ -110,10 +111,10 @@ export function drawTurbineBody(ctx: CanvasRenderingContext2D, x: number, y: num
     ctx.fillStyle = '#3a4a5c'
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)'
     ctx.lineWidth = 2
-    ctx.fillRect(r * 0.55, -r * 0.32, r * 0.72, r * 0.64)
-    ctx.strokeRect(r * 0.55, -r * 0.32, r * 0.72, r * 0.64)
+    ctx.fillRect(r * 0.55, -halfOpening, r * 0.72, halfOpening * 2)
+    ctx.strokeRect(r * 0.55, -halfOpening, r * 0.72, halfOpening * 2)
     ctx.fillStyle = `rgba(255, 255, 255, ${0.25 + 0.45 * power})`
-    ctx.fillRect(r * 1.22, -r * 0.27, 5, r * 0.54)
+    ctx.fillRect(r * 1.22, -halfOpening, 5, halfOpening * 2)
     ctx.restore()
     ctx.save()
     ctx.rotate(intake)
@@ -121,10 +122,10 @@ export function drawTurbineBody(ctx: CanvasRenderingContext2D, x: number, y: num
     ctx.strokeStyle = 'rgba(160, 220, 255, 0.85)'
     ctx.lineWidth = 2
     ctx.beginPath()
-    ctx.moveTo(r * 0.6, -r * 0.45)
+    ctx.moveTo(r * 0.6, -halfOpening)
     ctx.lineTo(r * 1.15, -r * 0.8)
     ctx.lineTo(r * 1.15, r * 0.8)
-    ctx.lineTo(r * 0.6, r * 0.45)
+    ctx.lineTo(r * 0.6, halfOpening)
     ctx.closePath()
     ctx.fill()
     ctx.stroke()

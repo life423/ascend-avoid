@@ -51,6 +51,33 @@ assert.equal(captureLoadMs(3), 2800);
 assert.equal(captureLoadMs(4), 3100);
 assert.equal(captureLoadMs(5), 3400);
 
+for (const gems of [0, 4, 11, 12, 80]) for (const kind of ['missile', 'turbine'] as const) {
+  const s = world(), p = player(s, 'flight-end', gems, 1800, 1800);
+  const events: Array<{ type: string; data: Record<string, unknown> }> = [];
+  s.onEvent = (type, data) => events.push({ type, data });
+  p.launch(NOW, 1250, 0, 'departed-shooter', 1000, CANNON.DRAG, kind);
+  updateFlights(s, NOW + 999, 0);
+  assert(p.flying && p.state === 'alive', 'a small missile still has its full chance to hit before expiry');
+  updateFlights(s, NOW + 1000, 0);
+  const out = kind === 'missile' && gems < 12;
+  assert.equal(p.state, out ? 'dead' : 'alive'); assert(!p.flying);
+  if (out) {
+    assert.equal(p.gems, 0); assert.equal(p.respawnAt, NOW + 3000);
+    assert.equal(p.suctionSafeUntil, 0, 'a knockout does not also receive a landing shield');
+    assert.equal([...s.gems.values()].reduce((sum, g) => sum + g.value, 0), gems, 'burnup spills remaining growth once');
+    assert(events.some(e => e.type === 'credit' && e.data.how === 'burnup' && e.data.out === true), 'burnup feedback survives the launcher leaving');
+    s.update(0, p.respawnAt); assert(p.state === 'alive' && p.spawnProtected && p.width === 20);
+  } else {
+    assert.equal(p.gems, gems); assert(p.suctionSafeUntil >= NOW + 4000, 'large missiles and turbine throws retain landing protection');
+  }
+}
+{
+  const s = world(), p = player(s, 'slow-missile', 4, 1800, 1800);
+  p.launch(NOW, CANNON.STOP_SPEED - 1, 0, 'shooter', 1000);
+  updateFlights(s, NOW + 100, 0);
+  assert.equal(p.state, 'dead', 'a small shot that slows to a stop also burns up');
+}
+
 {
   const normal = new GameState(0); normal.botFill = 0;
   normal.update(1 / 30, NOW);
@@ -274,7 +301,7 @@ for (const facing of [0, Math.PI / 3, -Math.PI / 2]) {
 }
 for (const ending of ['impact', 'wall', 'timeout']) {
   const state = world();
-  const flier = player(state, 'flier', ending === 'timeout' ? 4 : 1000);
+  const flier = player(state, 'flier', ending === 'timeout' ? 12 : 1000);
   if (ending === 'impact') player(state, 'impact-target', 100, 1190, 950);
   if (ending === 'wall') flier.placeAt(state.worldWidth - flier.width - 10, 1000);
   flier.launch(NOW, 1400, 0, 'old-captor', ending === 'timeout' ? 50 : CANNON.FLIGHT_MS);

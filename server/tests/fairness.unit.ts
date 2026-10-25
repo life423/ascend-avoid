@@ -6,7 +6,11 @@ import { botMouth } from '../systems/bots.js';
 import { escapePress, stealWeight, updateHolds, updateInhales } from '../systems/inhale.js';
 import { captureLoadMs } from '../game/cannon.js';
 import { viewShort } from '../game/camera.js';
-import { CANNON, WORLD } from '../constants/gameConstants.js';
+import { CANNON, GEMS, TURBINE, WORLD } from '../constants/gameConstants.js';
+import { runTurbine } from '../systems/turbines.js';
+import { TurbineSchema } from '../schema/TurbineSchema.js';
+import { GemSchema } from '../schema/GemSchema.js';
+import { spreadSettledGems, topUpField } from '../systems/gems.js';
 
 const NOW = 100000;
 function setup() {
@@ -93,3 +97,53 @@ function setup() {
   } finally { Math.random = random; }
 }
 console.log('Fairness regressions passed: all-player escape shield, bot reaction/committed aim, and interior spawns.');
+
+for (const gems of [0, 4, 12, 13, 100, 1000]) {
+  const s = new GameState(0); s.botFill = 0;
+  const p = s.addPlayer('fan-user', 'Fan user', NOW); p.spawnProtected = false;
+  p.setGems(gems, s.worldWidth, s.worldHeight);
+  const width = p.width, radius = width / 2;
+  const t = new TurbineSchema('fan', 2000, 2000, 0, 0); t.phase = 'active'; t.still = true;
+  p.placeAt(t.x + TURBINE.BODY_RADIUS + 4, t.y - radius);
+  runTurbine(s, t, NOW, .01);
+  const fits = width <= TURBINE.OPENING_WIDTH;
+  assert.equal(p.flying, fits, `${gems} gems: only fitting creatures pass through the fan`);
+  if (fits) assert.equal(p.flightKind, 'turbine');
+  else {
+    assert.equal(p.gems, gems, 'the blocked attempt does not charge through-launch mass');
+    assert(Math.hypot(p.x + p.width / 2 - t.x, p.y + p.height / 2 - t.y) >= TURBINE.BODY_RADIUS + p.width / 2 - .1);
+    p.placeAt(t.x - p.width / 2, t.y - p.height / 2);
+    runTurbine(s, t, NOW, .01);
+    assert(!p.flying, 'an oversized creature at the exact fan center is ejected, never launched');
+    assert(Math.hypot(p.x + p.width / 2 - t.x, p.y + p.height / 2 - t.y) >= TURBINE.BODY_RADIUS + p.width / 2 - .1);
+  }
+}
+{
+  const s = new GameState(0); s.botFill = 0; s.fieldGemTarget = 950;
+  const random = Math.random; let seed = 321;
+  try {
+    Math.random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
+    topUpField(s);
+  } finally { Math.random = random; }
+  const gems = [...s.gems.values()];
+  assert.equal(gems.length, 950); assert.equal(s.fieldGems, 950);
+  let nearest = Infinity;
+  for (let i = 0; i < gems.length; i++) for (let j = 0; j < i; j++) nearest = Math.min(nearest, Math.hypot(gems[i].x - gems[j].x, gems[i].y - gems[j].y));
+  assert(nearest > GEMS.FIELD_SPACING - 2, `spaced replenishment avoids random crystal piles (${nearest.toFixed(1)} minimum gap)`);
+}
+{
+  const s = new GameState(0); s.botFill = 0;
+  for (let i = 0; i < 12; i++) s.gems.set(String(i), new GemSchema(2000, 2000, 2));
+  const flight = new GemSchema(1000, 1000); flight.launch(1000, 1000, 0, 1000, NOW, 1, true); s.gems.set('airborne', flight);
+  const falling = new GemSchema(3000, 3000); falling.drop(NOW); s.gems.set('falling', falling);
+  const sum = [...s.gems.values()].reduce((n, gem) => n + gem.value, 0);
+  for (let i = 0; i < 120; i++) {
+    if (i % 8 === 0) spreadSettledGems(s);
+    for (const [id, gem] of s.gems) if (id !== 'airborne' && id !== 'falling') gem.update(1 / 30, s.worldWidth, s.worldHeight, NOW + i * 1000 / 30);
+  }
+  const spread = [...s.gems.entries()].filter(([id]) => id !== 'airborne' && id !== 'falling').map(([, gem]) => gem);
+  assert(spread.every(g => Math.hypot(g.x - 2000, g.y - 2000) > 10), 'settled piles spread naturally rather than sitting on one point');
+  assert.equal([...s.gems.values()].reduce((n, gem) => n + gem.value, 0), sum, 'spacing preserves all crystal value and count');
+  assert(flight.inFlight() && falling.falling, 'spacing does not cancel flights or falling crystals');
+}
+console.log('Fan fit and crystal-spacing regressions passed.');

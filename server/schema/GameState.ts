@@ -22,7 +22,7 @@ import { updateFlights } from "../systems/flights.js";
 import { botMouth, bombDanger, balanceBots } from "../systems/bots.js";
 import { updateBombs } from "../systems/bombs.js";
 import { updateShift, startGrace, startShift, endShift, fall } from "../systems/shift.js";
-import { collectGems, sprayGems, topUpField } from "../systems/gems.js";
+import { collectGems, sprayGems, spreadSettledGems, topUpField } from "../systems/gems.js";
 import { keepApart, pruneBodyContacts } from "../systems/bodies.js";
 import { updateSurges } from "../systems/surges.js";
 import { PinwheelSchema } from "./PinwheelSchema.js";
@@ -50,6 +50,7 @@ const SPAWN_TRIES = 24;
  * bots fill in when it's quiet.
  */
 class GameState extends Schema {
+  private gemSpreadAt = 0;
   players: schema.MapSchema<PlayerSchema>;
   obstacles: schema.ArraySchema<ObstacleSchema>;
   balls: schema.ArraySchema<BallSchema>;
@@ -244,6 +245,10 @@ class GameState extends Schema {
       }
     });
     expired.forEach((id) => this.gems.delete(id));
+    if (!layout && this.time >= this.gemSpreadAt) {
+      spreadSettledGems(this);
+      this.gemSpreadAt = this.time + 250;
+    }
 
     // Bots decide on their hops, which then go through the same rules as everyone's
     this.brains.forEach((brain, id) => {
@@ -455,10 +460,10 @@ class GameState extends Schema {
   credit(target: PlayerSchema, how: string, now: number, byId?: string, extra: Record<string, unknown> = {}): void {
     const who = byId ?? target.shovedBy(now, SHIFT.CREDIT_MS);
     const by = who ? this.players.get(who) : undefined;
-    if (!by || !this.onEvent) return;
+    if (!this.onEvent || (!by && how !== 'burnup')) return;
     this.onEvent("credit", {
       byId: who,
-      by: by.name,
+      by: by?.name ?? 'Someone',
       targetId: target.sessionId,
       target: target.name,
       how,

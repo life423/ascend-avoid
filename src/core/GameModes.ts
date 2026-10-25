@@ -13,7 +13,7 @@ import { drawSurge, drawSurgeHud } from '../render/surge'
 import { breathRate } from '../../server/game/airflow'
 import { CameraRig, constrainArenaView } from '../../server/game/camera'
 import { turnStep, walk } from '../../server/game/movement'
-import { launchDuration, launchPosition } from '../../server/game/turbine'
+import { launchDuration, launchPosition, turbineBodyPush } from '../../server/game/turbine'
 import { OnlineControls } from './OnlineControls'
 import type { Breath } from './OnlineControls'
 import type { MultiplayerManager } from '../managers/MultiplayerManager'
@@ -30,7 +30,7 @@ import { drawFloor, drawShiftFloor, drawJackpot } from '../render/floor'
 import { captorOf, drawPlayer } from '../render/players'
 import { drawObstacle } from '../render/obstacles'
 import { drawPickups } from '../render/pickups'
-import type { SyncedGameState, SyncedGem, SyncedObstacle, SyncedPlayer } from '../types/synced'
+import type { SyncedGameState, SyncedGem, SyncedObstacle, SyncedPlayer, SyncedTurbine } from '../types/synced'
 import { drawCannon } from '../render/cannon'
 import { drawWeapons } from '../render/weapons'
 import { weaponRecipe } from '../render/weaponStyle'
@@ -895,6 +895,13 @@ export class MultiplayerMode extends GameMode {
             }
         })
 
+        state.turbines.forEach((turbine: SyncedTurbine) => {
+            if (turbine.phase !== 'active') return
+            const push = turbineBodyPush(box, turbine)
+            box.x = Math.max(ARENA_RULES.EDGE_MARGIN, Math.min(state.worldWidth - box.width - ARENA_RULES.EDGE_MARGIN, box.x + push.x))
+            box.y = Math.max(ARENA_RULES.EDGE_MARGIN, Math.min(state.worldHeight - box.height - ARENA_RULES.EDGE_MARGIN, box.y + push.y))
+        })
+
         // The server shows where you were about a round trip ago: quietly correct any drift from that
         this.history.push({ at: now, x: box.x, y: box.y })
         while (this.history.length > 1 && now - this.history[0].at > 1000) this.history.shift()
@@ -1186,6 +1193,13 @@ export class MultiplayerMode extends GameMode {
         const targetIsYou = data?.targetId === localId
         const target = targetIsYou ? 'you' : String(data?.target ?? 'someone')
         const how = String(data?.how ?? '')
+        if (how === 'burnup') {
+            const x = Number(data?.x), y = Number(data?.y)
+            if (Number.isFinite(x) && Number.isFinite(y) && !matchMedia('(prefers-reduced-motion: reduce)').matches) this.bursts.push({ x, y, size: Number(data?.size) || 20, color: GOLD, at: performance.now() })
+            if (targetIsYou) this.knockoutCause = { how, by: String(data?.by ?? 'Someone'), at: performance.now() }
+            else this.addNotice(`${target} burned up in flight!`, true)
+            return
+        }
         if (how === 'cannon') {
             if (targetIsYou && data?.out) this.knockoutCause = { how: 'cannon', by: String(data?.by ?? 'Someone'), at: performance.now() }
             const shotByYou = data?.byId === localId

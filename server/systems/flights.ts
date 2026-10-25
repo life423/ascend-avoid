@@ -45,7 +45,10 @@ export function updateFlights(state: GameState, now: number, deltaTime: number):
     }
     const target = player.flightHit ? null : struck(everyone, player, now, fromX, fromY);
     if (target) impact(state, player, target, speed, now);
-    else if (speed < CANNON.STOP_SPEED || now >= player.flightEndsAt) land(state, player, now);
+    else if (speed < CANNON.STOP_SPEED || now >= player.flightEndsAt) {
+      if (player.flightKind === 'missile' && !player.flightHit && player.gems < CANNON.BURNUP_GEMS) burnUp(state, player, now);
+      else land(state, player, now);
+    }
   }
 }
 
@@ -115,7 +118,16 @@ function spendMissileMass(state: GameState, player: PlayerSchema, now: number): 
   }
 }
 
-/** A flight ends: no catching it again (by a mouth or a turbine) for a moment */
+/** Very small missed player shots are spent in flight rather than landing unharmed. */
+function burnUp(state: GameState, player: PlayerSchema, now: number): void {
+  const byId = player.launchedBy;
+  const x = player.x + player.width / 2, y = player.y + player.height / 2, size = player.width, gems = player.gems;
+  player.land();
+  knockOutWithGems(state, player, now);
+  state.credit(player, 'burnup', now, byId, { out: true, gems, x, y, size });
+}
+
+/** A surviving flight ends with a full suction-recovery window. */
 function land(state: GameState, player: PlayerSchema, now: number): void {
   player.land();
   player.recaptureAfter = Math.max(player.recaptureAfter, now + CANNON.LAND_SAFE_MS);

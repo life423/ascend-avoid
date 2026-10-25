@@ -116,7 +116,8 @@ const straightOn = flightStep(900, 0, 1, 0, 0.1);
 const bentFlight = flightStep(900, 0, 0, 1, 0.1);
 check(Math.hypot(straightOn.vx, straightOn.vy) < 900 && Math.abs(straightOn.vy) < 1e-9 && bentFlight.vy > 0 && Math.hypot(bentFlight.vx, bentFlight.vy) <= Math.hypot(straightOn.vx, straightOn.vy) + 1e-6, "turbine steering can bend a throw, never speed it up or stop it");
 // Turbines: past the point of no return nobody outwalks the intake; outside it everyone can
-check([20, 72, 143, 284].every((w) => intakePull(w, noReturnGap() - 5) > moveSpeed(w) && intakePull(w, noReturnGap() + 40) < moveSpeed(w)), `inside a turbine's point of no return (${noReturnGap().toFixed(0)} units) nobody, whatever its size, outwalks the intake; outside it everyone can`);
+check([20, 37.5, 53].every((w) => intakePull(w, noReturnGap() - 5) > moveSpeed(w) && intakePull(w, noReturnGap() + 40) < moveSpeed(w)), 'fitting creatures keep the turbine comeback launch and its intake danger zone');
+check([55, 143, 284].every(w => intakePull(w, 0) < moveSpeed(w)), 'oversized creatures can leave the intake instead of being trapped or launched');
 
 check(sweptHit(0, 0, 60, 0, 30, 5, 20) && !sweptHit(0, 0, 60, 0, 30, 30, 20) && sweptHit(0, 0, 0, 0, 5, 0, 20), "a fast flier can't skip through a small target between ticks (its whole path is checked)");
 

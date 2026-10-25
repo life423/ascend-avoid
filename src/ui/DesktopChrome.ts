@@ -1,4 +1,5 @@
 import { NAME_EVENT, playerName, setPlayerName } from '../core/PlayerName'
+import { mouseControlEnabled, setMouseControl } from '../core/MouseControl'
 
 const STORAGE_KEY = 'ascend.barHidden'
 const DESKTOP = '(min-width: 1200px)'
@@ -22,6 +23,7 @@ export class DesktopChrome {
         const actions = header.querySelector<HTMLDivElement>('.bar-actions') ?? document.createElement('div')
         actions.className = 'bar-actions'
         actions.innerHTML = `
+            <button type="button" role="switch" class="bar-button bar-mouse" data-action="mouse" aria-label="Mouse control" aria-checked="${mouseControlEnabled()}" title="Follow the cursor without holding a button">Mouse <span>${mouseControlEnabled() ? 'On' : 'Off'}</span></button>
             <button type="button" class="bar-button bar-help" data-action="help" title="Help & settings (H)">${MENU}<span>Help & settings</span><kbd>H</kbd></button>
             <button type="button" class="bar-button bar-view" data-action="hide" title="Focus view (F)">${CHEVRON_UP}<span>Focus view</span></button>
         `
@@ -42,9 +44,20 @@ export class DesktopChrome {
         document.body.appendChild(tab)
 
         for (const button of document.querySelectorAll<HTMLButtonElement>('.bar-actions .bar-button, .bar-tab .bar-button')) {
+            button.addEventListener('keydown', event => {
+                if (event.code !== 'Space' && event.code !== 'Enter') return
+                event.preventDefault()
+                event.stopPropagation() // game shortcuts must not consume or duplicate a toolbar activation
+                if (!event.repeat) button.click()
+            })
             button.addEventListener('click', () => {
                 const action = button.dataset.action
-                if (action === 'help') this.toggleHelp()
+                if (action === 'mouse') {
+                    setMouseControl(!mouseControlEnabled())
+                    button.setAttribute('aria-checked', String(mouseControlEnabled()))
+                    const state = button.querySelector('span')
+                    if (state) state.textContent = mouseControlEnabled() ? 'On' : 'Off'
+                } else if (action === 'help') this.toggleHelp()
                 else this.setBarHidden(action === 'hide')
                 button.blur() // so space goes back to the game, not the button
             })

@@ -31,7 +31,7 @@ export class FirstSessionGuide {
             this.shownAt ??= performance.now();
             if (performance.now() - this.shownAt >= 4000) this.dismiss();
         }
-        const tip = this.step === 0 ? 'Move with WASD, arrows or the left stick. Grab a gem to grow.'
+        const tip = this.step === 0 ? 'Move with the mouse, WASD, arrows or the left stick. Grab a gem to grow.'
             : this.step === 1 ? 'Hold Space or the right button to inhale gems and steal from creatures ahead.'
             : this.step === 2 ? 'Catch someone smaller, then tap FIRE when loaded. Caught yourself? Follow the arrows to escape.'
             : 'Aim by moving, then tap FIRE. Your aim sets the shot; the captive cannot steer it.';

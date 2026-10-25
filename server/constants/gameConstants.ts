@@ -109,7 +109,9 @@ export const GEMS = {
   BASE_MASS: 2, // width = PLAYER_SIZE x sqrt(1 + gems / this) (a newborn's body counts as this many gems): every gem grows you, gently at first (24.5 wide with 1 gem), 7x a newborn at 100, 14x at 400
   SPRAY_SHARE: 0.5, // a hit sprays out this share of your gems...
   SURVIVE_AT: 3, // ...but with fewer than this, a hit knocks you out (your last gems burst out)
-  SPRAY_PIECES: 40, // at most this many gems fly out; big piles make bigger gems
+  SPRAY_PIECES: 24, // fewer distinct drops, preserving total spilled value
+  FIELD_SPACING: 72, // minimum preferred spacing for newly replenished field crystals
+  SETTLED_SPACING: 44, // gently separate crystals that collect in piles after landing
   SPRAY_SPEED_MIN: 260, // units per second...
   SPRAY_SPEED_MAX: 520,
   SPRAY_FRICTION: 2.5, // ...slowing by this factor a second, so they travel about 100-200 units
@@ -440,6 +442,7 @@ export const CANNON = {
   IMPACT_SHARE: 0.75, // every player-missile hit removes at least this share of target mass
   IMPACT_MAX_SHARE: 0.85, // speed/projectile mass can increase the loss to this share
   IMPACT_KO_GEMS: 12, // heavily damaged targets below this mass are knocked out and return at a fresh spawn
+  BURNUP_GEMS: 12, // a smaller player-fired missile also burns up at flight end if it misses
   MISSILE_WIDTH_KEEP: 0.1, // the missile player keeps one tenth of their width after impact, floored at newborn size
   IMPACT_IMMUNE_MS: 1200, // a creature just hit can't be hit by another flier for this long
   IMPACT_STUN_MS: 450, // the target is stunned this long...
@@ -488,6 +491,7 @@ export const TURBINE = {
   COUNT_MIN: 3, // how many there are at once: between these two...
   COUNT_MAX: 5, // ...rolled again every time one goes, so the number drifts; the only gap is a turbine on its way back (RESPAWN_*)
   BODY_RADIUS: 60, // the turbine itself is solid
+  OPENING_WIDTH: 54, // shared intake throat and outlet width; only fitting creatures can pass
   INTAKE_REACH: 520, // how far in front of the intake its suction reaches...
   INTAKE_ARC: 0.7, // ...within this angle (radians) either side of where it points
   DANGER_REACH: 190, // anyone this close to the intake (edge to edge) has gems ripped out of them...
@@ -506,7 +510,7 @@ export const TURBINE = {
   INSIDE_MS: 450, // ...then it crosses the turbine...
   EXHAUST_SPEED_MIN: 1050, // ...and fires out of the exhaust this fast (it travels about 400-700 units)
   EXHAUST_SPEED_MAX: 1780,
-  EXHAUST_SPREAD: 0.08, // radians either side of the exhaust's direction
+  EXHAUST_SPREAD: 0.3, // spread crystal landings across the exhaust rather than one dense trail
   LAUNCH_STOP_SPEED: 30, // a fired gem settles below this speed
   EXHAUST_SWEEP: Math.PI, // the exhaust sweeps across this angle (centered opposite the intake)...
   EXHAUST_CYCLE_MS: 10000, // ...left, right and back again this often
