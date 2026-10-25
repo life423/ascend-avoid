@@ -102,7 +102,8 @@ scenario('gems grow the player; hits spill half; knockout respawns alive', async
   await until(() => me(a).state === 'dead', 'empty player knocked out');
   await until(() => me(a).state === 'alive' && me(a).spawnProtected, 'respawn protected', 3000);
 });
-scenario('a protected attacker drops protection; stealing preserves the last gem', async (a, join) => {
+scenario('healthy gems are safe; injury theft finishes a player and credits the knockout', async (a, join) => {
+  const credits = []; a.onMessage('credit', data => credits.push(data));
   const b = await join('Victim');
   a.send('test:setGems', { count: 0 });
   b.send('test:setGems', { count: 2 });
@@ -115,8 +116,14 @@ scenario('a protected attacker drops protection; stealing preserves the last gem
   await sleep(100);
   a.send('inhale');
   await until(() => !me(a).spawnProtected, 'offense ends protection');
-  await until(() => me(b).gems === 1, 'victim drained to one', 4000);
-  assert.equal(me(b).state, 'alive');
+  await sleep(350); assert.equal(me(b).gems, 2, 'healthy victim keeps its gems');
+  b.send('test:injure');
+  await until(() => me(b).injuredUntil > b.state.time, 'injury syncs');
+  await until(() => me(b).state === 'dead', 'injured victim drained completely', 4000);
+  assert.equal(me(b).gems, 0);
+  await until(() => credits.some(e => e.how === 'drain' && e.byId === a.sessionId && e.targetId === b.sessionId && e.out), 'last thief gets knockout credit');
+  await until(() => me(b).state === 'alive' && me(b).spawnProtected, 'drained victim respawns protected', 3000);
+  assert.equal(me(b).injuredUntil, 0);
 });
 scenario('quick keyboard escape presses work; releasing inhale keeps the capture', async (a, join) => {
   const kid = await capture(a, join);

@@ -5,6 +5,9 @@ import { FONT, GOLD, drawCrown, drawRobot, roundedRect } from './style'
 import { SMOOTHING, SNAP_DISTANCE } from './shared'
 import { drawAirflow } from './stream'
 import type { SyncedGameState, SyncedPlayer } from '../types/synced'
+import { drawInjury } from './injury'
+
+const REDUCED_MOTION = matchMedia('(prefers-reduced-motion: reduce)')
 
 /** Where a captive is drawn this frame while it's being sucked in: its center, and how far down the throat it has shrunk */
 export interface HeldPose {
@@ -176,8 +179,16 @@ export function drawPlayer(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
     // Exhaling: the body puffs out as the air goes, then settles
     const puff = mode.puffs.find((p) => p.by === sessionId)
     const puffed = puff ? 1 + 0.14 * Math.sin(Math.PI * Math.min(1, (timestamp - puff.at) / 260)) : 1
+    const injuryRemaining = (player.injuredUntil ?? 0) - (world ? mode.worldNow(world, timestamp) : 0)
+    const injuryAge = INHALE.INJURY_MS - injuryRemaining
+    const impactPop = !REDUCED_MOTION.matches && player.injuredUntil > 0 && injuryAge >= 0 && injuryAge < 220 ? Math.sin(Math.PI * injuryAge / 220) : 0
     const bulge = quiver * puffed
     ctx.save()
+    if (impactPop > 0) {
+        ctx.translate(centerX, centerY); ctx.rotate(facing)
+        ctx.scale(1 - .08 * impactPop, 1 + .06 * impactPop)
+        ctx.rotate(-facing); ctx.translate(-centerX, -centerY)
+    }
     if (player.stunned) {
         ctx.translate(centerX, centerY)
         ctx.rotate(0.045 * Math.sin(timestamp / 55))
@@ -200,6 +211,7 @@ export function drawPlayer(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
     const cheeks = 1 - Math.pow(1 - cheekProgress, 3)
     if (player.flying) drawProjectile(ctx, left + size / 2, top + size / 2, size, color, heading, timestamp)
     else drawCreature(ctx, left + size / 2, top + size / 2, size, color, facing, timestamp, player.mouth ?? '', Boolean(player.inhaling), cheeks, Boolean(player.stunned))
+    if (!held && !player.flying && player.injuredUntil > 0) drawInjury(ctx, centerX, centerY, size, facing, injuryAge, injuryRemaining, REDUCED_MOTION.matches)
     ctx.restore()
     // The loading badge stays beneath the puffed cheeks and clear eyes.
     if (player.gulping) drawMouthful(mode, ctx, player, left + size / 2, top + size / 2, size, facing, timestamp)

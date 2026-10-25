@@ -43,6 +43,8 @@ function target(s: GameState, id: string, dx: number, dy = 0, gems = 100) {
   assert(!near.sliding, 'a distant player is not hit before the ring reaches them');
   s.time += 200; updateWeapons(s, 0.2, NOW + s.time);
   assert(near.sliding && huge.sliding, 'the expanding wave separates both small players and giants');
+  assert(near.injuredUntil > s.time && huge.injuredUntil > s.time, 'Pulsar damage exposes gems');
+  assert.equal(safe.injuredUntil, 0, 'a protected target cannot be injured by a wave');
   assert(near.velocity().x > huge.velocity().x && huge.velocity().x > 0, 'giants resist more but still get a useful shove');
   assert(!near.stunned && near.gems === 14 && huge.gems === 750, 'pulses remove a quarter of mass with a six-gem minimum, without locking movement');
   assert(huge.velocity().x >= 220 * 7, 'even a giant gets at least 220 units of intended knockback');

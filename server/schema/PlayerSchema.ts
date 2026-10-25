@@ -95,6 +95,8 @@ class PlayerSchema extends Schema {
   puffReadyAt = 0;
   /** World time when the visible post-flight suction shield ends. */
   launchSafeUntil = 0;
+  /** World-time deadline: damaging hits expose gems, without adding movement or input penalties. */
+  injuredUntil = 0;
   fireReadyAt = 0;
   fireQueued = false;
   /** The creature this one's airflow is latched on ("" for none), how focused the stream is (0-1, for drawing), the beam's quality when it saves breath (0 unless held cleanly), and how strongly it draws your aim (all synced) */
@@ -220,6 +222,7 @@ class PlayerSchema extends Schema {
     this.stunned = false;
     this.stunEndsAt = this.stunImmuneUntil = 0;
     this.launchSafeUntil = this.suctionSafeUntil = this.recaptureAfter = 0;
+    this.injuredUntil = 0;
     this.inhaling = false;
     this.steerX = this.steerY = this.walkX = this.walkY = 0;
   }
@@ -230,7 +233,12 @@ class PlayerSchema extends Schema {
     this.protectedUntil = now + ms;
   }
 
-  /** Just lost gems to a hit: blink, and let traffic pass through for a moment */
+  /** Expose gems for five seconds after real damage, without extra stun or slowing. */
+  injure(worldTime: number): void {
+    if (this.state === PLAYER_STATE.ALIVE && !this.spawnProtected) this.injuredUntil = worldTime + INHALE.INJURY_MS;
+  }
+
+  /** Just lost gems to a traffic hit: brief existing recovery. */
   recover(now: number): void {
     this.recovering = true;
     this.recoverUntil = now + GEMS.HIT_RECOVERY_MS;
@@ -244,6 +252,7 @@ class PlayerSchema extends Schema {
   /** Hit with no gems left: out of play until respawnAt */
   knockOut(now: number): void {
     this.state = PLAYER_STATE.DEAD;
+    this.injuredUntil = 0;
     this.spawnProtected = false;
     this.recovering = false;
     this.respawnAt = now + WORLD.RESPAWN_DELAY_MS;
@@ -632,5 +641,6 @@ type("number")(PlayerSchema.prototype, "puffReadyAt");
 type("number")(PlayerSchema.prototype, "fireReadyAt");
 type("boolean")(PlayerSchema.prototype, "fireQueued");
 type("number")(PlayerSchema.prototype, "launchSafeUntil");
+type("number")(PlayerSchema.prototype, "injuredUntil");
 
 export { PlayerSchema };

@@ -96,6 +96,7 @@ export function explode(state: GameState, bomb: BombSchema, now: number) : void 
     }
     const share = BOMBS.SHARE_MIN + (BOMBS.SHARE_MAX - BOMBS.SHARE_MIN) * strength;
     const loose = Math.min(target.gems, BOMBS.LOOSE_MAX, Math.max(1, Math.ceil(target.gems * share)));
+    target.injure(state.time);
     target.setGems(target.gems - loose, state.worldWidth, state.worldHeight);
     sprayGems(state, tx, ty, loose, now, target.sessionId);
     if (credited) state.credit(target, "bomb", now, by, { gems: loose });

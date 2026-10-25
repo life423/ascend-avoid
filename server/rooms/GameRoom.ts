@@ -253,6 +253,9 @@ export class GameRoom extends Room<GameState> {
       this.onMessage("test:stun", (client, data: any) => {
         playerOf(client)?.stun(Date.now(), Number(data?.ms) || 500);
       });
+      this.onMessage("test:injure", (client) => {
+        playerOf(client)?.injure(this.state.time);
+      });
       this.onMessage("test:surge", (_client, data: { active?: unknown }) => {
         this.state.surgesOn = true;
         beginSurge(this.state);

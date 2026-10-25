@@ -265,6 +265,7 @@ export class BotBrain {
       const distance = Math.hypot(other.x + other.width / 2 - cx, other.y + other.height / 2 - cy) - other.width / 2;
       if (distance > range) return;
       const edible = other.width * INHALE.EAT_RATIO <= bot.width;
+      if (!edible && world.time >= other.injuredUntil) return;
       if (!edible && other.gems < 3) return;
       let pursuers = 0;
       world.brains.forEach((brain, id) => {
