@@ -171,7 +171,7 @@ export const BOTS = {
   SPILL_CROWD_RANGE: 260,
   HUNT_GIVE_UP_MS: 6000, // a chase that hasn't closed to inhale reach in this long is dropped...
   SHUN_MS: 5000, // ...and that creature left alone for this long
-  FIGHT_BACK_RATIO: 1.1, // robbed, a bot inhales back only if it's this much wider than the robber (it would win the clash); otherwise it slips sideways out of the cone. It robs a wider creature only from behind
+  FIGHT_BACK_RATIO: 1.1, // theft targets less than this much smaller are approached from behind, avoiding a frontal clash
   MAX_ROBBERS: 2, // including this bot: at most two attackers per victim
   ESCAPE_EVERY_MS: 450,
   ESCAPE_READ_MS: 500, // bots take a moment to read their sequence after the daze
@@ -184,6 +184,9 @@ export const BOTS = {
   FIRE_OBSERVE_MS: 450,
   FIRE_ERROR_MIN: 0.12,
   FIRE_ERROR_MAX: 0.24,
+  GUST_REACT_MIN_MS: 300,
+  GUST_REACT_MAX_MS: 650,
+  GUST_SKILL: 0.75, // missed opportunities and ordinary turning/breath rules keep defense fallible
 } as const;
 
 /**
