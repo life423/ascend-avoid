@@ -150,6 +150,14 @@ scenario('a real gust stuns a non-inhaling target and the target recovers', asyn
   await until(() => !me(target).stunned, 'stun ends');
   await until(() => me(target).y > 1010, 'steering works again');
 });
+scenario('a small missile burns up after missing and respawns protected', async (a, join) => {
+  const kid = await capture(a, join);
+  a.send('tap');
+  await until(() => me(kid).flying, 'queued shot launches', 3500);
+  await until(() => me(kid).state === 'dead' && !me(kid).flying, 'small missed shot burns up', 4500);
+  assert(a.messages.some(m => m.type === 'credit' && m.data.how === 'burnup' && m.data.targetId === kid.sessionId && m.data.byId === a.sessionId));
+  await until(() => me(kid).state === 'alive' && me(kid).spawnProtected, 'burned missile respawns protected', 3000);
+});
 scenario('an armed shot emits launch, impact and shooter/projectile attribution', async (a, join) => {
   const kid = await capture(a, join);
   const target = await join('Target');

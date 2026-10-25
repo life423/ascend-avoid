@@ -33,6 +33,10 @@ test('short Help fits, has reachable actions and keeps keyboard focus inside', a
   await page.keyboard.press('Shift+Tab');
   await expect(dialog.getByRole('button', { name: 'Show starter tips', exact: true })).toBeFocused();
   await page.keyboard.press('Tab'); await expect(close).toBeFocused();
+  const sound = dialog.getByRole('button', { name: 'Mute sound', exact: true });
+  await sound.focus(); await page.keyboard.press('Space');
+  await expect(sound).toHaveAttribute('aria-pressed', 'true');
+  await close.focus();
   await page.screenshot({ path: test.info().outputPath('short-help.png') });
   await page.keyboard.press('Escape'); await expect(dialog).toBeHidden();
 });
@@ -71,6 +75,28 @@ test('desktop follows an unpressed mouse and keyboard can take over', async ({ p
   await page.evaluate(() => window.drawerUI.open());
   await page.waitForTimeout(250); const menu = await position(page);
   await page.waitForTimeout(250); expect(Math.abs((await position(page)).x - menu.x)).toBeLessThan(2);
+});
+
+test('mouse switch defaults on, remembers off and leaves keyboard movement working', async ({ page, hasTouch }) => {
+  test.skip(hasTouch, 'desktop mouse preference');
+  await start(page);
+  const control = page.getByRole('switch', { name: 'Mouse control', exact: true });
+  await expect(control).toHaveAttribute('aria-checked', 'true');
+  await control.click(); await expect(control).toHaveAttribute('aria-checked', 'false');
+  const before = await position(page), box = await page.locator('canvas').first().boundingBox();
+  await page.mouse.move(box.x + box.width * .8, box.y + box.height * .5); await page.waitForTimeout(250);
+  expect(Math.abs((await position(page)).x - before.x)).toBeLessThan(2);
+  await page.keyboard.down('ArrowRight'); await expect.poll(async () => (await position(page)).x).toBeGreaterThan(before.x + 20); await page.keyboard.up('ArrowRight');
+  await page.reload(); await page.waitForFunction(() => !!window.game?.currentGameMode?.multiplayerManager?.getLocalPlayer());
+  await expect(control).toHaveAttribute('aria-checked', 'false');
+  await expect.poll(() => page.evaluate(() => document.body.classList.contains('intro-playing'))).toBe(false);
+  await control.focus(); await page.keyboard.press('Space');
+  await expect(control).toHaveAttribute('aria-checked', 'true');
+  expect((await position(page)).inhaling, 'keyboard activation of the switch must not also inhale').toBe(false);
+  await page.setViewportSize({ width: 1200, height: 800 });
+  expect((await control.boundingBox()).width).toBe(112);
+  await expect.poll(() => page.evaluate(() => [...document.querySelector('.app-header').children].every(el => el.getBoundingClientRect().right <= innerWidth + .1))).toBe(true);
+  await page.screenshot({ path: test.info().outputPath('mouse-control-switch.png') });
 });
 
 test('touch can walk left while aiming the inhale up with the existing action control', async ({ page, hasTouch }) => {

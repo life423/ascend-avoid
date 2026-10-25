@@ -106,6 +106,10 @@ class GemSchema extends Schema {
     return this.launchedAt > 0;
   }
 
+  settled(): boolean {
+    return !this.inFlight() && !this.falling && this.vx === 0 && this.vy === 0;
+  }
+
   /** Puffed by an exhale: it slides off that way (friction stops it), staying whatever kind of gem it was */
   blow(angle: number, speed: number): void {
     if (this.launchedAt > 0 || this.falling) return;

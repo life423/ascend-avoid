@@ -5,7 +5,7 @@ import { TurbineSchema } from "../schema/TurbineSchema.js";
 import { distanceToRect } from "../game/geometry.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 
-import { intakePull } from "../game/turbine.js";
+import { fitsTurbine, intakePull, turbineBodyPush } from "../game/turbine.js";
 
 const { GEMS, PLAYER_STATE, TURBINE } = GAME_CONSTANTS;
 
@@ -78,10 +78,8 @@ export function runTurbine(state: GameState, turbine: TurbineSchema, now: number
     const px = player.x + radius;
     const py = player.y + radius;
     // The turbine is solid
-    const bx = px - turbine.x;
-    const by = py - turbine.y;
-    const bd = Math.hypot(bx, by);
-    if (bd < r + radius && bd > 1e-6) player.nudge((bx / bd) * (r + radius - bd), (by / bd) * (r + radius - bd), state.worldWidth, state.worldHeight);
+    const bodyPush = turbineBodyPush(player, turbine);
+    player.nudge(bodyPush.x, bodyPush.y, state.worldWidth, state.worldHeight);
     if (player.spawnProtected) return;
     // Already flying, or caught in a mouth: the turbine leaves it be
     if (player.flying || player.capturedBy || now < player.recaptureAfter) return;
@@ -95,7 +93,7 @@ export function runTurbine(state: GameState, turbine: TurbineSchema, now: number
       const pull = Math.min(gap, intakePull(player.width, gap) * deltaTime);
       player.nudge((-dx / d) * pull, (-dy / d) * pull, state.worldWidth, state.worldHeight);
       // Reaching the intake: pulled through, losing a share of its gems, and fired out of the exhaust
-      if (gap <= TURBINE.THROUGH_GAP) {
+      if (gap <= TURBINE.THROUGH_GAP && fitsTurbine(player.width)) {
         pullThrough(state, turbine, player, mouthX, mouthY, nozzleX, nozzleY, ex, ey, radius, now);
         return;
       }
@@ -121,6 +119,9 @@ export function runTurbine(state: GameState, turbine: TurbineSchema, now: number
       const push = (TURBINE.WIND * (1 - wgap / TURBINE.EXHAUST_REACH) * deltaTime) / Math.pow(player.weight(), TURBINE.WIND_WEIGHT_POWER);
       player.nudge(ex * push, ey * push, state.worldWidth, state.worldHeight);
     }
+    // Intake pull cannot drag an oversized body into the solid fan housing.
+    const remaining = turbineBodyPush(player, turbine);
+    player.nudge(remaining.x, remaining.y, state.worldWidth, state.worldHeight);
   });
   // Loose gems in front of the intake are pulled in; any that reach it (or lie under it) go inside
   const taken: string[] = [];

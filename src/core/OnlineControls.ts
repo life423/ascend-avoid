@@ -2,6 +2,7 @@
 /** What the button (or space) asks for: an inhale starting (pressed) and stopping (let go) */
 /** inhale: hold begins; exhale: release stops inhaling; cancel: interrupted press; tap: puff, spit or fire. */
 import { sound } from './Sound'
+import { mouseControlEnabled, MOUSE_CONTROL_EVENT } from './MouseControl'
 export type ControlEvent = 'inhale' | 'exhale' | 'cancel' | 'tap'
 
 /**
@@ -25,7 +26,7 @@ const FONT = 'Montserrat, system-ui, sans-serif'
 /** Whether a key went to a text box (the drawer's name box, say), so it shouldn't steer, inhale or toggle anything */
 function isTyping(e: KeyboardEvent): boolean {
     const target = e.target as HTMLElement | null
-    return !!target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
+    return !!target && (!!target.closest('input, textarea, button, select, a') || target.isContentEditable)
 }
 
 /**
@@ -57,6 +58,7 @@ export class OnlineControls {
         canvas.style.touchAction = 'none'
         canvas.addEventListener('pointerdown', this.onDown)
         canvas.addEventListener('pointerleave', this.onLeave)
+        window.addEventListener(MOUSE_CONTROL_EVENT, this.mousePreferenceChanged)
         canvas.addEventListener('contextmenu', this.preventMenu)
         window.addEventListener('pointermove', this.onMove)
         window.addEventListener('pointerup', this.onUp)
@@ -78,6 +80,7 @@ export class OnlineControls {
         this.canvas.style.touchAction = ''
         this.canvas.removeEventListener('pointerdown', this.onDown)
         this.canvas.removeEventListener('pointerleave', this.onLeave)
+        window.removeEventListener(MOUSE_CONTROL_EVENT, this.mousePreferenceChanged)
         this.canvas.removeEventListener('contextmenu', this.preventMenu)
         window.removeEventListener('pointermove', this.onMove)
         window.removeEventListener('pointerup', this.onUp)
@@ -284,6 +287,7 @@ export class OnlineControls {
         sound.unlock()
         const point = this.toCanvas(e)
         if (e.pointerType === 'mouse') {
+            if (!mouseControlEnabled()) return
             if (e.button !== 0) return
             this.mouse = { id: e.pointerId, x: point.x, y: point.y }
         } else if (point.x < this.canvas.width / 2) {
@@ -300,6 +304,7 @@ export class OnlineControls {
 
     private onMove = (e: PointerEvent): void => {
         if (e.pointerType === 'mouse') {
+            if (!mouseControlEnabled()) { this.mouse = null; return }
             const editing = document.activeElement?.matches('input, textarea, [contenteditable="true"]')
             if (e.target !== this.canvas || editing || document.querySelector('.drawer.active')) { this.mouse = null; return }
             this.mouse = { id: e.pointerId, ...this.toCanvas(e) }
@@ -337,6 +342,8 @@ export class OnlineControls {
         if (e.pointerType === 'mouse') this.mouse = null
     }
 
+    private mousePreferenceChanged = (): void => { this.mouse = null }
+
     private onKeyDown = (e: KeyboardEvent): void => {
         if (isTyping(e) || document.querySelector('.drawer.active')) return
         sound.unlock()
@@ -351,6 +358,7 @@ export class OnlineControls {
 
     private onKeyUp = (e: KeyboardEvent): void => {
         if (e.code !== 'Space') return
+        if (isTyping(e)) { this.cancelPress(); return }
         e.preventDefault()
         this.pressUp('key')
     }

@@ -938,6 +938,9 @@ body.online-mode .game-canvas { border: 0; border-radius: 12px; box-shadow: 0 0 
     body.bar-hidden .app-header { margin-top: -64px; }
     html.bar-start-hidden .app-header { margin-top: -64px; }
     .bar-actions { gap: 8px; }
+    .bar-button.bar-mouse { min-height: 44px; width: 112px; justify-content: space-between; }
+    .bar-mouse span { color: #8af0d3; font-weight: 700; }
+    .bar-mouse[aria-checked="false"] span { color: #c7d1df; }
     .bar-button { height: 40px; width: auto; padding: 0 10px; gap: 8px; font-size: 12px; border-radius: 10px; border-color: rgba(255,255,255,.15); background: rgba(255,255,255,.055); white-space: nowrap; }
     .bar-help { min-width: 156px; }
     .bar-view { min-width: 120px; }

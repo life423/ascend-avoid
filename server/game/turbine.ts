@@ -1,5 +1,6 @@
 import { GEMS, TURBINE } from "../constants/gameConstants.js";
 import { moveSpeed } from "./movement.js";
+import type { Box } from './movement.js';
 
 /**
  * Turbine math shared by the server and every browser, so they all agree exactly: where a
@@ -50,7 +51,21 @@ function fold(value: number, lo: number, hi: number): number {
 /** How fast (units a second) a turbine's intake pulls a creature this wide whose edge is `gap` from it: TURBINE.PULL_RATIO times the creature's own top speed at the intake, easing (squared) to nothing at its reach */
 export function intakePull(width: number, gap: number): number {
   const closeness = Math.max(0, 1 - gap / TURBINE.INTAKE_REACH);
-  return moveSpeed(width) * TURBINE.PULL_RATIO * closeness * closeness;
+  return moveSpeed(width) * (fitsTurbine(width) ? TURBINE.PULL_RATIO : 0.45) * closeness * closeness;
+}
+
+/** The narrowest visible throat, shared with rendering. Large creatures cannot use the comeback launch. */
+export function fitsTurbine(width: number): boolean {
+  return width <= TURBINE.OPENING_WIDTH;
+}
+
+/** Shared solid housing correction keeps prediction from drawing a creature inside the fan. */
+export function turbineBodyPush(body: Box, turbine: { x: number; y: number; intake: number }): { x: number; y: number } {
+  const dx = body.x + body.width / 2 - turbine.x, dy = body.y + body.height / 2 - turbine.y;
+  const d = Math.hypot(dx, dy), overlap = TURBINE.BODY_RADIUS + body.width / 2 - d;
+  if (overlap <= 0) return { x: 0, y: 0 };
+  return { x: (d > 1e-6 ? dx / d : Math.cos(turbine.intake)) * overlap,
+    y: (d > 1e-6 ? dy / d : Math.sin(turbine.intake)) * overlap };
 }
 
 /** How close to a turbine's intake (edge to edge) nobody, whatever its size, can walk away any more */
