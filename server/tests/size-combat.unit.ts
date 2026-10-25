@@ -4,13 +4,14 @@ import { PlayerSchema } from '../schema/PlayerSchema.js';
 import { TurbineSchema } from '../schema/TurbineSchema.js';
 import { CANNON, TURBINE } from '../constants/gameConstants.js';
 import { impactGems } from '../game/cannon.js';
+import { creatureSize } from '../game/creatureSize.js';
 import { scaleDrain, drainRamp } from '../game/airflow.js';
 import { steal } from '../systems/inhale.js';
 import { updateFlights } from '../systems/flights.js';
 import { runTurbine } from '../systems/turbines.js';
 
 const NOW = 100000;
-const width = (gems: number) => Math.round(20 * Math.sqrt(1 + gems / 2) * 2) / 2;
+const width = creatureSize;
 function world() {
   const s = new GameState(0); s.botFill = 0; s.surgesOn = false; s.weaponsOn = false;
   s.setTurbines('off'); s.update(0, NOW); return s;
@@ -55,7 +56,7 @@ function shot(projectileGems: number, targetGems: number, protectedTarget = fals
 }
 
 // Matchup budgets protect earned size without granting absolute immunity to small shots.
-for (const [projectile, minimum, maximum] of [[4, 1, 15], [20, 10, 30], [250, 70, 130], [1000, 180, 300], [4000, 400, 650]]) {
+for (const [projectile, minimum, maximum] of [[4, 1, 15], [20, 5, 30], [250, 70, 150], [1000, 180, 300], [4000, 300, 650]]) {
   const damage = impactGems(1000, 1250, width(projectile));
   assert(damage >= minimum && damage <= maximum, `${projectile}-gem projectile against a giant: ${damage}`);
 }
@@ -70,7 +71,7 @@ for (const target of [12, 40, 100, 1000, 10000]) {
 }
 assert.equal(impactGems(0, 1250, width(1000)), 0);
 assert(impactGems(10000, 2000, width(12)) < 100, 'a maximum-speed small shot takes under 1% from a very large giant');
-assert(scaleDrain(width(40), width(1000)) * drainRamp(30) < .5, 'even a long-held small inhale cannot regain peer-level theft against a giant');
+assert(scaleDrain(width(40), width(1000)) * drainRamp(30) < .75, 'even a long-held small inhale cannot regain peer-level theft against a giant');
 assert(scaleDrain(width(1000), width(1000)) > scaleDrain(width(250), width(1000)), 'substantial rivals remain stronger thieves');
 
 const windows: { thief: number; stolen: number }[] = [];

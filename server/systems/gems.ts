@@ -2,6 +2,7 @@ import type { GameState } from "../schema/GameState.js";
 import { PlayerSchema } from "../schema/PlayerSchema.js";
 import { GemSchema } from "../schema/GemSchema.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
+import { randomFloorPoint } from '../game/layouts.js';
 
 const { GEMS, PLAYER_STATE, SHIFT } = GAME_CONSTANTS;
 
@@ -38,22 +39,32 @@ export function updateJackpot(state: GameState, deltaTime: number) : void {
   state.onEvent?.("jackpot", { byId: claimant.sessionId, by: claimant.name, value: SHIFT.JACKPOT_VALUE });
 }
 
-/** Keep the field stocked: every gem picked up reappears somewhere else */
-export function topUpField(state: GameState) : void {
+/** Replenish outside every live pickup box, so a stationary giant cannot farm fresh spawns underneath it. */
+export function topUpField(state: GameState, initial = false) : void {
+  const elapsed = Math.max(0, state.time - state.fieldReplenishAt) / 1000;
+  state.fieldReplenishAt = state.time;
+  state.fieldReplenishCredit = Math.min(GEMS.FIELD_REPLENISH_PER_S, state.fieldReplenishCredit + elapsed * GEMS.FIELD_REPLENISH_PER_S);
   if (state.fieldGems >= state.fieldGemTarget || state.gems.size >= GEMS.MAX_GEMS) return;
+  if (!initial && state.fieldReplenishCredit < 1) return;
   const spacing = GEMS.FIELD_SPACING, grid = new Map<string, Point[]>();
+  const bodies = [...state.players.values()].filter(p => p.state === PLAYER_STATE.ALIVE && !p.capturedBy);
   for (const gem of state.gems.values()) addPoint(grid, gem, spacing);
-  while (state.fieldGems < state.fieldGemTarget && state.gems.size < GEMS.MAX_GEMS) {
-    if (state.shiftPhase === 'shift') { state.addGem(); continue; }
-    let best = { x: 40, y: 40 }, clearance = -1;
+  while (state.fieldGems < state.fieldGemTarget && state.gems.size < GEMS.MAX_GEMS && (initial || state.fieldReplenishCredit >= 1)) {
+    let best: Point | null = null, clearance = -1;
     for (let attempt = 0; attempt < 64; attempt++) {
-      const p = { x: 40 + Math.random() * (state.worldWidth - 80), y: 40 + Math.random() * (state.worldHeight - 80) };
+      const p = state.shiftPhase === 'shift' && state.layout ? randomFloorPoint(state.layout) : { x: 40 + Math.random() * (state.worldWidth - 80), y: 40 + Math.random() * (state.worldHeight - 80) };
+      const padding = GEMS.RADIUS + 8;
+      if (bodies.some(body => p.x > body.x - padding && p.x < body.x + body.width + padding && p.y > body.y - padding && p.y < body.y + body.height + padding)) continue;
       const distance = Math.min(spacing, ...nearPoints(grid, p, spacing).map(q => Math.hypot(p.x - q.x, p.y - q.y)));
       if (distance > clearance) { best = p; clearance = distance; }
       if (distance >= spacing) break;
     }
+    // A crowded map may temporarily have fewer field gems; never fall back inside a pickup box.
+    if (!best) break;
     state.addGem(best.x, best.y); addPoint(grid, best, spacing);
+    if (!initial) state.fieldReplenishCredit--;
   }
+  if (initial && state.fieldGems > 0) state.fieldReplenishCredit = 0;
 }
 
 interface Point { x: number; y: number }

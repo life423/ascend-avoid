@@ -6,6 +6,7 @@ import { SMOOTHING, SNAP_DISTANCE } from './shared'
 import { drawAirflow } from './stream'
 import type { SyncedGameState, SyncedPlayer } from '../types/synced'
 import { drawInjury } from './injury'
+import { formatGems } from '../utils/score'
 
 const REDUCED_MOTION = matchMedia('(prefers-reduced-motion: reduce)')
 
@@ -242,7 +243,7 @@ export function drawPlayer(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
         // What the leader is worth
         ctx.font = `800 14px ${FONT}`
         ctx.fillStyle = GOLD
-        ctx.fillText(`${player.gems}`, drawn.x + player.width / 2, drawn.y - 50)
+        ctx.fillText(formatGems(player.gems), drawn.x + player.width / 2, drawn.y - 50)
     }
     ctx.restore()
 }

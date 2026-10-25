@@ -100,13 +100,15 @@ export const WORLD = {
  */
 export const GEMS = {
   FIELD_COUNT: 950, // about 25% fewer background gems; combat sprays remain available on top
+  FIELD_REPLENISH_PER_S: 30, // shared arena resource flow, rather than an unlimited reward for sweeping faster
   RADIUS: 9,
-  /**
-   * Size = PLAYER_SIZE + this x the square root of your gems, with no ceiling: area grows with gems,
-   * like Agar.io. 45 wide at 10 gems, 100 at 100 (5x a newborn), 240 at 750 (12x), 300 at 1,200 (15x).
-   * Shedding (DECAY_*) slows growth down instead of stopping it.
-   */
-  BASE_MASS: 2, // width = PLAYER_SIZE x sqrt(1 + gems / this) (a newborn's body counts as this many gems): every gem grows you, gently at first (24.5 wide with 1 gem), 7x a newborn at 100, 14x at 400
+  // creatureSize converts banked gems to physical mass; late growth tapers to fit a finite arena.
+  BASE_MASS: 2, // a newborn body's mass; opening width = PLAYER_SIZE x sqrt(1 + gems / this)
+  GROWTH_OPENING_GEMS: 40, // keep the opening rewarding, then increase the crystal cost of visible size
+  GROWTH_SCALE: 600, // diminishing late size gains; every player keeps the same uncapped gem total
+  GROWTH_EXPONENT: 0.8, // retain useful size differences between established rivals, rather than flattening them logarithmically
+  SIZE_SOFT_START_SHARE: 0.15, // normal growth until diameter reaches 15% of the shorter map side
+  SIZE_MAX_SHARE: 0.30, // very late diameter approaches 30%; gem totals and score remain uncapped
   SPRAY_SHARE: 0.5, // a hit sprays out this share of your gems...
   SURVIVE_AT: 3, // ...but with fewer than this, a hit knocks you out (your last gems burst out)
   SPRAY_PIECES: 24, // fewer distinct drops, preserving total spilled value
@@ -119,8 +121,8 @@ export const GEMS = {
   SPRAY_LIFETIME_MS: 15000, // uncollected sprayed gems vanish
   HIT_RECOVERY_MS: 800, // after a hit you skid and blink: traffic passes through you and you can't hop
   OWNER_PICKUP_DELAY_MS: 1500, // your own spilled gems wait this long for you, so whoever caused it gets first crack
-  DECAY_START: 300, // gems above this slowly shed (late game: a strong player can hold about 1500, see CAMERA)
-  DECAY_RATE: 0.001, // ...this share of the excess a second (about 1.2 a second at 1500)
+  DECAY_START: 300, // the opening has no upkeep; only excess gems shed, identically for every role
+  DECAY_RATE: 0.001, // gentle shared upkeep: 0.1% of the excess/second; no bot-only tax
   MAX_GEMS: 2000, // cap on gems in the world at once (the field, plus room for combat sprays)
 } as const;
 
@@ -158,9 +160,6 @@ export const BOTS = {
   GEM_SIGHT: 1000, // bots go for gems within this distance...
   FLEE_RATIO: 1.5, // bots run from anyone this many times their size who comes within FLEE_RANGE
   FLEE_RANGE: 420, // (a giant's inhale reaches about 400)
-  CONTENT_AT: 30, // ...until they have this many; then they just wander, dodge and shove
-  DECAY_START: 20, // bots shed gems above this, and faster (people: GEMS.DECAY_*), so people can outgrow them...
-  DECAY_RATE: 0.02, // ...this share of what's above DECAY_START each second (1 a second at 70)
   CROWD_SPACE: 220,
   CROWD_PENALTY: 110,
   MAX_PURSUERS: 2,
@@ -187,6 +186,8 @@ export const BOTS = {
   GUST_REACT_MIN_MS: 300,
   GUST_REACT_MAX_MS: 650,
   GUST_SKILL: 0.75, // missed opportunities and ordinary turning/breath rules keep defense fallible
+  WEAPON_PLACE_READ_MS: 900, // read the completed cargo and choose a spot; shared deployment rules still apply
+  WEAPON_PLACE_WAIT_MS: 4000, // do not carry a completed weapon forever if its chosen spot is obstructed
 } as const;
 
 /**
@@ -397,6 +398,7 @@ export const CAMERA = {
   SIZE_SHARE: 0.06, // a newborn would fill this share of the screen's short side...
   SIZE_SHARE_GROWTH: 0.45, // ...growing as (width / a newborn's) ^ this (about 10% at 25 gems, 15% at 100), so growth outpaces the zoom...
   SIZE_SHARE_MAX: 0.35, // ...up to this. Late-game target: about 1500 gems is 27x a newborn's width and fills about 27% of the screen, a newborn beside it about 1%
+  GROWTH_FRAME_SHARE_MAX: 0.7, // keep sudden large pickups framed while ordinary zoom easing catches up
   THREAT_RATIO: 1.5, // ...but the view always shows a creature this many times wider coming...
   REACTION_S: 0.9, // ...this long before the lethal part of its airflow could reach you (this wins at small sizes)...
   THREAT_MAX_WIDTH: 150, // ...planned for creatures up to this wide; past it there's little bigger to fear, so your growth fills the screen
@@ -440,8 +442,7 @@ export const CANNON = {
   STEER: 520, // turbine throws only: lateral steering acceleration; player-fired missiles ignore input
   LAUNCHER_GRACE_MS: 300, // a projectile can't hit its launcher this soon
   IMPACT_SPEED_REF: 1250,
-  IMPACT_MASS_PIVOT: 3, // a projectile three times the target's mass reaches half the maximum damage share
-  IMPACT_MASS_EXPONENT: 0.8, // sublinear mass response preserves small fan attacks and giant resistance
+  IMPACT_MASS_PIVOT: 2.4, // equal physical mass costs 25%; heavier ammunition can finish smaller targets
   IMPACT_MAX_SHARE: 0.85, // ceiling, not a damage floor; normal equal-mass hits remove about 25%
   IMPACT_KO_GEMS: 12, // heavily damaged targets below this mass are knocked out and return at a fresh spawn
   BURNUP_GEMS: 12, // a smaller player-fired missile also burns up at flight end if it misses

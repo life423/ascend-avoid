@@ -341,12 +341,12 @@ for (const ending of ['impact', 'wall', 'timeout']) {
   updateInhales(state, state.now, 0.01);
   assert.equal(flier.capturedBy, hunter.sessionId, 'normal capture returns when recovery ends');
 }
-for (const gems of [0, 297, 298, 1000]) {
+for (const gems of [0, 300, 400, 1000]) {
   const state = world(), flier = player(state, 'wall-missile', gems);
   flier.placeAt(state.worldWidth - flier.width - 1, 1000);
   flier.launch(NOW, 1400, 0, 'captor', CANNON.FLIGHT_MS);
   updateFlights(state, NOW + 100, 0.1);
-  assert.equal(flier.state, gems < 298 ? 'dead' : 'alive', 'wall impacts knock out only missiles with no growth left');
+  assert.equal(flier.state, gems < 400 ? 'dead' : 'alive', 'wall impacts knock out missiles whose spent physical growth leaves no gems');
   assert(!flier.flying);
   if (flier.state === 'dead') {
     state.update(0, flier.respawnAt);

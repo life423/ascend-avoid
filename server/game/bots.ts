@@ -2,6 +2,7 @@ import { BOTS, INHALE, PLAYER_STATE, TURBINE } from "../constants/gameConstants.
 import { hop, moveSpeed } from "./movement.js";
 import { BotCannonAim } from './botAim.js';
 import { BotGustDefense } from './botDefense.js';
+import { BotWeaponPlan } from './botWeapons.js';
 import { botPreyAvailable, botRobber } from './botTargets.js';
 import type { Box, Direction } from "./movement.js";
 import type { GameState } from "../schema/GameState.js";
@@ -65,14 +66,15 @@ function timeToImpact(box: Box, world: GameState): number {
 
 /**
  * The mind of one bot. A few times a second it picks a hop (or none): it dodges the traffic it
- * can see coming, heads for the best gem nearby, and shoves a neighbor now and then (always the
- * leader), losing interest in gems once it has plenty. Its hops go through the same rules as everyone's (PlayerSchema.requestHop), so a bot
+ * can see coming, gathers crystals, assembles weapons and hunts reachable rivals. Its hops
+ * go through the same rules as everyone's (PlayerSchema.requestHop), so a bot
  * is never faster than a person could be. Each bot differs a little in reaction speed,
  * carelessness and appetite for shoving.
  */
 export class BotBrain {
   readonly cannonAim = new BotCannonAim();
   readonly gustDefense = new BotGustDefense();
+  readonly weaponPlan = new BotWeaponPlan();
   /** When the bot next decides (it keeps steering the same way until then) */
   nextThinkAt = 0;
   /** Who the bot is hunting, if anyone (it runs into them to shove them) */
@@ -182,6 +184,8 @@ export class BotBrain {
     }
     // Low on gems (or just reckless): go for the jackpot
     if (world.jackpotOn && (bot.gems < 20 || this.reckless)) return { x: world.jackpotX, y: world.jackpotY };
+    const weapon = this.weaponPlan.goal(world, bot, now);
+    if (weapon) return weapon;
     // Someone to rob or catch: go after them (the bot inhales once they are in reach). One it can't catch that
     // is facing it could inhale back, so it goes round to its side and back first
     const victim = this.huntTarget(bot, world, now);
@@ -201,19 +205,18 @@ export class BotBrain {
       return { x: vx, y: vy };
     }
 
-    // A bot with plenty of gems stops hunting them, so people can outgrow it (except during a shift)
-    const hungry = bot.gems < BOTS.CONTENT_AT || (world.shiftsOn && world.shiftPhase === "shift");
-    if (hungry && this.goal?.gemId && now < this.goal.until && world.gems.has(this.goal.gemId)) return this.goal;
+    // Growth remains a goal at every size, under the same crystal and decay rules as human players.
+    if (this.goal?.gemId && now < this.goal.until && world.gems.has(this.goal.gemId)) return this.goal;
 
     // The most attractive gem in sight: bigger and closer is better, and less so for every other bot already
     // heading for that spot (a spill draws a crowd for a moment, then the latecomers pick other gems)
     const headings: { x: number; y: number }[] = [];
-    if (hungry) world.brains.forEach((brain, id) => {
+    world.brains.forEach((brain, id) => {
       const heading = id === bot.sessionId ? null : brain.heading();
       if (heading) headings.push(heading);
     });
     const pick: { goal: Goal | null; worth: number } = { goal: null, worth: 0 };
-    if (hungry) world.gems.forEach((gem, id) => {
+    world.gems.forEach((gem, id) => {
       const distance = Math.hypot(gem.x - cx, gem.y - cy);
       if (distance > BOTS.GEM_SIGHT) return;
       let crowd = 0;

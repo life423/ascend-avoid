@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { GameState } from '../schema/GameState.js';
 import { BotBrain } from '../game/bots.js';
-import { BotCannonAim } from '../game/botAim.js';
+import { BotCannonAim, cannonTargetAppeal } from '../game/botAim.js';
+import { creatureSize } from '../game/creatureSize.js';
 import { botMouth } from '../systems/bots.js';
 import { escapePress, stealWeight, updateHolds, updateInhales } from '../systems/inhale.js';
 import { captureLoadMs } from '../game/cannon.js';
@@ -13,6 +14,8 @@ import { GemSchema } from '../schema/GemSchema.js';
 import { spreadSettledGems, topUpField } from '../systems/gems.js';
 
 const NOW = 100000;
+assert(cannonTargetAppeal(12, creatureSize(12), creatureSize(4), 1250, 400) > cannonTargetAppeal(1000, creatureSize(1000), creatureSize(4), 1250, 200), 'tiny ammunition prefers a finishable rival over a healthy giant');
+assert(cannonTargetAppeal(40, creatureSize(40), creatureSize(1000), 1250, 400) > cannonTargetAppeal(1000, creatureSize(1000), creatureSize(1000), 1250, 200), 'large ammunition can pursue a decisive small-target opportunity');
 function setup() {
   const s = new GameState(0); s.botFill = 0; s.surgesOn = false; s.weaponsOn = false; s.setTurbines('off'); s.update(0, NOW);
   const a = s.addPlayer('captor', 'Captor', NOW), b = s.addPlayer('captive', 'Captive', NOW);
@@ -123,7 +126,7 @@ for (const gems of [0, 4, 12, 13, 100, 1000]) {
   const random = Math.random; let seed = 321;
   try {
     Math.random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
-    topUpField(s);
+    topUpField(s, true);
   } finally { Math.random = random; }
   const gems = [...s.gems.values()];
   assert.equal(gems.length, 950); assert.equal(s.fieldGems, 950);

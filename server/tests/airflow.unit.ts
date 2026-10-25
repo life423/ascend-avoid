@@ -111,7 +111,7 @@ const carries = (captorWidth: number, captiveWidth: number) => {
   return x;
 };
 check(carries(130, 100) > 2000 && carries(130, 100) < 2300 && carries(200, 100) > 2300 && carries(200, 100) < 2600 && carries(400, 100) > 2800 && carries(400, 100) < 3100 && carries(800, 100) > 3300 && carries(800, 100) < 3550, `a shot carries about 2,100 units at the smallest size advantage and 3,400 at the largest, in the open (${Math.round(carries(130, 100))}, ${Math.round(carries(200, 100))}, ${Math.round(carries(400, 100))}, ${Math.round(carries(800, 100))})`);
-check(impactGems(1000, 900, 20) > 0 && impactGems(1000, 900, 20) < 10 && impactGems(400, 900, 60) > impactGems(400, 900, 20) && impactGems(400, 900, 20) < impactGems(400, 1250, 20), 'tiny shots chip giants; projectile mass and impact speed still increase damage');
+check(impactGems(1000, 900, 20) > 0 && impactGems(1000, 900, 20) < 10 && impactGems(400, 900, 60) > impactGems(400, 900, 20) && impactGems(400, 800, 100) < impactGems(400, 1600, 100), 'tiny shots chip giants; projectile mass and impact speed still increase damage');
 const straightOn = flightStep(900, 0, 1, 0, 0.1);
 const bentFlight = flightStep(900, 0, 0, 1, 0.1);
 check(Math.hypot(straightOn.vx, straightOn.vy) < 900 && Math.abs(straightOn.vy) < 1e-9 && bentFlight.vy > 0 && Math.hypot(bentFlight.vx, bentFlight.vy) <= Math.hypot(straightOn.vx, straightOn.vy) + 1e-6, "turbine steering can bend a throw, never speed it up or stop it");

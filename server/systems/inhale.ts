@@ -7,7 +7,7 @@ import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 import { CANNON, EXHALE } from "../constants/gameConstants.js";
 import { canCatch, launchSpeed, escapeLength, captureLoadMs } from "../game/cannon.js";
 
-const { PLAYER_STATE, INHALE, LATCH, BOTS } = GAME_CONSTANTS;
+const { PLAYER_STATE, INHALE, LATCH } = GAME_CONSTANTS;
 import { sprayGems } from "./gems.js";
 import { puffWeaponParts } from "./weapons.js";
 
@@ -144,7 +144,7 @@ export function updateInhales(state: GameState, now: number, deltaTime: number) 
       caught.dazedUntil = state.time + CANNON.CAPTIVE_STUN_MS;
       caught.escapeMissAt = 0;
       caught.escapeNeutral = true;
-      caught.escapeTryAt = caught.isBot ? now + CANNON.CAPTIVE_STUN_MS + BOTS.ESCAPE_READ_MS : 0;
+      caught.escapeTryAt = 0; // AI reading time is scheduled by its input controller, not capture rules.
       caught.stopInhale(now);
       caught.dropLatch();
       // The capture decides what happens to it now: any theft from it ends here
