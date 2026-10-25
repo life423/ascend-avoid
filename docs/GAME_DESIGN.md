@@ -2,6 +2,8 @@
 
 ## Core loop
 
+The approved experience is the six-stage [lasting-dominance loop](GAME_LOOP.md): start small, become capable, build an advantage, become enormous, maintain a long reign, and eventually fall into another climb. The user explicitly wants giant size to feel almost untouchable and sustainable for hours through good play. Current damage/theft/decay values below describe implemented rules; they have not yet been tuned to deliver this goal. GAME_LOOP.md separates proposed changes from approved behavior.
+
 Collect gems, grow, steal from injured creatures, capture someone smaller, aim and fire them as a living cannonball, then compete for spilled gems. The captor controls the shot; the captive's chance is escaping before launch. The world is continuous: no lobby or round wait. The background field target is 950 gems, about 25% fewer than the former 1,270; combat spills are additional, within the overall 2,000-object cap. This is a field-density reduction, not a cap of 950 total objects after fights.
 
 ## World and presentation

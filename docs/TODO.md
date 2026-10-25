@@ -4,6 +4,8 @@ Updated October 25, 2026. This is the durable list of the user's requests and de
 
 ## Delivery order and next work
 
+Guiding priority approved October 25: follow the six-stage [lasting-dominance loop](GAME_LOOP.md). Becoming enormous should feel almost untouchable and remain sustainable for hours through good play. Before slowing crystal growth, measure target missile losses, compounded injury theft, repeated Pulsar damage and passive decay against that goal. The loop is approved; proposed numerical tuning in GAME_LOOP.md is not yet selected or implemented.
+
 1. **Finish the current controls, fairness and UI pass.** Verify mouse-follow without holding a button; retain WASD/arrows; add independent right-thumb aiming to the existing action control. Hold inhales, tap fires; aiming a loaded shot must not fire it accidentally. Keep phone controls clean and usable in both orientations.
 2. **Remove persistent interruptions.** The old weapon card is already removed on main; confirm fresh production clients. Pickup notices coalesce and expire. Gem-surge notices disappear after three seconds while the event continues. No replacement pinned pill. Help is at most one quarter its former length and remains readable, keyboard accessible and touch friendly.
 3. **Fill every screen with the arena.** New arrivals and respawns remain inside the map, with newborn zoom reset. The latest user request supersedes the earlier desktop blue surround: canvas covers the visible browser viewport at every size; the camera yields centering at boundaries so all screens show playable map. Desktop controls float over play and Focus view does not resize it. Preserve touch safe areas, keyboard resizing and rotation.
