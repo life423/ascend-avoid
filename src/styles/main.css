@@ -998,6 +998,8 @@ body.online-mode .bar-tab { z-index: 30; }
 }
 body.online-mode .first-session-guide { bottom: calc(var(--arena-bottom, 0px) + 60px + var(--arena-safe-bottom)); max-width: calc(100vw - 28px - var(--arena-safe-left) - var(--arena-safe-right)); }
 body.online-mode .weapon-place-button { bottom: calc(var(--arena-bottom, 0px) + 36px + var(--arena-safe-bottom)); }
+/* A relevant placement action takes precedence over the brief starter tip. */
+body.online-mode:has(.weapon-place-button:not([hidden])) .first-session-guide { display: none; }
 @media (max-width: 1199px), (pointer: coarse) {
     body.online-mode .first-session-guide { bottom: calc(var(--arena-bottom, 0px) + 170px + var(--arena-safe-bottom)); }
     body.online-mode .weapon-place-button { bottom: calc(var(--arena-bottom, 0px) + 184px + var(--arena-safe-bottom)); }

@@ -64,6 +64,7 @@ test('collect, carry and deliberately place a pinwheel with a button or E', asyn
   });
   expect(builder).toBe(true);
   await expect(page.getByRole('button', { name: 'Place weapon', exact: true })).toBeVisible();
+  await expect(page.locator('.first-session-guide')).toBeHidden();
   const buttonBox = await page.getByRole('button', { name: 'Place weapon', exact: true }).boundingBox();
   expect(buttonBox.height).toBeGreaterThanOrEqual(48);
   const before = await page.evaluate(() => window.game.currentGameMode.multiplayerManager.room.state.pinwheel.x);
