@@ -37,3 +37,5 @@ The first pass above is historical. The subsequent approved parity/runaway-growt
 ## October 26 playtest steering
 
 The user found opening growth too quick and wanted more danger before becoming enormous. The current trial gives each gem 25% less physical growth, makes substantial missile hits more decisive for small/midgame targets and prevents rapid recovery of one's own damage/spent-missile spills. Short escape/respawn protections and giant resistance to tiny attacks remain. The middle stage must involve real setbacks and comeback decisions; rarity should emerge from the climb and resource competition, without forced giant turnover or weaker bots. Current results remain mixed and human feel is still under review; see BALANCE_VALIDATION.md.
+
+The user subsequently corrected the “too punishing” selection as a misclick: the climb still grows too quickly, while smart and clever play should remain important. The latest growth-only revision uses 0.5 physical mass per gem instead of 0.75; combat consequences, protection and recovery stay unchanged. Reaching giant size requires more banked gems without weakening bots or adding a role quota.

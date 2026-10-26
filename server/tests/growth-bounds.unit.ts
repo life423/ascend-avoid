@@ -11,7 +11,7 @@ function empty() {
   const s = new GameState(0); s.botFill = 0; s.surgesOn = false; s.weaponsOn = false; s.setTurbines('off'); s.update(0, NOW); return s;
 }
 for (const gems of [0, 1, 4, 12, 40]) {
-  assert.equal(creatureSize(gems), Math.round(20 * Math.sqrt(1 + gems * .75 / 2) * 2) / 2, 'opening pickups use 25% less physical mass while keeping gem value');
+  assert.equal(creatureSize(gems), Math.round(20 * Math.sqrt(1 + gems * .5 / 2) * 2) / 2, 'opening pickups use half the original physical mass while keeping gem value');
 }
 let previous = 0;
 for (const gems of [0, 100, 1000, 1980, 1983, 2000, 5000, 10000, 30000, 100000, 1000000, 1e12]) {

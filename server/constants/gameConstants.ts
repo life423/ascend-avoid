@@ -105,7 +105,7 @@ export const GEMS = {
   // creatureSize converts banked gems to physical mass; late growth tapers to fit a finite arena.
   BASE_MASS: 2, // newborn body mass; opening width = PLAYER_SIZE x sqrt(1 + gems * GROWTH_MASS_PER_GEM / this)
   GROWTH_OPENING_GEMS: 40, // keep the opening rewarding, then increase the crystal cost of visible size
-  GROWTH_MASS_PER_GEM: 0.75, // 25% less physical growth per banked gem; score/value are unchanged
+  GROWTH_MASS_PER_GEM: 0.5, // slower earned growth; score/value, combat tuning and recovery rules are unchanged
   GROWTH_SCALE: 600, // diminishing late size gains; every player keeps the same uncapped gem total
   GROWTH_EXPONENT: 0.8, // retain useful size differences between established rivals, rather than flattening them logarithmically
   SIZE_SOFT_START_SHARE: 0.15, // normal growth until diameter reaches 15% of the shorter map side

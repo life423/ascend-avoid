@@ -56,7 +56,14 @@ test('collect, carry and deliberately place a pinwheel with a button or E', asyn
   await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.room.state.pinwheel.parts.length === 3);
   await page.screenshot({ path: test.info().outputPath('pinwheel-parts.png') });
   await page.keyboard.down('Space');
+  await page.waitForFunction(() => {
+    const room = window.game.currentGameMode.multiplayerManager.room;
+    return [...room.state.pinwheel.parts].filter(part => part.carriedBy === room.sessionId).length >= 2;
+  }, null, { timeout: 5000 });
+  // A smaller body has less reach: walk toward the last part while continuing to inhale.
+  await page.keyboard.down('ArrowRight');
   await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.room.state.pinwheel.phase === 'carried', null, { timeout: 5000 });
+  await page.keyboard.up('ArrowRight');
   await page.keyboard.up('Space');
   const builder = await page.evaluate(() => {
     const room = window.game.currentGameMode.multiplayerManager.room;

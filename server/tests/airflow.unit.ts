@@ -91,8 +91,8 @@ for (const size of [{ width: 600, height: 1200 }, { width: 1200, height: 600 }, 
 }
 
 // Late game: scale separation
-const lateGame = creatureSize(1500);
-check(lateGame / viewShort(lateGame) > 0.24 && (20 / lateGame) * (lateGame / viewShort(lateGame)) < 0.015, `late game, a 1500-gem giant fills about a quarter of the screen and a newborn beside it looks trivial (${((lateGame / viewShort(lateGame)) * 100).toFixed(0)}% vs ${(((20 / lateGame) * lateGame) / viewShort(lateGame) * 100).toFixed(1)}%)`);
+const lateGame = creatureSize(5000);
+check(lateGame / viewShort(lateGame) > 0.24 && (20 / lateGame) * (lateGame / viewShort(lateGame)) < 0.015, `late game, an earned 5000-gem giant fills about a quarter of the screen and a newborn beside it looks trivial (${((lateGame / viewShort(lateGame)) * 100).toFixed(0)}% vs ${(((20 / lateGame) * lateGame) / viewShort(lateGame) * 100).toFixed(1)}%)`);
 check(scaleDrain(20, 548) === LATCH.SCALE_MIN && scaleDrain(110, 120) === 1 && scaleDrain(60, 120) < 0.65 && scaleDrain(20, 100) > LATCH.SCALE_MIN && scaleDrain(20, 100) < 1, "full theft needs near-peer size; small thieves retain a little exposed-gem drain");
 
 // The living cannonball

@@ -62,6 +62,7 @@ function setup() {
 {
   const { s, a, b } = setup();
   b.setGems(500, s.worldWidth, s.worldHeight); b.placeAt(1220, 1000);
+  a.placeAt(a.x, b.y + (b.height - a.height) / 2);
   a.launch(NOW, 1800, 0, 'launcher', 3000);
   updateFlights(s, NOW + 100, .1);
   assert(b.gems < 500 && b.state === 'alive');
