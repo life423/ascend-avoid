@@ -168,6 +168,37 @@ scenario('quick keyboard escape presses work; releasing inhale keeps the capture
   assert.equal(me(a).gulping, '');
   assert.equal(me(kid).state, 'alive');
 });
+scenario('healthy players are visibly pulled without injury or gem theft', async (a, join) => {
+  const b = await join('Healthy pull target');
+  const target = () => a.state.players.get(b.sessionId);
+  a.send('test:setGems', { count: 100 }); b.send('test:setGems', { count: 100 });
+  await until(() => me(a).gems === 100 && target()?.gems === 100, 'equal healthy sizes arrive');
+  a.send('test:moveTo', { x: 1500, y: 1500 }); a.send('test:face', { angle: 0 });
+  const x = 1500 + me(a).width * .8 + (80 + me(a).width * 2) * .5;
+  b.send('test:moveTo', { x, y: 1500 }); b.send('test:protect', { ms: 0 });
+  await until(() => Math.abs(target().x - x) < 1 && !target().spawnProtected, 'target is ready');
+  a.send('inhale');
+  await until(() => target().x < x - 90, 'healthy body is drawn toward the mouth within one second', 1400);
+  assert.equal(target().gems, 100); assert.equal(target().robbedTotal, 0);
+  assert.equal(target().injuredUntil, 0); assert.equal(target().capturedBy, '');
+  a.send('cancel'); await sleep(150); const stopped = target().x;
+  await sleep(200); assert(Math.abs(target().x - stopped) < 1, 'release stops the tug');
+});
+scenario('a freed player starts clear and can move away before any repeat capture', async (a, join) => {
+  const kid = await capture(a, join);
+  await until(() => kid.state.time >= me(kid).dazedUntil, 'escape input becomes available');
+  for (const key of me(kid).escapeKeys) { kid.send('escape', { key }); await sleep(90); }
+  await until(() => !me(kid).capturedBy, 'escape completes');
+  const remaining = me(kid).launchSafeUntil - kid.state.time;
+  assert(remaining > 3600 && remaining <= 4000, 'a complete four-second recovery starts on release');
+  const cap = kid.state.players.get(a.sessionId);
+  const distance = Math.hypot(me(kid).x + me(kid).width / 2 - cap.x - cap.width / 2, me(kid).y + me(kid).height / 2 - cap.y - cap.height / 2);
+  assert(distance > (me(kid).width + cap.width) / 2, 'escape begins outside the captor');
+  const y = me(kid).y;
+  a.send('test:breath', { stamina: 1 }); a.send('inhale'); kid.send('steer', { x: 0, y: 1 });
+  await sleep(2500);
+  assert.equal(me(kid).capturedBy, ''); assert(me(kid).y > y + 400, 'the former captive gets room to leave');
+});
 scenario('a real gust stuns a non-inhaling target and the target recovers', async (a, join) => {
   const target = await join('Gust target');
   a.send('test:moveTo', { x: 1000, y: 1000 });

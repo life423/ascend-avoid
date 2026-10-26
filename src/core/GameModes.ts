@@ -5,7 +5,8 @@
 import Player from '../entities/Player'
 import { InputState } from '../types'
 import { GameEvents } from '../constants/client-constants'
-import { ARENA_RULES, BOMBS, CAMERA, EXHALE, GEMS, INHALE, LATCH, SHIFT, WORLD } from '../../server/constants/gameConstants'
+import { ARENA_RULES, BOMBS, CAMERA, EXHALE, GEMS, INHALE, LATCH, SHIFT, WORLD, WEAPON_RECIPES } from '../../server/constants/gameConstants'
+import { allWeapons } from '../../server/game/weaponKit'
 import { sound } from './Sound'
 import { FirstSessionGuide } from '../ui/FirstSessionGuide'
 import { WeaponPlacement } from '../ui/WeaponPlacement'
@@ -551,7 +552,7 @@ export class MultiplayerMode extends GameMode {
     /** The joystick, INHALE button and mouse steering (drawn on the canvas) */
     controls: OnlineControls | null = null
     private weaponPlacement: WeaponPlacement | null = null
-    private weaponSeen: { owner: string; phase: string; progress: number } | null = null
+    private weaponSeen = new Map<number, { owner: string; phase: string; progress: number }>()
     /** Your walking velocity */
     private velocity = { x: 0, y: 0 }
     /** Holding the button: inhaling (it never changes how you move) */
@@ -1181,19 +1182,21 @@ export class MultiplayerMode extends GameMode {
 
     /** Local collection feedback uses the existing expiring notices, never a permanent weapon panel. */
     private trackWeapon(state: SyncedGameState, localId: string | null | undefined): void {
-        const w = state.pinwheel
-        if (!w) return
-        const before = this.weaponSeen
-        this.weaponSeen = { owner: w.owner, phase: w.phase, progress: w.progress }
-        if (!before || !localId || w.owner !== localId) return
-        const name = weaponRecipe(w.kind).name
-        if (w.phase === 'carried' && before.phase !== 'carried') {
-            this.addNotice(`${name} assembled — choose a spot`, false, 'weapon')
-        } else if (w.phase === 'parts') {
-            const count = [1, 2, 4].filter(bit => (w.progress & bit) !== 0).length
-            const previous = before.owner === localId ? [1, 2, 4].filter(bit => (before.progress & bit) !== 0).length : 0
-            if (count > previous) this.addNotice(`${name}: ${count}/3 parts`, false, 'weapon')
-        }
+        allWeapons(state).forEach((w, index) => {
+            const before = this.weaponSeen.get(index)
+            this.weaponSeen.set(index, { owner: w.owner, phase: w.phase, progress: w.progress })
+            if (!before || !localId || w.owner !== localId) return
+            const name = weaponRecipe(w.kind).name
+            if (w.phase === 'carried' && before.phase !== 'carried') {
+                this.addNotice(`${name} assembled — choose a spot`, false, 'weapon')
+            } else if (w.phase === 'charging' && before.phase === 'carried') {
+                this.addNotice(`${name} deployed`, false, 'weapon')
+            } else if (w.phase === 'parts') {
+                const count = [1, 2, 4].filter(bit => (w.progress & bit) !== 0).length
+                const previous = before.owner === localId ? [1, 2, 4].filter(bit => (before.progress & bit) !== 0).length : 0
+                if (count > previous) this.addNotice(previous === 0 ? `${name}: ${count}/3 parts — radar linked` : `${name}: ${count}/3 parts`, false, 'weapon')
+            }
+        })
     }
 
     /** Someone knocked someone else into trouble: say who did it, with a big banner if it was you */
@@ -1222,12 +1225,12 @@ export class MultiplayerMode extends GameMode {
             else this.addNotice(`${String(data?.by ?? 'Someone')} landed a cannonball hit on ${target}!`)
             return
         }
-        if (how === 'pulsar' || how === 'pinwheel') {
+        if (how in WEAPON_RECIPES) {
             this.noteImpact(data)
-            const weapon = how === 'pulsar' ? 'Pulsar' : 'Pinwheel'
+            const weapon = weaponRecipe(how).name
             if (targetIsYou && data?.out) this.knockoutCause = { how, by: String(data?.by ?? 'Someone'), at: performance.now() }
             if (data?.byId === localId) this.banner = { title: `${weapon} ${data?.out ? 'knockout!' : 'hit!'}`, sub: `${Number(data?.gems) || 0} GEMS BLASTED LOOSE`, at: performance.now() }
-            else this.addNotice(`${this.nameOf(data?.byId, data?.by)} blasted ${target} with ${how === 'pulsar' ? 'a pulsar wave' : 'a Pinwheel bolt'}!`, data?.out === true)
+            else this.addNotice(`${this.nameOf(data?.byId, data?.by)} blasted ${target} with ${weapon}!`, data?.out === true)
             return
         }
         if (targetIsYou && how !== 'stole') {

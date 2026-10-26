@@ -1,6 +1,20 @@
 # Balance validation — October 26, 2026
 
-Status: local follow-up to merged PR #45 adds fixed seven-second injury, rapid lethal theft, capped captive transfer and forgiving joystick escape. These changes are not deployed. The earlier growth-only release measurements below remain historical; the local combat pass supersedes their five-second injury and slow-theft budgets. No claim of ideal rarity, hours-long human survival or proven fun is made.
+Status: 66adea2 (PR #46) deployed fixed seven-second injury, rapid lethal theft, capped captive transfer and forgiving joystick escape. The October 26 release batch adds stronger body pull, repeat-capture recovery, six weapons with reserved duplicate sets and radar, and mobile button centering. The user approved its main deployment; the associated GitHub pull request and deployment workflow record the merged revision and rollout status. Earlier growth-only release measurements remain historical. No claim of ideal rarity, hours-long human survival or proven fun is made.
+
+## Local body-pull follow-up
+
+Healthy equal 100-gem players are pulled about 35 units in 267ms and 136 in one second in a controlled full-world scenario, without gem theft or injury. Deliberate sideways movement covers about 242 units in two seconds. Against a 1000-gem target over the first 267ms, a 4-gem inhaler moves it about 3 units and a peer inhaler about 33; a 4-gem target moves about 69 before capture. These cases establish immediate visible displacement and size resistance, not perfect balance.
+
+Four-second escape/landing protection and release outside the captor body address repeat capture. Tests include large bodies at arena edges, active gust during recovery, all-attacker immunity and ordinary capture returning after expiry. The previous guard already blocked the defensive parry path during an active shield; the max() deadline update is defensive, not evidence of an exploited shield reset.
+
+## Local six-weapon and mobile layout follow-up
+
+Twelve independent sets provide two copies of each of six recipes. Tests cover first-pickup reservation of every sibling, rival exclusion, available duplicates, one unfinished set per collector, held claims, dropped-claim expiry, knockout/disconnect unlocking, all six real cargo assemblies and placement, AI assembly/placement for every recipe, satellite path continuity, reflected damage, aim-lock warnings and ion firing/cooldown windows. A 120-second full-world smoke simulation with twenty players activated all six kinds (Pinwheel 4, Pulsar 6, Sentinel 4, Ricochet 5, Ion 5, Comet 5), peaked at 27 live bolts and averaged about 3.17ms per server tick on this machine. This is one unseeded smoke check, not a comparative balance or device-performance guarantee.
+
+Mobile labels use measured ink bounds, center the main/helper block and maintain an eight-pixel gap. Browser checks cover ready/cooldown/insufficient breath and loading/queued/fire/spit across phone and tablet profiles. Satellite collection, synchronized sets, lock/radar rendering and orbit traversal pass all eight browser/device profiles. Visual review includes phone portrait/landscape, claim links, guidance, mobile controls and all four new deployed weapons. Longer weapon-hit titles fit available screen width, including their initial pop animation.
+
+Validation: fifteen unit suites and eighteen isolated multiplayer scenarios pass, along with types, synced-schema verification and production builds. Lint has zero errors and 164 existing warnings. The broad browser matrix recorded 281 passes and 36 device-specific skips; three Pulsar fixtures timed out because they assumed stationary reach to the far component. Those fixtures now walk closer, and the expected hit title matches the full recipe name. Pulsar passed all eight profiles after correction. The final production build passed all 21 applicable focused mobile-label, fleet and Pulsar browser cases (three desktop touch-only skips). A separate production-mode preview check confirmed twelve sets/six kinds and measured four frames of the longest new knockout banner inside a 390-pixel viewport. Final phone button and satellite/beam screenshots were inspected. No deployed or multiplayer balance claim follows from these checks.
 
 ## Local combat follow-up
 

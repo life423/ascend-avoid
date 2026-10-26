@@ -5,6 +5,7 @@ import { COMPACT, FONT, GOLD, drawCrown, drawRobot, hudPanel, roundedRect } from
 import { JOIN_NOTICE_MS, View } from './shared'
 import type { SyncedGameState, SyncedPlayer, SyncedTurbine } from '../types/synced'
 import { weaponRecipe } from './weaponStyle'
+import { allWeapons } from '../../server/game/weaponKit'
 import { formatGems } from '../utils/score'
 
 /** The whole world in a corner: everyone in it, and the part your screen shows */
@@ -97,38 +98,38 @@ export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
         ctx.fill()
     }
     ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
-    if (state.pinwheel && state.pinwheel.phase !== 'waiting') {
-        if (state.pinwheel.phase === 'parts') {
-            const colors = ['#ffd47d', '#80e7de', '#ffa8be'];
-            const letters = weaponRecipe(state.pinwheel.kind).letters;
+    for (const w of allWeapons(state)) {
+        if (w.phase === 'waiting') continue;
+        const own = w.owner === localId, locked = Boolean(w.owner && !own);
+        ctx.globalAlpha = locked ? .3 : 1;
+        if (w.phase === 'parts') {
+            const letters = weaponRecipe(w.kind).letters;
             ctx.font = `800 8px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            const markers = Array.from(state.pinwheel.parts).map(part => ({ kind: part.kind, x: x + part.x * scale, y: y + part.y * scale, rawX: x + part.x * scale, rawY: y + part.y * scale }));
-            // Spread nearby component labels just enough to remain legible, with tethers to their true positions.
-            for (let pass = 0; pass < 8; pass++) for (let i = 0; i < markers.length; i++) for (let j = i + 1; j < markers.length; j++) {
+            const markers = Array.from(w.parts).map(p => ({ part: p, x: x + p.x * scale, y: y + p.y * scale, rawX: x + p.x * scale, rawY: y + p.y * scale }));
+            if (own) for (let pass = 0; pass < 8; pass++) for (let i = 0; i < markers.length; i++) for (let j = i + 1; j < markers.length; j++) {
                 const a = markers[i], b = markers[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
                 if (d >= 15) continue;
-                const nx = d > 0.01 ? dx / d : Math.cos(j * 2), ny = d > 0.01 ? dy / d : Math.sin(j * 2);
-                const shift = (15 - d) / 2;
+                const nx = d > .01 ? dx / d : Math.cos(j * 2), ny = d > .01 ? dy / d : Math.sin(j * 2), shift = (15 - d) / 2;
                 a.x = Math.max(x + 7, Math.min(x + width - 7, a.x - nx * shift));
                 a.y = Math.max(y + 7, Math.min(y + height - 7, a.y - ny * shift));
                 b.x = Math.max(x + 7, Math.min(x + width - 7, b.x + nx * shift));
                 b.y = Math.max(y + 7, Math.min(y + height - 7, b.y + ny * shift));
             }
-            markers.forEach(part => {
-                const px = part.x, py = part.y;
-                ctx.strokeStyle = 'rgba(220,235,245,.5)'; ctx.lineWidth = 1;
-                ctx.beginPath(); ctx.moveTo(part.rawX, part.rawY); ctx.lineTo(px, py); ctx.stroke();
-                ctx.fillStyle = '#0c1725'; ctx.strokeStyle = colors[part.kind]; ctx.lineWidth = 1.5;
-                ctx.beginPath(); ctx.arc(px, py, 6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-                ctx.fillStyle = colors[part.kind]; ctx.fillText(letters[part.kind], px, py);
-            });
+            for (const { part, x: px, y: py, rawX, rawY } of markers) {
+                if (own) {
+                    ctx.strokeStyle = '#80fff1'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(rawX, rawY); ctx.lineTo(px, py); ctx.stroke();
+                }
+                ctx.fillStyle = '#0c1725'; ctx.strokeStyle = own ? '#80fff1' : '#c1cbdc'; ctx.lineWidth = own ? 2 : 1;
+                ctx.beginPath(); ctx.arc(px, py, own ? 6 : 3, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                if (own && part.carriedBy !== localId) { ctx.fillStyle = '#80fff1'; ctx.fillText(letters[part.kind], px, py); }
+            }
         } else {
-            const wx = x + state.pinwheel.x * scale, wy = y + state.pinwheel.y * scale;
-            ctx.fillStyle = '#ffa8be'; ctx.strokeStyle = '#fff2cf'; ctx.lineWidth = 1.5;
-            ctx.fillRect(wx - 4, wy - 4, 8, 8); ctx.strokeRect(wx - 4, wy - 4, 8, 8);
+            const wx = x + w.x * scale, wy = y + w.y * scale;
+            ctx.fillStyle = own ? '#80fff1' : '#ffa8be'; ctx.fillRect(wx - 3, wy - 3, 6, 6);
         }
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
     }
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
     ctx.font = `600 11px ${FONT}`
     ctx.textAlign = 'right'
     ctx.textBaseline = 'bottom'
@@ -153,14 +154,19 @@ export function drawBanner(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.lineJoin = 'round'
-    ctx.font = `900 ${Math.round(Math.min(34, canvas.width / 14))}px ${FONT}`
+    const fit = (text: string, weight: number, size: number): void => {
+        ctx.font = `${weight} ${size}px ${FONT}`
+        const scale = Math.min(1, (canvas.width - 32) / (Math.max(1, ctx.measureText(text).width) * pop))
+        ctx.font = `${weight} ${size * scale}px ${FONT}`
+    }
+    fit(mode.banner.title, 900, Math.round(Math.min(34, canvas.width / 14)))
     ctx.lineWidth = 6
     ctx.strokeStyle = 'rgba(5, 12, 24, 0.85)'
     ctx.strokeText(mode.banner.title, 0, 0)
     ctx.fillStyle = GOLD
     ctx.fillText(mode.banner.title, 0, 0)
     if (mode.banner.sub) {
-        ctx.font = `800 ${Math.round(Math.min(15, canvas.width / 28))}px ${FONT}`
+        fit(mode.banner.sub, 800, Math.round(Math.min(15, canvas.width / 28)))
         ctx.lineWidth = 4
         ctx.strokeText(mode.banner.sub, 0, 30)
         ctx.fillStyle = '#ffffff'

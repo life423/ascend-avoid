@@ -83,7 +83,7 @@ export function updateInhales(state: GameState, now: number, deltaTime: number) 
       if (prey === eater || prey.state !== PLAYER_STATE.ALIVE || prey.spawnProtected || now < prey.suctionSafeUntil) return;
       const alignment = stealWeight(state, eater, prey);
       if (alignment <= 0) return;
-      // Holding it in the cone builds the lock: a light pull at first, dangerous after a second
+      // A clear tug starts immediately; sustained aim builds toward the strongest pull
       // (a bigger inhaler's airflow takes longer to establish)
       const lock = Math.min(1, (eater.lockOn.get(prey.sessionId) ?? 0) + deltaTime / ((INHALE.LOCK_MS / 1000) * (pressureBuildSeconds(eater.width) / LATCH.PRESSURE_BUILD_S)));
       eater.lockOn.set(prey.sessionId, lock);
@@ -111,7 +111,7 @@ export function updateInhales(state: GameState, now: number, deltaTime: number) 
       // Much stronger in the last stretch before the mouth
       const close = Math.max(0, 1 - gap / (reach * INHALE.CLOSE_RANGE));
       const lockPull = INHALE.LOCK_START + (1 - INHALE.LOCK_START) * lock * lock;
-      const strength = INHALE.BODY_PULL * mass * near * near * (1 + INHALE.CLOSE_BOOST * close) * alignment * lockPull;
+      const strength = INHALE.BODY_PULL * mass * near * (1 + INHALE.CLOSE_BOOST * close) * alignment * lockPull;
       // It never outpaces the creature's own top speed (react early, or slip out of the cone, and you get
       // away)... except close to a mouth big enough to catch it: there the suction rises past its top speed
       // (PREY_PULL_CLOSE at the mouth), so running straight away doesn't save it; still only for what's in
@@ -122,7 +122,10 @@ export function updateInhales(state: GameState, now: number, deltaTime: number) 
         const overpower = speed * (INHALE.PREY_PULL_CAP + (INHALE.PREY_PULL_CLOSE - INHALE.PREY_PULL_CAP) * Math.sqrt(close)) * alignment;
         pullSpeed = Math.max(pullSpeed, overpower);
       }
-      const pull = pullSpeed * deltaTime;
+      const velocity = prey.velocity();
+      const across = Math.min(1, Math.abs(velocity.x * (mouthY - py) - velocity.y * (mouthX - px)) / (d * speed));
+      pullSpeed *= 1 - INHALE.BODY_STRAFE_ESCAPE * across;
+      const pull = Math.min(d, pullSpeed * deltaTime);
       prey.nudge(((mouthX - px) / d) * pull, ((mouthY - py) / d) * pull, state.worldWidth, state.worldHeight);
     });
     fadeLocks(state, eater, locked, deltaTime);
@@ -357,7 +360,7 @@ export function exhale(state: GameState, player: PlayerSchema, now: number) : vo
     if (d < 1e-6 || gap > reach || (ox * fx + oy * fy) / d < cone) return;
     const parried = other.inhaling && stealWeight(state, other, player) > 0;
     if (parried) {
-      player.suctionSafeUntil = now + EXHALE.BREAK_MS;
+      player.suctionSafeUntil = Math.max(player.suctionSafeUntil, now + EXHALE.BREAK_MS);
       other.stopInhale(now);
       other.dropLatch();
       other.lockOn.delete(player.sessionId);
@@ -460,6 +463,20 @@ function clearEscape(captive: PlayerSchema): void {
 
 /** A captive goes free: pushed clear along (ax, ay), and safe from being caught again for a moment */
 function free(state: GameState, captive: PlayerSchema, ax: number, ay: number, now: number, push: number = CANNON.BREAK_PUSH): void {
+  const captor = state.players.get(captive.capturedBy);
+  if (captor) {
+    // Mouth positions are inside large bodies. Start clear, choosing an open side at arena edges.
+    const cx = captor.x + captor.width / 2, cy = captor.y + captor.height / 2;
+    const clearance = (captor.width + captive.width) / 2 + CANNON.RELEASE_CLEARANCE;
+    const angle = Math.atan2(ay, ax), margin = GAME_CONSTANTS.ARENA_RULES.EDGE_MARGIN;
+    for (const turn of [0, Math.PI / 2, -Math.PI / 2, Math.PI]) {
+      const dx = Math.cos(angle + turn), dy = Math.sin(angle + turn);
+      const x = cx + dx * clearance - captive.width / 2, y = cy + dy * clearance - captive.height / 2;
+      if (x < margin || y < margin || x + captive.width > state.worldWidth - margin || y + captive.height > state.worldHeight - margin) continue;
+      captive.placeAt(x, y); ax = dx; ay = dy;
+      break;
+    }
+  }
   captive.capturedBy = "";
   captive.struggle = 0;
   clearEscape(captive);

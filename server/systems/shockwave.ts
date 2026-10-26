@@ -4,8 +4,7 @@ import { sprayGems } from './gems.js';
 import { knockOutWithGems } from './inhale.js';
 
 /** Each expanding wave hits once. Previous radial distance catches players crossing a wave between ticks. */
-export function updateShockwave(state: GameState, dt: number, now: number): void {
-  const w = state.pinwheel;
+export function updateShockwave(state: GameState, dt: number, now: number, w = state.pinwheel): void {
   if (state.time >= w.beatAt) {
     w.pulseAt = state.time; w.beatAt = state.time + SHOCKWAVE.BEAT_MS;
     w.pulseHits.clear();

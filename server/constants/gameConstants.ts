@@ -287,15 +287,16 @@ export const INHALE = {
   ARC: 35, // degrees either side of where you face
   PULL_GEMS: 520, // units a second
   PULL_BOMBS: 420,
-  BODY_PULL: 110, // units a second a creature your own size is pulled at, dead ahead (it builds up: see LOCK_MS)...
+  BODY_PULL: 360, // strong immediate body pull, before size, range, alignment and lock modifiers
   BODY_PULL_MAX: 3, // ...times your width over its (mass, with pull and resistance each growing as the square root of mass), up to this...
+  BODY_STRAFE_ESCAPE: 0.5, // purposeful movement across the airflow can halve body pull; straight retreat remains harder
   PREY_PULL_CAP: 0.9, // ...but never more than this share of its own top speed: react early, or slip out of the cone sideways, and it can get away...
   PREY_PULL_CLOSE: 1.6, // ...except in the close range of a mouth big enough to catch it, where the suction rises past its top speed, to this share at the mouth: running straight away from right in front of a bigger mouth, you're pulled in (sideways out of the cone still escapes)
   EAT_RATIO: 1.3, // you can catch a creature 1.3 times narrower (about 1.7 times lighter)...
   CAPTURE_REACH: 0.35, // ...held this close to your mouth (times your width, plus its radius)...
-  LOCK_MS: 1500, // holding a creature in your inhale builds a lock to full over this long...
+  LOCK_MS: 650, // base time to full pull; larger inhalers still take longer to establish their airflow
   LOCK_DECAY_MS: 350, // ...that fades this fast once it's out of the cone (or you stop), so breaking the cone frees it
-  LOCK_START: 0.25, // body pull starts at this share and grows with the lock squared: a warning, then dangerous, then full
+  LOCK_START: 0.65, // noticeable pull as soon as the cone connects, then stronger with sustained aim
   DRAIN_START: 0.8, // injury theft starts at 80% pressure, then smoothly reaches full; no second long windup
   HOLD_DECAY: 6, // ...and out of the airflow, the time held drains away this many times faster than it built (2s is gone in a third of a second)
   CLOSE_RANGE: 0.25, // the share of the reach nearest the mouth where the pull gets much stronger...
@@ -427,8 +428,9 @@ export const CANNON = {
   ESCAPE_PUSH: 110, // out, it pops from the mouth this hard before the escape shield starts
   ARM_MS: 2800, // base loading includes the 600ms daze; each extra escape input adds 300ms, up to 3.4s
   BREAK_PUSH: 70, // ...pushed this far clear
-  ESCAPE_SAFE_MS: 2000, // after escape/release, block incoming suction, drain and capture
-  LAND_SAFE_MS: 3000, // after any flight, ignore incoming suction and captures while moving clear
+  ESCAPE_SAFE_MS: 4000, // a full four seconds to move clear after escape/release; damage still applies
+  LAND_SAFE_MS: 4000, // same four-second suction/capture recovery after a surviving flight
+  RELEASE_CLEARANCE: 24, // a freed captive starts outside the captor's body rather than inside its mouth
   LAUNCH_SPEED_MIN: 1250, // launch speed (units a second) for a captor just big enough to catch its captive (CAPTURE_RATIO wider)...
   LAUNCH_SPEED_PER_DOUBLING: 300, // ...plus this every time the captor is twice as wide again, relative to its captive...
   LAUNCH_SPEED_MAX: 2000, // ...up to this (reached at LAUNCH_RATIO_CAP times wider)
@@ -580,8 +582,14 @@ export const SHOCKWAVE = {
 export const WEAPON_RECIPES = {
   pinwheel: { name: 'Pinwheel', title: 'PINWHEEL CANNON', parts: ['HUB', 'ROTOR', 'BARREL'], letters: ['H', 'R', 'B'] },
   pulsar: { name: 'Pulsar Array', title: 'PULSAR ARRAY', parts: ['PLASMA CELL', 'FIELD COIL', 'EMITTER'], letters: ['C', 'F', 'E'] },
+  sentinel: { name: 'Sentinel Satellite', title: 'SENTINEL SATELLITE', parts: ['SOLAR WING', 'TRACKER', 'LASER'], letters: ['S', 'T', 'L'] },
+  ricochet: { name: 'Ricochet Satellite', title: 'RICOCHET SATELLITE', parts: ['MIRROR', 'GYRO', 'PULSE GUN'], letters: ['M', 'G', 'P'] },
+  ion: { name: 'Ion Sweeper', title: 'ION SWEEPER', parts: ['ION CELL', 'LENS', 'SWEEP ARM'], letters: ['I', 'L', 'A'] },
+  comet: { name: 'Comet Battery', title: 'COMET BATTERY', parts: ['FUEL POD', 'CHAMBER', 'RAIL'], letters: ['F', 'C', 'R'] },
 } as const;
 export type WeaponKind = keyof typeof WEAPON_RECIPES;
+
+export const WEAPON_FLEET = { SETS: 12, CLAIM_PULSE_MS: 900, ORBIT_MS: 26000, ORBIT_ENTRY_MS: 1800, ION_RANGE: 560, ION_PERIOD_MS: 1800, ION_WARNING_MS: 600, ION_FIRE_MS: 500 } as const;
 
 export const EXHALE = {
   REACH: 160, // the puff reaches this far from the mouth, plus REACH_PER_SIZE times your width (about 200 for a newborn, 450 at 100 gems)

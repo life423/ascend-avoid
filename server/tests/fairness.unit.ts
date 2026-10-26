@@ -31,9 +31,9 @@ function setup() {
   for (const key of b.escapeKeys) escapePress(s, b, key);
   updateHolds(s, s.now);
   assert.equal(b.capturedBy, '');
-  const ends = s.now + 2000;
+  const ends = s.now + CANNON.ESCAPE_SAFE_MS;
   assert.equal(b.recaptureAfter, ends); assert.equal(b.suctionSafeUntil, ends);
-  assert.equal(b.launchSafeUntil, s.time + 2000, 'the existing world-clock ring also shows escape protection');
+  assert.equal(b.launchSafeUntil, s.time + CANNON.ESCAPE_SAFE_MS, 'the existing world-clock ring also shows escape protection');
   const third = s.addPlayer('third', 'Third', s.now); third.spawnProtected = false;
   third.setGems(16, s.worldWidth, s.worldHeight);
   for (const hunter of [a, third]) {

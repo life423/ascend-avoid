@@ -59,9 +59,8 @@ function setup() {
   hub.x = a.x + a.width * 0.8 + 5; hub.y = a.y + a.height / 2;
   updateWeapons(s, 0.1, NOW);
   assert.equal(w.owner, a.sessionId); assert.equal(w.claimUntil, s.time + 18000);
-  const claim = w.claimUntil;
   s.time += 1000; updateWeapons(s, 0.1, NOW + 1000);
-  assert.equal(w.claimUntil, claim, 'holding the same part cannot renew a claim forever');
+  assert.equal(w.claimUntil, s.time + PINWHEEL.CLAIM_MS, 'carrying a piece keeps the matching set reserved');
   a.stopInhale(NOW + 1000);
   a.placeAt(900, 900); a.facing = Math.PI / 2;
   updateWeapons(s, 0.1, NOW + 1000);
@@ -75,7 +74,7 @@ function setup() {
   puffWeaponParts(s, b); updateWeapons(s, 0.1, NOW + 1000);
   assert(hub.x > x + 30 && !hub.carriedBy, 'gusts knock carried pieces loose');
   b.stopInhale(NOW + 1000);
-  s.time = claim; updateWeapons(s, 0.01, NOW + claim);
+  s.time = w.claimUntil; updateWeapons(s, 0.01, NOW + s.time);
   assert.equal(w.owner, ''); assert(w.parts.every(p => p.owner === ''), 'abandoned parts unlock after 18 seconds');
 }
 {

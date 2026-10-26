@@ -21,13 +21,14 @@ export class WeaponBoltSchema extends Schema {
   y = 0;
   angle = 0;
   bornAt = 0;
+  bounces = 0;
 }
 type("number")(WeaponBoltSchema.prototype, "x");
 type("number")(WeaponBoltSchema.prototype, "y");
 type("number")(WeaponBoltSchema.prototype, "angle");
 type("number")(WeaponBoltSchema.prototype, "bornAt");
 
-/** One contested assembly per arena; all deadlines use the world clock. */
+/** One independent weapon set; all deadlines use the world clock. */
 export class PinwheelSchema extends Schema {
   // Keep the existing schema's field order for connected clients; new weapon fields are appended below.
   phase = 'waiting';
@@ -48,6 +49,14 @@ export class PinwheelSchema extends Schema {
   pulseAt = 0;
   pulseHits = new Set<string>();
   pulseDistances = new Map<string, number>();
+  claimedAt = 0;
+  activatedAt = 0;
+  originX = 0;
+  originY = 0;
+  fixedRecipe = false;
+  nextAimAt = 0;
+  spawnX = 0;
+  spawnY = 0;
 }
 type("string")(PinwheelSchema.prototype, "phase");
 type("number")(PinwheelSchema.prototype, "at");
@@ -62,3 +71,7 @@ type({ map: WeaponBoltSchema })(PinwheelSchema.prototype, "bolts");
 type("string")(PinwheelSchema.prototype, "kind");
 type("number")(PinwheelSchema.prototype, "beatAt");
 type("number")(PinwheelSchema.prototype, "pulseAt");
+type("number")(PinwheelSchema.prototype, "claimedAt");
+type("number")(PinwheelSchema.prototype, "activatedAt");
+type("number")(PinwheelSchema.prototype, "originX");
+type("number")(PinwheelSchema.prototype, "originY");

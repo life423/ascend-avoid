@@ -207,15 +207,26 @@ export class OnlineControls {
             ctx.arc(x, y, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0.01, share))
             ctx.stroke()
         }
-        // Just the word, centered on its letters (it flashes red when you're low on breath)
+        // Center the complete label block, including its helper, rather than centering only INHALE.
         ctx.fillStyle = recovering ? 'rgba(255, 255, 255, 0.4)' : low ? breathColor : '#ffffff'
-        ctx.font = `800 ${this.action === 'LOADING' ? 14 : 17}px ${FONT}`
         ctx.textBaseline = 'alphabetic'
-        const word = ctx.measureText(this.action)
-        ctx.fillText(this.action, x, y + (word.actualBoundingBoxAscent - word.actualBoundingBoxDescent) / 2)
-        if (this.action === 'INHALE') {
-            ctx.font = `600 10px ${FONT}`
-            ctx.fillText(this.puffCooldown > 0 ? `PUFF ${this.puffCooldown.toFixed(1)}s` : this.puffNeedsBreath ? 'NEED 35% BREATH' : 'PUFF −35%', x, y + 24)
+        const helper = this.action === 'INHALE' ? this.puffCooldown > 0 ? `PUFF ${this.puffCooldown.toFixed(1)}s` : this.puffNeedsBreath ? 'NEED 35% BREATH' : 'PUFF −35%' : ''
+        const lines = [{ text: this.action, weight: 800, size: this.action === 'LOADING' ? 14 : 17 }, ...(helper ? [{ text: helper, weight: 600, size: 10 }] : [])]
+        const measured = lines.map(line => {
+            ctx.font = `${line.weight} ${line.size}px ${FONT}`
+            const width = ctx.measureText(line.text).width
+            const size = Math.min(line.size, line.size * (2 * r - 24) / Math.max(1, width))
+            const font = `${line.weight} ${size}px ${FONT}`
+            ctx.font = font
+            const metrics = ctx.measureText(line.text)
+            return { ...line, font, metrics, height: metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent }
+        })
+        const gap = helper ? 8 : 0
+        let top = y - (measured.reduce((sum, line) => sum + line.height, 0) + gap) / 2
+        for (const line of measured) {
+            ctx.font = line.font
+            ctx.fillText(line.text, x + (line.metrics.actualBoundingBoxLeft - line.metrics.actualBoundingBoxRight) / 2, top + line.metrics.actualBoundingBoxAscent)
+            top += line.height + gap
         }
         const aim = this.aimVector()
         if (aim) {
