@@ -1,5 +1,5 @@
 import type { MultiplayerMode } from '../core/GameModes'
-import { CANNON, PLAYER_COLORS, SHIFT, WORLD } from '../../server/constants/gameConstants'
+import { CANNON, GEMS, PLAYER_COLORS, SHIFT, WORLD } from '../../server/constants/gameConstants'
 import { drawCreature } from './creatures'
 import { COMPACT, FONT, GOLD, drawCrown, drawRobot, hudPanel, roundedRect } from './style'
 import { JOIN_NOTICE_MS, View } from './shared'
@@ -48,7 +48,7 @@ export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
         if (player.state !== 'alive') return
         const isLocal = sessionId === localId
         const position = isLocal && mode.predicted ? mode.predicted : player
-        const markerRadius = Math.min(8, 1.5 + (player.width / 2) * scale * 2.5)
+        const markerRadius = 2 + 6 * Math.min(1, player.width / (Math.min(state.worldWidth, state.worldHeight) * GEMS.SIZE_MAX_SHARE)) ** .6
         ctx.fillStyle = isLocal ? '#ffffff' : PLAYER_COLORS[player.playerIndex % PLAYER_COLORS.length]
         ctx.beginPath()
         ctx.arc(

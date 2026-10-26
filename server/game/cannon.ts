@@ -40,7 +40,8 @@ export function impactGems(targetGems: number, speed: number, flierWidth: number
   const relativeMass = bodyMass(flierWidth) / Math.max(GEMS.BASE_MASS, bodyMass(targetWidth));
   const pace = clamp(speed / CANNON.IMPACT_SPEED_REF, 0.65, 1.15);
   const share = CANNON.IMPACT_MAX_SHARE * relativeMass / (relativeMass + CANNON.IMPACT_MASS_PIVOT);
-  return Math.min(targetGems, Math.max(1, Math.round(targetGems * Math.min(CANNON.IMPACT_MAX_SHARE, share * pace))));
+  const energy = CANNON.IMPACT_BASE_GEMS * relativeMass / (relativeMass + 1);
+  return Math.min(targetGems, Math.max(1, Math.round(Math.min(targetGems * CANNON.IMPACT_MAX_SHARE, (targetGems * share + energy) * pace))));
 }
 
 /** One flight step. Player-fired missiles supply zero steering; turbine throws allow lateral input. */

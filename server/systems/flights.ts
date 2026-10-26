@@ -110,7 +110,7 @@ function spendMissileMass(state: GameState, player: PlayerSchema, now: number): 
   const x = player.x + player.width / 2, y = player.y + player.height / 2;
   if (lost > 0) {
     player.setGems(kept, state.worldWidth, state.worldHeight);
-    sprayGems(state, x, y, lost, now, player.sessionId);
+    sprayGems(state, x, y, lost, now, player.sessionId, player.flightKind === 'missile' ? GAME_CONSTANTS.GEMS.MISSILE_OWNER_PICKUP_DELAY_MS : GAME_CONSTANTS.GEMS.OWNER_PICKUP_DELAY_MS);
   }
   if (player.flightKind === 'missile' && kept === 0) {
     state.credit(player, 'cannon', now, player.launchedBy, { out: true });

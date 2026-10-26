@@ -7,7 +7,7 @@ const { GameState } = require('../server/dist/schema/GameState.js');
 const { PlayerSchema } = require('../server/dist/schema/PlayerSchema.js');
 const { BotBrain } = require('../server/dist/game/bots.js');
 const { spawnWeapon } = require('../server/dist/systems/weapons.js');
-const { GEMS, PINWHEEL, SHOCKWAVE } = require('../server/dist/constants/gameConstants.js');
+const { CANNON, GEMS, PINWHEEL, SHOCKWAVE } = require('../server/dist/constants/gameConstants.js');
 
 const options = Object.fromEntries(process.argv.slice(2).map(arg => { const at = arg.indexOf('='); return [arg.slice(2, at), arg.slice(at + 1)]; }));
 const seconds = Number(options.seconds || 600), seeds = (options.seeds || '11,29,73').split(',').map(Number);
@@ -103,6 +103,7 @@ function arena(seed, scenario) {
     s.brains.set(probe.sessionId, new BotBrain());
     assert.equal(s.players.size, 20);
     const deaths = {}, damage = {}, last = new Map(), milestones = {}, activeSeconds = {}, deployments = {}, samples = [];
+    const lives = [], living = new Map(), deathsByWidth = { below150: 0, from150To500: 0, atLeast500: 0 };
     let previousWeaponPhase = '';
     const leaders = []; let currentLeader = '', tenure = 0, maxTenure = 0, decay = 0, giantSeconds = 0, mostGiants = 0;
     let captures = 0, launches = 0, probeLeaderSeconds = 0, above750 = 0, max = initial, firstBelow750 = null;
@@ -119,10 +120,27 @@ function arena(seed, scenario) {
       s.update(DT, setClock(tick * 1000 / 30));
       s.players.forEach((p, id) => {
         const was = last.get(id) || { state: 'alive', captured: false, flying: false };
-        if (p.state === 'dead' && was.state === 'alive') { allDeaths++; if (id === probe.sessionId) probeDeaths++; }
+        let life = living.get(id);
+        if (!life || (was.state === 'dead' && p.state === 'alive')) {
+          life = { id, at: s.time, first100Seconds: null, first500WidthSeconds: null, maxWidth: 0, secondsAt500Width: 0, current500Streak: 0, longest500Streak: 0 };
+          living.set(id, life);
+        }
+        if (p.state === 'alive') {
+          life.maxWidth = Math.max(life.maxWidth, p.width);
+          if (p.gems >= 100 && life.first100Seconds === null) life.first100Seconds = Math.round((s.time - life.at) / 1000);
+          if (p.width >= 500) {
+            if (life.first500WidthSeconds === null) life.first500WidthSeconds = Math.round((s.time - life.at) / 1000);
+            life.secondsAt500Width += DT; life.current500Streak += DT; life.longest500Streak = Math.max(life.longest500Streak, life.current500Streak);
+          } else life.current500Streak = 0;
+        }
+        if (p.state === 'dead' && was.state === 'alive') {
+          allDeaths++; if (id === probe.sessionId) probeDeaths++;
+          deathsByWidth[was.width >= 500 ? 'atLeast500' : was.width >= 150 ? 'from150To500' : 'below150']++;
+          lives.push({ ...life, seconds: Math.round((s.time - life.at) / 1000), endedByKnockout: true });
+        }
         if (p.capturedBy && !was.captured) captures++;
         if (p.flying && !was.flying) launches++;
-        last.set(id, { state: p.state, captured: Boolean(p.capturedBy), flying: p.flying });
+        last.set(id, { state: p.state, captured: Boolean(p.capturedBy), flying: p.flying, width: p.width });
       });
       max = Math.max(max, probe.gems);
       elapsedSeconds = tick / 30; maxWidth = Math.max(maxWidth, probe.width);
@@ -141,16 +159,17 @@ function arena(seed, scenario) {
         if (previousWeaponPhase !== 'active') deployments[s.pinwheel.kind] = (deployments[s.pinwheel.kind] || 0) + 1;
       }
       previousWeaponPhase = s.pinwheel.phase;
-      if (tick % 1800 === 0) samples.push({ seconds: tick / 30, probe: probe.gems, leader: leader?.gems ?? 0, deaths: allDeaths, giantsAt500Width: giants });
+      if (tick % 1800 === 0) samples.push({ seconds: tick / 30, probe: probe.gems, leader: leader?.gems ?? 0, deaths: allDeaths, giantsAt500Width: giants, fieldCrystals: s.fieldGems, population: [...s.players.values()].map(p => ({ gems: p.gems, width: p.width, state: p.state })) });
       if (probe.width >= s.worldWidth * stopWidthShare) break;
     }
     if (currentLeader) leaders.push({ id: currentLeader, seconds: Math.round(tenure) });
+    for (const [id, life] of living) if (s.players.get(id)?.state === 'alive') lives.push({ ...life, seconds: Math.round((s.time - life.at) / 1000), endedByKnockout: false });
     assert.equal(s.players.size, 20); assert(Number.isFinite(probe.gems) && probe.gems >= 0);
-    return { seed, scenario, seconds: elapsedSeconds, requestedSeconds: seconds, initial, probe: { final: probe.gems, max, maxWidth, deaths: probeDeaths, decayGems: decay, stolen: probe.stolenTotal, robbed: probe.robbedTotal, incomingCreditedDamage: damage, firstBelow750, secondsAbove750: Math.round(above750), leaderSeconds: Math.round(probeLeaderSeconds), milestones }, arena: { actualDeaths: allDeaths, creditedKnockouts: deaths, captures, launches, meanGiantsAt500Width: Number((giantSeconds / elapsedSeconds).toFixed(2)), mostGiantsAt500Width: mostGiants, finalGiantsAt500Width: [...s.players.values()].filter(p => p.state === 'alive' && p.width >= 500).length, finalPopulation: [...s.players.values()].map(p => ({ gems: p.gems, width: p.width })), leaderChangesAt100PlusGems: Math.max(0, leaders.length - 1), longestLeaderTenureAt100PlusGems: Math.round(maxTenure), biggestFinalPlayer: Math.max(...[...s.players.values()].map(p => p.gems)), weaponPhase: s.pinwheel.phase, deployments, weaponActiveSeconds: Object.fromEntries(Object.entries(activeSeconds).map(([kind, time]) => [kind, Math.round(time)])) }, samples };
+    return { seed, scenario, seconds: elapsedSeconds, requestedSeconds: seconds, initial, probe: { final: probe.gems, max, maxWidth, deaths: probeDeaths, decayGems: decay, stolen: probe.stolenTotal, robbed: probe.robbedTotal, incomingCreditedDamage: damage, firstBelow750, secondsAbove750: Math.round(above750), leaderSeconds: Math.round(probeLeaderSeconds), milestones }, arena: { actualDeaths: allDeaths, deathsByPreKnockoutWidth: deathsByWidth, creditedKnockouts: deaths, captures, launches, meanGiantsAt500Width: Number((giantSeconds / elapsedSeconds).toFixed(2)), mostGiantsAt500Width: mostGiants, finalGiantsAt500Width: [...s.players.values()].filter(p => p.state === 'alive' && p.width >= 500).length, finalPopulation: [...s.players.values()].map(p => ({ gems: p.gems, width: p.width })), leaderChangesAt100PlusGems: Math.max(0, leaders.length - 1), longestLeaderTenureAt100PlusGems: Math.round(maxTenure), biggestFinalPlayer: Math.max(...[...s.players.values()].map(p => p.gems)), weaponPhase: s.pinwheel.phase, deployments, weaponActiveSeconds: Object.fromEntries(Object.entries(activeSeconds).map(([kind, time]) => [kind, Math.round(time)])) }, lives: lives.map(life => ({ ...life, current500Streak: Math.round(life.current500Streak), secondsAt500Width: Math.round(life.secondsAt500Width), longest500Streak: Math.round(life.longest500Streak) })), samples };
   });
 }
 
-const report = { generatedAt: new Date().toISOString(), mechanics: options.label || 'working tree', methodology: { tickHz: 30, seededRandomAndClock: true, arenaSecondsPerRun: seconds, stopAtWidthShare: Number.isFinite(stopWidthShare) ? stopWidthShare : null, growthScale: GEMS.GROWTH_SCALE, growthExponent: GEMS.GROWTH_EXPONENT, decayStart: GEMS.DECAY_START, decayRate: GEMS.DECAY_RATE, seeds, scenarios, probeController: 'existing fallible BotBrain; roles retain their current shared gameplay rules; no human skill or subjective fun is inferred', weaponsInArena: 'ordinary recipe spawns, pickup and placement by the current AI; activation is counted', decay: 'actual PlayerSchema.decay, no combat or collecting', weaponExposure: 'actual full world update; idle/radial/sideways/warning escape, open arena/wall, with/without spilled gem recovery; contested cases add an unopposed builder following/inhaling', creditedKnockouts: 'missile-target versus spent-missile distinguished; state-transition death count is separate; missing milestones mean not reached' } };
+const report = { generatedAt: new Date().toISOString(), mechanics: options.label || 'working tree', methodology: { tickHz: 30, seededRandomAndClock: true, arenaSecondsPerRun: seconds, stopAtWidthShare: Number.isFinite(stopWidthShare) ? stopWidthShare : null, initialFieldCrystals: GEMS.FIELD_COUNT, fieldReplenishPerSecond: GEMS.FIELD_REPLENISH_PER_S, growthMassPerGem: GEMS.GROWTH_MASS_PER_GEM, missileBaseGems: CANNON.IMPACT_BASE_GEMS, ownerPickupDelayMs: GEMS.OWNER_PICKUP_DELAY_MS, missileOwnerPickupDelayMs: GEMS.MISSILE_OWNER_PICKUP_DELAY_MS, growthScale: GEMS.GROWTH_SCALE, growthExponent: GEMS.GROWTH_EXPONENT, decayStart: GEMS.DECAY_START, decayRate: GEMS.DECAY_RATE, seeds, scenarios, probeController: 'existing fallible BotBrain; roles retain their current shared gameplay rules; no human skill or subjective fun is inferred', weaponsInArena: 'ordinary recipe spawns, pickup and placement by the current AI; activation is counted', decay: 'actual PlayerSchema.decay, no combat or collecting', weaponExposure: 'actual full world update; idle/radial/sideways/warning escape, open arena/wall, with/without spilled gem recovery; contested cases add an unopposed builder following/inhaling', creditedKnockouts: 'missile-target versus spent-missile distinguished; state-transition death count is separate; missing milestones mean not reached' } };
 if (section !== 'arena') {
   report.decay = decayControls(); report.weaponExposure = [];
   for (const gems of [12, 100, 1000, 5000]) for (const location of ['open', 'wall']) for (const response of ['idle', 'radial-escape', 'sideways-escape', 'warning-escape']) {

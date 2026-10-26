@@ -3,7 +3,7 @@ import { GameState } from '../schema/GameState.js';
 import { PlayerSchema } from '../schema/PlayerSchema.js';
 import { creatureSize } from '../game/creatureSize.js';
 import { impactGems, missileMassAfterImpact } from '../game/cannon.js';
-import { collectGems, topUpField } from '../systems/gems.js';
+import { collectGems, sprayGems, topUpField } from '../systems/gems.js';
 import { CameraRig } from '../game/camera.js';
 
 const NOW = 100000;
@@ -11,7 +11,7 @@ function empty() {
   const s = new GameState(0); s.botFill = 0; s.surgesOn = false; s.weaponsOn = false; s.setTurbines('off'); s.update(0, NOW); return s;
 }
 for (const gems of [0, 1, 4, 12, 40]) {
-  assert.equal(creatureSize(gems), Math.round(20 * Math.sqrt(1 + gems / 2) * 2) / 2, 'the opening pickups preserve their original reward');
+  assert.equal(creatureSize(gems), Math.round(20 * Math.sqrt(1 + gems * .75 / 2) * 2) / 2, 'opening pickups use 25% less physical mass while keeping gem value');
 }
 let previous = 0;
 for (const gems of [0, 100, 1000, 1980, 1983, 2000, 5000, 10000, 30000, 100000, 1000000, 1e12]) {
@@ -60,7 +60,6 @@ for (const role of [false, true]) {
   assert.equal(s.gems.size, 0, 'a fully occupied map waits for room instead of using an unsafe fallback spawn');
   assert.equal(s.fieldGemTarget, 950, 'waiting for free space does not silently lower the field target');
 }
-console.log('Growth-bound regressions passed: unchanged early growth, uncapped score, finite late bodies, physical missile cost, safe replenishment and no stationary self-farming.');
 {
   const s = empty(); s.fieldGemTarget = 950; topUpField(s);
   assert.equal(s.fieldGems, 30, 'ordinary replenishment has at most one second of shared spawn credit');
@@ -72,3 +71,15 @@ console.log('Growth-bound regressions passed: unchanged early growth, uncapped s
   assert.equal(s.fieldGems, 30, 'an idle full field cannot bank an enormous later burst');
   assert.equal(new GameState().fieldGems, 950, 'a fresh arena still starts fully stocked');
 }
+{
+  const s = empty(); s.fieldGemTarget = 950; s.fieldReplenishCredit = 0;
+  for (let tick = 1; tick <= 300; tick++) s.update(1 / 30, NOW + tick * 1000 / 30);
+  assert(s.fieldGems >= 299 && s.fieldGems <= 300, 'the real world loop replenishes at the shared rate over ten seconds');
+  const credit = s.fieldReplenishCredit, before = s.gems.size, field = s.fieldGems;
+  const value = [...s.gems.values()].reduce((n, g) => n + g.value, 0);
+  sprayGems(s, 2100, 2100, 120, NOW + 10000);
+  assert.equal(s.fieldReplenishCredit, credit, 'combat spills do not spend background refill credit');
+  assert.equal(s.fieldGems, field, 'combat crystals are separate from the background field');
+  assert(s.gems.size > before && [...s.gems.values()].reduce((n, g) => n + g.value, 0) === value + 120, 'a full-value combat spill remains available during limited field replenishment');
+}
+console.log('Growth-bound regressions passed: measured opening, uncapped score, bounded bodies, physical missile cost, safe shared replenishment and conserved combat spills.');

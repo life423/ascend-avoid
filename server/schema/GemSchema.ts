@@ -118,10 +118,10 @@ class GemSchema extends Schema {
   }
 
   /** Burst outward from a hit: it slides out, can't be grabbed for a moment, and vanishes if nobody does */
-  spray(angle: number, speed: number, now: number, owner = ""): void {
+  spray(angle: number, speed: number, now: number, owner = "", ownerDelayMs: number = GEMS.OWNER_PICKUP_DELAY_MS): void {
     this.sprayed = true;
     this.owner = owner;
-    this.ownerPickupAt = now + GEMS.OWNER_PICKUP_DELAY_MS;
+    this.ownerPickupAt = now + ownerDelayMs;
     this.locked = owner !== "";
     this.vx = Math.cos(angle) * speed;
     this.vy = Math.sin(angle) * speed;

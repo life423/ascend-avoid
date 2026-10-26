@@ -103,8 +103,9 @@ export const GEMS = {
   FIELD_REPLENISH_PER_S: 30, // shared arena resource flow, rather than an unlimited reward for sweeping faster
   RADIUS: 9,
   // creatureSize converts banked gems to physical mass; late growth tapers to fit a finite arena.
-  BASE_MASS: 2, // a newborn body's mass; opening width = PLAYER_SIZE x sqrt(1 + gems / this)
+  BASE_MASS: 2, // newborn body mass; opening width = PLAYER_SIZE x sqrt(1 + gems * GROWTH_MASS_PER_GEM / this)
   GROWTH_OPENING_GEMS: 40, // keep the opening rewarding, then increase the crystal cost of visible size
+  GROWTH_MASS_PER_GEM: 0.75, // 25% less physical growth per banked gem; score/value are unchanged
   GROWTH_SCALE: 600, // diminishing late size gains; every player keeps the same uncapped gem total
   GROWTH_EXPONENT: 0.8, // retain useful size differences between established rivals, rather than flattening them logarithmically
   SIZE_SOFT_START_SHARE: 0.15, // normal growth until diameter reaches 15% of the shorter map side
@@ -120,7 +121,8 @@ export const GEMS = {
   SPRAY_PICKUP_DELAY_MS: 350, // they fly out before anyone can grab them
   SPRAY_LIFETIME_MS: 15000, // uncollected sprayed gems vanish
   HIT_RECOVERY_MS: 800, // after a hit you skid and blink: traffic passes through you and you can't hop
-  OWNER_PICKUP_DELAY_MS: 1500, // your own spilled gems wait this long for you, so whoever caused it gets first crack
+  OWNER_PICKUP_DELAY_MS: 3000, // a damaging hit leaves a usable contest window before its victim can reclaim the spill
+  MISSILE_OWNER_PICKUP_DELAY_MS: 6000, // spent ammunition cannot regrow from its own spill during the landing shield
   DECAY_START: 300, // the opening has no upkeep; only excess gems shed, identically for every role
   DECAY_RATE: 0.001, // gentle shared upkeep: 0.1% of the excess/second; no bot-only tax
   MAX_GEMS: 2000, // cap on gems in the world at once (the field, plus room for combat sprays)
@@ -442,8 +444,9 @@ export const CANNON = {
   STEER: 520, // turbine throws only: lateral steering acceleration; player-fired missiles ignore input
   LAUNCHER_GRACE_MS: 300, // a projectile can't hit its launcher this soon
   IMPACT_SPEED_REF: 1250,
-  IMPACT_MASS_PIVOT: 2.4, // equal physical mass costs 25%; heavier ammunition can finish smaller targets
-  IMPACT_MAX_SHARE: 0.85, // ceiling, not a damage floor; normal equal-mass hits remove about 25%
+  IMPACT_MASS_PIVOT: 2.4, // the percentage component costs 25% at equal physical mass, before bounded impact energy
+  IMPACT_BASE_GEMS: 80, // bounded impact energy matters to small/midgame targets; tiny-to-giant hits remain chips
+  IMPACT_MAX_SHARE: 0.85, // ceiling, never a floor; tiny shots cannot erase most of a giant's progress
   IMPACT_KO_GEMS: 12, // heavily damaged targets below this mass are knocked out and return at a fresh spawn
   BURNUP_GEMS: 12, // a smaller player-fired missile also burns up at flight end if it misses
   MISSILE_WIDTH_KEEP: 0.1, // the missile player keeps one tenth of their width after impact, floored at newborn size

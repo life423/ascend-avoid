@@ -1,37 +1,53 @@
-# Balance checkpoint — October 25, 2026
+# Balance validation — October 26, 2026
 
-Status: saved at the user's request to stop for sleep. Work is on feature/equal-player-rules; this is not a shipped or fully validated balance release. Main remains the verified PR #44 release.
+Status: local trial on feature/equal-player-rules, draft PR #45. Main/hosted release remain unchanged while the user evaluates the revised feel. The October 25 sleep checkpoint was commit 5f3cea3. No claim of ideal rarity, hours-long human survival or proven fun is made.
 
-## Implemented on this branch
+## Current rules
 
-- Identical bot/human growth, upkeep, movement, breath, damage, capture, escape protection, pickup, claims and deployment rules. Bot decisions retain delayed reactions, fallible escape input and imperfect committed aim.
-- Bots keep gathering beyond 30 gems, collect/carry both weapon recipes and place them using the ordinary system. They select worthwhile ammunition and shots that can threaten a target.
-- Safe field replenishment excludes padded live pickup boxes and waits if no position is available. No under-body fallback. Late body size approaches 30% of the shorter map side; gem totals remain uncapped.
-- First 40 pickups unchanged. Later physical growth uses scale 600 and power 0.8, preserving useful size differences between established rivals. Pre-impact physical body mass drives missile damage and missile shrinkage uses the inverse growth curve.
-- Camera guards sudden growth, extreme score labels stay compact, names truncate without squeezing, minimap dots cannot hide landmarks and large pickup amounts do not queue thousands of animations. No new pinned UI.
-- Latest economy trial: initial field 950; subsequent refill at most 30 crystals/second arena-wide, with one second maximum stored credit. Spills retain their value and are outside this refill budget. Shared upkeep is the original gentle human rate: 0.1%/second of gems above 300.
+Bots and humans share growth, upkeep, movement, breath, damage, capture/escape, shields, component pickup, claims and weapon access. Bot decisions retain delayed reactions, fallible escape input and imperfect committed aim. Bots gather at every size and assemble/carry/place both recipes through shared systems.
 
-## Evidence so far
+A new arena starts with 950 background crystals. Subsequent replenishment is limited to 30/second arena-wide, with at most one second of stored credit, safe spacing and no live pickup-box fallback. Combat spills are outside this refill budget and conserve value. Scores remain uncapped. Shared upkeep remains the former gentle human rate: 0.1%/second of gems above 300, with no bot-only tax.
 
-Production builds, type/schema checks and 13 isolated multiplayer scenarios passed before the last refill-budget edit. Ten unit suites cover parity, real AI assembly of both recipes, safe replenishment, body bounds, early reward, visible capture advantage and physical missile cost. The checkpoint unit log records the final refill-budget assertions.
+The user tried the 3190 preview and reported growth was too quick and the climb too safe. The revised 3192 trial converts each banked gem to 25% less physical growth mass. The scale-600, exponent-0.8 later curve preserves useful size differences, and extreme body diameter approaches 30% of the shorter map side. One/40/100/300/1000 gems currently produce width 23.5/80/123.5/209.5/368. Currency and score are unchanged.
 
-Seven Chromium/WebKit profiles covered desktop, phone, tablet and landscape. The last rendered growth/injury/AI matrix passed 49/49 without retries, before the refill-budget edit. Earlier coverage also passed capture/escape, weapon contact/inhale pickup, E/touch placement, gust, fan fit, burnup and field spacing. A zero-duration test protection race was corrected in the nonproduction setup hook. Lint has zero errors and 164 existing warnings. Firefox cannot launch on this Windows host; physical devices, assistive technology and fresh Core Web Vitals were not measured.
+Missile damage retains the relative physical mass curve, adds bounded energy of 80*r/(r+1) before the bounded speed modifier, and caps damage at 85% of current target gems. Equal-ammunition reference cases finish initially 40/100/300-gem targets in one/two/three clean hits without recovery. Actual swept two/three-hit tests verify the latter cases, value conservation and knockout behavior. Tiny fan/player shots still chip giants and open five-second injury; the controlled small-shot/two-thief case preserves at least 95% of 1000-gem target progress.
 
-Historical seeded tests exposed important failures: bot-only upkeep was far stronger than human upkeep; unchecked field collection/replenishment produced bodies wider than the world; a purely logarithmic growth curve compressed established rivals into nearly equal bodies. Raising shared upkeep alone either allowed late crowding or flattened the climb. Those trials are not proof of the final economy.
+Ordinary owners wait three seconds before reclaiming their own damage spill. Player-fired ammunition waits six seconds for its own spent-mass spill, outlasting landing suction protection. Rivals retain the ordinary 350ms pickup opportunity, value is conserved and the delay expires. The 90% missile width cost uses the inverse growth curve. Spawn/escape/landing shields, gust, 600ms daze, loading and two-second respawn were not shortened or removed. Suction recovery is not projectile immunity; the 1.2-second hit grace is shorter than capture loading.
 
-With power growth and unlimited refill, a one-hour seed-11 trial at 0.25% excess upkeep still ended with 15 bodies at least 500 units wide, including 13 at least 800. This failed the rarity goal despite bounded dimensions and more small/medium knockouts. The latest refill budget addresses this supply feedback directly and restores gentler upkeep. Its long arena runs were stopped for sleep; no result is claimed.
+## Findings and limits
 
-Raw JSON, logs and screenshots remain in C:/Users/aiand/Documents/Codex/2026-10-24/lets/work. Rejected trial filenames include rare-giants-*, selected-rare-giants-*, and progression-final-*. The interrupted final-budget runs are economy-final-hour and economy-final-seeds; absent JSON means incomplete. Do not present earlier trial results as current release measurements.
+The pre-feedback capped economy performed much better than unlimited replenishment: one-hour seed 11 ended with two width-500+ creatures and a 2222-second uninterrupted lead. A separate one-hour seed 29 tracked two creatures at width 500+ for about 55 minutes, plus a third that reached that tier and was later knocked out. These are AI runs, not human skill/feel measurements.
 
-## Resume next
+The user's live feedback still found that build too quick and forgiving. The current revised trial has mixed results:
 
-1. Read GAME_LOOP.md, GAME_DESIGN.md and TODO.md, inspect this branch and the latest unit log, and preserve the two pre-existing duplicate files that were never part of this work.
-2. Build and run scripts/balance-playtest.cjs against the current compiled server: one-hour seed 11 and 20-minute seeds 29,73, then a same-input human/bot role flip and the controlled decay/weapon scenarios. Inspect full time series, not only averages or a chosen width threshold.
-3. Assess population size distribution, meaningful leader size advantage, lifetime/knockouts at small and medium sizes, time to capability, weapon use, surviving progress after ordinary attacks and sustainable giant play. Two or three giants per 20 is a target, not a mechanical quota. Do not keep adding passive upkeep to compensate for unlimited resource flow.
-4. Rerun final builds, types, schema, unit/network checks and affected browser checks after any changes; inspect rendered phone/tablet/desktop states. The refill-budget edit has not had its full release verification yet.
-5. Update these docs with exact final parameters and honest measurements. Obtain green CI for the final commit before merging. Deployment and hosted phone/desktop smoke follow merge. No merge is authorized by a passing test on an earlier candidate.
-6. Real multiplayer playtesting remains necessary to judge enjoyment, replay appeal and whether friends create memorable rivalries. Hours-long giant survival and ideal rarity remain unproven. Do not add pressure mechanics or pinned milestone UI.
+| Run | Target knockouts before → current | Spent-ammunition knockouts before → current | Current final width-500+ count |
+| --- | ---: | ---: | ---: |
+| 20 min, seed 29 | 35 → 60 | 159 → 147 | 2 |
+| 20 min, seed 73 | 33 → 53 | 124 → 127 | 3 |
+| 60 min, seed 11 | 143 → 130 | 477 → 452 | 5 |
 
-## UI review at this checkpoint
+The hour-long current run still leaves five giants, with roughly 47–55-minute giant streaks and no observed giant knockout. Its five largest final widths are about 859/856/798/760/655, followed by 178. This is a clear useful size hierarchy, but the initial two/three-giant target is not consistently achieved. It is never a hard role quota. Do not cherry-pick the two shorter runs or treat giant survival as proof of immortality. A fixed width threshold also changes meaning with growth tuning; judge distributions and decisions as well as counts. The changed physical curve makes cross-build deaths-by-width counts unsuitable as a standalone comparison.
 
-Conservative internal heuristics, not measured quality scores: hierarchy 8/10, usability 8/10, accessibility 7/10, consistency 8/10, responsiveness 8/10, feedback 8/10, performance 7/10. The rendered extreme-score state keeps faces and controls visible and fixed the squeezed names/oversized minimap dots. Priorities below 9: first assess human touch/keyboard play and assistive-technology access; then reduce competing transient combat effects in crowded encounters and check world-label readability at extreme zoom; measure production responsiveness before further visual polish. Do not redesign the established space theme or add persistent instructional UI to chase these scores.
+Low target lethality and rapid owner spill recovery were concrete issues: the earlier 100/300-gem reference cases required five/six constant-ammunition hits without any recovery, and owners could reclaim after 1.5 seconds. Most observed deaths were spent ammunition, which obscured actual target mortality. The latest tests distinguish those causes. Minimap markers also exaggerated giant prevalence by reaching maximum radius at roughly 100 gems; their current 2–8px scale spans the whole bounded physical size range.
+
+## Verification
+
+- Current production client/server builds, both type checks, schema synchronization and all ten unit suites pass.
+- All 13 real-network multiplayer scenarios pass.
+- All 105 affected browser cases pass without retries across Chromium/WebKit desktop, iPhone portrait/landscape, Android phone, iPad and Android tablet.
+- Same-input, same-seed human/bot role-flip results are identical, including lifetimes. The same game systems process damage, shields, resources and deployment.
+- Added regression coverage verifies ten seconds of actual world-loop replenishment, no stored idle refill burst, conserved spills outside the refill budget, finite owner recovery delays, protected respawn and real swept midgame finishing hits through suction recovery.
+- Rendered phone capture, tablet/desktop extreme growth, markers, scores, injury/healing, weapon cargo/place, knockout/respawn and fan states were inspected. Faces remain clear and tested camera/canvas states stay inside the full viewport/map.
+- Lint has zero errors and 164 existing warnings. Firefox cannot launch on this Windows host. Physical devices, assistive technology and fresh production Core Web Vitals remain unmeasured.
+
+Raw logs/JSON/screenshots are in C:/Users/aiand/Documents/Codex/2026-10-24/lets/work with resume-* (before user feedback) and climb-* (current trial) prefixes. The combined report is outputs/ascend-avoid-balance-evidence.json in the chat workspace. Historical rare-giants-*, selected-* and progression-* experiments are rejected/superseded measurements, not evidence for this trial. Reproduce with npm run build:server, then scripts/balance-playtest.cjs: arena seconds=3600 seed=11 or seconds=1200 seeds=29,73; controls and same-seed human-giant/bot-giant modes are separate. This uses the actual GameState at 30Hz with a seeded clock/random source and the existing fallible AI for every controller.
+
+## Next decision
+
+The user is evaluating http://localhost:3192/?playtest=climb-combat; 3190 contains the prior rules. Verify that the smaller physical gains, more decisive hits and delayed spill recovery feel better before calling balance settled. Keep rare, durable giants, meaningful midgame setbacks and comeback opportunities as the goal. No new pinned messages, hidden bot handicaps, forced giant turnover or pressure mechanics.
+
+Further work: assess approach-to-giant mortality and purposeful rival/weapon fights, especially where a few giants monopolize resources; review repeated Pulsar exposure and recovery; use several real humans to judge enjoyment and replay/friend appeal. Existing anti-chain recovery is not blanket invulnerability. Black holes and new weapons remain later design work. Final green CI is required before any merge, followed by deployment and hosted phone/desktop verification; latest user feedback must remain part of that decision.
+
+## UI critique
+
+Conservative internal heuristics, not measured quality ratings: hierarchy 8, usability 8, accessibility 7, consistency 8, responsiveness 8, feedback 8, performance 7 out of 10. Corrected compressed names, oversized dots and extreme-score overflow. Remaining priorities: real touch/keyboard/assistive-technology play; reduce competing transient effects in dense battles and check labels at extreme zoom; measure production responsiveness. Preserve the space theme and arena-first layout rather than adding overlays to chase scores.

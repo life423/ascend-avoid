@@ -1,13 +1,15 @@
 import { ARENA_RULES, GEMS, WORLD } from '../constants/gameConstants.js';
 
-/** Banked gems convert to physical growth progressively; the first pickups keep their original reward. */
+/** Banked gems convert to physical growth progressively, with a gentler opening and uncapped score. */
 export function growthMass(gems: number): number {
   const opening = GEMS.GROWTH_OPENING_GEMS;
-  return gems <= opening ? Math.max(0, gems) : opening + GEMS.GROWTH_SCALE / GEMS.GROWTH_EXPONENT * Math.expm1(GEMS.GROWTH_EXPONENT * Math.log1p((gems - opening) / GEMS.GROWTH_SCALE));
+  const mass = gems <= opening ? Math.max(0, gems) : opening + GEMS.GROWTH_SCALE / GEMS.GROWTH_EXPONENT * Math.expm1(GEMS.GROWTH_EXPONENT * Math.log1p((gems - opening) / GEMS.GROWTH_SCALE));
+  return mass * GEMS.GROWTH_MASS_PER_GEM;
 }
 
 /** Inverse for spending physical growth, so a tapered giant still shrinks when used as ammunition. */
 export function gemsForGrowthMass(mass: number): number {
+  mass /= GEMS.GROWTH_MASS_PER_GEM;
   const opening = GEMS.GROWTH_OPENING_GEMS;
   return mass <= opening ? Math.max(0, mass) : opening + GEMS.GROWTH_SCALE * Math.expm1(Math.log1p((mass - opening) * GEMS.GROWTH_EXPONENT / GEMS.GROWTH_SCALE) / GEMS.GROWTH_EXPONENT);
 }

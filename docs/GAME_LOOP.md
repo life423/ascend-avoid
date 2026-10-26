@@ -33,3 +33,7 @@ The user approved starting with missile damage and theft to reward giant growth 
 - Validate tiny/medium/giant matchups, repeated damage plus multiple thieves, fan comeback shots and gust escapes. A giant should retain most progress after an ordinary small attack and have time to react; defeating one should require sustained commitment, a substantial rival or a carefully prepared threat. Do not add pinned vulnerability labels or new controls for these changes.
 
 The first pass above is historical. The subsequent approved parity/runaway-growth pass removes bot-only upkeep and weapon restrictions, excludes live pickup boxes from field replenishment, tapers later physical growth and updates AI combat choices. Deployed-weapon damage changes remain proposals. See GAME_DESIGN.md for current implemented rules and TODO.md for pending work.
+
+## October 26 playtest steering
+
+The user found opening growth too quick and wanted more danger before becoming enormous. The current trial gives each gem 25% less physical growth, makes substantial missile hits more decisive for small/midgame targets and prevents rapid recovery of one's own damage/spent-missile spills. Short escape/respawn protections and giant resistance to tiny attacks remain. The middle stage must involve real setbacks and comeback decisions; rarity should emerge from the climb and resource competition, without forced giant turnover or weaker bots. Current results remain mixed and human feel is still under review; see BALANCE_VALIDATION.md.

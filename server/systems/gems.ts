@@ -128,7 +128,7 @@ export function collectGems(state: GameState, player: PlayerSchema, now: number,
 }
 
 /** Burst gems outward from a point, spread around the circle; big piles make bigger gems */
-export function sprayGems(state: GameState, centerX: number, centerY: number, total: number, now: number, owner = "") : void {
+export function sprayGems(state: GameState, centerX: number, centerY: number, total: number, now: number, owner = "", ownerDelayMs: number = GEMS.OWNER_PICKUP_DELAY_MS) : void {
   // Browsers draw a burst for anything more than a gem or two
   if (total >= 3) state.onEvent?.("burst", { x: Math.round(centerX), y: Math.round(centerY), count: total });
   const room = Math.max(1, GEMS.MAX_GEMS - state.gems.size);
@@ -139,7 +139,7 @@ export function sprayGems(state: GameState, centerX: number, centerY: number, to
     const gem = new GemSchema(centerX, centerY, value);
     const angle = turn + (i / pieces) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
     const speed = GEMS.SPRAY_SPEED_MIN + Math.random() * (GEMS.SPRAY_SPEED_MAX - GEMS.SPRAY_SPEED_MIN);
-    gem.spray(angle, speed, now, owner);
+    gem.spray(angle, speed, now, owner, ownerDelayMs);
     state.gems.set(`g${state.nextGemId++}`, gem);
   }
 }
