@@ -440,7 +440,7 @@ export function drawCapturePrompt(mode: MultiplayerMode, ctx: CanvasRenderingCon
         ctx.fillText(dazed ? `Caught by ${who}!` : 'Wriggle out!', centerX, y + (short ? 16 : 22) * u, width - 24 * u)
         ctx.font = `600 ${12 * u}px ${FONT}`
         ctx.fillStyle = 'rgba(255, 255, 255, 0.75)'
-        const hint = dazed ? 'Hang on…' : missed ? 'Wrong one: from the top' : loading >= 1 ? 'They can fire you now' : touch ? 'Flick the stick these ways, in order' : 'Tap these, in order (WASD or arrows)'
+        const hint = dazed ? 'Hang on…' : missed ? 'Wrong one: from the top' : loading >= 1 ? 'They can fire you now' : touch ? 'Move the stick in this order' : 'Tap these, in order (WASD or arrows)'
         ctx.fillStyle = loading >= 1 && !dazed && !missed ? 'rgba(255, 120, 120, 0.9)' : 'rgba(255, 255, 255, 0.75)'
         ctx.fillText(hint, centerX, y + (short ? 34 : 42) * u, width - 24 * u)
         // The directions, lit as they're got; the next one pulses

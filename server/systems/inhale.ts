@@ -1,6 +1,6 @@
 import type { GameState } from "../schema/GameState.js";
 import { PlayerSchema } from "../schema/PlayerSchema.js";
-import { airflowQuality, cleanAir, drainRamp, lethalShare, pressureBuild, pressureBuildSeconds, scaleDrain } from "../game/airflow.js";
+import { airflowQuality, cleanAir, drainRamp, lethalShare, pressureBuildSeconds, scaleDrain } from "../game/airflow.js";
 import { moveSpeed } from "../game/movement.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 
@@ -134,6 +134,8 @@ export function updateInhales(state: GameState, now: number, deltaTime: number) 
       eater.gulping = caught.sessionId;
       eater.gulpEndsAt = state.time + CANNON.HOLD_MS;
       eater.captureStartedAt = now;
+      eater.captiveGemBudget = Math.floor(caught.gems * CANNON.CAPTIVE_GEM_SHARE);
+      eater.captiveGemsTaken = 0;
       caught.capturedBy = eater.sessionId;
       caught.struggle = 0;
       // Dazed for a moment, then it has to push its stick in these directions, in order, to get out
@@ -144,6 +146,7 @@ export function updateInhales(state: GameState, now: number, deltaTime: number) 
       caught.dazedUntil = state.time + CANNON.CAPTIVE_STUN_MS;
       caught.escapeMissAt = 0;
       caught.escapeNeutral = true;
+      caught.escapeStickX = caught.escapeStickY = 0;
       caught.escapeTryAt = 0; // AI reading time is scheduled by its input controller, not capture rules.
       caught.stopInhale(now);
       caught.dropLatch();
@@ -244,8 +247,8 @@ export function stealStrength(_state: GameState, thief: PlayerSchema, victim: Pl
  * Gravity theft: everyone in the inhale cone has gems pulled out into the thief (one small enough
  * to capture is pulled in bodily too). An inhale's drain is shared out by how squarely each victim
  * sits in the cone, and grows only with the square root of how many it catches, so a big cone
- * covers more creatures without draining each one as fast. INHALE.STEAL_RATE is the base rate before
- * geometry, relative size and sustained contact. Two creatures inhaling
+ * covers more creatures without draining each one as fast. The rate uses a fixed share of the victim's
+ * gems when injured (with a small floor), before geometry, relative size and pressure. Two creatures inhaling
  * each other never both steal at once: only the stronger pull does (clashStrength, INHALE.CLASH_MARGIN), so a
  * clash has a winner instead of an endless exchange. Relative size resists theft independently of
  * the sustained-contact ramp. Only a damaging hit exposes gems; no shared
@@ -254,7 +257,7 @@ export function stealStrength(_state: GameState, thief: PlayerSchema, victim: Pl
 export function steal(state: GameState, thief: PlayerSchema, now: number, deltaTime: number) : void {
   const victims: { victim: PlayerSchema; weight: number }[] = [];
   state.players.forEach((other) => {
-    // (a captive isn't drained: the capture decides what happens to it)
+    // Captives use the separate, capped transfer during their hold, never ordinary injury theft.
     if (other === thief || other.gems <= INHALE.DRAIN_FLOOR || state.time >= other.injuredUntil || other.capturedBy || other.flying) return;
     const weight = stealWeight(state, thief, other);
     if (weight > 0) victims.push({ victim: other, weight });
@@ -284,14 +287,17 @@ export function steal(state: GameState, thief: PlayerSchema, now: number, deltaT
       const margin = 1 + INHALE.CLASH_MARGIN;
       if (!(mine > theirs * margin || (mine * margin >= theirs && lead))) continue;
     }
-    let progress = (thief.stealShares.get(victim.sessionId) ?? 0) + deltaTime * INHALE.STEAL_RATE * budget * (weight / total) * stealStrength(state, thief, victim) * drainRamp(thief.heldFor.get(victim.sessionId) ?? 0) * pressureBuild(thief.heldFor.get(victim.sessionId) ?? 0, thief.width) * scaleDrain(thief.width, victim.width) * (LATCH.OVERLAP_DRAIN_MIN + (1 - LATCH.OVERLAP_DRAIN_MIN) * cleanAir(state.bodyOf(thief), state.bodyOf(victim)));
-    while (progress >= 1 && victim.gems > INHALE.DRAIN_FLOOR) {
-      progress -= 1;
-      victim.setGems(victim.gems - 1, state.worldWidth, state.worldHeight);
-      thief.setGems(thief.gems + 1, state.worldWidth, state.worldHeight);
-      thief.stolenTotal += 1;
-      victim.robbedTotal += 1;
-      if (victim.sessionId === thief.stealingFrom) thief.stolenRun += 1;
+    const rate = Math.max(INHALE.STEAL_RATE, victim.injuryGems * INHALE.STEAL_SHARE_PER_S);
+    let progress = (thief.stealShares.get(victim.sessionId) ?? 0) + deltaTime * rate * budget * (weight / total) * stealStrength(state, thief, victim) * drainRamp(thief.heldFor.get(victim.sessionId) ?? 0, thief.width) * scaleDrain(thief.width, victim.width) * (LATCH.OVERLAP_DRAIN_MIN + (1 - LATCH.OVERLAP_DRAIN_MIN) * cleanAir(state.bodyOf(thief), state.bodyOf(victim)));
+    // Transfer the tick's whole gems together: uncapped scores must not mean one loop per gem.
+    const amount = Math.min(Math.floor(progress), victim.gems - INHALE.DRAIN_FLOOR);
+    if (amount > 0) {
+      progress -= amount;
+      victim.setGems(victim.gems - amount, state.worldWidth, state.worldHeight);
+      thief.setGems(thief.gems + amount, state.worldWidth, state.worldHeight);
+      thief.stolenTotal += amount;
+      victim.robbedTotal += amount;
+      if (victim.sessionId === thief.stealingFrom) thief.stolenRun += amount;
     }
     if (victim.gems === 0 && victim.state === PLAYER_STATE.ALIVE) {
       knockOutWithGems(state, victim, now);
@@ -312,7 +318,7 @@ function clashStrength(state: GameState, thief: PlayerSchema, victim: PlayerSche
   const weight = stealWeight(state, thief, victim);
   if (weight <= 0) return 0;
   const held = thief.heldFor.get(victim.sessionId) ?? 0;
-  return weight * stealStrength(state, thief, victim) * drainRamp(held) * pressureBuild(held, thief.width) * scaleDrain(thief.width, victim.width) * (LATCH.OVERLAP_DRAIN_MIN + (1 - LATCH.OVERLAP_DRAIN_MIN) * cleanAir(state.bodyOf(thief), state.bodyOf(victim)));
+  return weight * stealStrength(state, thief, victim) * drainRamp(held, thief.width) * scaleDrain(thief.width, victim.width) * (LATCH.OVERLAP_DRAIN_MIN + (1 - LATCH.OVERLAP_DRAIN_MIN) * cleanAir(state.bodyOf(thief), state.bodyOf(victim)));
 }
 
 /**
@@ -377,8 +383,8 @@ export function endTheft(state: GameState, thief: PlayerSchema, now: number, nex
 
 /**
  * Holds a captive: pinned at its captor's mouth (inside it, as far as anyone can see), working its way out.
- * Dazed for CAPTIVE_STUN_MS after the catch; then every push of its stick past ESCAPE_PRESS (after a return
- * to neutral) counts as one direction: the right next one advances its sequence, a wrong one starts it over.
+ * Dazed for CAPTIVE_STUN_MS after the catch; then a moderate push within the requested direction's broad
+ * angle advances once. Centering or a deliberate turn rearms it; intermediate angles preserve progress.
  * struggle is how far along it is, 0 to 1.
  */
 function holdCaptive(_state: GameState, captive: PlayerSchema, mouthX: number, mouthY: number, facing: number): void {
@@ -386,7 +392,21 @@ function holdCaptive(_state: GameState, captive: PlayerSchema, mouthX: number, m
   captive.struggle = captive.escapeKeys.length > 0 ? captive.escapeStep / captive.escapeKeys.length : 0;
 }
 
-/** Process joystick edges as messages arrive; a fast neutral/press pair must survive one server tick. */
+/** Earn a fixed share over the original hold, independent of size changes, input and tick frequency. */
+function drainCaptive(state: GameState, captor: PlayerSchema, captive: PlayerSchema, now: number): void {
+  if (captive.escapeKeys.length > 0 && captive.escapeStep >= captive.escapeKeys.length) return;
+  const elapsed = Math.max(0, Math.min(CANNON.HOLD_MS, now - captor.captureStartedAt));
+  const earned = Math.floor(captor.captiveGemBudget * elapsed / CANNON.HOLD_MS);
+  const amount = Math.min(earned - captor.captiveGemsTaken, Math.max(0, captive.gems - 1));
+  if (amount <= 0) return;
+  captive.setGems(captive.gems - amount, state.worldWidth, state.worldHeight);
+  captor.setGems(captor.gems + amount, state.worldWidth, state.worldHeight);
+  captor.captiveGemsTaken += amount;
+  captor.stolenTotal += amount;
+  captive.robbedTotal += amount;
+}
+
+/** Forgiving joystick directions: accept a broad angle, and let a deliberate turn replace exact centering. */
 export function escapeSteer(state: GameState, captive: PlayerSchema): void {
   if (!captive.capturedBy) return;
   if (state.time < captive.dazedUntil) return;
@@ -396,9 +416,17 @@ export function escapeSteer(state: GameState, captive: PlayerSchema): void {
     captive.escapeNeutral = true;
     return;
   }
-  if (!captive.escapeNeutral || push < CANNON.ESCAPE_PRESS) return;
+  if (push + 1e-9 < CANNON.ESCAPE_PRESS) return;
+  const expected = captive.escapeKeys[captive.escapeStep];
+  const direction: Record<string, [number, number]> = { U: [0, -1], D: [0, 1], L: [-1, 0], R: [1, 0] };
+  const axis = direction[expected];
+  if (!axis) return;
+  // Intermediate angles are harmless: correcting your thumb must not reset the whole sequence.
+  if ((steer.x * axis[0] + steer.y * axis[1]) / push < Math.cos(CANNON.ESCAPE_ARC_DEG * Math.PI / 180) - 1e-9) return;
+  if (!captive.escapeNeutral && (steer.x * captive.escapeStickX + steer.y * captive.escapeStickY) / push > Math.cos(CANNON.ESCAPE_TURN_DEG * Math.PI / 180) + 1e-9) return;
   captive.escapeNeutral = false;
-  escapePress(state, captive, Math.abs(steer.x) >= Math.abs(steer.y) ? (steer.x > 0 ? "R" : "L") : (steer.y > 0 ? "D" : "U"));
+  captive.escapeStickX = steer.x / push; captive.escapeStickY = steer.y / push;
+  escapePress(state, captive, expected);
 }
 
 /** The directions a fresh captive has to push, in order: CANNON.ESCAPE_KEYS of U, D, L and R */
@@ -455,6 +483,9 @@ export function fireCaptive(state: GameState, eater: PlayerSchema, now: number):
     return false;
   }
   if (now - eater.captureStartedAt < captureLoadMs(captive.escapeKeys.length)) { eater.fireQueued = true; return false; }
+  if (eater.state === PLAYER_STATE.ALIVE && !eater.stunned && !eater.capturedBy && !eater.flying && captive.state === PLAYER_STATE.ALIVE) {
+    drainCaptive(state, eater, captive, now);
+  }
   eater.fireQueued = false;
   eater.dropProtection();
   eater.gulping = "";
@@ -475,7 +506,7 @@ export function fireCaptive(state: GameState, eater: PlayerSchema, now: number):
 
 /**
  * Every hold, every tick, whether or not the captor is still inhaling (the button can be let go; the mouth
- * stays full): the captive is pinned inside and works its escape sequence. Out when it gets it right, when
+ * stays full): the captive transfers its capped gem share and works its fixed escape sequence. Out when it gets it right, when
  * the safety net (CANNON.HOLD_MS) runs out, or at once if its captor is knocked out, stunned, caught or sent
  * flying itself. A captive whose captor has left the game goes free too.
  */
@@ -494,12 +525,15 @@ export function updateHolds(state: GameState, now: number): void {
       free(state, captive, fx, fy, now);
       return;
     }
-    holdCaptive(state, captive, captor.x + captor.width / 2 + fx * captor.width * 0.3, captor.y + captor.height / 2 + fy * captor.width * 0.3, captor.facing);
     if (captive.escapeKeys.length > 0 && captive.escapeStep >= captive.escapeKeys.length) {
       // It got the sequence right: out it pops
       captor.gulping = "";
       free(state, captive, fx, fy, now, CANNON.ESCAPE_PUSH);
-    } else if (captor.fireQueued && now - captor.captureStartedAt >= captureLoadMs(captive.escapeKeys.length)) {
+      return;
+    }
+    drainCaptive(state, captor, captive, now);
+    holdCaptive(state, captive, captor.x + captor.width / 2 + fx * captor.width * 0.3, captor.y + captor.height / 2 + fy * captor.width * 0.3, captor.facing);
+    if (captor.fireQueued && now - captor.captureStartedAt >= captureLoadMs(captive.escapeKeys.length)) {
       fireCaptive(state, captor, now);
     } else if (state.time >= captor.gulpEndsAt) {
       // The safety net: the hold is over, the captive goes free

@@ -26,8 +26,9 @@ function total(s: GameState) {
 /** Deliberately ideal contact with an undefended target: no missed aim, movement or spilled-gem pickup. */
 function injuryWindow(s: GameState, victim: PlayerSchema, thieves: PlayerSchema[]) {
   const began = s.time, deadline = victim.injuredUntil;
+  const initial = victim.gems; let firstSecond = 0;
   for (const p of thieves) { p.startInhale(s.now); }
-  for (let tick = 1; tick <= 150 && victim.state === 'alive'; tick++) {
+  for (let tick = 1; tick <= 210 && victim.state === 'alive'; tick++) {
     s.time = began + tick * 1000 / 30; s.now = NOW + s.time;
     victim.placeAt(2000 - victim.width / 2, 2000 - victim.height / 2);
     thieves.forEach((p, i) => {
@@ -36,8 +37,10 @@ function injuryWindow(s: GameState, victim: PlayerSchema, thieves: PlayerSchema[
       p.heldFor.set(victim.sessionId, (s.time - began) / 1000);
       steal(s, p, s.now, 1 / 30);
     });
+    if (tick === 30) firstSecond = initial - victim.gems;
   }
   if (victim.state === 'alive') assert.equal(victim.injuredUntil, deadline, 'theft does not extend injury');
+  return { firstSecond, knockoutMs: victim.state === 'dead' ? s.time - began : 0 };
 }
 function shot(projectileGems: number, targetGems: number, protectedTarget = false) {
   const s = world(), flier = add(s, 'flier', projectileGems), target = add(s, 'target', targetGems);
@@ -95,25 +98,27 @@ assert(impactGems(10000, 2000, width(12)) < 100, 'a maximum-speed small shot tak
 assert(scaleDrain(width(40), width(1000)) * drainRamp(30) < .75, 'even a long-held small inhale cannot regain peer-level theft against a giant');
 assert(scaleDrain(width(1000), width(1000)) > scaleDrain(width(250), width(1000)), 'substantial rivals remain stronger thieves');
 
-const windows: { thief: number; stolen: number }[] = [];
+const windows: { thief: number; stolen: number; firstSecond: number; knockoutMs: number }[] = [];
 for (const gems of [4, 40, 250, 1000]) {
   const s = world(), victim = add(s, 'victim', 1000), thief = add(s, 'thief', gems);
-  victim.injure(s.time); injuryWindow(s, victim, [thief]);
-  const stolen = 1000 - victim.gems; windows.push({ thief: gems, stolen });
+  victim.injure(s.time); const timing = injuryWindow(s, victim, [thief]);
+  const stolen = 1000 - victim.gems; windows.push({ thief: gems, stolen, ...timing });
   assert.equal(thief.gems - gems, stolen, 'theft transfers each gem exactly once');
   assert.equal(total(s), 1000 + gems);
-  assert(stolen > 0 && victim.state === 'alive', 'small players can profit and the giant can survive an undefended window');
-  if (gems <= 40) assert(stolen <= 25, 'a small thief alone cannot drain a large lead in five seconds');
-  const left = victim.gems; steal(s, thief, s.now, 1); assert.equal(victim.gems, left, 'healing ends all theft at the deadline');
+  assert(stolen > 0, 'even small players can profit from a damaging hit and sustained contact');
+  if (gems >= 250) assert.equal(victim.state, 'dead', 'a substantial attacker can finish an undefended giant');
+  s.time = Math.max(s.time, 7000); s.now = NOW + s.time;
+  const left = victim.gems; steal(s, thief, s.now, 1); assert.equal(victim.gems, left, 'expiry or knockout ends theft');
 }
-assert(windows[2].stolen > windows[1].stolen * 2 && windows[3].stolen > windows[2].stolen, 'near-peer pressure is substantially more dangerous than harassment');
+assert(windows[2].firstSecond > windows[1].firstSecond * 2 && windows[3].firstSecond > windows[2].firstSecond,
+  'near-peer pressure is substantially more immediate than small-attacker pressure');
 {
   const { s, target, flier } = shot(20, 1000);
   assert(target.gems >= 970 && target.injuredUntil > s.time && target.stunned, 'small shots still spill, stun and expose a giant');
   assert.equal(flier.state, 'dead', 'the separately approved spent-missile consequence remains');
   const thieves = [add(s, 'left-thief', 4), add(s, 'right-thief', 4)];
   injuryWindow(s, target, thieves);
-  assert(target.gems >= 950, 'a small impact plus two perfectly persistent tiny thieves leaves at least 95% of giant progress');
+  assert(target.gems < 500, 'a small hit followed by two sustained thieves now has serious consequences');
   assert(thieves.every(p => p.gems > 4), 'both small attackers can take exposed gems without a shared allowance');
   assert.equal(total(s), 1028);
 }
@@ -156,4 +161,4 @@ assert(windows[2].stolen > windows[1].stolen * 2 && windows[3].stolen > windows[
   assert(target.gems < 1000 && target.gems >= 970 && target.injuredUntil > s.time, 'fan hits yield a real but modest giant opening');
 }
 console.log('Size combat regressions passed: durable giants, useful small hits, near-peer threats, damage plus multiple thieves, lethal large ammunition, fan counterplay and conserved value.');
-console.log(JSON.stringify({ isolatedFiveSecondTheft: windows }));
+console.log(JSON.stringify({ isolatedSevenSecondTheft: windows }));

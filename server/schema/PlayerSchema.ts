@@ -92,6 +92,8 @@ class PlayerSchema extends Schema {
   launchSafeUntil = 0;
   /** World-time deadline: damaging hits expose gems, without adding movement or input penalties. */
   injuredUntil = 0;
+  /** Server-only: gem count at the start of this injury; fixes theft rate until the window ends. */
+  injuryGems = 0;
   fireReadyAt = 0;
   fireQueued = false;
   /** The creature this one's airflow is latched on ("" for none), how focused the stream is (0-1, for drawing), the beam's quality when it saves breath (0 unless held cleanly), and how strongly it draws your aim (all synced) */
@@ -117,8 +119,11 @@ class PlayerSchema extends Schema {
   escapeStep: number;
   dazedUntil: number;
   escapeMissAt: number;
-  /** Server-only: whether the stick has come back to neutral since the last push that counted; and (bots) when it next tries a direction */
+  /** Server-only: neutral rearms a push; a deliberate turn also works. Bots separately schedule attempts. */
   escapeNeutral = true;
+  /** Last accepted joystick direction: holding or jittering cannot solve successive arrows. */
+  escapeStickX = 0;
+  escapeStickY = 0;
   escapeTryAt = 0;
   /** Server-only: smoothed airflow quality on each creature, when the latch began and when it last slipped, its score, whether it owns the focused connection, and the aim it adds */
   airQuality = new Map<string, number>();
@@ -129,7 +134,7 @@ class PlayerSchema extends Schema {
   focusNext = false;
   assistX = 0;
   assistY = 0;
-  /** Server-only: how long (seconds) each creature has been held in this one's airflow without a break (see INHALE.DRAIN_RAMP) */
+  /** Server-only: how long (seconds) each creature has been held in this one's airflow without a break. */
   heldFor = new Map<string, number>();
   /** Server-only (bots): when its inhale last had nobody in it, so it can let go and save its breath */
   inhaleIdleSince = 0;
@@ -149,6 +154,9 @@ class PlayerSchema extends Schema {
   launchedBy = "";
   /** When this creature caught its current captive, and when it can next be caught itself */
   captureStartedAt = 0;
+  /** Server-only: fixed gem allowance for this capture, and how much has actually transferred. */
+  captiveGemBudget = 0;
+  captiveGemsTaken = 0;
   recaptureAfter = 0;
   /** When the button was last let go (a deliberate release: the only one that launches a captive) */
   releasedAt = 0;
@@ -218,6 +226,7 @@ class PlayerSchema extends Schema {
     this.stunEndsAt = this.stunImmuneUntil = 0;
     this.launchSafeUntil = this.suctionSafeUntil = this.recaptureAfter = 0;
     this.injuredUntil = 0;
+    this.injuryGems = 0;
     this.inhaling = false;
     this.steerX = this.steerY = this.walkX = this.walkY = 0;
   }
@@ -228,9 +237,11 @@ class PlayerSchema extends Schema {
     this.protectedUntil = now + ms;
   }
 
-  /** Expose gems for five seconds after real damage, without extra stun or slowing. */
+  /** Start a fixed exposure after real damage; further hits still hurt but cannot extend it. */
   injure(worldTime: number): void {
-    if (this.state === PLAYER_STATE.ALIVE && !this.spawnProtected) this.injuredUntil = worldTime + INHALE.INJURY_MS;
+    if (this.state !== PLAYER_STATE.ALIVE || this.spawnProtected || worldTime < this.injuredUntil) return;
+    this.injuredUntil = worldTime + INHALE.INJURY_MS;
+    this.injuryGems = this.gems;
   }
 
   /** Just lost gems to a traffic hit: brief existing recovery. */
@@ -248,6 +259,7 @@ class PlayerSchema extends Schema {
   knockOut(now: number): void {
     this.state = PLAYER_STATE.DEAD;
     this.injuredUntil = 0;
+    this.injuryGems = 0;
     this.spawnProtected = false;
     this.recovering = false;
     this.respawnAt = now + WORLD.RESPAWN_DELAY_MS;

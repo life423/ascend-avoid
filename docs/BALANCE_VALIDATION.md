@@ -1,8 +1,18 @@
 # Balance validation — October 26, 2026
 
-Status: growth-only revision selected for release after the user clarified the playtest feedback. PR #45 tracks final CI, merge and deployment. The October 25 sleep checkpoint was commit 5f3cea3. No claim of ideal rarity, hours-long human survival or proven fun is made.
+Status: local follow-up to merged PR #45 adds fixed seven-second injury, rapid lethal theft, capped captive transfer and forgiving joystick escape. These changes are not deployed. The earlier growth-only release measurements below remain historical; the local combat pass supersedes their five-second injury and slow-theft budgets. No claim of ideal rarity, hours-long human survival or proven fun is made.
 
-## Current rules
+## Local combat follow-up
+
+The current reference theft rate is max(10 gems/s, 30% of the victim's gem count at injury start per second), modified by size, range, alignment, clean air, escape and a short 80–100% pressure buildup. The snapshot is taken before direct hit damage and does not change when another hit arrives during the same seven seconds. No hit or theft extends an active window; the next damaging hit after expiry can open a new one. Transfers are batched and value-conserving even at uncapped scores. Captive transfer remains a separate nonlethal 20% allowance.
+
+Ideal tracked-contact measurements exclude physical capture, escape, gathering and upkeep. Equal 40/100/1000/10000-gem peers lose 10/25/247/2372 gems in the first second and are knocked out after 3.7/3.73/3.8/3.83 seconds. A 4/40/250-gem attacker can finish a stationary 1000-gem victim in 6.27/5.2/3.97 seconds. Two/three ideal peer attackers finish in 1.93/1.33 seconds. These deliberately serious consequences supersede the old 95%-giant-survival matchup budget. Normal matches can instead end the theft through escape, gusts or capture. Multiple attackers currently add damage normally; no group diminishing-return change is claimed.
+
+Mobile escape retains the joystick and accepts a 60-degree directional error, moderate pushes and a deliberate turn in place of exact centering. Incorrect intermediate angles do not reset progress. Repeated held input does not advance twice, and a held direction through the daze is resent to register when input becomes eligible. Physical-device feel still requires the user's feedback.
+
+Validation for this local pass: production client/server builds, type checks, synced-schema verification, thirteen unit suites and sixteen isolated multiplayer scenarios pass. Eight Chromium/Firefox/WebKit desktop, phone and tablet profiles pass 112 applicable injury/captive-transfer/capture/controls checks plus 15 joystick-specific cases; 25 device-specific cases are skipped. The joystick cases cover 3/4/5 arrows, 55-degree drift, continuous turns, a held direction through daze, and the earliest queued firing deadline. Phone joystick and rapid-theft renderings were inspected. Lint has zero errors and 164 existing warnings; Help is 128 words. These automated results do not establish real-device feel or long-term balance.
+
+## Growth release baseline, before the local combat follow-up
 
 Bots and humans share growth, upkeep, movement, breath, damage, capture/escape, shields, component pickup, claims and weapon access. Bot decisions retain delayed reactions, fallible escape input and imperfect committed aim. Bots gather at every size and assemble/carry/place both recipes through shared systems.
 
