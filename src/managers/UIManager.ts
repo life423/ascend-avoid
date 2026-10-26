@@ -4,6 +4,8 @@
  * Now with TypeScript support.
  */
 
+import { formatGems } from '../utils/score';
+
 // Interface for configuration options
 interface UIManagerOptions {
   scoreElement: HTMLElement;
@@ -57,7 +59,9 @@ export default class UIManager {
    */
   updateScore(score: number): void {
     if (this.scoreElement) {
-      this.scoreElement.innerHTML = score.toString();
+      this.scoreElement.textContent = formatGems(score);
+      this.scoreElement.title = score.toLocaleString('en-US');
+      this.scoreElement.setAttribute('aria-label', `${score.toLocaleString('en-US')} gems`);
     }
   }
   
@@ -67,7 +71,9 @@ export default class UIManager {
    */
   updateHighScore(highScore: number): void {
     if (this.highScoreElement) {
-      this.highScoreElement.innerHTML = highScore.toString();
+      this.highScoreElement.textContent = formatGems(highScore);
+      this.highScoreElement.title = highScore.toLocaleString('en-US');
+      this.highScoreElement.setAttribute('aria-label', `${highScore.toLocaleString('en-US')} gems`);
       
       // Also update page title to show achievement
       if (highScore > 0) {

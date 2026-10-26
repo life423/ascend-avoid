@@ -2,7 +2,8 @@ import type { GameState } from "../schema/GameState.js";
 import { PlayerSchema } from "../schema/PlayerSchema.js";
 import { BotBrain } from "../game/bots.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
-import { captureLoadMs } from "../game/cannon.js";
+import { captureLoadMs, launchSpeed } from "../game/cannon.js";
+import { cannonTargetAppeal } from '../game/botAim.js';
 import { escapePress, exhale, fireCaptive, stealWeight } from "./inhale.js";
 import { botPreyAvailable, botRobber } from '../game/botTargets.js';
 import { EXHALE } from '../constants/gameConstants.js';
@@ -86,11 +87,14 @@ export function botMouth(state: GameState, bot: PlayerSchema, now: number) : voi
   const reach = INHALE.REACH + bot.width * INHALE.REACH_PER_SIZE;
   let want: { x: number; y: number } | null = null;
   let nearest = reach;
+  let captureAppeal = 0;
   state.players.forEach((other) => {
     if (!botPreyAvailable(state, bot, other, now) || other.width * INHALE.EAT_RATIO > bot.width) return;
     if (robbersOf(state, other.sessionId) >= BOTS.MAX_ROBBERS) return;
     const d = Math.hypot(other.x + other.width / 2 - cx, other.y + other.height / 2 - cy);
-    if (d < nearest) {
+    const appeal = (other.gems + 2) / (d + 60);
+    if (d < reach && appeal > captureAppeal) {
+      captureAppeal = appeal;
       nearest = d;
       want = { x: other.x + other.width / 2, y: other.y + other.height / 2 };
     }
@@ -186,7 +190,8 @@ function botFire(state: GameState, bot: PlayerSchema, cx: number, cy: number, no
       if (other === bot || other === captive || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected || other.capturedBy || other.flying) return;
       const d = Math.hypot(other.x + other.width / 2 - cx, other.y + other.height / 2 - cy);
       if (d > BOTS.FIRE_RANGE) return;
-      const score = other.width - d * 0.05;
+      // Choose a shot this ammunition can threaten, instead of always wasting tiny rounds on a giant.
+      const score = cannonTargetAppeal(other.gems, other.width, captive.width, launchSpeed(bot.width, captive.width), d);
       if (score > best) {
         best = score;
         target = other;
@@ -201,7 +206,9 @@ function botFire(state: GameState, bot: PlayerSchema, cx: number, cy: number, no
 
 /** Caught: dazed at first, then it tries a direction every ESCAPE_EVERY_MS, the right one ESCAPE_SKILL of the time */
 function botEscape(state: GameState, bot: PlayerSchema, now: number) : void {
-  if (state.time < bot.dazedUntil || now < bot.escapeTryAt || bot.escapeStep >= bot.escapeKeys.length) return;
+  if (state.time < bot.dazedUntil || bot.escapeStep >= bot.escapeKeys.length) return;
+  if (!bot.escapeTryAt) { bot.escapeTryAt = now + BOTS.ESCAPE_READ_MS; return; }
+  if (now < bot.escapeTryAt) return;
   bot.escapeTryAt = now + BOTS.ESCAPE_EVERY_MS;
   const right = bot.escapeKeys[bot.escapeStep];
   const wrong = "UDLR".replace(right, "");

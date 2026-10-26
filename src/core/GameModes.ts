@@ -1322,11 +1322,13 @@ export class MultiplayerMode extends GameMode {
                     sound.play('gem')
                     // Stealing: a "+1" for each gem coming in (head-on, whoever is winning the exchange); otherwise what you grabbed
                     const gained = player.gems - before.gems
-                    if (player.stealingFrom) for (let i = 0; i < gained; i++) this.pickups.push({ amount: 1, at: timestamp + i * 70 })
+                    if (player.stealingFrom && gained <= 6) for (let i = 0; i < gained; i++) this.pickups.push({ amount: 1, at: timestamp + i * 70 })
                     else this.pickups.push({ amount: gained, at: timestamp })
                 } else if (id === localId && player.gems < before.gems && this.beingRobbed(state, id)) {
                     // Gems pulled out of you: a "-1" for each one, one after another
-                    for (let i = 0; i < before.gems - player.gems; i++) this.pickups.push({ amount: -1, at: timestamp + i * 70 })
+                    const lost = before.gems - player.gems
+                    if (lost <= 6) for (let i = 0; i < lost; i++) this.pickups.push({ amount: -1, at: timestamp + i * 70 })
+                    else this.pickups.push({ amount: -lost, at: timestamp })
                 }
                 // Every gem shows: the creature pops a little as each one comes in
                 if (alive && player.gems > before.gems) {

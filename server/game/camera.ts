@@ -102,7 +102,7 @@ export class CameraRig {
       this.vy = sy.velocity;
     }
     const zoom = springStep(this.short, this.shortVelocity, short, CAMERA.ZOOM_OMEGA, step);
-    this.short = zoom.value;
+    this.short = Math.max(zoom.value, subject.width / CAMERA.GROWTH_FRAME_SHARE_MAX);
     this.shortVelocity = zoom.velocity;
   }
 }

@@ -242,7 +242,11 @@ export class GameRoom extends Room<GameState> {
         ball.placeAt(player.x + player.width / 2 + (Number(data?.dx) || 0), player.y + player.height / 2 + (Number(data?.dy) || 0));
       });
       this.onMessage("test:protect", (client, data: any) => {
-        playerOf(client)?.protectFor(Number(data?.ms) || 0, Date.now());
+        const player = playerOf(client), ms = Number(data?.ms) || 0;
+        player?.protectFor(ms, Date.now());
+        // A zero-duration test setup must be complete now, even before the next simulation tick.
+        // Otherwise an immediate test:hit/injure can be rejected by a transient protection flag.
+        if (ms <= 0) player?.dropProtection();
       });
       this.onMessage("test:breath", (client, data: any) => {
         const player = playerOf(client);

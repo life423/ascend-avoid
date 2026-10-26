@@ -26,7 +26,7 @@ import { collectGems, sprayGems, spreadSettledGems, topUpField } from "../system
 import { keepApart, pruneBodyContacts } from "../systems/bodies.js";
 import { updateSurges } from "../systems/surges.js";
 import { PinwheelSchema } from "./PinwheelSchema.js";
-import { updateWeapons } from "../systems/weapons.js";
+import { deployWeapon, updateWeapons } from "../systems/weapons.js";
 import { PINWHEEL } from "../constants/gameConstants.js";
 import { viewShort } from '../game/camera.js';
 
@@ -122,6 +122,8 @@ class GameState extends Schema {
   /** Loose gems the field keeps topped up to, and how many are out there now */
   fieldGemTarget: number;
   fieldGems = 0;
+  fieldReplenishCredit: number = GEMS.FIELD_REPLENISH_PER_S;
+  fieldReplenishAt = 0;
   /** Server-only: whether turbines come and go on their own (test worlds ask), when the next ones are due, and ids */
   turbinesAuto: boolean = TURBINE.ENABLED;
   turbineDue: number[] = [];
@@ -180,7 +182,7 @@ class GameState extends Schema {
       this.comets.forEach((comet) => comet.placeAt(-500, -500));
       this.balls.forEach((ball) => ball.park());
     }
-    topUpField(this);
+    topUpField(this, true);
   }
 
   /** A new visitor: straight into the world, somewhere safe */
@@ -267,6 +269,7 @@ class GameState extends Schema {
         }
       }
       if (bot) botMouth(this, bot, now);
+      if (bot && brain.weaponPlan.readyToPlace(this, bot, now) && deployWeapon(this, bot)) brain.weaponPlan.placed();
       // Between decisions, a bot stops rather than walk off the edge
       if (bot && this.shiftPhase === "shift") {
         const way = bot.steering();

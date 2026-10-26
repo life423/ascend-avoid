@@ -93,7 +93,7 @@ export function updateWeapons(state: GameState, dt: number, now: number): void {
       if (Math.hypot(part.vx, part.vy) > 100) continue;
       let puller: PlayerSchema | undefined, nearest = Infinity, touching = false;
       for (const p of state.players.values()) {
-        if (p.isBot || p.stunned || p.state !== 'alive' || p.gulping || p.flying || p.capturedBy || (part.owner && part.owner !== p.sessionId)) continue;
+        if (p.stunned || p.state !== 'alive' || p.gulping || p.flying || p.capturedBy || (part.owner && part.owner !== p.sessionId)) continue;
         const contact = Math.hypot(part.x - p.x - p.width / 2, part.y - p.y - p.height / 2);
         if (contact <= p.width / 2 + PINWHEEL.PART_RADIUS) {
           if (!touching || contact < nearest) { puller = p; nearest = contact; touching = true; }

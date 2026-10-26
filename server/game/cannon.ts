@@ -1,4 +1,5 @@
 import { ARENA_RULES, CANNON, GEMS, INHALE } from "../constants/gameConstants.js";
+import { bodyMass, creatureSize, gemsForGrowthMass } from './creatureSize.js';
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
@@ -29,18 +30,18 @@ export function launchSpeed(captorWidth: number, captiveWidth: number = ARENA_RU
 }
 
 /** Width is proportional to the square root of mass, so keeping 10% width retains about 1% mass. */
-export function missileMassAfterImpact(gems: number): number {
-  return Math.max(0, Math.floor((gems + GEMS.BASE_MASS) * CANNON.MISSILE_WIDTH_KEEP ** 2 - GEMS.BASE_MASS));
+export function missileMassAfterImpact(gems: number, width: number = creatureSize(gems)): number {
+  return Math.floor(gemsForGrowthMass(Math.max(0, bodyMass(width * CANNON.MISSILE_WIDTH_KEEP) - GEMS.BASE_MASS)));
 }
 
 /** Pre-impact projectile mass sets the threat; a tiny shot chips a giant instead of erasing its growth. */
-export function impactGems(targetGems: number, speed: number, flierWidth: number): number {
+export function impactGems(targetGems: number, speed: number, flierWidth: number, targetWidth: number = creatureSize(targetGems)): number {
   if (targetGems <= 0) return 0;
-  const projectileMass = GEMS.BASE_MASS * (Math.max(0, flierWidth) / ARENA_RULES.PLAYER_SIZE) ** 2;
-  const relativeMass = (projectileMass / (targetGems + GEMS.BASE_MASS)) ** CANNON.IMPACT_MASS_EXPONENT;
+  const relativeMass = bodyMass(flierWidth) / Math.max(GEMS.BASE_MASS, bodyMass(targetWidth));
   const pace = clamp(speed / CANNON.IMPACT_SPEED_REF, 0.65, 1.15);
-  const share = CANNON.IMPACT_MAX_SHARE * relativeMass / (relativeMass + CANNON.IMPACT_MASS_PIVOT ** CANNON.IMPACT_MASS_EXPONENT);
-  return Math.min(targetGems, Math.max(1, Math.round(targetGems * Math.min(CANNON.IMPACT_MAX_SHARE, share * pace))));
+  const share = CANNON.IMPACT_MAX_SHARE * relativeMass / (relativeMass + CANNON.IMPACT_MASS_PIVOT);
+  const energy = CANNON.IMPACT_BASE_GEMS * relativeMass / (relativeMass + 1);
+  return Math.min(targetGems, Math.max(1, Math.round(Math.min(targetGems * CANNON.IMPACT_MAX_SHARE, (targetGems * share + energy) * pace))));
 }
 
 /** One flight step. Player-fired missiles supply zero steering; turbine throws allow lateral input. */

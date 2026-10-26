@@ -1,10 +1,11 @@
 import type { MultiplayerMode } from '../core/GameModes'
-import { CANNON, PLAYER_COLORS, SHIFT, WORLD } from '../../server/constants/gameConstants'
+import { CANNON, GEMS, PLAYER_COLORS, SHIFT, WORLD } from '../../server/constants/gameConstants'
 import { drawCreature } from './creatures'
 import { COMPACT, FONT, GOLD, drawCrown, drawRobot, hudPanel, roundedRect } from './style'
 import { JOIN_NOTICE_MS, View } from './shared'
 import type { SyncedGameState, SyncedPlayer, SyncedTurbine } from '../types/synced'
 import { weaponRecipe } from './weaponStyle'
+import { formatGems } from '../utils/score'
 
 /** The whole world in a corner: everyone in it, and the part your screen shows */
 export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, state: SyncedGameState, view: View, localId: string | null, leaderId: string | null) : void {
@@ -47,19 +48,20 @@ export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
         if (player.state !== 'alive') return
         const isLocal = sessionId === localId
         const position = isLocal && mode.predicted ? mode.predicted : player
+        const markerRadius = 2 + 6 * Math.min(1, player.width / (Math.min(state.worldWidth, state.worldHeight) * GEMS.SIZE_MAX_SHARE)) ** .6
         ctx.fillStyle = isLocal ? '#ffffff' : PLAYER_COLORS[player.playerIndex % PLAYER_COLORS.length]
         ctx.beginPath()
         ctx.arc(
             x + (position.x + player.width / 2) * scale,
             y + (position.y + player.height / 2) * scale,
-            // Sized like they really are, scaled up 2.5x so the differences show on so small a map
-            1.5 + (player.width / 2) * scale * 2.5,
+            // Preserve size differences without a late giant hiding the minimap's other landmarks.
+            markerRadius,
             0,
             Math.PI * 2
         )
         ctx.fill()
         if (sessionId === leaderId) {
-            drawCrown(ctx, x + (position.x + player.width / 2) * scale, y + (position.y + player.height / 2) * scale - (3.5 + (player.width / 2) * scale * 2.5), 10)
+            drawCrown(ctx, x + (position.x + player.width / 2) * scale, y + (position.y + player.height / 2) * scale - markerRadius - 2, 10)
         }
     })
     state.turbines?.forEach((turbine: SyncedTurbine) => {
@@ -273,10 +275,18 @@ export function drawLeaderboard(mode: MultiplayerMode, ctx: CanvasRenderingConte
         }
         ctx.fillStyle = isLocal ? '#4fd1c5' : 'rgba(225, 235, 240, 0.92)'
         ctx.textAlign = 'left'
-        ctx.fillText(row.name, nameX, rowY, width - (nameX - x) - 34 * u)
+        const score = formatGems(row.gems)
+        const scoreWidth = Math.max(25 * u, ctx.measureText(score).width)
+        const nameWidth = Math.max(10 * u, width - (nameX - x) - scoreWidth - 18 * u)
+        let name = row.name
+        if (ctx.measureText(name).width > nameWidth) {
+            while (name.length && ctx.measureText(`${name}…`).width > nameWidth) name = name.slice(0, -1)
+            name += '…'
+        }
+        ctx.fillText(name, nameX, rowY)
         ctx.fillStyle = isLocal ? '#4fd1c5' : GOLD
         ctx.textAlign = 'right'
-        ctx.fillText(String(row.gems), x + width - 9 * u, rowY)
+        ctx.fillText(score, x + width - 9 * u, rowY)
         rowY += rowHeight
     })
     ctx.restore()
@@ -293,7 +303,7 @@ export function drawTopBar(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
     // The score
     const label = 'Score'
     const gems = me?.gems ?? 0
-    const value = gems >= 10000 ? `${Math.floor(gems / 1000)}k` : String(gems)
+    const value = formatGems(gems)
     ctx.font = `600 ${12.5 * u}px ${FONT}`
     const labelWidth = ctx.measureText(label).width
     ctx.font = `800 ${18 * u}px ${FONT}`

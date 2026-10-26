@@ -1,4 +1,11 @@
-import { BOTS } from '../constants/gameConstants.js';
+import { BOTS, CANNON } from '../constants/gameConstants.js';
+import { impactGems } from './cannon.js';
+
+/** Opportunity selection changes the target, never the bot's observation delay, aim error or firing rules. */
+export function cannonTargetAppeal(gems: number, width: number, ammoWidth: number, speed: number, distance: number): number {
+  const lost = impactGems(gems, speed, ammoWidth, width);
+  return (gems - lost < CANNON.IMPACT_KO_GEMS ? 1000 : 0) + 100 * lost / Math.max(1, gems) + Math.sqrt(lost) - distance * .05;
+}
 
 /** Read periodically while loading, then commit to a fallible shot rather than track every tick. */
 export class BotCannonAim {

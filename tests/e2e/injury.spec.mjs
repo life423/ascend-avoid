@@ -65,6 +65,7 @@ test('reduced motion keeps the injury shape readable without an impact ripple', 
   await send(page, 'test:setGems', { count: 200 }); await send(page, 'test:protect', { ms: 0 });
   await page.waitForFunction(() => { const p = window.game.currentGameMode.multiplayerManager.getLocalPlayer(); return p.gems === 200 && !p.spawnProtected; });
   await send(page, 'test:injure');
+  await page.waitForFunction(() => { const m = window.game.currentGameMode, p = m.multiplayerManager.getLocalPlayer(); return p.injuredUntil > m.multiplayerManager.room.state.time; });
   await expect.poll(() => page.evaluate(() => window.crackStrokes)).toBeGreaterThan(0);
   await page.screenshot({ path: test.info().outputPath('injury-reduced-motion.png') });
   expect(await page.evaluate(() => window.injuryRipples)).toBe(0);
@@ -78,6 +79,8 @@ test('a real small shot wounds a giant while retaining earned size and a clear v
   const missile = await client.joinById(id, { name: 'Small ammunition' }); missile.onMessage('*', () => {});
   try {
     await send(page, 'test:setGems', { count: 1000 });
+    await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getLocalPlayer().gems >= 995);
+    const initialWidth = await page.evaluate(() => window.game.currentGameMode.multiplayerManager.getLocalPlayer().width);
     await send(page, 'test:moveTo', { x: 1776, y: 1776 }); await send(page, 'test:protect', { ms: 0 });
     captor.send('test:setGems', { count: 16 }); captor.send('test:moveTo', { x: 1200, y: 1970 }); captor.send('test:face', { angle: 0 }); captor.send('test:protect', { ms: 0 });
     missile.send('test:setGems', { count: 4 }); missile.send('test:moveTo', { x: 1260, y: 1982.75 }); missile.send('test:protect', { ms: 0 });
@@ -92,7 +95,7 @@ test('a real small shot wounds a giant while retaining earned size and a clear v
       return { gems: p.gems, state: p.state, width: p.width, cracks: window.crackStrokes, outside: Math.max(0, v.width / 2 - v.x, v.height / 2 - v.y, v.x + v.width / 2 - s.worldWidth, v.y + v.height / 2 - s.worldHeight), gap: Math.max(Math.abs(rect.left), Math.abs(rect.top), Math.abs(rect.width - visualViewport.width), Math.abs(rect.height - visualViewport.height)) };
     });
     expect(result.state).toBe('alive'); expect(result.gems).toBeGreaterThanOrEqual(970); expect(result.gems).toBeLessThan(1000);
-    expect(result.width).toBeGreaterThan(420); expect(result.outside).toBeLessThan(.1); expect(result.gap).toBeLessThan(.5);
+    expect(result.width).toBeGreaterThan(initialWidth * .98); expect(result.outside).toBeLessThan(.1); expect(result.gap).toBeLessThan(.5);
     await expect.poll(() => page.evaluate(() => window.crackStrokes)).toBeGreaterThan(0);
     await page.screenshot({ path: test.info().outputPath('giant-after-small-shot.png') });
     const desktopHelp = page.getByRole('button', { name: /Help & settings/ });

@@ -4,16 +4,11 @@ import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 import { turnStep, walk } from "../game/movement.js";
 import { breathRate } from "../game/airflow.js";
 import { CANNON } from "../constants/gameConstants.js";
+import { creatureSize } from '../game/creatureSize.js';
 import type { Box, Direction } from "../game/movement.js";
 
-const { ARENA_RULES, BOTS, GEMS, INHALE, PLAYER_STATE, PUSH, WORLD } = GAME_CONSTANTS;
+const { ARENA_RULES, GEMS, INHALE, PLAYER_STATE, PUSH, WORLD } = GAME_CONSTANTS;
 
-
-/** A creature's size: small to start, growing with the square root of its gems, with no ceiling */
-function sizeFor(gems: number): number {
-  const size = ARENA_RULES.PLAYER_SIZE * Math.sqrt(1 + gems / GEMS.BASE_MASS);
-  return Math.round(size * 2) / 2;
-}
 
 /**
  * One player in the world. Browsers ask for hops; the server applies them (see
@@ -332,7 +327,7 @@ class PlayerSchema extends Schema {
   /** Change the gem count; the player grows or shrinks around their center, staying inside the world */
   setGems(count: number, worldWidth: number, worldHeight: number): void {
     this.gems = Math.max(0, Math.round(count));
-    const size = sizeFor(this.gems);
+    const size = creatureSize(this.gems, worldWidth, worldHeight);
     if (size === this.width) return;
     const centerX = this.x + this.width / 2;
     const centerY = this.y + this.height / 2;
@@ -351,12 +346,11 @@ class PlayerSchema extends Schema {
 
   /**
    * Big creatures slowly shed gems, faster the bigger they are (a share of what they hold above the
-   * decay start each second), so growth slows down instead of hitting a ceiling. Bots start sooner
-   * and shed faster, so people can outgrow them.
+   * decay start each second). The same threshold and rate apply to every creature.
    */
   decay(deltaTime: number, worldWidth: number, worldHeight: number): void {
-    const start = this.isBot ? BOTS.DECAY_START : GEMS.DECAY_START;
-    const rate = this.isBot ? BOTS.DECAY_RATE : GEMS.DECAY_RATE;
+    const start = GEMS.DECAY_START;
+    const rate = GEMS.DECAY_RATE;
     if (this.gems <= start) {
       this.decayProgress = 0;
       return;

@@ -34,7 +34,11 @@ function target(s: GameState, id: string, dx: number, dy = 0, gems = 100) {
   const held = target(s, 'held', 100); held.capturedBy = 'captor';
   const flying = target(s, 'flying', 100); flying.flying = true;
   const huge = target(s, 'huge', 180, 0, 1000);
-  const center = target(s, 'center', 0), edge = target(s, 'edge', 470), outside = target(s, 'outside', 490);
+  const center = target(s, 'center', 0), edge = target(s, 'edge', 0), outside = target(s, 'outside', 0);
+  // Place body edges relative to the final wave front, independently of growth tuning.
+  const reach = SHOCKWAVE.START_RADIUS + SHOCKWAVE.RANGE;
+  edge.placeAt(w.x + reach - 2, w.y - edge.height / 2);
+  outside.placeAt(w.x + reach + 2, w.y - outside.height / 2);
   const firstBeat = w.beatAt;
   s.time = firstBeat - 1; updateWeapons(s, 0.01, NOW + s.time);
   assert(!near.sliding && !huge.sliding, 'the warning does not push anyone');

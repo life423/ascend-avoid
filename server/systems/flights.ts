@@ -72,7 +72,7 @@ function struck(everyone: PlayerSchema[], flier: PlayerSchema, now: number, from
 function impact(state: GameState, flier: PlayerSchema, target: PlayerSchema, speed: number, now: number): void {
   const ux = flier.flightVx / speed;
   const uy = flier.flightVy / speed;
-  let spill = target.spawnProtected ? 0 : impactGems(target.gems, speed, flier.width);
+  let spill = target.spawnProtected ? 0 : impactGems(target.gems, speed, flier.width, target.width);
   const out = !target.spawnProtected && target.gems - spill < CANNON.IMPACT_KO_GEMS;
   const launcher = flier.launchedBy;
   if (out) {
@@ -106,11 +106,11 @@ function impact(state: GameState, flier: PlayerSchema, target: PlayerSchema, spe
 function spendMissileMass(state: GameState, player: PlayerSchema, now: number): void {
   if (player.flightHit) return;
   player.flightHit = true;
-  const kept = missileMassAfterImpact(player.gems), lost = player.gems - kept;
+  const kept = missileMassAfterImpact(player.gems, player.width), lost = player.gems - kept;
   const x = player.x + player.width / 2, y = player.y + player.height / 2;
   if (lost > 0) {
     player.setGems(kept, state.worldWidth, state.worldHeight);
-    sprayGems(state, x, y, lost, now, player.sessionId);
+    sprayGems(state, x, y, lost, now, player.sessionId, player.flightKind === 'missile' ? GAME_CONSTANTS.GEMS.MISSILE_OWNER_PICKUP_DELAY_MS : GAME_CONSTANTS.GEMS.OWNER_PICKUP_DELAY_MS);
   }
   if (player.flightKind === 'missile' && kept === 0) {
     state.credit(player, 'cannon', now, player.launchedBy, { out: true });

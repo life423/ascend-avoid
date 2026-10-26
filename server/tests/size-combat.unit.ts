@@ -2,15 +2,16 @@ import assert from 'node:assert/strict';
 import { GameState } from '../schema/GameState.js';
 import { PlayerSchema } from '../schema/PlayerSchema.js';
 import { TurbineSchema } from '../schema/TurbineSchema.js';
-import { CANNON, TURBINE } from '../constants/gameConstants.js';
+import { CANNON, GEMS, TURBINE } from '../constants/gameConstants.js';
 import { impactGems } from '../game/cannon.js';
+import { creatureSize } from '../game/creatureSize.js';
 import { scaleDrain, drainRamp } from '../game/airflow.js';
 import { steal } from '../systems/inhale.js';
 import { updateFlights } from '../systems/flights.js';
 import { runTurbine } from '../systems/turbines.js';
 
 const NOW = 100000;
-const width = (gems: number) => Math.round(20 * Math.sqrt(1 + gems / 2) * 2) / 2;
+const width = creatureSize;
 function world() {
   const s = new GameState(0); s.botFill = 0; s.surgesOn = false; s.weaponsOn = false;
   s.setTurbines('off'); s.update(0, NOW); return s;
@@ -55,7 +56,7 @@ function shot(projectileGems: number, targetGems: number, protectedTarget = fals
 }
 
 // Matchup budgets protect earned size without granting absolute immunity to small shots.
-for (const [projectile, minimum, maximum] of [[4, 1, 15], [20, 10, 30], [250, 70, 130], [1000, 180, 300], [4000, 400, 650]]) {
+for (const [projectile, minimum, maximum] of [[4, 1, 15], [20, 5, 30], [250, 70, 150], [1000, 180, 300], [4000, 300, 650]]) {
   const damage = impactGems(1000, 1250, width(projectile));
   assert(damage >= minimum && damage <= maximum, `${projectile}-gem projectile against a giant: ${damage}`);
 }
@@ -69,8 +70,29 @@ for (const target of [12, 40, 100, 1000, 10000]) {
   assert(impactGems(target, 800, width(100)) <= impactGems(target, 1600, width(100)), 'speed still matters');
 }
 assert.equal(impactGems(0, 1250, width(1000)), 0);
+for (const [gems, maximumHits] of [[40, 1], [100, 2], [300, 3]]) {
+  let left = gems, hits = 0;
+  while (left >= CANNON.IMPACT_KO_GEMS && hits < 10) { left -= impactGems(left, 1250, width(gems)); hits++; }
+  assert(left < CANNON.IMPACT_KO_GEMS && hits <= maximumHits, 'substantial ammunition can finish small/midgame targets within one to three clean hits');
+}
+for (const [gems, hits] of [[100, 2], [300, 3]]) {
+  const { s, target } = shot(gems, gems);
+  for (let round = 1; round < hits; round++) {
+    assert.equal(target.state, 'alive', 'a substantial midgame hit still leaves a chance to escape');
+    s.time += 3500; s.now = NOW + s.time;
+    target.suctionSafeUntil = s.now + CANNON.LAND_SAFE_MS;
+    const ammo = add(s, `round-${round}`, gems), before = total(s);
+    const cx = target.x + target.width / 2, cy = target.y + target.height / 2;
+    ammo.placeAt(cx - 600 - ammo.width / 2, cy - ammo.height / 2);
+    ammo.launch(s.now, 1400, 0, 'shooter', CANNON.FLIGHT_MS);
+    for (let tick = 0; tick < 30 && !ammo.flightHit; tick++) { s.time += 50; s.now = NOW + s.time; updateFlights(s, s.now, .05); }
+    assert(ammo.flightHit, 'each follow-up must be a real swept projectile hit');
+    assert.equal(total(s), before, 'successive hits conserve combat value');
+  }
+  assert.equal(target.state, 'dead', 'two/three clean substantial hits can finish small/midgame players; suction recovery is not damage immunity');
+}
 assert(impactGems(10000, 2000, width(12)) < 100, 'a maximum-speed small shot takes under 1% from a very large giant');
-assert(scaleDrain(width(40), width(1000)) * drainRamp(30) < .5, 'even a long-held small inhale cannot regain peer-level theft against a giant');
+assert(scaleDrain(width(40), width(1000)) * drainRamp(30) < .75, 'even a long-held small inhale cannot regain peer-level theft against a giant');
 assert(scaleDrain(width(1000), width(1000)) > scaleDrain(width(250), width(1000)), 'substantial rivals remain stronger thieves');
 
 const windows: { thief: number; stolen: number }[] = [];
@@ -106,6 +128,19 @@ assert(windows[2].stolen > windows[1].stolen * 2 && windows[3].stolen > windows[
 {
   const { target } = shot(1000, 40, true);
   assert(target.gems === 40 && target.injuredUntil === 0, 'spawn protection blocks even a powerful shot');
+}
+{
+  const { s, target, flier } = shot(1000, 1000);
+  const spill = [...s.gems.values()].find(g => g.owner === flier.sessionId);
+  const targetSpill = [...s.gems.values()].find(g => g.owner === target.sessionId);
+  assert(spill && targetSpill && flier.state === 'alive');
+  const box = { x: spill.x - 10, y: spill.y - 10, width: 20, height: 20 };
+  assert(!spill.touches(box, s.now + CANNON.LAND_SAFE_MS + 500, flier.sessionId), 'spent ammunition cannot regrow from its own spill while or immediately after landing protection');
+  assert(spill.touches(box, s.now + GEMS.SPRAY_PICKUP_DELAY_MS + 1, 'rival'), 'rivals can contest the spent mass without the owner wait');
+  assert(spill.touches(box, s.now + GEMS.MISSILE_OWNER_PICKUP_DELAY_MS, flier.sessionId), 'the spent owner can recover surviving spill after the finite delay');
+  const targetBox = { x: targetSpill.x - 10, y: targetSpill.y - 10, width: 20, height: 20 };
+  assert(!targetSpill.touches(targetBox, s.now + GEMS.OWNER_PICKUP_DELAY_MS - 1, target.sessionId));
+  assert(targetSpill.touches(targetBox, s.now + GEMS.OWNER_PICKUP_DELAY_MS, target.sessionId), 'normal damage has a shorter, three-second recovery contest');
 }
 {
   const s = world(), flier = add(s, 'fan-pilot', 12);

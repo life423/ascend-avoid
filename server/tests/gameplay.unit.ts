@@ -141,15 +141,15 @@ for (const targetGems of [12, 40]) for (const protectedTarget of [false, true]) 
   const s = world(), flier = player(s, 'large-missile', 1000), target = player(s, 'large-target', 1000, 1800, 1000);
   const width = flier.width;
   flier.launch(NOW, 1400, 0, 'shooter', CANNON.FLIGHT_MS);
-  updateFlights(s, NOW + 400, 0.4);
+  for (let step = 1; step <= 12 && !flier.flightHit; step++) updateFlights(s, NOW + step * 50, .05);
   assert(flier.flightHit && flier.width <= width * 0.11, 'the missile loses about 90% of its width on impact');
   assert.equal(flier.state, 'alive');
   assert(target.width > width * 0.8 && target.width < width * 0.97, 'a comparable shot hurts a giant while preserving most earned size');
   const gems = flier.gems;
   flier.placeAt(s.worldWidth - flier.width - 10, 1000); flier.flightVx = 1400; flier.flightVy = 0;
-  updateFlights(s, NOW + 500, 0.1);
+  updateFlights(s, NOW + 1000, 0.1);
   assert.equal(flier.gems, gems, 'a later wall bounce does not consume missile growth twice');
-  assert(flier.suctionSafeUntil > NOW + 500, 'the spent missile still gets a recovery shield');
+  assert(flier.suctionSafeUntil > NOW + 1000, 'the spent missile still gets a recovery shield');
 }
 
 for (const gems of [16, 32, 80]) {
@@ -341,12 +341,12 @@ for (const ending of ['impact', 'wall', 'timeout']) {
   updateInhales(state, state.now, 0.01);
   assert.equal(flier.capturedBy, hunter.sessionId, 'normal capture returns when recovery ends');
 }
-for (const gems of [0, 297, 298, 1000]) {
+for (const gems of [0, 300, 500, 1000]) {
   const state = world(), flier = player(state, 'wall-missile', gems);
   flier.placeAt(state.worldWidth - flier.width - 1, 1000);
   flier.launch(NOW, 1400, 0, 'captor', CANNON.FLIGHT_MS);
   updateFlights(state, NOW + 100, 0.1);
-  assert.equal(flier.state, gems < 298 ? 'dead' : 'alive', 'wall impacts knock out only missiles with no growth left');
+  assert.equal(flier.state, gems <= 500 ? 'dead' : 'alive', 'wall impacts knock out missiles whose spent physical growth leaves no gems');
   assert(!flier.flying);
   if (flier.state === 'dead') {
     state.update(0, flier.respawnAt);
