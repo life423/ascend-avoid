@@ -91,6 +91,7 @@ class GameState extends Schema {
   /** Server clock of the current simulation tick. */
   now = Date.now();
   pinwheel = new PinwheelSchema();
+  weaponSets = new ArraySchema<PinwheelSchema>();
   weaponsOn: boolean = PINWHEEL.ENABLED;
 
   /** Server-only: whether traffic hits players (the automated test turns this off) */
@@ -653,5 +654,6 @@ type("number")(GameState.prototype, "surgeAt");
 type("number")(GameState.prototype, "surgeX");
 type("number")(GameState.prototype, "surgeY");
 type(PinwheelSchema)(GameState.prototype, "pinwheel");
+type([PinwheelSchema])(GameState.prototype, "weaponSets");
 
 export { GameState };

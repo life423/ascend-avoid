@@ -84,6 +84,7 @@ export interface SyncedGameState {
     surgeX: number
     surgeY: number
     pinwheel: SyncedPinwheel
+    weaponSets: SyncedArray<SyncedPinwheel>
 }
 
 /** GemSchema, as synced to the browser */
@@ -128,6 +129,10 @@ export interface SyncedPinwheel {
     kind: string
     beatAt: number
     pulseAt: number
+    claimedAt: number
+    activatedAt: number
+    originX: number
+    originY: number
 }
 
 /** PlayerSchema, as synced to the browser */

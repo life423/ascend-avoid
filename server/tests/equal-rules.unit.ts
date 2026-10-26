@@ -6,6 +6,7 @@ import { GemSchema } from '../schema/GemSchema.js';
 import { escapePress, updateInhales, updateHolds, exhale } from '../systems/inhale.js';
 import { updateFlights } from '../systems/flights.js';
 import { spawnWeapon, updateWeapons, deployWeapon } from '../systems/weapons.js';
+import { weaponKinds } from '../game/weaponKit.js';
 import { CANNON, PINWHEEL } from '../constants/gameConstants.js';
 
 const NOW = 100000;
@@ -88,7 +89,7 @@ for (const gems of [40, 1000, 5000]) {
   assert(brain.heading(), 'large bots keep seeking crystals instead of stopping at 30 gems');
 }
 
-for (const kind of ['pinwheel', 'pulsar'] as const) seeded(clock => {
+for (const kind of weaponKinds) seeded(clock => {
   const s = empty(); s.weaponsOn = true;
   const bot = add(s, 'assembler', true, 40, 1800, 2100); s.brains.set(bot.sessionId, new BotBrain());
   spawnWeapon(s, 2100, 2100, kind);

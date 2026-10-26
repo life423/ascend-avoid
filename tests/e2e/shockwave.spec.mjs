@@ -34,7 +34,14 @@ test('collect and place a Pulsar Array with a quiet HUD and visible pulses', asy
     m.localFacing = 0; m.localSpin = 0; m.facing = { x: 1, y: 0 };
   });
   await page.keyboard.down('Space');
-  await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.room.state.pinwheel.phase === 'carried');
+  await page.waitForFunction(() => {
+    const room = window.game.currentGameMode.multiplayerManager.room;
+    return [...room.state.pinwheel.parts].filter(p => p.carriedBy === room.sessionId).length >= 2;
+  }, null, { timeout: 5000 });
+  // The far component is outside this body's inhale reach; collect it by moving closer.
+  await page.keyboard.down('ArrowRight');
+  await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.room.state.pinwheel.phase === 'carried', null, { timeout: 5000 });
+  await page.keyboard.up('ArrowRight');
   await page.keyboard.up('Space');
   await expect.poll(() => page.evaluate(() => window.game.currentGameMode.notices.filter(n => n.category === 'weapon').length)).toBe(1);
   const button = page.getByRole('button', { name: 'Place weapon', exact: true });
@@ -61,7 +68,7 @@ test('collect and place a Pulsar Array with a quiet HUD and visible pulses', asy
     await page.screenshot({ path: test.info().outputPath('pulsar-wave.png') });
     await expect.poll(() => peer.state.players.get(peer.sessionId)?.x).toBeGreaterThan(position.x + 100);
     expect(peer.state.players.get(peer.sessionId).gems).toBe(75);
-    expect(await page.evaluate(() => window.game.currentGameMode.banner?.title)).toBe('Pulsar hit!');
+    expect(await page.evaluate(() => window.game.currentGameMode.banner?.title)).toBe('Pulsar Array hit!');
     expect(peer.state.players.get(peer.sessionId).stunned).toBe(false);
     await expect(button).toBeHidden();
     expect(errors).toEqual([]);

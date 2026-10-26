@@ -4,7 +4,8 @@ import logger from "../utils/logger";
 import { GameState } from "../schema/GameState";
 import { exhale, fireCaptive, escapePress, escapeSteer } from "../systems/inhale";
 import { beginSurge } from "../systems/surges";
-import { spawnWeapon, deployWeapon } from "../systems/weapons";
+import { spawnWeapon, deployWeapon, initializeWeaponSets } from "../systems/weapons";
+import { allWeapons, weaponKinds } from '../game/weaponKit';
 
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
@@ -42,6 +43,7 @@ export class GameRoom extends Room<GameState> {
     // The automated test can start a world with no loose gems, so its gem counts stay exact
     const fieldGems = !IS_PRODUCTION && Number.isInteger(options.testFieldGems) ? options.testFieldGems : undefined;
     this.setState(new GameState(fieldGems));
+    initializeWeaponSets(this.state, !IS_PRODUCTION && Number.isInteger(options.testBots) ? Number(options.testWeaponSets) || 1 : undefined);
     // ...and a world where traffic can't hit anyone (the test hits players itself)
     if (!IS_PRODUCTION && options.testCalm === true) this.state.trafficHits = false;
     // ...and one where traffic never goes calm
@@ -151,9 +153,10 @@ export class GameRoom extends Room<GameState> {
 
     // Hooks for the automated test; never available in production
     if (!IS_PRODUCTION) {
-      this.onMessage("test:pinwheel", (_client, data: { x?: number; y?: number; kind?: string }) => {
+      this.onMessage("test:pinwheel", (_client, data: { x?: number; y?: number; kind?: string; slot?: number }) => {
         this.state.weaponsOn = true;
-        spawnWeapon(this.state, Number(data?.x) || 2100, Number(data?.y) || 2100, data?.kind === 'pulsar' ? 'pulsar' : 'pinwheel');
+        const kind = weaponKinds.find(kind => kind === data?.kind) ?? 'pinwheel';
+        spawnWeapon(this.state, Number(data?.x) || 2100, Number(data?.y) || 2100, kind, allWeapons(this.state)[Number(data?.slot) || 0] ?? this.state.pinwheel);
       });
       const playerOf = (client: Client) => this.state.players.get(client.sessionId);
       const { worldWidth, worldHeight } = this.state;

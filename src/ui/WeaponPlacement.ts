@@ -1,4 +1,5 @@
 import type { SyncedGameState } from '../types/synced';
+import { allWeapons } from '../../server/game/weaponKit';
 
 /** Touch, mouse and keyboard all issue the same explicit placement request. */
 export class WeaponPlacement {
@@ -24,7 +25,7 @@ export class WeaponPlacement {
     };
     update(state: SyncedGameState, localId: string | null | undefined, intro: boolean): void {
         const me = localId ? state.players.get(localId) : undefined;
-        this.button.hidden = intro || !me || !!me.capturedBy || me.flying || me.state !== 'alive' || state.pinwheel?.phase !== 'carried' || state.pinwheel.owner !== localId;
+        this.button.hidden = intro || !me || !!me.capturedBy || me.flying || me.state !== 'alive' || !allWeapons(state).some(w => w.phase === 'carried' && w.owner === localId);
         this.button.disabled = !me || me.stunned;
     }
     dispose(): void {

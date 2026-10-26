@@ -29,7 +29,7 @@
         "clean:all": "rimraf node_modules server/node_modules package-lock.json server/package-lock.json",
         "install:all": "npm install && cd server && npm install",
         "test": "npm run test:unit && npm run test:multiplayer",
-        "test:unit": "cd server && npx tsx tests/airflow.unit.ts && npx tsx tests/gameplay.unit.ts && npx tsx tests/fairness.unit.ts && npx tsx tests/pinwheel.unit.ts && npx tsx tests/shockwave.unit.ts && npx tsx tests/injury.unit.ts && npx tsx tests/bot-injury.unit.ts && npx tsx tests/size-combat.unit.ts && npx tsx tests/equal-rules.unit.ts && npx tsx tests/growth-bounds.unit.ts && npx tsx tests/captive-transfer.unit.ts && npx tsx tests/rapid-theft.unit.ts && npx tsx tests/joystick-escape.unit.ts",
+        "test:unit": "cd server && npx tsx tests/airflow.unit.ts && npx tsx tests/gameplay.unit.ts && npx tsx tests/fairness.unit.ts && npx tsx tests/pinwheel.unit.ts && npx tsx tests/shockwave.unit.ts && npx tsx tests/injury.unit.ts && npx tsx tests/bot-injury.unit.ts && npx tsx tests/size-combat.unit.ts && npx tsx tests/equal-rules.unit.ts && npx tsx tests/growth-bounds.unit.ts && npx tsx tests/captive-transfer.unit.ts && npx tsx tests/rapid-theft.unit.ts && npx tsx tests/joystick-escape.unit.ts && npx tsx tests/body-pull.unit.ts && npx tsx tests/weapon-fleet.unit.ts",
     "test:browsers": "playwright test",
     "gen:types": "node scripts/gen-synced-types.mjs",
         "sim:bots": "npm run build:server && node scripts/bot-sim.cjs",
