@@ -21,11 +21,11 @@ function setup() {
   assert.equal(b.gems, 40, 'healthy creatures cannot lose gems to inhale');
   assert.equal(a.gems, 40); assert.equal(a.robbing, '');
   b.injure(s.time); const until = b.injuredUntil;
-  for (let i = 0; i < 3; i++) { s.time += 33; steal(s, a, NOW + s.time, .033); }
+  for (let i = 0; i < 10; i++) { s.time += 33; steal(s, a, NOW + s.time, .033); }
   assert(b.gems < 40, 'the same cone can steal after a damaging hit');
   assert.equal(b.injuredUntil, until, 'theft cannot refresh the injury');
   const left = b.gems; s.time = until; steal(s, a, NOW + s.time, 1);
-  assert.equal(b.gems, left, 'the five-second deadline ends theft exactly');
+  assert.equal(b.gems, left, 'the seven-second deadline ends theft exactly without refunding lost gems');
   assert(!a.stealShares.has(b.sessionId), 'healing discards unfinished theft progress');
 }
 {
@@ -70,7 +70,12 @@ function setup() {
 }
 {
   const { s, b } = setup(); b.injure(0); b.injure(1000);
-  assert.equal(b.injuredUntil, 1000 + INHALE.INJURY_MS, 'another damaging hit starts a fresh five-second window');
+  assert.equal(b.injuredUntil, 7000, 'another damaging hit cannot extend the fixed seven-second window');
+  b.setGems(20, s.worldWidth, s.worldHeight); b.injure(6999);
+  assert.equal(b.injuredUntil, 7000); assert.equal(b.injuryGems, 40, 'late hits cannot reset the theft basis');
+  b.injure(7000); assert.equal(b.injuredUntil, 14000, 'a hit at expiry opens a new window');
+  assert.equal(b.injuryGems, 20, 'a new injury snapshots remaining gems');
+  s.time = 14000;
   s.hitPlayer(b, NOW); assert(b.injuredUntil > s.time, 'traffic damage also exposes gems');
 }
 {

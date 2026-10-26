@@ -36,7 +36,7 @@ test('damage cracks the rear shell, permits movement and visibly heals on time',
   const before = await mine(page); await page.keyboard.down('ArrowRight');
   await expect.poll(async () => (await mine(page)).x).toBeGreaterThan(before.x + 10); await page.keyboard.up('ArrowRight');
   expect((await mine(page)).injury).toBe(deadline);
-  await expect.poll(async () => (await mine(page)).time, { timeout: 6000 }).toBeGreaterThan(deadline + 250);
+  await expect.poll(async () => (await mine(page)).time, { timeout: 8000 }).toBeGreaterThan(deadline + 250);
   const strokes = await page.evaluate(() => window.crackStrokes); await page.waitForTimeout(200);
   expect(await page.evaluate(() => window.crackStrokes)).toBe(strokes);
   await page.screenshot({ path: test.info().outputPath('healed-shell.png') });
@@ -69,6 +69,39 @@ test('reduced motion keeps the injury shape readable without an impact ripple', 
   await expect.poll(() => page.evaluate(() => window.crackStrokes)).toBeGreaterThan(0);
   await page.screenshot({ path: test.info().outputPath('injury-reduced-motion.png') });
   expect(await page.evaluate(() => window.injuryRipples)).toBe(0);
+});
+
+test('rapid theft visibly shrinks an injured rival without extending its deadline', async ({ page, baseURL }) => {
+  await start(page);
+  const roomId = await page.evaluate(() => window.game.currentGameMode.multiplayerManager.room.id);
+  const thief = await new Client(baseURL.replace(/^http/, 'ws')).joinById(roomId, { name: 'Rapid theft' });
+  thief.onMessage('*', () => {});
+  try {
+    await send(page, 'test:setGems', { count: 1000 });
+    await send(page, 'test:moveTo', { x: 2000, y: 2000 });
+    await send(page, 'test:protect', { ms: 0 });
+    thief.send('test:setGems', { count: 250 });
+    await expect.poll(() => thief.state.players?.get(thief.sessionId)?.gems).toBe(250);
+    const beforeWidth = await page.evaluate(() => window.game.currentGameMode.multiplayerManager.getLocalPlayer().width);
+    const thiefWidth = thief.state.players.get(thief.sessionId).width;
+    thief.send('test:moveTo', { x: 2000 - thiefWidth - 15, y: 2000 + (beforeWidth - thiefWidth) / 2 });
+    thief.send('test:face', { angle: 0 }); thief.send('test:protect', { ms: 0 });
+    await page.waitForTimeout(100); await send(page, 'test:injure');
+    await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getLocalPlayer().injuredUntil > 0);
+    const deadline = (await mine(page)).injury;
+    thief.send('inhale');
+    await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getLocalPlayer().robbedTotal >= 150);
+    const during = await page.evaluate(() => {
+      const m = window.game.currentGameMode, p = m.multiplayerManager.getLocalPlayer();
+      return { gems: p.gems, width: p.width, injury: p.injuredUntil, state: p.state, capturedBy: p.capturedBy, particles: m.theftParticles.length };
+    });
+    expect(during.gems).toBeLessThanOrEqual(850); expect(during.width).toBeLessThan(beforeWidth * .95);
+    expect(during.injury).toBe(deadline); expect(during.state).toBe('alive'); expect(during.capturedBy).toBe('');
+    await page.screenshot({ path: test.info().outputPath('rapid-theft-shrinking.png') });
+    thief.send('cancel'); thief.send('test:moveTo', { x: 700, y: 700 });
+    await expect.poll(async () => (await mine(page)).time, { timeout: 8000 }).toBeGreaterThan(deadline + 200);
+    expect((await mine(page)).gems).toBeLessThanOrEqual(during.gems, 'ending vulnerability never refunds lost gems');
+  } finally { await thief.leave(); }
 });
 
 test('a real small shot wounds a giant while retaining earned size and a clear viewport', async ({ page, baseURL }) => {

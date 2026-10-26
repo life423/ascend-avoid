@@ -144,9 +144,7 @@ export function scaleDrain(attackerWidth: number, targetWidth: number): number {
   return LATCH.SCALE_MIN + (1 - LATCH.SCALE_MIN) * v * v * (3 - 2 * v);
 }
 
-/** Clean sustained contact improves drain, capped independently of the size resistance. */
-export function drainRamp(held: number): number {
-  let times = 1;
-  for (const [at, multiplier] of INHALE.DRAIN_RAMP) if (held >= at) times = multiplier;
-  return times;
+/** A damaging hit has earned an opening: theft bites immediately, with only a small pressure buildup. */
+export function drainRamp(held: number, width = 20): number {
+  return INHALE.DRAIN_START + (1 - INHALE.DRAIN_START) * pressureBuild(held, width);
 }

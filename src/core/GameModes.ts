@@ -576,6 +576,8 @@ export class MultiplayerMode extends GameMode {
     private facing = { x: 0, y: -1 }
     /** The steering last sent to the server */
     private sentSteer = { x: 0, y: 0 }
+    private sentSteerAt = 0
+    private sentSteerEscape = false
     /** Where you were drawn over the last second, to compare with the server (which runs a round trip behind) */
     private history: { at: number; x: number; y: number }[] = []
     private lastMoveAt = 0
@@ -732,12 +734,16 @@ export class MultiplayerMode extends GameMode {
 
     /** Tell the server where you're steering, whenever it changes */
     private sendSteer(steer: { x: number; y: number }, escape = false): void {
+        const now = performance.now()
         const x = Math.round(steer.x * 100) / 100
         const y = Math.round(steer.y * 100) / 100
         const wasStill = this.sentSteer.x === 0 && this.sentSteer.y === 0
         const still = x === 0 && y === 0
-        if (still === wasStill && Math.abs(x - this.sentSteer.x) < 0.04 && Math.abs(y - this.sentSteer.y) < 0.04) return
+        // A held touch must still count when the daze ends, even if the thumb has stopped moving.
+        if (escape === this.sentSteerEscape && !(escape && now - this.sentSteerAt >= 100) && still === wasStill && Math.abs(x - this.sentSteer.x) < 0.04 && Math.abs(y - this.sentSteer.y) < 0.04) return
         this.sentSteer = { x, y }
+        this.sentSteerAt = now
+        this.sentSteerEscape = escape
         this.multiplayerManager?.sendMessage('steer', { x, y, escape })
     }
 

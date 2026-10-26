@@ -56,7 +56,7 @@ for (const role of [false, true]) {
   const s = empty(), p = add(s, 'defender', role, 40, 1000, 1000), other = add(s, 'target', !role, 40, 1100, 1000);
   p.facing = 0; exhale(s, p, NOW);
   assert.equal(p.stamina, .65); assert(other.stunned && other.injuredUntil === 0, 'both roles use the same gust cost and stun');
-  p.injure(0); assert.equal(p.injuredUntil, 5000);
+  p.injure(0); assert.equal(p.injuredUntil, 7000);
   const missile = add(s, 'missile', !role, 20, 1300, 1000); p.placeAt(1600, 1000);
   missile.launch(NOW, 1400, 0, other.sessionId, CANNON.FLIGHT_MS);
   for (let tick = 1; tick <= 15 && !missile.flightHit; tick++) updateFlights(s, NOW + tick * 50, .05);

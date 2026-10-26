@@ -296,22 +296,15 @@ export const INHALE = {
   LOCK_MS: 1500, // holding a creature in your inhale builds a lock to full over this long...
   LOCK_DECAY_MS: 350, // ...that fades this fast once it's out of the cone (or you stop), so breaking the cone frees it
   LOCK_START: 0.25, // body pull starts at this share and grows with the lock squared: a warning, then dangerous, then full
-  // Sustained clean contact matters, but peaks at 3x so it cannot overwhelm relative-size resistance.
-  DRAIN_RAMP: [
-    [0, 1],
-    [0.4, 1.25],
-    [0.8, 1.6],
-    [1.2, 2],
-    [1.6, 2.5],
-    [2.0, 3],
-  ],
+  DRAIN_START: 0.8, // injury theft starts at 80% pressure, then smoothly reaches full; no second long windup
   HOLD_DECAY: 6, // ...and out of the airflow, the time held drains away this many times faster than it built (2s is gone in a third of a second)
   CLOSE_RANGE: 0.25, // the share of the reach nearest the mouth where the pull gets much stronger...
   CLOSE_BOOST: 1.5, // ...up to this much more on top: caught close to the mouth of someone bigger, you're probably done
   MAX_MS: 5000, // a full breath lasts this long while you inhale (time to build a lock and drag someone in)...
   REFILL_MS: 3000, // ...and refills from empty in this long, starting from wherever it is (a short puff costs a short wait)
   MIN_BREATH: 0.1, // you can start inhaling with at least this share of a breath
-  STEAL_RATE: 10, // base gems/s, modified by geometry, relative size, sustained contact and number of victims
+  STEAL_RATE: 10, // minimum gems/s before geometry, relative size and pressure
+  STEAL_SHARE_PER_S: 0.3, // otherwise 30%/s of gems held when the injury began; shrinking cannot soften the finish
   STEAL_EDGE_SHARE: 0.25, // injured victims share the inhale's drain by how squarely they sit in the cone: dead center counts 1, the very edge this
   CONTACT_GAP: 4, // a creature touching you (within this many units) anywhere across your front...
   CONTACT_ARC: 100, // ...up to this many degrees either side of where you face, is caught by your inhale with no aiming...
@@ -320,7 +313,7 @@ export const INHALE = {
   STEAL_ESCAPE: 0.75, // getting away cuts the drain by up to this much...
   STEAL_ESCAPE_AWAY: 0.6, // ...counting speed straight away at this share, and speed across the cone in full (strafing escapes best)...
   STEAL_POINT_BLANK: 0.25, // ...but less and less within this share of the reach: right at the mouth there's no getting away
-  INJURY_MS: 5000, // damaging hits expose gems for five seconds; inhaling never refreshes this
+  INJURY_MS: 7000, // fixed exposure: neither further hits nor inhaling extend an active window
   DRAIN_FLOOR: 0, // an injured creature drained completely is knocked out; healthy newborns are safe
   CLASH_MARGIN: 0.15, // two creatures inhaling each other never both siphon: only the stronger pull does, once it's ahead by this share (closer than that, whoever has held the other longer keeps the flow), so a clash has a winner, not an endless exchange
   STOLE_NOTICE: 5, // a theft this big gets a banner and a line in the feed
@@ -424,10 +417,13 @@ export const CAMERA = {
  */
 export const CANNON = {
   HOLD_MS: 4500, // a brief capture, then automatic release
+  CAPTIVE_GEM_SHARE: 0.2, // transfer at most 20% of gems held at capture, gradually over HOLD_MS
   CAPTIVE_STUN_MS: 600,
   ESCAPE_KEYS: 3, // rises to four at a 2x width advantage, five at 4x
-  ESCAPE_PRESS: 0.6, // a push counts once the stick goes past this...
-  ESCAPE_NEUTRAL: 0.3, // ...after coming back within this, so holding a direction is one push, not many
+  ESCAPE_PRESS: 0.4, // a moderate push is enough; the thumb need not reach the rim
+  ESCAPE_NEUTRAL: 0.3, // returning here rearms; a deliberate turn can also start the next direction
+  ESCAPE_ARC_DEG: 60, // accept directions within 60 degrees of the requested arrow
+  ESCAPE_TURN_DEG: 30, // a deliberate turn rearms; a held diagonal or small jitter cannot repeat inputs
   ESCAPE_PUSH: 110, // out, it pops from the mouth this hard before the escape shield starts
   ARM_MS: 2800, // base loading includes the 600ms daze; each extra escape input adds 300ms, up to 3.4s
   BREAK_PUSH: 70, // ...pushed this far clear

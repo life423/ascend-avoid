@@ -51,6 +51,9 @@ export function drawTheft(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, 
     // Who is robbing whom (a thief can rob several at once): a faint dashed tether from each victim to each thief
     const robbers = new Map<string, string[]>()
     state.players.forEach((thief: SyncedPlayer, id: string) => {
+        // Captive transfer uses the same gem counters, but stays inside the captor without a tether.
+        const captive = thief.gulping ? state.players.get(thief.gulping) : null
+        if (captive?.state === 'alive' && captive.capturedBy === id) robbers.set(thief.gulping, [id])
         for (const victimId of String(thief.robbing ?? '').split(',')) {
             const victim = victimId ? state.players.get(victimId) : null
             if (!victim) continue
@@ -95,11 +98,12 @@ export function drawTheft(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, 
         if (!victim || !thief) continue
         const a = mode.centerOf(p.from, victim)
         const b = mode.centerOf(p.to, thief)
+        const inside = victim.capturedBy === p.to && thief.gulping === p.from
         const facing = thief.facing ?? 0
-        const mouthX = b.x + Math.cos(facing) * thief.width * 0.35
-        const mouthY = b.y + Math.sin(facing) * thief.width * 0.35
-        const startX = a.x + Math.cos(p.angle) * victim.width * 0.45
-        const startY = a.y + Math.sin(p.angle) * victim.width * 0.45
+        const mouthX = b.x + Math.cos(facing) * thief.width * (inside ? -0.15 : 0.35)
+        const mouthY = b.y + Math.sin(facing) * thief.width * (inside ? -0.15 : 0.35)
+        const startX = a.x + Math.cos(p.angle) * victim.width * (inside ? 0.15 : 0.45)
+        const startY = a.y + Math.sin(p.angle) * victim.width * (inside ? 0.15 : 0.45)
         const ease = t * t
         const lift = Math.sin(t * Math.PI) * 18
         const x = startX + (mouthX - startX) * ease

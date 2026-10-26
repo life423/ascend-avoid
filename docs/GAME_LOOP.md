@@ -2,6 +2,8 @@
 
 Approved and saved at the user's explicit request on October 25, 2026. This is the intended experience, not a claim that current balance achieves it. The user values becoming enormous, feeling almost untouchable and retaining that size for hours through good play. Frequent knockouts across the arena must coexist with rare, durable giants. Later explicit decisions take precedence.
 
+October 26 clarification: injury must be a serious knockout threat even for a large player. The current local pass uses a fixed seven-second window without extensions and much faster theft; a giant that fails to escape sustained suction can die and respawn. This supersedes the older five-second/slow-theft recommendations below. Keep the joystick and make mobile escape directions forgiving; do not replace it with buttons. See GAME_DESIGN.md and BALANCE_VALIDATION.md for implemented rules and controlled measurements.
+
 1. **Start small and gather.** Crystals provide steady progress. You’re quick, vulnerable and watching for danger. Fans give you an escape route and a chance to make a risky attack.
 2. **Become capable.** You can capture smaller opponents, survive more encounters and start choosing fights. Each increase in size gives you useful power.
 3. **Build your advantage.** Win fights, collect valuable spills and assemble weapons. Growth takes enough effort that you become attached to your creature.
