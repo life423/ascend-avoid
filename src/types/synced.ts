@@ -23,6 +23,14 @@ export interface SyncedBall {
     vy: number
 }
 
+/** BlackHoleSchema, as synced to the browser */
+export interface SyncedBlackHole {
+    x: number
+    y: number
+    radius: number
+    activeAt: number
+}
+
 /** BombSchema, as synced to the browser */
 export interface SyncedBomb {
     x: number
@@ -85,6 +93,7 @@ export interface SyncedGameState {
     surgeY: number
     pinwheel: SyncedPinwheel
     weaponSets: SyncedArray<SyncedPinwheel>
+    blackHoles: SyncedArray<SyncedBlackHole>
 }
 
 /** GemSchema, as synced to the browser */

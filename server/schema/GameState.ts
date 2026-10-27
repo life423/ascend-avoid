@@ -1,5 +1,7 @@
 import * as schema from "@colyseus/schema";
 const { Schema, MapSchema, ArraySchema, type } = schema;
+import { BlackHoleSchema } from "./BlackHoleSchema.js";
+import { BLACK_HOLE } from "../constants/gameConstants.js";
 import { PlayerSchema } from "./PlayerSchema.js";
 import { ObstacleSchema } from "./ObstacleSchema.js";
 import { GemSchema } from "./GemSchema.js";
@@ -93,6 +95,7 @@ class GameState extends Schema {
   now = Date.now();
   pinwheel = new PinwheelSchema();
   weaponSets = new ArraySchema<PinwheelSchema>();
+  blackHoles = new ArraySchema<BlackHoleSchema>();
   weaponsOn: boolean = PINWHEEL.ENABLED;
 
   /** Server-only: whether traffic hits players (the automated test turns this off) */
@@ -184,6 +187,7 @@ class GameState extends Schema {
       this.comets.forEach((comet) => comet.placeAt(-500, -500));
       this.balls.forEach((ball) => ball.park());
     }
+    for (const [x, y] of BLACK_HOLE.POSITIONS) this.blackHoles.push(new BlackHoleSchema(x * this.worldWidth, y * this.worldHeight, BLACK_HOLE.CORE_RADIUS, BLACK_HOLE.WARNING_MS));
     topUpField(this, true);
   }
 
@@ -485,7 +489,7 @@ class GameState extends Schema {
   credit(target: PlayerSchema, how: string, now: number, byId?: string, extra: Record<string, unknown> = {}): void {
     const who = byId ?? target.shovedBy(now, SHIFT.CREDIT_MS);
     const by = who ? this.players.get(who) : undefined;
-    if (!this.onEvent || (!by && how !== 'burnup' && !(byId && how === 'cannon'))) return;
+    if (!this.onEvent || (!by && how !== 'burnup' && !(byId && (how === 'cannon' || how === 'blackhole')))) return;
     this.onEvent("credit", {
       byId: who,
       by: by?.name ?? 'Someone',
@@ -681,5 +685,7 @@ type("number")(GameState.prototype, "surgeX");
 type("number")(GameState.prototype, "surgeY");
 type(PinwheelSchema)(GameState.prototype, "pinwheel");
 type([PinwheelSchema])(GameState.prototype, "weaponSets");
+
+type([BlackHoleSchema])(GameState.prototype, "blackHoles");
 
 export { GameState };

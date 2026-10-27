@@ -6,7 +6,7 @@ import { BELLY_GEMS, launchSpeed } from "../game/cannon.js";
 import { cannonTargetAppeal } from '../game/botAim.js';
 import { exhale, fireCaptive, stealWeight } from "./inhale.js";
 import { botPreyAvailable, botRobber } from '../game/botTargets.js';
-import { EXHALE } from '../constants/gameConstants.js';
+import { CANNON, EXHALE } from '../constants/gameConstants.js';
 
 const { PLAYER_STATE, BOTS, INHALE, BOMBS } = GAME_CONSTANTS;
 
@@ -201,6 +201,14 @@ function botFire(state: GameState, bot: PlayerSchema, cx: number, cy: number, no
         target = other;
       }
     });
+    let holeAngle: number | null = null;
+    state.blackHoles.forEach(hole => {
+      const d = Math.hypot(hole.x - cx, hole.y - cy), score = 160 - d * .05;
+      if (state.time < hole.activeAt || state.shiftPhase === 'grace' || !state.isFloorAt(hole.x, hole.y)
+        || d > BOTS.FIRE_RANGE || d <= (bot.width + captive.width) / 2 + CANNON.LAUNCH_CLEARANCE + hole.radius || score <= best) return;
+      best = score; holeAngle = Math.atan2(hole.y - cy, hole.x - cx);
+    });
+    if (holeAngle !== null) return holeAngle;
     const aim = target as PlayerSchema | null;
     return aim ? Math.atan2(aim.y + aim.height / 2 - cy, aim.x + aim.width / 2 - cx) : null;
   });

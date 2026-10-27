@@ -1,0 +1,4030 @@
+{
+  "generatedAt": "2026-10-26T21:39:01.623002-05:00",
+  "baseCommit": "5bb717ed535c3ead639d5108fcfdfe7f0d2221c1",
+  "sourceSha256": "551b0d49355b37a58236330dd252e4a5dc608f7006a4a8c52ff8661cdd55cfd8",
+  "releaseStatus": "local branch feat/black-holes-balance-playtest; no merge or deploy",
+  "methodology": {
+    "tickHz": 30,
+    "seededRandomAndClock": true,
+    "blackHoles": true,
+    "weaponSets": 9,
+    "captureShare": 0.3,
+    "bellyBonusCap": 6,
+    "vulnerableOutgoing": 0.15,
+    "shotFollowMaxTravel": 480,
+    "puffRecoilCap": 420,
+    "arenaSecondsPerRun": 1200,
+    "stopAtWidthShare": null,
+    "initialFieldCrystals": 950,
+    "fieldReplenishPerSecond": 30,
+    "growthMassPerGem": 0.5,
+    "missileBaseGems": 80,
+    "ownerPickupDelayMs": 3000,
+    "missileOwnerPickupDelayMs": 6000,
+    "growthScale": 600,
+    "growthExponent": 0.8,
+    "decayStart": 300,
+    "decayRate": 0.001,
+    "seeds": [
+      11,
+      29,
+      73
+    ],
+    "scenarios": [
+      "human-newborn"
+    ],
+    "probeController": "existing fallible BotBrain; roles retain their current shared gameplay rules; no human skill or subjective fun is inferred",
+    "weaponsInArena": "all nine production sets across six recipes; ordinary pickup/placement by current AI; every set activation is counted",
+    "decay": "actual PlayerSchema.decay, no combat or collecting",
+    "weaponExposure": "actual full world update; idle/radial/sideways/warning escape, open arena/wall, with/without spilled gem recovery; contested cases add an unopposed builder following/inhaling",
+    "creditedKnockouts": "missile-target versus spent-missile distinguished; state-transition death count is separate; missing milestones mean not reached"
+  },
+  "limitations": [
+    "20 AI-controlled actors, including the human-schema probe; no human skill/fun inference.",
+    "Three paired 20-minute seeds and one longer seed are small samples; divergent seeded paths do not establish statistical causation.",
+    "Width 500 is an analysis threshold, not a game cap.",
+    "Legacy spent-missile event category includes captured-player finishers and spent-ammunition deaths.",
+    "Timed-ejection telemetry counts alive non-firing releases; interrupted releases can also be included.",
+    "No real Android device performance or hours-long human giant tenure is validated."
+  ],
+  "withoutHoles": [
+    {
+      "seed": 11,
+      "seconds": 1200,
+      "probe": {
+        "final": 13,
+        "max": 10031,
+        "maxWidth": 795,
+        "deaths": 10,
+        "decayGems": 1402,
+        "stolen": 13442,
+        "robbed": 10293,
+        "incomingCreditedDamage": {
+          "pulsar": 31,
+          "spent-missile": 4589,
+          "ricochet": 210,
+          "sentinel": 1068,
+          "missile-target": 369,
+          "comet": 558,
+          "pinwheel": 1953,
+          "ion": 498
+        },
+        "firstBelow750": null,
+        "secondsAbove750": 415,
+        "leaderSeconds": 101,
+        "milestones": {
+          "25": 15,
+          "100": 47,
+          "300": 199,
+          "500": 414,
+          "1000": 574
+        }
+      },
+      "arena": {
+        "actualDeaths": 294,
+        "deathsByPreKnockoutWidth": {
+          "below150": 271,
+          "from150To500": 21,
+          "atLeast500": 2
+        },
+        "creditedKnockouts": {
+          "pinwheel": 18,
+          "spent-missile": 160,
+          "pulsar": 15,
+          "burnup": 8,
+          "sentinel": 4,
+          "missile-target": 58,
+          "comet": 14,
+          "ion": 7,
+          "drain": 4,
+          "ricochet": 6
+        },
+        "captures": 205,
+        "launches": 203,
+        "captureOutcomes": {
+          "timedEjections": 4,
+          "fires": 201,
+          "injuredFires": 39,
+          "capturedPostTransferGems": 30993,
+          "bellyBonusPaid": 27,
+          "bellyBonusDiscarded": 101,
+          "continuedTheftSeconds": 137.56666666666143,
+          "followActiveSeconds": 46.799999999999905
+        },
+        "captureTiming": {
+          "count": 205,
+          "minRatio": 1.3008849557522124,
+          "meanHoldMs": 7503
+        },
+        "meanGiantsAt500Width": 0.98,
+        "mostGiantsAt500Width": 4,
+        "finalGiantsAt500Width": 1,
+        "finalPopulation": [
+          {
+            "gems": 13,
+            "width": 41
+          },
+          {
+            "gems": 16325,
+            "width": 913
+          },
+          {
+            "gems": 135,
+            "width": 117.5
+          },
+          {
+            "gems": 92,
+            "width": 98
+          },
+          {
+            "gems": 18,
+            "width": 47
+          },
+          {
+            "gems": 3,
+            "width": 26.5
+          },
+          {
+            "gems": 80,
+            "width": 91.5
+          },
+          {
+            "gems": 30,
+            "width": 58.5
+          },
+          {
+            "gems": 2,
+            "width": 24.5
+          },
+          {
+            "gems": 1313,
+            "width": 340.5
+          },
+          {
+            "gems": 17,
+            "width": 46
+          },
+          {
+            "gems": 150,
+            "width": 123.5
+          },
+          {
+            "gems": 2163,
+            "width": 425.5
+          },
+          {
+            "gems": 313,
+            "width": 175
+          },
+          {
+            "gems": 1,
+            "width": 22.5
+          },
+          {
+            "gems": 557,
+            "width": 229.5
+          },
+          {
+            "gems": 6,
+            "width": 31.5
+          },
+          {
+            "gems": 5,
+            "width": 30
+          },
+          {
+            "gems": 0,
+            "width": 20
+          },
+          {
+            "gems": 303,
+            "width": 172.5
+          }
+        ],
+        "leaderChangesAt100PlusGems": 57,
+        "longestLeaderTenureAt100PlusGems": 151,
+        "biggestFinalPlayer": 16325,
+        "weaponPhase": "parts",
+        "deployments": {
+          "pinwheel": 45,
+          "ion": 16,
+          "pulsar": 35,
+          "sentinel": 19,
+          "comet": 40,
+          "ricochet": 14
+        },
+        "weaponActiveSeconds": {
+          "pinwheel": 360,
+          "ion": 256,
+          "pulsar": 287,
+          "sentinel": 301,
+          "comet": 480,
+          "ricochet": 224
+        }
+      },
+      "lifeSummary": {
+        "recordedLives": 313,
+        "openingLivesReaching100Gems": 8,
+        "openingLifeFirst100Seconds": [
+          47,
+          97,
+          106,
+          65,
+          86,
+          52,
+          69,
+          110
+        ],
+        "longestGiantStreakSeconds": 284,
+        "giantThresholdWidth": 500
+      },
+      "minuteSamples": [
+        {
+          "seconds": 60,
+          "probe": 0,
+          "leader": 216,
+          "deaths": 18,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 950
+        },
+        {
+          "seconds": 120,
+          "probe": 73,
+          "leader": 353,
+          "deaths": 35,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 950
+        },
+        {
+          "seconds": 180,
+          "probe": 161,
+          "leader": 411,
+          "deaths": 47,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 950
+        },
+        {
+          "seconds": 240,
+          "probe": 331,
+          "leader": 914,
+          "deaths": 64,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 950
+        },
+        {
+          "seconds": 300,
+          "probe": 2,
+          "leader": 1495,
+          "deaths": 87,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 950
+        },
+        {
+          "seconds": 360,
+          "probe": 241,
+          "leader": 1695,
+          "deaths": 99,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 946
+        },
+        {
+          "seconds": 420,
+          "probe": 561,
+          "leader": 2402,
+          "deaths": 111,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 950
+        },
+        {
+          "seconds": 480,
+          "probe": 3,
+          "leader": 2345,
+          "deaths": 127,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 801
+        },
+        {
+          "seconds": 540,
+          "probe": 118,
+          "leader": 2291,
+          "deaths": 134,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 679
+        },
+        {
+          "seconds": 600,
+          "probe": 3,
+          "leader": 4281,
+          "deaths": 150,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 782
+        },
+        {
+          "seconds": 660,
+          "probe": 68,
+          "leader": 3205,
+          "deaths": 163,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 722
+        },
+        {
+          "seconds": 720,
+          "probe": 510,
+          "leader": 5034,
+          "deaths": 177,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 659
+        },
+        {
+          "seconds": 780,
+          "probe": 797,
+          "leader": 4993,
+          "deaths": 198,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 601
+        },
+        {
+          "seconds": 840,
+          "probe": 2585,
+          "leader": 4281,
+          "deaths": 216,
+          "giantsAt500Width": 3,
+          "fieldCrystals": 668
+        },
+        {
+          "seconds": 900,
+          "probe": 3256,
+          "leader": 4578,
+          "deaths": 235,
+          "giantsAt500Width": 3,
+          "fieldCrystals": 606
+        },
+        {
+          "seconds": 960,
+          "probe": 2948,
+          "leader": 11533,
+          "deaths": 241,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 685
+        },
+        {
+          "seconds": 1020,
+          "probe": 3634,
+          "leader": 9432,
+          "deaths": 257,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 739
+        },
+        {
+          "seconds": 1080,
+          "probe": 9989,
+          "leader": 9989,
+          "deaths": 271,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 597
+        },
+        {
+          "seconds": 1140,
+          "probe": 0,
+          "leader": 15526,
+          "deaths": 280,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 534
+        },
+        {
+          "seconds": 1200,
+          "probe": 13,
+          "leader": 16325,
+          "deaths": 294,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 653
+        }
+      ]
+    },
+    {
+      "seed": 29,
+      "seconds": 1200,
+      "probe": {
+        "final": 13,
+        "max": 982,
+        "maxWidth": 298.5,
+        "deaths": 13,
+        "decayGems": 10,
+        "stolen": 704,
+        "robbed": 914,
+        "incomingCreditedDamage": {
+          "pulsar": 170,
+          "pinwheel": 474,
+          "ricochet": 24,
+          "missile-target": 189,
+          "spent-missile": 180,
+          "comet": 7,
+          "sentinel": 11
+        },
+        "firstBelow750": null,
+        "secondsAbove750": 2,
+        "leaderSeconds": 93,
+        "milestones": {
+          "25": 18,
+          "100": 68,
+          "300": 90,
+          "500": 498
+        }
+      },
+      "arena": {
+        "actualDeaths": 270,
+        "deathsByPreKnockoutWidth": {
+          "below150": 248,
+          "from150To500": 21,
+          "atLeast500": 1
+        },
+        "creditedKnockouts": {
+          "pulsar": 18,
+          "pinwheel": 26,
+          "missile-target": 53,
+          "spent-missile": 141,
+          "ricochet": 7,
+          "burnup": 7,
+          "comet": 7,
+          "drain": 4,
+          "ion": 5,
+          "sentinel": 2
+        },
+        "captures": 180,
+        "launches": 178,
+        "captureOutcomes": {
+          "timedEjections": 5,
+          "fires": 175,
+          "injuredFires": 44,
+          "capturedPostTransferGems": 28481,
+          "bellyBonusPaid": 21,
+          "bellyBonusDiscarded": 85,
+          "continuedTheftSeconds": 127.06666666666202,
+          "followActiveSeconds": 41.6000000000002
+        },
+        "captureTiming": {
+          "count": 180,
+          "minRatio": 1.3,
+          "meanHoldMs": 8073
+        },
+        "meanGiantsAt500Width": 0.83,
+        "mostGiantsAt500Width": 2,
+        "finalGiantsAt500Width": 2,
+        "finalPopulation": [
+          {
+            "gems": 13,
+            "width": 41
+          },
+          {
+            "gems": 7,
+            "width": 33
+          },
+          {
+            "gems": 21,
+            "width": 50
+          },
+          {
+            "gems": 1277,
+            "width": 336
+          },
+          {
+            "gems": 12,
+            "width": 40
+          },
+          {
+            "gems": 3669,
+            "width": 536
+          },
+          {
+            "gems": 51,
+            "width": 74
+          },
+          {
+            "gems": 469,
+            "width": 212
+          },
+          {
+            "gems": 2730,
+            "width": 471
+          },
+          {
+            "gems": 3,
+            "width": 26.5
+          },
+          {
+            "gems": 0,
+            "width": 20
+          },
+          {
+            "gems": 12138,
+            "width": 843
+          },
+          {
+            "gems": 427,
+            "width": 202.5
+          },
+          {
+            "gems": 66,
+            "width": 83.5
+          },
+          {
+            "gems": 26,
+            "width": 55
+          },
+          {
+            "gems": 14,
+            "width": 42.5
+          },
+          {
+            "gems": 380,
+            "width": 192
+          },
+          {
+            "gems": 1,
+            "width": 22.5
+          },
+          {
+            "gems": 46,
+            "width": 70.5
+          },
+          {
+            "gems": 159,
+            "width": 127
+          }
+        ],
+        "leaderChangesAt100PlusGems": 38,
+        "longestLeaderTenureAt100PlusGems": 238,
+        "biggestFinalPlayer": 12138,
+        "weaponPhase": "parts",
+        "deployments": {
+          "pulsar": 41,
+          "pinwheel": 45,
+          "comet": 34,
+          "ricochet": 17,
+          "ion": 16,
+          "sentinel": 14
+        },
+        "weaponActiveSeconds": {
+          "pulsar": 340,
+          "pinwheel": 360,
+          "comet": 408,
+          "ricochet": 272,
+          "ion": 251,
+          "sentinel": 215
+        }
+      },
+      "lifeSummary": {
+        "recordedLives": 289,
+        "openingLivesReaching100Gems": 5,
+        "openingLifeFirst100Seconds": [
+          68,
+          77,
+          99,
+          249,
+          74
+        ],
+        "longestGiantStreakSeconds": 307,
+        "giantThresholdWidth": 500
+      },
+      "minuteSamples": [
+        {
+          "seconds": 60,
+          "probe": 78,
+          "leader": 95,
+          "deaths": 17,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 950
+        },
+        {
+          "seconds": 120,
+          "probe": 427,
+          "leader": 427,
+          "deaths": 32,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 950
+        },
+        {
+          "seconds": 180,
+          "probe": 14,
+          "leader": 729,
+          "deaths": 40,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 950
+        },
+        {
+          "seconds": 240,
+          "probe": 27,
+          "leader": 1147,
+          "deaths": 52,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 950
+        },
+        {
+          "seconds": 300,
+          "probe": 57,
+          "leader": 1843,
+          "deaths": 60,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 950
+        },
+        {
+          "seconds": 360,
+          "probe": 16,
+          "leader": 2018,
+          "deaths": 75,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 913
+        },
+        {
+          "seconds": 420,
+          "probe": 7,
+          "leader": 2256,
+          "deaths": 92,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 950
+        },
+        {
+          "seconds": 480,
+          "probe": 3,
+          "leader": 5863,
+          "deaths": 115,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 950
+        },
+        {
+          "seconds": 540,
+          "probe": 262,
+          "leader": 5697,
+          "deaths": 125,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 825
+        },
+        {
+          "seconds": 600,
+          "probe": 37,
+          "leader": 5682,
+          "deaths": 141,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 716
+        },
+        {
+          "seconds": 660,
+          "probe": 107,
+          "leader": 4694,
+          "deaths": 160,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 636
+        },
+        {
+          "seconds": 720,
+          "probe": 2,
+          "leader": 4969,
+          "deaths": 175,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 654
+        },
+        {
+          "seconds": 780,
+          "probe": 26,
+          "leader": 8905,
+          "deaths": 183,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 562
+        },
+        {
+          "seconds": 840,
+          "probe": 43,
+          "leader": 8071,
+          "deaths": 194,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 733
+        },
+        {
+          "seconds": 900,
+          "probe": 9,
+          "leader": 7026,
+          "deaths": 202,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 528
+        },
+        {
+          "seconds": 960,
+          "probe": 20,
+          "leader": 11733,
+          "deaths": 217,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 683
+        },
+        {
+          "seconds": 1020,
+          "probe": 589,
+          "leader": 11776,
+          "deaths": 236,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 595
+        },
+        {
+          "seconds": 1080,
+          "probe": 39,
+          "leader": 12681,
+          "deaths": 241,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 563
+        },
+        {
+          "seconds": 1140,
+          "probe": 11,
+          "leader": 12151,
+          "deaths": 258,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 586
+        },
+        {
+          "seconds": 1200,
+          "probe": 13,
+          "leader": 12138,
+          "deaths": 270,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 560
+        }
+      ]
+    },
+    {
+      "seed": 73,
+      "seconds": 1200,
+      "probe": {
+        "final": 8,
+        "max": 2808,
+        "maxWidth": 477,
+        "deaths": 5,
+        "decayGems": 515,
+        "stolen": 2877,
+        "robbed": 2788,
+        "incomingCreditedDamage": {
+          "pinwheel": 1170,
+          "comet": 346,
+          "sentinel": 90,
+          "ion": 31,
+          "pulsar": 927,
+          "missile-target": 545,
+          "ricochet": 121,
+          "spent-missile": 512
+        },
+        "firstBelow750": null,
+        "secondsAbove750": 411,
+        "leaderSeconds": 43,
+        "milestones": {
+          "25": 16,
+          "100": 54,
+          "300": 159,
+          "500": 210,
+          "1000": 409
+        }
+      },
+      "arena": {
+        "actualDeaths": 253,
+        "deathsByPreKnockoutWidth": {
+          "below150": 234,
+          "from150To500": 19,
+          "atLeast500": 0
+        },
+        "creditedKnockouts": {
+          "ion": 3,
+          "pulsar": 14,
+          "pinwheel": 16,
+          "comet": 13,
+          "spent-missile": 140,
+          "missile-target": 49,
+          "burnup": 5,
+          "ricochet": 3,
+          "sentinel": 3,
+          "drain": 7
+        },
+        "captures": 181,
+        "launches": 178,
+        "captureOutcomes": {
+          "timedEjections": 3,
+          "fires": 178,
+          "injuredFires": 45,
+          "capturedPostTransferGems": 28991,
+          "bellyBonusPaid": 24,
+          "bellyBonusDiscarded": 93,
+          "continuedTheftSeconds": 118.63333333332916,
+          "followActiveSeconds": 36.9333333333338
+        },
+        "captureTiming": {
+          "count": 181,
+          "minRatio": 1.3,
+          "meanHoldMs": 7563
+        },
+        "meanGiantsAt500Width": 0.73,
+        "mostGiantsAt500Width": 2,
+        "finalGiantsAt500Width": 1,
+        "finalPopulation": [
+          {
+            "gems": 8,
+            "width": 34.5
+          },
+          {
+            "gems": 8,
+            "width": 34.5
+          },
+          {
+            "gems": 14,
+            "width": 42.5
+          },
+          {
+            "gems": 84,
+            "width": 93.5
+          },
+          {
+            "gems": 9,
+            "width": 36
+          },
+          {
+            "gems": 608,
+            "width": 239
+          },
+          {
+            "gems": 99,
+            "width": 101
+          },
+          {
+            "gems": 14084,
+            "width": 878.5
+          },
+          {
+            "gems": 9,
+            "width": 36
+          },
+          {
+            "gems": 75,
+            "width": 89
+          },
+          {
+            "gems": 2871,
+            "width": 481.5
+          },
+          {
+            "gems": 23,
+            "width": 52
+          },
+          {
+            "gems": 36,
+            "width": 63
+          },
+          {
+            "gems": 37,
+            "width": 64
+          },
+          {
+            "gems": 66,
+            "width": 83.5
+          },
+          {
+            "gems": 35,
+            "width": 62.5
+          },
+          {
+            "gems": 252,
+            "width": 158
+          },
+          {
+            "gems": 7,
+            "width": 33
+          },
+          {
+            "gems": 2018,
+            "width": 412.5
+          },
+          {
+            "gems": 401,
+            "width": 197
+          }
+        ],
+        "leaderChangesAt100PlusGems": 38,
+        "longestLeaderTenureAt100PlusGems": 243,
+        "biggestFinalPlayer": 14084,
+        "weaponPhase": "parts",
+        "deployments": {
+          "comet": 33,
+          "ion": 14,
+          "pulsar": 42,
+          "sentinel": 17,
+          "pinwheel": 43,
+          "ricochet": 16
+        },
+        "weaponActiveSeconds": {
+          "comet": 396,
+          "ion": 224,
+          "pulsar": 349,
+          "sentinel": 272,
+          "pinwheel": 344,
+          "ricochet": 250
+        }
+      },
+      "lifeSummary": {
+        "recordedLives": 273,
+        "openingLivesReaching100Gems": 8,
+        "openingLifeFirst100Seconds": [
+          55,
+          61,
+          90,
+          98,
+          59,
+          83,
+          77,
+          54
+        ],
+        "longestGiantStreakSeconds": 386,
+        "giantThresholdWidth": 500
+      },
+      "minuteSamples": [
+        {
+          "seconds": 60,
+          "probe": 188,
+          "leader": 188,
+          "deaths": 15,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 950
+        },
+        {
+          "seconds": 120,
+          "probe": 201,
+          "leader": 326,
+          "deaths": 28,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 950
+        },
+        {
+          "seconds": 180,
+          "probe": 341,
+          "leader": 394,
+          "deaths": 38,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 950
+        },
+        {
+          "seconds": 240,
+          "probe": 300,
+          "leader": 505,
+          "deaths": 48,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 950
+        },
+        {
+          "seconds": 300,
+          "probe": 398,
+          "leader": 864,
+          "deaths": 61,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 950
+        },
+        {
+          "seconds": 360,
+          "probe": 670,
+          "leader": 1396,
+          "deaths": 75,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 950
+        },
+        {
+          "seconds": 420,
+          "probe": 1056,
+          "leader": 1724,
+          "deaths": 90,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 900
+        },
+        {
+          "seconds": 480,
+          "probe": 1695,
+          "leader": 3164,
+          "deaths": 108,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 928
+        },
+        {
+          "seconds": 540,
+          "probe": 1250,
+          "leader": 2206,
+          "deaths": 119,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 840
+        },
+        {
+          "seconds": 600,
+          "probe": 2807,
+          "leader": 3263,
+          "deaths": 133,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 789
+        },
+        {
+          "seconds": 660,
+          "probe": 1641,
+          "leader": 4211,
+          "deaths": 142,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 824
+        },
+        {
+          "seconds": 720,
+          "probe": 1576,
+          "leader": 8828,
+          "deaths": 161,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 745
+        },
+        {
+          "seconds": 780,
+          "probe": 1281,
+          "leader": 9166,
+          "deaths": 167,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 640
+        },
+        {
+          "seconds": 840,
+          "probe": 3,
+          "leader": 10828,
+          "deaths": 183,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 659
+        },
+        {
+          "seconds": 900,
+          "probe": 38,
+          "leader": 11667,
+          "deaths": 190,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 763
+        },
+        {
+          "seconds": 960,
+          "probe": 210,
+          "leader": 7771,
+          "deaths": 194,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 664
+        },
+        {
+          "seconds": 1020,
+          "probe": 300,
+          "leader": 7137,
+          "deaths": 204,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 543
+        },
+        {
+          "seconds": 1080,
+          "probe": 14,
+          "leader": 8017,
+          "deaths": 224,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 592
+        },
+        {
+          "seconds": 1140,
+          "probe": 15,
+          "leader": 12760,
+          "deaths": 246,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 669
+        },
+        {
+          "seconds": 1200,
+          "probe": 8,
+          "leader": 14084,
+          "deaths": 253,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 811
+        }
+      ]
+    }
+  ],
+  "withHoles": [
+    {
+      "seed": 11,
+      "seconds": 1200,
+      "probe": {
+        "final": 86,
+        "max": 1285,
+        "maxWidth": 337,
+        "deaths": 9,
+        "decayGems": 171,
+        "stolen": 191,
+        "robbed": 1105,
+        "incomingCreditedDamage": {
+          "ion": 110,
+          "missile-target": 58,
+          "ricochet": 145,
+          "pinwheel": 186,
+          "sentinel": 100,
+          "pulsar": 26,
+          "comet": 57,
+          "spent-missile": 545
+        },
+        "firstBelow750": null,
+        "secondsAbove750": 192,
+        "leaderSeconds": 4,
+        "milestones": {
+          "25": 15,
+          "100": 89,
+          "300": 177,
+          "500": 280,
+          "1000": 743
+        }
+      },
+      "arena": {
+        "actualDeaths": 294,
+        "deathsByPreKnockoutWidth": {
+          "below150": 266,
+          "from150To500": 28,
+          "atLeast500": 0
+        },
+        "creditedKnockouts": {
+          "pinwheel": 31,
+          "spent-missile": 154,
+          "pulsar": 16,
+          "blackhole": 11,
+          "sentinel": 3,
+          "missile-target": 52,
+          "comet": 9,
+          "drain": 7,
+          "burnup": 6,
+          "ion": 2,
+          "ricochet": 3
+        },
+        "captures": 209,
+        "launches": 206,
+        "captureOutcomes": {
+          "timedEjections": 3,
+          "fires": 206,
+          "injuredFires": 48,
+          "capturedPostTransferGems": 41108,
+          "bellyBonusPaid": 22,
+          "bellyBonusDiscarded": 122,
+          "continuedTheftSeconds": 123.2333333333289,
+          "followActiveSeconds": 50.19999999999971
+        },
+        "captureTiming": {
+          "count": 209,
+          "minRatio": 1.3,
+          "meanHoldMs": 7675
+        },
+        "meanGiantsAt500Width": 1.2,
+        "mostGiantsAt500Width": 4,
+        "finalGiantsAt500Width": 1,
+        "finalPopulation": [
+          {
+            "gems": 86,
+            "width": 94.5
+          },
+          {
+            "gems": 247,
+            "width": 156.5
+          },
+          {
+            "gems": 17,
+            "width": 46
+          },
+          {
+            "gems": 61,
+            "width": 80.5
+          },
+          {
+            "gems": 7,
+            "width": 33
+          },
+          {
+            "gems": 1,
+            "width": 22.5
+          },
+          {
+            "gems": 846,
+            "width": 278.5
+          },
+          {
+            "gems": 48,
+            "width": 72
+          },
+          {
+            "gems": 143,
+            "width": 120.5
+          },
+          {
+            "gems": 29,
+            "width": 57.5
+          },
+          {
+            "gems": 327,
+            "width": 178.5
+          },
+          {
+            "gems": 8,
+            "width": 34.5
+          },
+          {
+            "gems": 35,
+            "width": 62.5
+          },
+          {
+            "gems": 16117,
+            "width": 910
+          },
+          {
+            "gems": 8,
+            "width": 34.5
+          },
+          {
+            "gems": 8,
+            "width": 34.5
+          },
+          {
+            "gems": 112,
+            "width": 107.5
+          },
+          {
+            "gems": 207,
+            "width": 144
+          },
+          {
+            "gems": 147,
+            "width": 122
+          },
+          {
+            "gems": 2924,
+            "width": 485.5
+          }
+        ],
+        "leaderChangesAt100PlusGems": 45,
+        "longestLeaderTenureAt100PlusGems": 315,
+        "biggestFinalPlayer": 16117,
+        "weaponPhase": "waiting",
+        "deployments": {
+          "pinwheel": 48,
+          "ion": 18,
+          "pulsar": 42,
+          "sentinel": 15,
+          "comet": 40,
+          "ricochet": 17
+        },
+        "weaponActiveSeconds": {
+          "pinwheel": 384,
+          "ion": 288,
+          "pulsar": 349,
+          "sentinel": 240,
+          "comet": 470,
+          "ricochet": 266
+        }
+      },
+      "lifeSummary": {
+        "recordedLives": 314,
+        "openingLivesReaching100Gems": 6,
+        "openingLifeFirst100Seconds": [
+          55,
+          73,
+          67,
+          89,
+          88,
+          110
+        ],
+        "longestGiantStreakSeconds": 374,
+        "giantThresholdWidth": 500
+      },
+      "minuteSamples": [
+        {
+          "seconds": 60,
+          "probe": 58,
+          "leader": 265,
+          "deaths": 17,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 950
+        },
+        {
+          "seconds": 120,
+          "probe": 187,
+          "leader": 347,
+          "deaths": 25,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 950
+        },
+        {
+          "seconds": 180,
+          "probe": 325,
+          "leader": 527,
+          "deaths": 34,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 950
+        },
+        {
+          "seconds": 240,
+          "probe": 363,
+          "leader": 1257,
+          "deaths": 44,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 926
+        },
+        {
+          "seconds": 300,
+          "probe": 636,
+          "leader": 1698,
+          "deaths": 59,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 856
+        },
+        {
+          "seconds": 360,
+          "probe": 539,
+          "leader": 3570,
+          "deaths": 72,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 927
+        },
+        {
+          "seconds": 420,
+          "probe": 17,
+          "leader": 5591,
+          "deaths": 87,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 906
+        },
+        {
+          "seconds": 480,
+          "probe": 8,
+          "leader": 5407,
+          "deaths": 109,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 901
+        },
+        {
+          "seconds": 540,
+          "probe": 27,
+          "leader": 2392,
+          "deaths": 128,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 743
+        },
+        {
+          "seconds": 600,
+          "probe": 31,
+          "leader": 3903,
+          "deaths": 145,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 760
+        },
+        {
+          "seconds": 660,
+          "probe": 800,
+          "leader": 5376,
+          "deaths": 160,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 743
+        },
+        {
+          "seconds": 720,
+          "probe": 946,
+          "leader": 3996,
+          "deaths": 172,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 775
+        },
+        {
+          "seconds": 780,
+          "probe": 1279,
+          "leader": 5604,
+          "deaths": 195,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 637
+        },
+        {
+          "seconds": 840,
+          "probe": 33,
+          "leader": 5929,
+          "deaths": 211,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 594
+        },
+        {
+          "seconds": 900,
+          "probe": 66,
+          "leader": 6047,
+          "deaths": 230,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 631
+        },
+        {
+          "seconds": 960,
+          "probe": 182,
+          "leader": 8373,
+          "deaths": 240,
+          "giantsAt500Width": 3,
+          "fieldCrystals": 549
+        },
+        {
+          "seconds": 1020,
+          "probe": 12,
+          "leader": 11764,
+          "deaths": 251,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 628
+        },
+        {
+          "seconds": 1080,
+          "probe": 104,
+          "leader": 11190,
+          "deaths": 270,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 717
+        },
+        {
+          "seconds": 1140,
+          "probe": 19,
+          "leader": 16711,
+          "deaths": 285,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 626
+        },
+        {
+          "seconds": 1200,
+          "probe": 86,
+          "leader": 16117,
+          "deaths": 294,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 613
+        }
+      ]
+    },
+    {
+      "seed": 29,
+      "seconds": 1200,
+      "probe": {
+        "final": 119,
+        "max": 437,
+        "maxWidth": 205,
+        "deaths": 15,
+        "decayGems": 0,
+        "stolen": 143,
+        "robbed": 509,
+        "incomingCreditedDamage": {
+          "pulsar": 14,
+          "pinwheel": 133,
+          "sentinel": 119,
+          "ricochet": 172,
+          "spent-missile": 240,
+          "missile-target": 114,
+          "ion": 25
+        },
+        "firstBelow750": null,
+        "secondsAbove750": 0,
+        "leaderSeconds": 35,
+        "milestones": {
+          "25": 18,
+          "100": 70,
+          "300": 873
+        }
+      },
+      "arena": {
+        "actualDeaths": 273,
+        "deathsByPreKnockoutWidth": {
+          "below150": 245,
+          "from150To500": 27,
+          "atLeast500": 1
+        },
+        "creditedKnockouts": {
+          "pulsar": 5,
+          "pinwheel": 15,
+          "missile-target": 60,
+          "spent-missile": 151,
+          "ricochet": 5,
+          "burnup": 8,
+          "comet": 11,
+          "blackhole": 9,
+          "sentinel": 2,
+          "drain": 6,
+          "ion": 1
+        },
+        "captures": 212,
+        "launches": 211,
+        "captureOutcomes": {
+          "timedEjections": 2,
+          "fires": 210,
+          "injuredFires": 52,
+          "capturedPostTransferGems": 51501,
+          "bellyBonusPaid": 31,
+          "bellyBonusDiscarded": 111,
+          "continuedTheftSeconds": 93.09999999999728,
+          "followActiveSeconds": 63.233333333332304
+        },
+        "captureTiming": {
+          "count": 212,
+          "minRatio": 1.3,
+          "meanHoldMs": 7516
+        },
+        "meanGiantsAt500Width": 0.94,
+        "mostGiantsAt500Width": 3,
+        "finalGiantsAt500Width": 1,
+        "finalPopulation": [
+          {
+            "gems": 119,
+            "width": 110.5
+          },
+          {
+            "gems": 93,
+            "width": 98.5
+          },
+          {
+            "gems": 568,
+            "width": 231.5
+          },
+          {
+            "gems": 29,
+            "width": 57.5
+          },
+          {
+            "gems": 36,
+            "width": 63
+          },
+          {
+            "gems": 0,
+            "width": 20
+          },
+          {
+            "gems": 59,
+            "width": 79.5
+          },
+          {
+            "gems": 14,
+            "width": 42.5
+          },
+          {
+            "gems": 13,
+            "width": 41
+          },
+          {
+            "gems": 98,
+            "width": 100.5
+          },
+          {
+            "gems": 1612,
+            "width": 373
+          },
+          {
+            "gems": 17317,
+            "width": 926.5
+          },
+          {
+            "gems": 44,
+            "width": 69.5
+          },
+          {
+            "gems": 546,
+            "width": 227.5
+          },
+          {
+            "gems": 387,
+            "width": 193.5
+          },
+          {
+            "gems": 57,
+            "width": 78
+          },
+          {
+            "gems": 2,
+            "width": 24.5
+          },
+          {
+            "gems": 80,
+            "width": 91.5
+          },
+          {
+            "gems": 15,
+            "width": 43.5
+          },
+          {
+            "gems": 402,
+            "width": 197
+          }
+        ],
+        "leaderChangesAt100PlusGems": 30,
+        "longestLeaderTenureAt100PlusGems": 193,
+        "biggestFinalPlayer": 17317,
+        "weaponPhase": "parts",
+        "deployments": {
+          "pulsar": 42,
+          "pinwheel": 44,
+          "comet": 38,
+          "ricochet": 17,
+          "ion": 14,
+          "sentinel": 17
+        },
+        "weaponActiveSeconds": {
+          "pulsar": 349,
+          "pinwheel": 352,
+          "comet": 456,
+          "ricochet": 271,
+          "ion": 224,
+          "sentinel": 272
+        }
+      },
+      "lifeSummary": {
+        "recordedLives": 292,
+        "openingLivesReaching100Gems": 6,
+        "openingLifeFirst100Seconds": [
+          70,
+          69,
+          87,
+          81,
+          66,
+          93
+        ],
+        "longestGiantStreakSeconds": 362,
+        "giantThresholdWidth": 500
+      },
+      "minuteSamples": [
+        {
+          "seconds": 60,
+          "probe": 78,
+          "leader": 95,
+          "deaths": 17,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 950
+        },
+        {
+          "seconds": 120,
+          "probe": 14,
+          "leader": 321,
+          "deaths": 37,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 950
+        },
+        {
+          "seconds": 180,
+          "probe": 57,
+          "leader": 841,
+          "deaths": 46,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 950
+        },
+        {
+          "seconds": 240,
+          "probe": 0,
+          "leader": 1037,
+          "deaths": 57,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 950
+        },
+        {
+          "seconds": 300,
+          "probe": 93,
+          "leader": 1536,
+          "deaths": 66,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 950
+        },
+        {
+          "seconds": 360,
+          "probe": 172,
+          "leader": 1966,
+          "deaths": 80,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 950
+        },
+        {
+          "seconds": 420,
+          "probe": 209,
+          "leader": 4138,
+          "deaths": 93,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 950
+        },
+        {
+          "seconds": 480,
+          "probe": 0,
+          "leader": 6161,
+          "deaths": 109,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 870
+        },
+        {
+          "seconds": 540,
+          "probe": 2,
+          "leader": 5128,
+          "deaths": 123,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 819
+        },
+        {
+          "seconds": 600,
+          "probe": 26,
+          "leader": 5905,
+          "deaths": 133,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 795
+        },
+        {
+          "seconds": 660,
+          "probe": 120,
+          "leader": 9298,
+          "deaths": 148,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 752
+        },
+        {
+          "seconds": 720,
+          "probe": 201,
+          "leader": 11194,
+          "deaths": 164,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 710
+        },
+        {
+          "seconds": 780,
+          "probe": 277,
+          "leader": 12307,
+          "deaths": 176,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 847
+        },
+        {
+          "seconds": 840,
+          "probe": 15,
+          "leader": 11897,
+          "deaths": 184,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 849
+        },
+        {
+          "seconds": 900,
+          "probe": 18,
+          "leader": 9787,
+          "deaths": 206,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 765
+        },
+        {
+          "seconds": 960,
+          "probe": 0,
+          "leader": 7534,
+          "deaths": 224,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 550
+        },
+        {
+          "seconds": 1020,
+          "probe": 13,
+          "leader": 11630,
+          "deaths": 240,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 462
+        },
+        {
+          "seconds": 1080,
+          "probe": 75,
+          "leader": 12618,
+          "deaths": 254,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 588
+        },
+        {
+          "seconds": 1140,
+          "probe": 144,
+          "leader": 14267,
+          "deaths": 267,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 732
+        },
+        {
+          "seconds": 1200,
+          "probe": 119,
+          "leader": 17317,
+          "deaths": 273,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 838
+        }
+      ]
+    },
+    {
+      "seed": 73,
+      "seconds": 1200,
+      "probe": {
+        "final": 2916,
+        "max": 2933,
+        "maxWidth": 486,
+        "deaths": 11,
+        "decayGems": 176,
+        "stolen": 1408,
+        "robbed": 1063,
+        "incomingCreditedDamage": {
+          "pinwheel": 394,
+          "comet": 205,
+          "spent-missile": 566,
+          "ricochet": 247,
+          "missile-target": 190,
+          "ion": 19,
+          "pulsar": 28,
+          "sentinel": 4
+        },
+        "firstBelow750": null,
+        "secondsAbove750": 103,
+        "leaderSeconds": 15,
+        "milestones": {
+          "25": 16,
+          "100": 54,
+          "300": 318,
+          "500": 361,
+          "1000": 1126
+        }
+      },
+      "arena": {
+        "actualDeaths": 241,
+        "deathsByPreKnockoutWidth": {
+          "below150": 213,
+          "from150To500": 27,
+          "atLeast500": 1
+        },
+        "creditedKnockouts": {
+          "ion": 4,
+          "pulsar": 12,
+          "pinwheel": 21,
+          "comet": 7,
+          "spent-missile": 140,
+          "missile-target": 38,
+          "blackhole": 5,
+          "drain": 3,
+          "sentinel": 2,
+          "burnup": 4,
+          "ricochet": 5
+        },
+        "captures": 179,
+        "launches": 177,
+        "captureOutcomes": {
+          "timedEjections": 3,
+          "fires": 176,
+          "injuredFires": 51,
+          "capturedPostTransferGems": 34513,
+          "bellyBonusPaid": 25,
+          "bellyBonusDiscarded": 95,
+          "continuedTheftSeconds": 99.1666666666636,
+          "followActiveSeconds": 40.86666666666691
+        },
+        "captureTiming": {
+          "count": 179,
+          "minRatio": 1.3,
+          "meanHoldMs": 7698
+        },
+        "meanGiantsAt500Width": 0.95,
+        "mostGiantsAt500Width": 3,
+        "finalGiantsAt500Width": 2,
+        "finalPopulation": [
+          {
+            "gems": 2916,
+            "width": 485
+          },
+          {
+            "gems": 0,
+            "width": 20
+          },
+          {
+            "gems": 4,
+            "width": 28.5
+          },
+          {
+            "gems": 0,
+            "width": 20
+          },
+          {
+            "gems": 31,
+            "width": 59
+          },
+          {
+            "gems": 8776,
+            "width": 761
+          },
+          {
+            "gems": 924,
+            "width": 290
+          },
+          {
+            "gems": 0,
+            "width": 20
+          },
+          {
+            "gems": 2438,
+            "width": 448.5
+          },
+          {
+            "gems": 37,
+            "width": 64
+          },
+          {
+            "gems": 74,
+            "width": 88
+          },
+          {
+            "gems": 538,
+            "width": 226
+          },
+          {
+            "gems": 91,
+            "width": 97.5
+          },
+          {
+            "gems": 8,
+            "width": 34.5
+          },
+          {
+            "gems": 4462,
+            "width": 583
+          },
+          {
+            "gems": 92,
+            "width": 98
+          },
+          {
+            "gems": 278,
+            "width": 165.5
+          },
+          {
+            "gems": 18,
+            "width": 47
+          },
+          {
+            "gems": 7,
+            "width": 33
+          },
+          {
+            "gems": 28,
+            "width": 56.5
+          }
+        ],
+        "leaderChangesAt100PlusGems": 34,
+        "longestLeaderTenureAt100PlusGems": 335,
+        "biggestFinalPlayer": 8776,
+        "weaponPhase": "active",
+        "deployments": {
+          "comet": 44,
+          "ion": 16,
+          "pulsar": 46,
+          "sentinel": 19,
+          "pinwheel": 40,
+          "ricochet": 14
+        },
+        "weaponActiveSeconds": {
+          "comet": 528,
+          "ion": 256,
+          "pulsar": 375,
+          "sentinel": 304,
+          "pinwheel": 320,
+          "ricochet": 224
+        }
+      },
+      "lifeSummary": {
+        "recordedLives": 258,
+        "openingLivesReaching100Gems": 9,
+        "openingLifeFirst100Seconds": [
+          55,
+          79,
+          54,
+          77,
+          86,
+          109,
+          114,
+          59,
+          61
+        ],
+        "longestGiantStreakSeconds": 318,
+        "giantThresholdWidth": 500
+      },
+      "minuteSamples": [
+        {
+          "seconds": 60,
+          "probe": 188,
+          "leader": 188,
+          "deaths": 15,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 950
+        },
+        {
+          "seconds": 120,
+          "probe": 145,
+          "leader": 336,
+          "deaths": 32,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 950
+        },
+        {
+          "seconds": 180,
+          "probe": 0,
+          "leader": 508,
+          "deaths": 43,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 950
+        },
+        {
+          "seconds": 240,
+          "probe": 110,
+          "leader": 1217,
+          "deaths": 55,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 950
+        },
+        {
+          "seconds": 300,
+          "probe": 45,
+          "leader": 1249,
+          "deaths": 64,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 950
+        },
+        {
+          "seconds": 360,
+          "probe": 368,
+          "leader": 1607,
+          "deaths": 71,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 828
+        },
+        {
+          "seconds": 420,
+          "probe": 24,
+          "leader": 3174,
+          "deaths": 83,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 772
+        },
+        {
+          "seconds": 480,
+          "probe": 102,
+          "leader": 3888,
+          "deaths": 91,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 838
+        },
+        {
+          "seconds": 540,
+          "probe": 10,
+          "leader": 3826,
+          "deaths": 106,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 782
+        },
+        {
+          "seconds": 600,
+          "probe": 14,
+          "leader": 4575,
+          "deaths": 120,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 860
+        },
+        {
+          "seconds": 660,
+          "probe": 147,
+          "leader": 4000,
+          "deaths": 132,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 790
+        },
+        {
+          "seconds": 720,
+          "probe": 189,
+          "leader": 5181,
+          "deaths": 139,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 680
+        },
+        {
+          "seconds": 780,
+          "probe": 271,
+          "leader": 5809,
+          "deaths": 153,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 711
+        },
+        {
+          "seconds": 840,
+          "probe": 28,
+          "leader": 10918,
+          "deaths": 170,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 673
+        },
+        {
+          "seconds": 900,
+          "probe": 0,
+          "leader": 5352,
+          "deaths": 186,
+          "giantsAt500Width": 3,
+          "fieldCrystals": 676
+        },
+        {
+          "seconds": 960,
+          "probe": 89,
+          "leader": 9638,
+          "deaths": 200,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 723
+        },
+        {
+          "seconds": 1020,
+          "probe": 94,
+          "leader": 14394,
+          "deaths": 210,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 686
+        },
+        {
+          "seconds": 1080,
+          "probe": 54,
+          "leader": 12995,
+          "deaths": 217,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 686
+        },
+        {
+          "seconds": 1140,
+          "probe": 1421,
+          "leader": 13071,
+          "deaths": 229,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 692
+        },
+        {
+          "seconds": 1200,
+          "probe": 2916,
+          "leader": 8776,
+          "deaths": 241,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 637
+        }
+      ]
+    }
+  ],
+  "hourWithHoles": [
+    {
+      "seed": 11,
+      "seconds": 3600,
+      "probe": {
+        "final": 71,
+        "max": 1846,
+        "maxWidth": 396.5,
+        "deaths": 29,
+        "decayGems": 363,
+        "stolen": 1475,
+        "robbed": 4233,
+        "incomingCreditedDamage": {
+          "ion": 110,
+          "missile-target": 528,
+          "ricochet": 310,
+          "pinwheel": 1390,
+          "sentinel": 346,
+          "pulsar": 77,
+          "comet": 1547,
+          "spent-missile": 1165,
+          "burnup": 7,
+          "blackhole": 661
+        },
+        "firstBelow750": null,
+        "secondsAbove750": 395,
+        "leaderSeconds": 4,
+        "milestones": {
+          "25": 15,
+          "100": 89,
+          "300": 177,
+          "500": 280,
+          "1000": 743
+        }
+      },
+      "arena": {
+        "actualDeaths": 789,
+        "deathsByPreKnockoutWidth": {
+          "below150": 705,
+          "from150To500": 75,
+          "atLeast500": 9
+        },
+        "creditedKnockouts": {
+          "pinwheel": 72,
+          "spent-missile": 402,
+          "pulsar": 43,
+          "blackhole": 34,
+          "sentinel": 8,
+          "missile-target": 127,
+          "comet": 38,
+          "drain": 23,
+          "burnup": 20,
+          "ion": 4,
+          "ricochet": 18
+        },
+        "captures": 544,
+        "launches": 541,
+        "captureOutcomes": {
+          "timedEjections": 9,
+          "fires": 535,
+          "injuredFires": 137,
+          "capturedPostTransferGems": 140086,
+          "bellyBonusPaid": 56,
+          "bellyBonusDiscarded": 320,
+          "continuedTheftSeconds": 541.7000000001647,
+          "followActiveSeconds": 156.46666666666036
+        },
+        "captureTiming": {
+          "count": 544,
+          "minRatio": 1.3,
+          "meanHoldMs": 7945
+        },
+        "meanGiantsAt500Width": 1.39,
+        "mostGiantsAt500Width": 4,
+        "finalGiantsAt500Width": 3,
+        "finalPopulation": [
+          {
+            "gems": 71,
+            "width": 86.5
+          },
+          {
+            "gems": 5,
+            "width": 30
+          },
+          {
+            "gems": 49,
+            "width": 73
+          },
+          {
+            "gems": 10205,
+            "width": 799.5
+          },
+          {
+            "gems": 23,
+            "width": 52
+          },
+          {
+            "gems": 1689,
+            "width": 381
+          },
+          {
+            "gems": 0,
+            "width": 20
+          },
+          {
+            "gems": 0,
+            "width": 20
+          },
+          {
+            "gems": 27,
+            "width": 55.5
+          },
+          {
+            "gems": 13,
+            "width": 41
+          },
+          {
+            "gems": 1,
+            "width": 22.5
+          },
+          {
+            "gems": 69,
+            "width": 85.5
+          },
+          {
+            "gems": 21,
+            "width": 50
+          },
+          {
+            "gems": 16,
+            "width": 44.5
+          },
+          {
+            "gems": 5477,
+            "width": 636.5
+          },
+          {
+            "gems": 11,
+            "width": 38.5
+          },
+          {
+            "gems": 12989,
+            "width": 859.5
+          },
+          {
+            "gems": 4,
+            "width": 28.5
+          },
+          {
+            "gems": 447,
+            "width": 207
+          },
+          {
+            "gems": 498,
+            "width": 218
+          }
+        ],
+        "leaderChangesAt100PlusGems": 63,
+        "longestLeaderTenureAt100PlusGems": 931,
+        "biggestFinalPlayer": 12989,
+        "weaponPhase": "parts",
+        "deployments": {
+          "pinwheel": 134,
+          "ion": 49,
+          "pulsar": 130,
+          "sentinel": 45,
+          "comet": 125,
+          "ricochet": 51
+        },
+        "weaponActiveSeconds": {
+          "pinwheel": 1072,
+          "ion": 784,
+          "pulsar": 1079,
+          "sentinel": 720,
+          "comet": 1499,
+          "ricochet": 816
+        }
+      },
+      "lifeSummary": {
+        "recordedLives": 808,
+        "openingLivesReaching100Gems": 6,
+        "openingLifeFirst100Seconds": [
+          55,
+          73,
+          67,
+          89,
+          88,
+          110
+        ],
+        "longestGiantStreakSeconds": 950,
+        "giantThresholdWidth": 500
+      },
+      "minuteSamples": [
+        {
+          "seconds": 60,
+          "probe": 58,
+          "leader": 265,
+          "deaths": 17,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 950
+        },
+        {
+          "seconds": 120,
+          "probe": 187,
+          "leader": 347,
+          "deaths": 25,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 950
+        },
+        {
+          "seconds": 180,
+          "probe": 325,
+          "leader": 527,
+          "deaths": 34,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 950
+        },
+        {
+          "seconds": 240,
+          "probe": 363,
+          "leader": 1257,
+          "deaths": 44,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 926
+        },
+        {
+          "seconds": 300,
+          "probe": 636,
+          "leader": 1698,
+          "deaths": 59,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 856
+        },
+        {
+          "seconds": 360,
+          "probe": 539,
+          "leader": 3570,
+          "deaths": 72,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 927
+        },
+        {
+          "seconds": 420,
+          "probe": 17,
+          "leader": 5591,
+          "deaths": 87,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 906
+        },
+        {
+          "seconds": 480,
+          "probe": 8,
+          "leader": 5407,
+          "deaths": 109,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 901
+        },
+        {
+          "seconds": 540,
+          "probe": 27,
+          "leader": 2392,
+          "deaths": 128,
+          "giantsAt500Width": 0,
+          "fieldCrystals": 743
+        },
+        {
+          "seconds": 600,
+          "probe": 31,
+          "leader": 3903,
+          "deaths": 145,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 760
+        },
+        {
+          "seconds": 660,
+          "probe": 800,
+          "leader": 5376,
+          "deaths": 160,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 743
+        },
+        {
+          "seconds": 720,
+          "probe": 946,
+          "leader": 3996,
+          "deaths": 172,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 775
+        },
+        {
+          "seconds": 780,
+          "probe": 1279,
+          "leader": 5604,
+          "deaths": 195,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 637
+        },
+        {
+          "seconds": 840,
+          "probe": 33,
+          "leader": 5929,
+          "deaths": 211,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 594
+        },
+        {
+          "seconds": 900,
+          "probe": 66,
+          "leader": 6047,
+          "deaths": 230,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 631
+        },
+        {
+          "seconds": 960,
+          "probe": 182,
+          "leader": 8373,
+          "deaths": 240,
+          "giantsAt500Width": 3,
+          "fieldCrystals": 549
+        },
+        {
+          "seconds": 1020,
+          "probe": 12,
+          "leader": 11764,
+          "deaths": 251,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 628
+        },
+        {
+          "seconds": 1080,
+          "probe": 104,
+          "leader": 11190,
+          "deaths": 270,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 717
+        },
+        {
+          "seconds": 1140,
+          "probe": 19,
+          "leader": 16711,
+          "deaths": 285,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 626
+        },
+        {
+          "seconds": 1200,
+          "probe": 86,
+          "leader": 16117,
+          "deaths": 294,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 613
+        },
+        {
+          "seconds": 1260,
+          "probe": 1,
+          "leader": 15910,
+          "deaths": 302,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 462
+        },
+        {
+          "seconds": 1320,
+          "probe": 20,
+          "leader": 16136,
+          "deaths": 313,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 573
+        },
+        {
+          "seconds": 1380,
+          "probe": 8,
+          "leader": 16047,
+          "deaths": 323,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 555
+        },
+        {
+          "seconds": 1440,
+          "probe": 35,
+          "leader": 17126,
+          "deaths": 338,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 652
+        },
+        {
+          "seconds": 1500,
+          "probe": 55,
+          "leader": 16928,
+          "deaths": 349,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 627
+        },
+        {
+          "seconds": 1560,
+          "probe": 97,
+          "leader": 16491,
+          "deaths": 357,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 583
+        },
+        {
+          "seconds": 1620,
+          "probe": 266,
+          "leader": 15607,
+          "deaths": 370,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 669
+        },
+        {
+          "seconds": 1680,
+          "probe": 792,
+          "leader": 17806,
+          "deaths": 384,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 617
+        },
+        {
+          "seconds": 1740,
+          "probe": 268,
+          "leader": 17846,
+          "deaths": 397,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 570
+        },
+        {
+          "seconds": 1800,
+          "probe": 390,
+          "leader": 17338,
+          "deaths": 413,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 650
+        },
+        {
+          "seconds": 1860,
+          "probe": 1,
+          "leader": 18143,
+          "deaths": 428,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 527
+        },
+        {
+          "seconds": 1920,
+          "probe": 25,
+          "leader": 18863,
+          "deaths": 442,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 582
+        },
+        {
+          "seconds": 1980,
+          "probe": 23,
+          "leader": 16076,
+          "deaths": 446,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 535
+        },
+        {
+          "seconds": 2040,
+          "probe": 59,
+          "leader": 17306,
+          "deaths": 458,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 583
+        },
+        {
+          "seconds": 2100,
+          "probe": 114,
+          "leader": 16262,
+          "deaths": 469,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 588
+        },
+        {
+          "seconds": 2160,
+          "probe": 157,
+          "leader": 21377,
+          "deaths": 482,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 467
+        },
+        {
+          "seconds": 2220,
+          "probe": 34,
+          "leader": 19197,
+          "deaths": 491,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 441
+        },
+        {
+          "seconds": 2280,
+          "probe": 8,
+          "leader": 21370,
+          "deaths": 497,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 585
+        },
+        {
+          "seconds": 2340,
+          "probe": 91,
+          "leader": 23581,
+          "deaths": 509,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 654
+        },
+        {
+          "seconds": 2400,
+          "probe": 394,
+          "leader": 23181,
+          "deaths": 521,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 622
+        },
+        {
+          "seconds": 2460,
+          "probe": 193,
+          "leader": 22957,
+          "deaths": 538,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 673
+        },
+        {
+          "seconds": 2520,
+          "probe": 355,
+          "leader": 23888,
+          "deaths": 552,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 684
+        },
+        {
+          "seconds": 2580,
+          "probe": 128,
+          "leader": 19921,
+          "deaths": 566,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 489
+        },
+        {
+          "seconds": 2640,
+          "probe": 14,
+          "leader": 19632,
+          "deaths": 579,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 575
+        },
+        {
+          "seconds": 2700,
+          "probe": 11,
+          "leader": 21249,
+          "deaths": 592,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 587
+        },
+        {
+          "seconds": 2760,
+          "probe": 4,
+          "leader": 20142,
+          "deaths": 603,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 647
+        },
+        {
+          "seconds": 2820,
+          "probe": 22,
+          "leader": 22646,
+          "deaths": 618,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 673
+        },
+        {
+          "seconds": 2880,
+          "probe": 90,
+          "leader": 24951,
+          "deaths": 632,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 604
+        },
+        {
+          "seconds": 2940,
+          "probe": 426,
+          "leader": 24876,
+          "deaths": 645,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 627
+        },
+        {
+          "seconds": 3000,
+          "probe": 266,
+          "leader": 24941,
+          "deaths": 661,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 595
+        },
+        {
+          "seconds": 3060,
+          "probe": 453,
+          "leader": 16990,
+          "deaths": 670,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 597
+        },
+        {
+          "seconds": 3120,
+          "probe": 940,
+          "leader": 24668,
+          "deaths": 682,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 668
+        },
+        {
+          "seconds": 3180,
+          "probe": 1605,
+          "leader": 22924,
+          "deaths": 689,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 463
+        },
+        {
+          "seconds": 3240,
+          "probe": 44,
+          "leader": 20218,
+          "deaths": 706,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 547
+        },
+        {
+          "seconds": 3300,
+          "probe": 28,
+          "leader": 15456,
+          "deaths": 724,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 649
+        },
+        {
+          "seconds": 3360,
+          "probe": 1361,
+          "leader": 20053,
+          "deaths": 736,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 618
+        },
+        {
+          "seconds": 3420,
+          "probe": 2,
+          "leader": 18880,
+          "deaths": 745,
+          "giantsAt500Width": 2,
+          "fieldCrystals": 476
+        },
+        {
+          "seconds": 3480,
+          "probe": 42,
+          "leader": 26748,
+          "deaths": 759,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 626
+        },
+        {
+          "seconds": 3540,
+          "probe": 74,
+          "leader": 24628,
+          "deaths": 767,
+          "giantsAt500Width": 1,
+          "fieldCrystals": 606
+        },
+        {
+          "seconds": 3600,
+          "probe": 71,
+          "leader": 12989,
+          "deaths": 789,
+          "giantsAt500Width": 3,
+          "fieldCrystals": 560
+        }
+      ]
+    }
+  ],
+  "captureControls": {
+    "methodology": "Actual server capture/hold/fire/flight-expiry methods at 60Hz; stationary captor, healthy initial captive 100 gems or injury snapshot, ideal full-stick nearest-gem collector. Not chase performance, human ease, fun or final balance.",
+    "constants": {
+      "captureShare": 0.3,
+      "bellyCap": 6,
+      "hold": [
+        5000,
+        8000,
+        12000
+      ],
+      "follow": {
+        "WINDOW_MS": 1200,
+        "DURATION_MS": 1600,
+        "SPEED": 360,
+        "ACCELERATION": 900,
+        "STOP_DISTANCE": 40,
+        "MAX_TRAVEL": 480
+      },
+      "puff": {
+        "IMPULSE_RELATIVE_SPEED": 560,
+        "IMPULSE_ADDED_SPEED_CAP": 560,
+        "IMPULSE_RECOIL_CAP": 420,
+        "REACH": 160,
+        "REACH_PER_SIZE": 2,
+        "ARC": 55,
+        "GEM_PUSH": 420,
+        "BODY_PUSH": 400,
+        "PUSH_RATIO_MIN": 0.5,
+        "PUSH_RATIO_MAX": 1.8,
+        "PUSH_MAX": 500,
+        "DEFENSE_PUSH": 200,
+        "COOLDOWN_MS": 1800,
+        "BREAK_MS": 1000,
+        "PARRY_MS": 350,
+        "STUN_MS": 800,
+        "BREATH_COST": 0.35
+      },
+      "injuryMs": 7000,
+      "vulnerableOutgoing": 0.15
+    },
+    "capture": [
+      {
+        "requestedRatio": 1.3,
+        "actualPreTransferRatio": 1.3005,
+        "injured": false,
+        "ending": "eject",
+        "holdMs": 5000,
+        "captureTransfer": 30,
+        "collected": 6,
+        "allCollectedAtMs": 3817,
+        "pendingBeforeFlight": 0,
+        "finalCaptiveGems": 76,
+        "alive": true,
+        "protectedMs": 4017
+      },
+      {
+        "requestedRatio": 1.3,
+        "actualPreTransferRatio": 1.3005,
+        "injured": false,
+        "ending": "fire",
+        "holdMs": 5000,
+        "captureTransfer": 30,
+        "collected": 6,
+        "allCollectedAtMs": 3817,
+        "pendingBeforeFlight": 6,
+        "finalCaptiveGems": 76,
+        "alive": true,
+        "protectedMs": 4000
+      },
+      {
+        "requestedRatio": 1.3,
+        "actualPreTransferRatio": 1.3005,
+        "injured": true,
+        "ending": "eject",
+        "holdMs": 5000,
+        "captureTransfer": 30,
+        "collected": 6,
+        "allCollectedAtMs": 3817,
+        "pendingBeforeFlight": 0,
+        "finalCaptiveGems": 76,
+        "alive": true,
+        "protectedMs": 4017
+      },
+      {
+        "requestedRatio": 1.3,
+        "actualPreTransferRatio": 1.3005,
+        "injured": true,
+        "ending": "fire",
+        "holdMs": 5000,
+        "captureTransfer": 30,
+        "collected": 6,
+        "allCollectedAtMs": 3817,
+        "pendingBeforeFlight": 6,
+        "finalCaptiveGems": 0,
+        "alive": false,
+        "protectedMs": 0
+      },
+      {
+        "requestedRatio": 2,
+        "actualPreTransferRatio": 2,
+        "injured": false,
+        "ending": "eject",
+        "holdMs": 8000,
+        "captureTransfer": 30,
+        "collected": 6,
+        "allCollectedAtMs": 3817,
+        "pendingBeforeFlight": 0,
+        "finalCaptiveGems": 76,
+        "alive": true,
+        "protectedMs": 4000
+      },
+      {
+        "requestedRatio": 2,
+        "actualPreTransferRatio": 2,
+        "injured": false,
+        "ending": "fire",
+        "holdMs": 8000,
+        "captureTransfer": 30,
+        "collected": 6,
+        "allCollectedAtMs": 3817,
+        "pendingBeforeFlight": 6,
+        "finalCaptiveGems": 76,
+        "alive": true,
+        "protectedMs": 4000
+      },
+      {
+        "requestedRatio": 2,
+        "actualPreTransferRatio": 2,
+        "injured": true,
+        "ending": "eject",
+        "holdMs": 8000,
+        "captureTransfer": 30,
+        "collected": 6,
+        "allCollectedAtMs": 3817,
+        "pendingBeforeFlight": 0,
+        "finalCaptiveGems": 76,
+        "alive": true,
+        "protectedMs": 4000
+      },
+      {
+        "requestedRatio": 2,
+        "actualPreTransferRatio": 2,
+        "injured": true,
+        "ending": "fire",
+        "holdMs": 8000,
+        "captureTransfer": 30,
+        "collected": 6,
+        "allCollectedAtMs": 3817,
+        "pendingBeforeFlight": 6,
+        "finalCaptiveGems": 0,
+        "alive": false,
+        "protectedMs": 0
+      },
+      {
+        "requestedRatio": 4,
+        "actualPreTransferRatio": 4,
+        "injured": false,
+        "ending": "eject",
+        "holdMs": 12000,
+        "captureTransfer": 30,
+        "collected": 6,
+        "allCollectedAtMs": 3817,
+        "pendingBeforeFlight": 0,
+        "finalCaptiveGems": 76,
+        "alive": true,
+        "protectedMs": 4000
+      },
+      {
+        "requestedRatio": 4,
+        "actualPreTransferRatio": 4,
+        "injured": false,
+        "ending": "fire",
+        "holdMs": 12000,
+        "captureTransfer": 30,
+        "collected": 6,
+        "allCollectedAtMs": 3817,
+        "pendingBeforeFlight": 6,
+        "finalCaptiveGems": 76,
+        "alive": true,
+        "protectedMs": 4000
+      },
+      {
+        "requestedRatio": 4,
+        "actualPreTransferRatio": 4,
+        "injured": true,
+        "ending": "eject",
+        "holdMs": 12000,
+        "captureTransfer": 30,
+        "collected": 6,
+        "allCollectedAtMs": 3817,
+        "pendingBeforeFlight": 0,
+        "finalCaptiveGems": 76,
+        "alive": true,
+        "protectedMs": 4000
+      },
+      {
+        "requestedRatio": 4,
+        "actualPreTransferRatio": 4,
+        "injured": true,
+        "ending": "fire",
+        "holdMs": 12000,
+        "captureTransfer": 30,
+        "collected": 6,
+        "allCollectedAtMs": 3817,
+        "pendingBeforeFlight": 6,
+        "finalCaptiveGems": 0,
+        "alive": false,
+        "protectedMs": 0
+      }
+    ],
+    "power": [
+      {
+        "shooterWidth": 80,
+        "ammoWidth": 20,
+        "targetWidth": 200,
+        "targetGems": 1000,
+        "launchSpeed": 1736.446513023881,
+        "damageAtCommonSpeed": 6
+      },
+      {
+        "shooterWidth": 80,
+        "ammoWidth": 60,
+        "targetWidth": 200,
+        "targetGems": 1000,
+        "launchSpeed": 1260.9577628075342,
+        "damageAtCommonSpeed": 42
+      },
+      {
+        "shooterWidth": 200,
+        "ammoWidth": 20,
+        "targetWidth": 200,
+        "targetGems": 1000,
+        "launchSpeed": 2000,
+        "damageAtCommonSpeed": 8
+      },
+      {
+        "shooterWidth": 200,
+        "ammoWidth": 60,
+        "targetWidth": 200,
+        "targetGems": 1000,
+        "launchSpeed": 1657.536191273743,
+        "damageAtCommonSpeed": 49
+      },
+      {
+        "shooterWidth": 800,
+        "ammoWidth": 20,
+        "targetWidth": 200,
+        "targetGems": 1000,
+        "launchSpeed": 2000,
+        "damageAtCommonSpeed": 8
+      },
+      {
+        "shooterWidth": 800,
+        "ammoWidth": 60,
+        "targetWidth": 200,
+        "targetGems": 1000,
+        "launchSpeed": 2000,
+        "damageAtCommonSpeed": 63
+      },
+      {
+        "shooterWidth": 800,
+        "ammoWidth": 160,
+        "targetWidth": 200,
+        "targetGems": 1000,
+        "launchSpeed": 1833.0249414900898,
+        "damageAtCommonSpeed": 282
+      }
+    ]
+  },
+  "weaponExposure": [
+    {
+      "kind": "pulsar",
+      "initial": 12,
+      "location": "open",
+      "response": "idle",
+      "recoverSpills": true,
+      "contestSpills": false,
+      "hits": 1,
+      "grossDamage": 12,
+      "minimum": 0,
+      "final": 0,
+      "builderFinal": 12,
+      "out": true,
+      "firstHitMs": 2200
+    },
+    {
+      "kind": "pulsar",
+      "initial": 12,
+      "location": "open",
+      "response": "radial-escape",
+      "recoverSpills": true,
+      "contestSpills": false,
+      "hits": 1,
+      "grossDamage": 12,
+      "minimum": 0,
+      "final": 0,
+      "builderFinal": 12,
+      "out": true,
+      "firstHitMs": 2200
+    },
+    {
+      "kind": "pulsar",
+      "initial": 12,
+      "location": "open",
+      "response": "sideways-escape",
+      "recoverSpills": true,
+      "contestSpills": false,
+      "hits": 1,
+      "grossDamage": 12,
+      "minimum": 0,
+      "final": 0,
+      "builderFinal": 12,
+      "out": true,
+      "firstHitMs": 2200
+    },
+    {
+      "kind": "pulsar",
+      "initial": 12,
+      "location": "open",
+      "response": "warning-escape",
+      "recoverSpills": true,
+      "contestSpills": false,
+      "hits": 0,
+      "grossDamage": 0,
+      "minimum": 12,
+      "final": 12,
+      "builderFinal": 0,
+      "out": false,
+      "firstHitMs": null
+    },
+    {
+      "kind": "pulsar",
+      "initial": 12,
+      "location": "wall",
+      "response": "idle",
+      "recoverSpills": true,
+      "contestSpills": false,
+      "hits": 1,
+      "grossDamage": 12,
+      "minimum": 0,
+      "final": 0,
+      "builderFinal": 12,
+      "out": true,
+      "firstHitMs": 2700
+    },
+    {
+      "kind": "pulsar",
+      "initial": 12,
+      "location": "wall",
+      "response": "radial-escape",
+      "recoverSpills": true,
+      "contestSpills": false,
+      "hits": 1,
+      "grossDamage": 12,
+      "minimum": 0,
+      "final": 0,
+      "builderFinal": 12,
+      "out": true,
+      "firstHitMs": 2700
+    },
+    {
+      "kind": "pulsar",
+      "initial": 12,
+      "location": "wall",
+      "response": "sideways-escape",
+      "recoverSpills": true,
+      "contestSpills": false,
+      "hits": 1,
+      "grossDamage": 12,
+      "minimum": 0,
+      "final": 0,
+      "builderFinal": 12,
+      "out": true,
+      "firstHitMs": 2700
+    },
+    {
+      "kind": "pulsar",
+      "initial": 12,
+      "location": "wall",
+      "response": "warning-escape",
+      "recoverSpills": true,
+      "contestSpills": false,
+      "hits": 1,
+      "grossDamage": 12,
+      "minimum": 0,
+      "final": 0,
+      "builderFinal": 12,
+      "out": true,
+      "firstHitMs": 2700
+    },
+    {
+      "kind": "pulsar",
+      "initial": 100,
+      "location": "open",
+      "response": "idle",
+      "recoverSpills": true,
+      "contestSpills": false,
+      "hits": 2,
+      "grossDamage": 44,
+      "minimum": 56,
+      "final": 56,
+      "builderFinal": 44,
+      "out": false,
+      "firstHitMs": 2133
+    },
+    {
+      "kind": "pulsar",
+      "initial": 100,
+      "location": "open",
+      "response": "radial-escape",
+      "recoverSpills": true,
+      "contestSpills": false,
+      "hits": 1,
+      "grossDamage": 25,
+      "minimum": 75,
+      "final": 75,
+      "builderFinal": 25,
+      "out": false,
+      "firstHitMs": 2133
+    },
+    {
+      "kind": "pulsar",
+      "initial": 100,
+      "location": "open",
+      "response": "sideways-escape",
+      "recoverSpills": true,
+      "contestSpills": false,
+      "hits": 2,
+      "grossDamage": 44,
+      "minimum": 56,
+      "final": 56,
+      "builderFinal": 44,
+      "out": false,
+      "firstHitMs": 2133
+    },
+    {
+      "kind": "pulsar",
+      "initial": 100,
+      "location": "open",
+      "response": "warning-escape",
+      "recoverSpills": true,
+      "contestSpills": false,
+      "hits": 0,
+      "grossDamage": 0,
+      "minimum": 100,
+      "final": 100,
+      "builderFinal": 0,
+      "out": false,
+      "firstHitMs": null
+    },
+    {
+      "kind": "pulsar",
+      "initial": 100,
+      "location": "wall",
+      "response": "idle",
+      "recoverSpills": true,
+      "contestSpills": false,
+      "hits": 4,
+      "grossDamage": 69,
+      "minimum": 31,
+      "final": 31,
+      "builderFinal": 69,
+      "out": false,
+      "firstHitMs": 2533
+    },
+    {
+      "kind": "pulsar",
+      "initial": 100,
+      "location": "wall",
+      "response": "radial-escape",
+      "recoverSpills": true,
+      "contestSpills": false,
+      "hits": 4,
+      "grossDamage": 69,
+      "minimum": 31,
+      "final": 31,
+      "builderFinal": 69,
+      "out": false,
+      "firstHitMs": 2533
+    },
+    {
+      "kind": "pulsar",
+      "initial": 100,
+      "location": "wall",
+      "response": "sideways-escape",
+      "recoverSpills": true,
+      "contestSpills": false,
+      "hits": 2,
+      "grossDamage": 44,
+      "minimum": 56,
+      "final": 56,
+      "builderFinal": 44,
+      "out": false,
+      "firstHitMs": 2533
+    },
+    {
+      "kind": "pulsar",
+      "initial": 100,
+      "location": "wall",
+      "response": "warning-escape",
+      "recoverSpills": true,
+      "contestSpills": false,
+      "hits": 4,
+      "grossDamage": 69,
+      "minimum": 31,
+      "final": 31,
+      "builderFinal": 69,
+      "out": false,
+      "firstHitMs": 2533
+    },
+    {
+      "kind": "pulsar",
+      "initial": 1000,
+      "location": "open",
+      "response": "idle",
+      "recoverSpills": true,
+      "contestSpills": false,
+      "hits": 2,
+      "grossDamage": 437,
+      "minimum": 559,
+      "final": 559,
+      "builderFinal": 436,
+      "out": false,
+      "firstHitMs": 1900
+    },
+    {
+      "kind": "pulsar",
+      "initial": 1000,
+      "location": "open",
+      "response": "radial-escape",
+      "recoverSpills": true,
+      "contestSpills": false,
+      "hits": 1,
+      "grossDamage": 250,
+      "minimum": 745,
+      "final": 745,
+      "builderFinal": 250,
+      "out": false,
+      "firstHitMs": 1900
+    },
+    {
+      "kind": "pulsar",
+      "initial": 1000,
+      "location": "open",
+      "response": "sideways-escape",
+      "recoverSpills": true,
+      "contestSpills": false,
+      "hits": 2,
+      "grossDamage": 437,
+      "minimum": 559,
+      "final": 559,
+      "builderFinal": 436,
+      "out": false,
+      "firstHitMs": 1900
+    },
+    {
+      "kind": "pulsar",
+      "initial": 1000,
+      "location": "open",
+      "response": "warning-escape",
+      "recoverSpills": true,
+      "contestSpills": false,
+      "hits": 1,
+      "grossDamage": 250,
+      "minimum": 744,
+      "final": 744,
+      "builderFinal": 250,
+      "out": false,
+      "firstHitMs": 2733
+    },
+    {
+      "kind": "pulsar",
+      "initial": 1000,
+      "location": "wall",
+      "response": "idle",
+      "recoverSpills": true,
+      "contestSpills": false,
+      "hits": 4,
+      "grossDamage": 682,
+      "minimum": 315,
+      "final": 315,
+      "builderFinal": 680,
+      "out": false,
+      "firstHitMs": 2033
+    },
+    {
+      "kind": "pulsar",
+      "initial": 1000,
+      "location": "wall",
+      "response": "radial-escape",
+      "recoverSpills": true,
+      "contestSpills": false,
+      "hits": 4,
+      "grossDamage": 682,
+      "minimum": 315,
+      "final": 315,
+      "builderFinal": 680,
+      "out": false,
+      "firstHitMs": 2033
+    },
+    {
+      "kind": "pulsar",
+      "initial": 1000,
+      "location": "wall",
+      "response": "sideways-escape",
+      "recoverSpills": true,
+      "contestSpills": false,
+      "hits": 3,
+      "grossDamage": 577,
+      "minimum": 420,
+      "final": 420,
+      "builderFinal": 576,
+      "out": false,
+      "firstHitMs": 2033
+    },
+    {
+      "kind": "pulsar",
+      "initial": 1000,
+      "location": "wall",
+      "response": "warning-escape",
+      "recoverSpills": true,
+      "contestSpills": false,
+      "hits": 4,
+      "grossDamage": 682,
+      "minimum": 315,
+      "final": 315,
+      "builderFinal": 680,
+      "out": false,
+      "firstHitMs": 2033
+    },
+    {
+      "kind": "pulsar",
+      "initial": 5000,
+      "location": "open",
+      "response": "idle",
+      "recoverSpills": true,
+      "contestSpills": false,
+      "hits": 3,
+      "grossDamage": 2881,
+      "minimum": 2087,
+      "final": 2087,
+      "builderFinal": 2861,
+      "out": false,
+      "firstHitMs": 1900
+    },
+    {
+      "kind": "pulsar",
+      "initial": 5000,
+      "location": "open",
+      "response": "radial-escape",
+      "recoverSpills": true,
+      "contestSpills": false,
+      "hits": 1,
+      "grossDamage": 1248,
+      "minimum": 3709,
+      "final": 3709,
+      "builderFinal": 1239,
+      "out": false,
+      "firstHitMs": 1900
+    },
+    {
+      "kind": "pulsar",
+      "initial": 5000,
+      "location": "open",
+      "response": "sideways-escape",
+      "recoverSpills": true,
+      "contestSpills": false,
+      "hits": 3,
+      "grossDamage": 2881,
+      "minimum": 2087,
+      "final": 2087,
+      "builderFinal": 2861,
+      "out": false,
+      "firstHitMs": 1900
+    },
+    {
+      "kind": "pulsar",
+      "initial": 5000,
+      "location": "open",
+      "response": "warning-escape",
+      "recoverSpills": true,
+      "contestSpills": false,
+      "hits": 1,
+      "grossDamage": 1248,
+      "minimum": 3709,
+      "final": 3709,
+      "builderFinal": 1239,
+      "out": false,
+      "firstHitMs": 2133
+    },
+    {
+      "kind": "pulsar",
+      "initial": 5000,
+      "location": "wall",
+      "response": "idle",
+      "recoverSpills": true,
+      "contestSpills": false,
+      "hits": 4,
+      "grossDamage": 3406,
+      "minimum": 1564,
+      "final": 1564,
+      "builderFinal": 3384,
+      "out": false,
+      "firstHitMs": 1900
+    },
+    {
+      "kind": "pulsar",
+      "initial": 5000,
+      "location": "wall",
+      "response": "radial-escape",
+      "recoverSpills": true,
+      "contestSpills": false,
+      "hits": 4,
+      "grossDamage": 3406,
+      "minimum": 1564,
+      "final": 1564,
+      "builderFinal": 3384,
+      "out": false,
+      "firstHitMs": 1900
+    },
+    {
+      "kind": "pulsar",
+      "initial": 5000,
+      "location": "wall",
+      "response": "sideways-escape",
+      "recoverSpills": true,
+      "contestSpills": false,
+      "hits": 4,
+      "grossDamage": 3404,
+      "minimum": 1566,
+      "final": 1566,
+      "builderFinal": 3382,
+      "out": false,
+      "firstHitMs": 1900
+    },
+    {
+      "kind": "pulsar",
+      "initial": 5000,
+      "location": "wall",
+      "response": "warning-escape",
+      "recoverSpills": true,
+      "contestSpills": false,
+      "hits": 4,
+      "grossDamage": 3406,
+      "minimum": 1564,
+      "final": 1564,
+      "builderFinal": 3384,
+      "out": false,
+      "firstHitMs": 1900
+    },
+    {
+      "kind": "pulsar",
+      "initial": 100,
+      "location": "open",
+      "response": "idle",
+      "recoverSpills": false,
+      "contestSpills": false,
+      "hits": 2,
+      "grossDamage": 44,
+      "minimum": 56,
+      "final": 56,
+      "builderFinal": 44,
+      "out": false,
+      "firstHitMs": 2133
+    },
+    {
+      "kind": "pulsar",
+      "initial": 100,
+      "location": "wall",
+      "response": "idle",
+      "recoverSpills": false,
+      "contestSpills": false,
+      "hits": 4,
+      "grossDamage": 69,
+      "minimum": 31,
+      "final": 31,
+      "builderFinal": 69,
+      "out": false,
+      "firstHitMs": 2533
+    },
+    {
+      "kind": "pulsar",
+      "initial": 1000,
+      "location": "open",
+      "response": "idle",
+      "recoverSpills": false,
+      "contestSpills": false,
+      "hits": 2,
+      "grossDamage": 437,
+      "minimum": 559,
+      "final": 559,
+      "builderFinal": 436,
+      "out": false,
+      "firstHitMs": 1900
+    },
+    {
+      "kind": "pulsar",
+      "initial": 1000,
+      "location": "wall",
+      "response": "idle",
+      "recoverSpills": false,
+      "contestSpills": false,
+      "hits": 4,
+      "grossDamage": 682,
+      "minimum": 315,
+      "final": 315,
+      "builderFinal": 680,
+      "out": false,
+      "firstHitMs": 2033
+    },
+    {
+      "kind": "pulsar",
+      "initial": 5000,
+      "location": "open",
+      "response": "idle",
+      "recoverSpills": false,
+      "contestSpills": false,
+      "hits": 3,
+      "grossDamage": 2881,
+      "minimum": 2087,
+      "final": 2087,
+      "builderFinal": 2861,
+      "out": false,
+      "firstHitMs": 1900
+    },
+    {
+      "kind": "pulsar",
+      "initial": 5000,
+      "location": "wall",
+      "response": "idle",
+      "recoverSpills": false,
+      "contestSpills": false,
+      "hits": 4,
+      "grossDamage": 3406,
+      "minimum": 1564,
+      "final": 1564,
+      "builderFinal": 3384,
+      "out": false,
+      "firstHitMs": 1900
+    },
+    {
+      "kind": "pinwheel",
+      "initial": 100,
+      "location": "open",
+      "response": "idle",
+      "recoverSpills": false,
+      "contestSpills": false,
+      "hits": 2,
+      "grossDamage": 45,
+      "minimum": 55,
+      "final": 55,
+      "builderFinal": 45,
+      "out": false,
+      "firstHitMs": 4300
+    },
+    {
+      "kind": "pinwheel",
+      "initial": 100,
+      "location": "wall",
+      "response": "idle",
+      "recoverSpills": false,
+      "contestSpills": false,
+      "hits": 2,
+      "grossDamage": 45,
+      "minimum": 55,
+      "final": 55,
+      "builderFinal": 45,
+      "out": false,
+      "firstHitMs": 4567
+    },
+    {
+      "kind": "pinwheel",
+      "initial": 1000,
+      "location": "open",
+      "response": "idle",
+      "recoverSpills": false,
+      "contestSpills": false,
+      "hits": 5,
+      "grossDamage": 350,
+      "minimum": 645,
+      "final": 645,
+      "builderFinal": 350,
+      "out": false,
+      "firstHitMs": 1367
+    },
+    {
+      "kind": "pinwheel",
+      "initial": 1000,
+      "location": "wall",
+      "response": "idle",
+      "recoverSpills": false,
+      "contestSpills": false,
+      "hits": 5,
+      "grossDamage": 350,
+      "minimum": 645,
+      "final": 645,
+      "builderFinal": 350,
+      "out": false,
+      "firstHitMs": 1433
+    },
+    {
+      "kind": "pinwheel",
+      "initial": 5000,
+      "location": "open",
+      "response": "idle",
+      "recoverSpills": false,
+      "contestSpills": false,
+      "hits": 9,
+      "grossDamage": 1422,
+      "minimum": 3533,
+      "final": 3533,
+      "builderFinal": 1415,
+      "out": false,
+      "firstHitMs": 1367
+    },
+    {
+      "kind": "pinwheel",
+      "initial": 5000,
+      "location": "wall",
+      "response": "idle",
+      "recoverSpills": false,
+      "contestSpills": false,
+      "hits": 16,
+      "grossDamage": 2368,
+      "minimum": 2593,
+      "final": 2593,
+      "builderFinal": 2355,
+      "out": false,
+      "firstHitMs": 1367
+    },
+    {
+      "kind": "pulsar",
+      "initial": 1000,
+      "location": "open",
+      "response": "idle",
+      "recoverSpills": true,
+      "contestSpills": true,
+      "hits": 2,
+      "grossDamage": 315,
+      "minimum": 194,
+      "final": 194,
+      "builderFinal": 825,
+      "out": false,
+      "firstHitMs": 1900
+    },
+    {
+      "kind": "pulsar",
+      "initial": 1000,
+      "location": "open",
+      "response": "sideways-escape",
+      "recoverSpills": true,
+      "contestSpills": true,
+      "hits": 1,
+      "grossDamage": 250,
+      "minimum": 258,
+      "final": 258,
+      "builderFinal": 761,
+      "out": false,
+      "firstHitMs": 1900
+    },
+    {
+      "kind": "pulsar",
+      "initial": 1000,
+      "location": "wall",
+      "response": "idle",
+      "recoverSpills": true,
+      "contestSpills": true,
+      "hits": 2,
+      "grossDamage": 315,
+      "minimum": 195,
+      "final": 195,
+      "builderFinal": 824,
+      "out": false,
+      "firstHitMs": 2000
+    },
+    {
+      "kind": "pulsar",
+      "initial": 1000,
+      "location": "wall",
+      "response": "sideways-escape",
+      "recoverSpills": true,
+      "contestSpills": true,
+      "hits": 2,
+      "grossDamage": 315,
+      "minimum": 195,
+      "final": 195,
+      "builderFinal": 825,
+      "out": false,
+      "firstHitMs": 2000
+    }
+  ],
+  "passiveDecay": [
+    {
+      "rules": "human",
+      "initial": 1000,
+      "upkeepGemsPerMinuteAtStart": 42.00000000000001,
+      "firstBelow75Percent": 444,
+      "samples": {
+        "0": 1000,
+        "60": 960,
+        "300": 819,
+        "900": 585,
+        "1800": 416,
+        "3600": 319,
+        "7200": 300
+      }
+    },
+    {
+      "rules": "human",
+      "initial": 1500,
+      "upkeepGemsPerMinuteAtStart": 72,
+      "firstBelow75Percent": 376,
+      "samples": {
+        "0": 1500,
+        "60": 1431,
+        "300": 1189,
+        "900": 788,
+        "1800": 498,
+        "3600": 333,
+        "7200": 301
+      }
+    },
+    {
+      "rules": "human",
+      "initial": 5000,
+      "upkeepGemsPerMinuteAtStart": 282,
+      "firstBelow75Percent": 309,
+      "samples": {
+        "0": 5000,
+        "60": 4727,
+        "300": 3782,
+        "900": 2211,
+        "1800": 1077,
+        "3600": 428,
+        "7200": 303
+      }
+    },
+    {
+      "rules": "bot",
+      "initial": 1000,
+      "upkeepGemsPerMinuteAtStart": 42.00000000000001,
+      "firstBelow75Percent": 444,
+      "samples": {
+        "0": 1000,
+        "60": 960,
+        "300": 819,
+        "900": 585,
+        "1800": 416,
+        "3600": 319,
+        "7200": 300
+      }
+    },
+    {
+      "rules": "bot",
+      "initial": 1500,
+      "upkeepGemsPerMinuteAtStart": 72,
+      "firstBelow75Percent": 376,
+      "samples": {
+        "0": 1500,
+        "60": 1431,
+        "300": 1189,
+        "900": 788,
+        "1800": 498,
+        "3600": 333,
+        "7200": 301
+      }
+    },
+    {
+      "rules": "bot",
+      "initial": 5000,
+      "upkeepGemsPerMinuteAtStart": 282,
+      "firstBelow75Percent": 309,
+      "samples": {
+        "0": 5000,
+        "60": 4727,
+        "300": 3782,
+        "900": 2211,
+        "1800": 1077,
+        "3600": 428,
+        "7200": 303
+      }
+    }
+  ],
+  "idealContactTheft": {
+    "peers": [
+      {
+        "victimGems": 40,
+        "thiefGems": 40,
+        "count": 1,
+        "firstSecond": 10,
+        "taken": 40,
+        "knockoutMs": 3700
+      },
+      {
+        "victimGems": 100,
+        "thiefGems": 100,
+        "count": 1,
+        "firstSecond": 25,
+        "taken": 100,
+        "knockoutMs": 3733.3333333333335
+      },
+      {
+        "victimGems": 1000,
+        "thiefGems": 1000,
+        "count": 1,
+        "firstSecond": 247,
+        "taken": 1000,
+        "knockoutMs": 3800
+      },
+      {
+        "victimGems": 10000,
+        "thiefGems": 10000,
+        "count": 1,
+        "firstSecond": 2372,
+        "taken": 10000,
+        "knockoutMs": 3833.3333333333335
+      }
+    ],
+    "giant": [
+      {
+        "victimGems": 1000,
+        "thiefGems": 4,
+        "count": 1,
+        "firstSecond": 24,
+        "taken": 1000,
+        "knockoutMs": 6266.666666666667
+      },
+      {
+        "victimGems": 1000,
+        "thiefGems": 40,
+        "count": 1,
+        "firstSecond": 53,
+        "taken": 1000,
+        "knockoutMs": 5200
+      },
+      {
+        "victimGems": 1000,
+        "thiefGems": 250,
+        "count": 1,
+        "firstSecond": 202,
+        "taken": 1000,
+        "knockoutMs": 3966.6666666666665
+      },
+      {
+        "victimGems": 1000,
+        "thiefGems": 1000,
+        "count": 1,
+        "firstSecond": 247,
+        "taken": 1000,
+        "knockoutMs": 3800
+      }
+    ],
+    "groups": [
+      {
+        "victimGems": 1000,
+        "thiefGems": 1000,
+        "count": 1,
+        "firstSecond": 247,
+        "taken": 1000,
+        "knockoutMs": 3800
+      },
+      {
+        "victimGems": 1000,
+        "thiefGems": 1000,
+        "count": 2,
+        "firstSecond": 494,
+        "taken": 1000,
+        "knockoutMs": 1933.3333333333333
+      },
+      {
+        "victimGems": 1000,
+        "thiefGems": 1000,
+        "count": 3,
+        "firstSecond": 741,
+        "taken": 1000,
+        "knockoutMs": 1333.3333333333333
+      }
+    ]
+  },
+  "verification": {
+    "unitSuites": 25,
+    "networkScenarios": 18,
+    "focusedBrowserCasesPassed": 90,
+    "browserProfiles": 10,
+    "lintErrors": 0,
+    "lintWarnings": 169,
+    "types": "pass",
+    "schema": "pass",
+    "productionBuild": "pass"
+  }
+}

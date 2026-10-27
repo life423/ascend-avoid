@@ -95,7 +95,13 @@ export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
         ctx.lineTo(tx + Math.cos(turbine.intake) * 7, ty + Math.sin(turbine.intake) * 7)
         ctx.stroke()
     })
-    if (state.surgePhase === 'warning' || state.surgePhase === 'active') {
+    state.blackHoles?.forEach(hole => {
+        const hx = x + hole.x * scale, hy = y + hole.y * scale
+        ctx.fillStyle = '#02030c'; ctx.strokeStyle = state.time >= hole.activeAt ? '#d6a0ff' : GOLD; ctx.lineWidth = 1.5
+        ctx.beginPath(); ctx.arc(hx, hy, 4.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke()
+        ctx.beginPath(); ctx.ellipse(hx, hy, 7, 2.5, -.35, 0, Math.PI * 2); ctx.stroke()
+    })
+    if (state.surgePhase === 'warning'  || state.surgePhase === 'active') {
         ctx.strokeStyle = GOLD
         ctx.lineWidth = 2
         ctx.beginPath()
@@ -391,7 +397,7 @@ export function drawKnockedOut(mode: MultiplayerMode, ctx: CanvasRenderingContex
         : cause?.how === 'traffic' ? 'Wrecked'
         : cause?.how === 'drain' ? 'Drained'
         : 'Knocked out'
-    const title = credited && cause ? cause.how === 'burnup' ? 'Burned up in flight' : `${verb} by ${cause.by}` : 'Hit!'
+    const title = credited && cause ? cause.how === 'burnup' ? 'Burned up in flight' : cause.how === 'blackhole' ? 'Shot into a black hole' : `${verb} by ${cause.by}` : 'Hit!'
     drawMessage(mode, ctx, canvas, title, seconds > 0 ? `Back in ${seconds}` : 'Back in a moment')
 }
 
