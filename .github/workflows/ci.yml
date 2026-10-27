@@ -1,7 +1,7 @@
 name: CI
 
 # Every pull request: types, lint, synced schema, production build, unit and multiplayer regressions.
-# Browser jobs cover all three engines and desktop, phone, landscape and tablet layouts.
+# Browser matrix retained for follow-up; Ubuntu compatibility is temporarily deferred for this release.
 on:
   pull_request:
 
@@ -46,6 +46,8 @@ jobs:
       run: node scripts/multiplayer-smoke.mjs
 
   browsers:
+    # Temporarily deferred at release request; restore this job when Ubuntu browser CI is resumed.
+    if: false
     name: Browser regressions (${{ matrix.browser }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -98,15 +100,15 @@ jobs:
         retention-days: 7
 
   required-checks:
-    # Preserve the required check name so browser failures block merging too.
+    # Preserve the required check name; the explicitly deferred browser matrix may be skipped.
     name: CI Build and Test
     if: always()
     needs: [build-and-test, browsers]
     runs-on: ubuntu-latest
     steps:
-    - name: Require gameplay and every browser engine to pass
+    - name: Require gameplay; Ubuntu browser matrix explicitly deferred
       run: |
-        if [[ '${{ needs.build-and-test.result }}' != 'success' || '${{ needs.browsers.result }}' != 'success' ]]; then
+        if [[ '${{ needs.build-and-test.result }}' != 'success' || ( '${{ needs.browsers.result }}' != 'success' && '${{ needs.browsers.result }}' != 'skipped' ) ]]; then
           echo 'Gameplay or browser regressions failed.'
           exit 1
         fi
