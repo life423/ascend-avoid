@@ -232,6 +232,7 @@ export function clearanceAt(state: GameState, cx: number, cy: number, self: Play
         nearest = Math.min(nearest, d - INHALE.REACH - other.width * INHALE.REACH_PER_SIZE - self.width / 2);
     }
   });
+  for (const h of state.blackHoles) nearest = Math.min(nearest, Math.hypot(cx - h.x, cy - h.y) - h.radius - self.width / 2 - 40);
   for (const t of state.turbines) if (t.phase !== 'warning') nearest = Math.min(nearest,
     Math.hypot(cx - t.x, cy - t.y) - TURBINE.BODY_RADIUS - TURBINE.INTAKE_REACH - self.width / 2);
   for (const w of allWeapons(state)) {

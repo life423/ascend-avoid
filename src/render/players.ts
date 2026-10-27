@@ -220,6 +220,14 @@ export function drawPlayer(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
     }
     if (!held && !player.flying && player.injuredUntil > 0) drawInjury(ctx, centerX, centerY, size, facing, injuryAge, injuryRemaining, REDUCED_MOTION.matches)
     ctx.restore()
+    const weaponProtection = world ? Math.max(0, player.weaponSafeUntil - mode.worldNow(world, timestamp)) : 0
+    if (!held && !player.flying && weaponProtection > 0) {
+        const u = 1 / Math.max(.001, Math.abs(ctx.getTransform().a)), r = size / 2 + 7 * u
+        ctx.save(); ctx.strokeStyle = '#9dcaff'; ctx.lineWidth = 2 * u
+        ctx.globalAlpha = Math.min(.7, weaponProtection / 250)
+        for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; ctx.beginPath(); ctx.arc(centerX, centerY, r, a + .12, a + .7); ctx.stroke() }
+        ctx.restore()
+    }
     // The hold badge stays beneath the puffed cheeks and clear eyes.
     if (player.gulping) drawMouthful(mode, ctx, player, left + size / 2, top + size / 2, size, facing, timestamp)
     // Dazed: spiral pupils, a slight wobble, and a halo outside the face.

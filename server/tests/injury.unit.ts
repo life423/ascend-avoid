@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { GameState } from '../schema/GameState.js';
 import { INHALE, EXHALE, WORLD } from '../constants/gameConstants.js';
-import { steal, exhale } from '../systems/inhale.js';
+import { steal, exhale, planTheft } from '../systems/inhale.js';
 import { updateFlights } from '../systems/flights.js';
 
 const NOW = 100000;
@@ -33,8 +33,8 @@ function setup() {
   c.facing = 0; c.startInhale(NOW); c.heldFor.set(b.sessionId, 5);
   b.injure(0); const events: Record<string, unknown>[] = [];
   s.onEvent = (type, data) => { if (type === 'credit') events.push(data); };
-  for (let i = 0; i < 100 && b.state === 'alive'; i++) {
-    s.time += 33; steal(s, a, NOW + s.time, .033); steal(s, c, NOW + s.time, .033);
+  for (let i = 0; i < 210 && b.state === 'alive'; i++) {
+    s.time += 33; const plan = planTheft(s, NOW + s.time); steal(s, a, NOW + s.time, .033, plan); steal(s, c, NOW + s.time, .033, plan);
   }
   assert.equal(b.state, 'dead', 'multiple thieves can finish an injured creature without an allowance');
   assert.equal(b.gems, 0); assert.equal(a.gems + c.gems, 120, 'every stolen gem transfers once');

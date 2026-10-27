@@ -1,7 +1,7 @@
 import type { MultiplayerMode } from '../core/GameModes';
 import type { SyncedGameState, SyncedWeaponPart, SyncedPinwheel } from '../types/synced';
 import { PINWHEEL, WEAPON_FLEET } from '../../server/constants/gameConstants';
-import { FONT, roundedRect } from './style';
+import { COMPACT, FONT, roundedRect } from './style';
 import { PART_COLORS, weaponRecipe } from './weaponStyle';
 import { drawPulsarArray, pulsarPartIcon } from './shockwave';
 
@@ -61,8 +61,10 @@ function drawPart(ctx: CanvasRenderingContext2D, part: SyncedWeaponPart, remaini
         else { ctx.moveTo(19, -25); ctx.lineTo(23, -21); ctx.lineTo(31, -30); }
         ctx.stroke();
     }
-    ctx.font = `800 10px ${FONT}`; ctx.textAlign = 'center'; ctx.fillStyle = COLORS[part.kind];
-    ctx.fillText(weaponRecipe(weapon).parts[part.kind], 0, 47);
+    if (!COMPACT.matches && !locked) {
+        ctx.font = `800 10px ${FONT}`; ctx.textAlign = 'center'; ctx.fillStyle = COLORS[part.kind];
+        ctx.fillText(weaponRecipe(weapon).parts[part.kind], 0, 47);
+    }
     ctx.restore();
 }
 
@@ -212,6 +214,15 @@ function drawGuidance(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, stat
     ctx.save(); ctx.translate(at.x, at.y); ctx.rotate(angle); ctx.translate(radius, 0);
     ctx.strokeStyle = '#80fff1'; ctx.fillStyle = '#80fff1'; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(-10, -9); ctx.lineTo(0, 0); ctx.lineTo(-10, 9); ctx.stroke();
-    ctx.rotate(-angle); ctx.font = `800 10px ${FONT}`; ctx.textAlign = 'center';
-    ctx.fillText(weaponRecipe(w.kind).parts[target.kind], 0, 24); ctx.restore();
+    ctx.rotate(-angle);
+    ctx.save(); ctx.translate(0, 24); ctx.scale(.45, .45);
+    if (w.kind === 'pinwheel' || w.kind === 'pulsar') partIcon(ctx, target.kind, 0, 0, 0, w.kind === 'pulsar');
+    else satellitePart(ctx, w.kind, target.kind);
+    ctx.restore();
+    for (let i = 0; i < 3; i++) {
+        const collected = Boolean(w.progress & (1 << i));
+        ctx.fillStyle = collected ? '#80fff1' : '#102030'; ctx.strokeStyle = '#80fff1'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc((i-1)*10, 45, 3.5, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+    }
+    ctx.restore();
 }

@@ -1,0 +1,721 @@
+{
+  "date": "2026-10-26",
+  "branch": "feat/group-pressure-arena-polish",
+  "scope": "Local group pressure, soft black-hole rims, wordless assembly guidance; includes preceding local weapon-fairness changes.",
+  "groupPressure": {
+    "extraMax": 0.6,
+    "method": "30Hz ideal tracked injury contact; actual planTheft/steal; no movement, capture, pickups or upkeep",
+    "peer1000Gems": [
+      {
+        "attackers": 1,
+        "beforeKnockoutMs": 3800,
+        "afterKnockoutMs": 3800,
+        "afterFirstSecondGems": 247
+      },
+      {
+        "attackers": 2,
+        "beforeKnockoutMs": 1933,
+        "afterKnockoutMs": 2767,
+        "afterFirstSecondGems": 340
+      },
+      {
+        "attackers": 3,
+        "beforeKnockoutMs": 1333,
+        "afterKnockoutMs": 2533,
+        "afterFirstSecondGems": 375
+      }
+    ]
+  },
+  "rim": {
+    "coreRadius": 64,
+    "bodyClearance": 8,
+    "overlapRecoverySpeed": 180,
+    "sameServerAndPredictionHelper": true
+  },
+  "assembly": {
+    "method": "30Hz authoritative world; ideal nearest-missing-part steering; no opposition, holes, traffic or gem pickups. Timing measures mechanics only.",
+    "rows": [
+      {
+        "kind": "pinwheel",
+        "gems": 0,
+        "inhale": false,
+        "firstPartMs": 500,
+        "completedMs": 2067,
+        "afterClaimMs": 1567,
+        "placedWhileMoving": true
+      },
+      {
+        "kind": "pinwheel",
+        "gems": 0,
+        "inhale": true,
+        "firstPartMs": 333,
+        "completedMs": 1667,
+        "afterClaimMs": 1334,
+        "placedWhileMoving": true
+      },
+      {
+        "kind": "pinwheel",
+        "gems": 100,
+        "inhale": false,
+        "firstPartMs": 700,
+        "completedMs": 3633,
+        "afterClaimMs": 2933,
+        "placedWhileMoving": true
+      },
+      {
+        "kind": "pinwheel",
+        "gems": 100,
+        "inhale": true,
+        "firstPartMs": 267,
+        "completedMs": 1833,
+        "afterClaimMs": 1566,
+        "placedWhileMoving": true
+      },
+      {
+        "kind": "pinwheel",
+        "gems": 1000,
+        "inhale": false,
+        "firstPartMs": 33,
+        "completedMs": 2500,
+        "afterClaimMs": 2467,
+        "placedWhileMoving": true
+      },
+      {
+        "kind": "pinwheel",
+        "gems": 1000,
+        "inhale": true,
+        "firstPartMs": 33,
+        "completedMs": 1100,
+        "afterClaimMs": 1067,
+        "placedWhileMoving": true
+      },
+      {
+        "kind": "pulsar",
+        "gems": 0,
+        "inhale": false,
+        "firstPartMs": 500,
+        "completedMs": 2067,
+        "afterClaimMs": 1567,
+        "placedWhileMoving": true
+      },
+      {
+        "kind": "pulsar",
+        "gems": 0,
+        "inhale": true,
+        "firstPartMs": 333,
+        "completedMs": 1667,
+        "afterClaimMs": 1334,
+        "placedWhileMoving": true
+      },
+      {
+        "kind": "pulsar",
+        "gems": 100,
+        "inhale": false,
+        "firstPartMs": 700,
+        "completedMs": 3633,
+        "afterClaimMs": 2933,
+        "placedWhileMoving": true
+      },
+      {
+        "kind": "pulsar",
+        "gems": 100,
+        "inhale": true,
+        "firstPartMs": 267,
+        "completedMs": 1833,
+        "afterClaimMs": 1566,
+        "placedWhileMoving": true
+      },
+      {
+        "kind": "pulsar",
+        "gems": 1000,
+        "inhale": false,
+        "firstPartMs": 33,
+        "completedMs": 2500,
+        "afterClaimMs": 2467,
+        "placedWhileMoving": true
+      },
+      {
+        "kind": "pulsar",
+        "gems": 1000,
+        "inhale": true,
+        "firstPartMs": 33,
+        "completedMs": 1100,
+        "afterClaimMs": 1067,
+        "placedWhileMoving": true
+      },
+      {
+        "kind": "sentinel",
+        "gems": 0,
+        "inhale": false,
+        "firstPartMs": 500,
+        "completedMs": 2067,
+        "afterClaimMs": 1567,
+        "placedWhileMoving": true
+      },
+      {
+        "kind": "sentinel",
+        "gems": 0,
+        "inhale": true,
+        "firstPartMs": 333,
+        "completedMs": 1667,
+        "afterClaimMs": 1334,
+        "placedWhileMoving": true
+      },
+      {
+        "kind": "sentinel",
+        "gems": 100,
+        "inhale": false,
+        "firstPartMs": 700,
+        "completedMs": 3633,
+        "afterClaimMs": 2933,
+        "placedWhileMoving": true
+      },
+      {
+        "kind": "sentinel",
+        "gems": 100,
+        "inhale": true,
+        "firstPartMs": 267,
+        "completedMs": 1833,
+        "afterClaimMs": 1566,
+        "placedWhileMoving": true
+      },
+      {
+        "kind": "sentinel",
+        "gems": 1000,
+        "inhale": false,
+        "firstPartMs": 33,
+        "completedMs": 2500,
+        "afterClaimMs": 2467,
+        "placedWhileMoving": true
+      },
+      {
+        "kind": "sentinel",
+        "gems": 1000,
+        "inhale": true,
+        "firstPartMs": 33,
+        "completedMs": 1100,
+        "afterClaimMs": 1067,
+        "placedWhileMoving": true
+      },
+      {
+        "kind": "ricochet",
+        "gems": 0,
+        "inhale": false,
+        "firstPartMs": 500,
+        "completedMs": 2067,
+        "afterClaimMs": 1567,
+        "placedWhileMoving": true
+      },
+      {
+        "kind": "ricochet",
+        "gems": 0,
+        "inhale": true,
+        "firstPartMs": 333,
+        "completedMs": 1667,
+        "afterClaimMs": 1334,
+        "placedWhileMoving": true
+      },
+      {
+        "kind": "ricochet",
+        "gems": 100,
+        "inhale": false,
+        "firstPartMs": 700,
+        "completedMs": 3633,
+        "afterClaimMs": 2933,
+        "placedWhileMoving": true
+      },
+      {
+        "kind": "ricochet",
+        "gems": 100,
+        "inhale": true,
+        "firstPartMs": 267,
+        "completedMs": 1833,
+        "afterClaimMs": 1566,
+        "placedWhileMoving": true
+      },
+      {
+        "kind": "ricochet",
+        "gems": 1000,
+        "inhale": false,
+        "firstPartMs": 33,
+        "completedMs": 2500,
+        "afterClaimMs": 2467,
+        "placedWhileMoving": true
+      },
+      {
+        "kind": "ricochet",
+        "gems": 1000,
+        "inhale": true,
+        "firstPartMs": 33,
+        "completedMs": 1100,
+        "afterClaimMs": 1067,
+        "placedWhileMoving": true
+      },
+      {
+        "kind": "ion",
+        "gems": 0,
+        "inhale": false,
+        "firstPartMs": 500,
+        "completedMs": 2067,
+        "afterClaimMs": 1567,
+        "placedWhileMoving": true
+      },
+      {
+        "kind": "ion",
+        "gems": 0,
+        "inhale": true,
+        "firstPartMs": 333,
+        "completedMs": 1667,
+        "afterClaimMs": 1334,
+        "placedWhileMoving": true
+      },
+      {
+        "kind": "ion",
+        "gems": 100,
+        "inhale": false,
+        "firstPartMs": 700,
+        "completedMs": 3633,
+        "afterClaimMs": 2933,
+        "placedWhileMoving": true
+      },
+      {
+        "kind": "ion",
+        "gems": 100,
+        "inhale": true,
+        "firstPartMs": 267,
+        "completedMs": 1833,
+        "afterClaimMs": 1566,
+        "placedWhileMoving": true
+      },
+      {
+        "kind": "ion",
+        "gems": 1000,
+        "inhale": false,
+        "firstPartMs": 33,
+        "completedMs": 2500,
+        "afterClaimMs": 2467,
+        "placedWhileMoving": true
+      },
+      {
+        "kind": "ion",
+        "gems": 1000,
+        "inhale": true,
+        "firstPartMs": 33,
+        "completedMs": 1100,
+        "afterClaimMs": 1067,
+        "placedWhileMoving": true
+      },
+      {
+        "kind": "comet",
+        "gems": 0,
+        "inhale": false,
+        "firstPartMs": 500,
+        "completedMs": 2067,
+        "afterClaimMs": 1567,
+        "placedWhileMoving": true
+      },
+      {
+        "kind": "comet",
+        "gems": 0,
+        "inhale": true,
+        "firstPartMs": 333,
+        "completedMs": 1667,
+        "afterClaimMs": 1334,
+        "placedWhileMoving": true
+      },
+      {
+        "kind": "comet",
+        "gems": 100,
+        "inhale": false,
+        "firstPartMs": 700,
+        "completedMs": 3633,
+        "afterClaimMs": 2933,
+        "placedWhileMoving": true
+      },
+      {
+        "kind": "comet",
+        "gems": 100,
+        "inhale": true,
+        "firstPartMs": 267,
+        "completedMs": 1833,
+        "afterClaimMs": 1566,
+        "placedWhileMoving": true
+      },
+      {
+        "kind": "comet",
+        "gems": 1000,
+        "inhale": false,
+        "firstPartMs": 33,
+        "completedMs": 2500,
+        "afterClaimMs": 2467,
+        "placedWhileMoving": true
+      },
+      {
+        "kind": "comet",
+        "gems": 1000,
+        "inhale": true,
+        "firstPartMs": 33,
+        "completedMs": 1100,
+        "afterClaimMs": 1067,
+        "placedWhileMoving": true
+      }
+    ]
+  },
+  "arenaMethod": "One seed (11), 600 simulated seconds, 20 existing fallible bots, all nine sets/six recipes, production mechanics. Whole-arena outcomes diverge after interactions; these are smoke observations, not isolated effect estimates or human balance evidence.",
+  "arenaBefore": {
+    "probe": {
+      "final": 4,
+      "max": 268,
+      "maxWidth": 162.5,
+      "deaths": 8,
+      "decayGems": 0,
+      "stolen": 18,
+      "robbed": 320,
+      "incomingCreditedDamage": {
+        "missile-target": 81,
+        "comet": 50,
+        "ion": 29,
+        "spent-missile": 113,
+        "pinwheel": 30
+      },
+      "firstBelow750": null,
+      "secondsAbove750": 0,
+      "leaderSeconds": 38,
+      "milestones": {
+        "25": 13,
+        "100": 73
+      }
+    },
+    "arena": {
+      "actualDeaths": 105,
+      "deathsByPreKnockoutWidth": {
+        "below150": 96,
+        "from150To500": 9,
+        "atLeast500": 0
+      },
+      "creditedKnockouts": {
+        "pinwheel": 14,
+        "missile-target": 13,
+        "spent-missile": 62,
+        "ion": 3,
+        "blackhole": 5,
+        "pulsar": 5,
+        "ricochet": 1,
+        "burnup": 1,
+        "comet": 1
+      },
+      "captures": 84,
+      "launches": 80,
+      "captureOutcomes": {
+        "timedEjections": 5,
+        "fires": 79,
+        "injuredFires": 22,
+        "capturedPostTransferGems": 7770,
+        "bellyBonusPaid": 37,
+        "bellyBonusDiscarded": 173,
+        "continuedTheftSeconds": 48.5999999999998,
+        "followActiveSeconds": 12.999999999999964
+      },
+      "captureTiming": {
+        "count": 84,
+        "minRatio": 1.3003412969283277,
+        "meanHoldMs": 7383
+      },
+      "meanGiantsAt500Width": 0.34,
+      "mostGiantsAt500Width": 2,
+      "finalGiantsAt500Width": 1,
+      "finalPopulation": [
+        {
+          "gems": 4,
+          "width": 28.5
+        },
+        {
+          "gems": 55,
+          "width": 77
+        },
+        {
+          "gems": 350,
+          "width": 184.5
+        },
+        {
+          "gems": 168,
+          "width": 130
+        },
+        {
+          "gems": 11,
+          "width": 38.5
+        },
+        {
+          "gems": 499,
+          "width": 218
+        },
+        {
+          "gems": 76,
+          "width": 89.5
+        },
+        {
+          "gems": 80,
+          "width": 91.5
+        },
+        {
+          "gems": 444,
+          "width": 206.5
+        },
+        {
+          "gems": 2909,
+          "width": 484.5
+        },
+        {
+          "gems": 2430,
+          "width": 447.5
+        },
+        {
+          "gems": 3,
+          "width": 26.5
+        },
+        {
+          "gems": 131,
+          "width": 115.5
+        },
+        {
+          "gems": 40,
+          "width": 66.5
+        },
+        {
+          "gems": 808,
+          "width": 273
+        },
+        {
+          "gems": 0,
+          "width": 20
+        },
+        {
+          "gems": 4495,
+          "width": 585
+        },
+        {
+          "gems": 218,
+          "width": 147.5
+        },
+        {
+          "gems": 156,
+          "width": 125.5
+        },
+        {
+          "gems": 2,
+          "width": 24.5
+        }
+      ],
+      "leaderChangesAt100PlusGems": 21,
+      "longestLeaderTenureAt100PlusGems": 195,
+      "biggestFinalPlayer": 4495,
+      "weaponPhase": "active",
+      "deployments": {
+        "pinwheel": 25,
+        "ion": 7,
+        "pulsar": 26,
+        "sentinel": 7,
+        "comet": 21,
+        "ricochet": 7
+      },
+      "weaponActiveSeconds": {
+        "pinwheel": 200,
+        "ion": 112,
+        "pulsar": 215,
+        "sentinel": 112,
+        "comet": 252,
+        "ricochet": 112
+      }
+    }
+  },
+  "arenaAfter": {
+    "probe": {
+      "final": 0,
+      "max": 3849,
+      "maxWidth": 547,
+      "deaths": 2,
+      "decayGems": 928,
+      "stolen": 1979,
+      "robbed": 3038,
+      "incomingCreditedDamage": {
+        "pinwheel": 494,
+        "sentinel": 383,
+        "comet": 269,
+        "spent-missile": 1378,
+        "ricochet": 516,
+        "missile-target": 12
+      },
+      "firstBelow750": 61,
+      "secondsAbove750": 421,
+      "leaderSeconds": 213,
+      "milestones": {
+        "25": 0,
+        "100": 0,
+        "300": 0,
+        "500": 0,
+        "1000": 0
+      }
+    },
+    "arena": {
+      "actualDeaths": 114,
+      "deathsByPreKnockoutWidth": {
+        "below150": 98,
+        "from150To500": 16,
+        "atLeast500": 0
+      },
+      "creditedKnockouts": {
+        "sentinel": 2,
+        "pinwheel": 16,
+        "comet": 2,
+        "spent-missile": 61,
+        "missile-target": 19,
+        "pulsar": 4,
+        "ion": 3,
+        "blackhole": 5,
+        "burnup": 1,
+        "drain": 1
+      },
+      "captures": 88,
+      "launches": 83,
+      "captureOutcomes": {
+        "timedEjections": 7,
+        "fires": 81,
+        "injuredFires": 28,
+        "capturedPostTransferGems": 13538,
+        "bellyBonusPaid": 51,
+        "bellyBonusDiscarded": 177,
+        "continuedTheftSeconds": 58.49999999999924,
+        "followActiveSeconds": 30.26666666666733
+      },
+      "captureTiming": {
+        "count": 88,
+        "minRatio": 1.3012820512820513,
+        "meanHoldMs": 7423
+      },
+      "meanGiantsAt500Width": 0.62,
+      "mostGiantsAt500Width": 2,
+      "finalGiantsAt500Width": 2,
+      "finalPopulation": [
+        {
+          "gems": 0,
+          "width": 20
+        },
+        {
+          "gems": 1782,
+          "width": 390.5
+        },
+        {
+          "gems": 202,
+          "width": 142
+        },
+        {
+          "gems": 36,
+          "width": 63
+        },
+        {
+          "gems": 55,
+          "width": 77
+        },
+        {
+          "gems": 152,
+          "width": 124
+        },
+        {
+          "gems": 691,
+          "width": 254
+        },
+        {
+          "gems": 14,
+          "width": 42.5
+        },
+        {
+          "gems": 62,
+          "width": 81
+        },
+        {
+          "gems": 35,
+          "width": 62.5
+        },
+        {
+          "gems": 0,
+          "width": 20
+        },
+        {
+          "gems": 123,
+          "width": 112
+        },
+        {
+          "gems": 110,
+          "width": 106.5
+        },
+        {
+          "gems": 0,
+          "width": 20
+        },
+        {
+          "gems": 72,
+          "width": 87
+        },
+        {
+          "gems": 17,
+          "width": 46
+        },
+        {
+          "gems": 3770,
+          "width": 542
+        },
+        {
+          "gems": 49,
+          "width": 73
+        },
+        {
+          "gems": 2622,
+          "width": 463
+        },
+        {
+          "gems": 3547,
+          "width": 528
+        }
+      ],
+      "leaderChangesAt100PlusGems": 17,
+      "longestLeaderTenureAt100PlusGems": 108,
+      "biggestFinalPlayer": 3770,
+      "weaponPhase": "active",
+      "deployments": {
+        "ion": 9,
+        "comet": 23,
+        "sentinel": 8,
+        "pulsar": 17,
+        "pinwheel": 22,
+        "ricochet": 9
+      },
+      "weaponActiveSeconds": {
+        "ion": 144,
+        "comet": 276,
+        "sentinel": 128,
+        "pulsar": 139,
+        "pinwheel": 176,
+        "ricochet": 144
+      }
+    }
+  },
+  "limitations": [
+    "No physical Android Firefox test",
+    "No human balance validation",
+    "No claim of hours-long giant survival",
+    "No production rollout in this task"
+  ],
+  "verification": {
+    "unitSuites": 28,
+    "multiplayerScenarios": 18,
+    "browserApplicableCases": 154,
+    "browserDeviceSpecificSkips": 6,
+    "browserMethod": "Initial 160-case run:147 passed,6 skipped,7 failures expecting removed mobile guidance words. Updated fleet check verifies icon/progress rendering and absence of labels; all10 profiles pass corrected fleet suite.",
+    "assemblyControls": 36,
+    "typeChecks": "pass",
+    "schemaSync": "pass",
+    "productionBuild": "pass",
+    "lintErrors": 0,
+    "lintWarnings": 177
+  }
+}

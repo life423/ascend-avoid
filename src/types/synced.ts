@@ -208,6 +208,7 @@ export interface SyncedPlayer {
     bellyPending: number
     captureRatio: number
     captureHoldMs: number
+    weaponSafeUntil: number
 }
 
 /** TurbineSchema, as synced to the browser */

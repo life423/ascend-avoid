@@ -1,5 +1,12 @@
 # Balance validation — October 26, 2026
 
+## Current local group/rim/assembly pass
+
+The current local branch includes safe sliding black-hole rims, capped group pressure and wordless assembly guidance, alongside the preceding weapon-fairness work. Ideal solo/two/three-peer knockout times are 3.80/2.77/2.53s; the base injury window and solo rates remain unchanged. Thirty-six uncontested assembly controls pass for all six recipes, three sizes and contact/inhale collection with moving placement. A ten-minute seed-11 arena run exercised every recipe, continued theft, follow, capture timeouts/rewards and five black-hole knockouts. See [GROUP_ARENA_POLISH.md](GROUP_ARENA_POLISH.md) and its recorded data for methodology, observations and verification. Human balance and physical Android performance remain unvalidated.
+
+The older release and experiment notes below are historical; later accepted mechanics supersede escape sequences, captive draining and unbounded additive group pressure.
+
+
 Status: 66adea2 (PR #46) deployed fixed seven-second injury, rapid lethal theft, capped captive transfer and forgiving joystick escape. The October 26 release batch adds stronger body pull, repeat-capture recovery, six weapons with reserved duplicate sets and radar, and mobile button centering. The user approved its main deployment; the associated GitHub pull request and deployment workflow record the merged revision and rollout status. Earlier growth-only release measurements remain historical. No claim of ideal rarity, hours-long human survival or proven fun is made.
 
 ## Local body-pull follow-up
@@ -123,3 +130,8 @@ See [BLACK_HOLE_PLAYTEST.md](BLACK_HOLE_PLAYTEST.md) and its recorded JSON for t
 
 
 Bot follow-up: the user identified capture-to-fire behavior as too immediate and insufficiently aimed. AI now has a 1400ms minimum capture planning interval and 450ms continuous body-alignment requirement, retains periodic/fallible observation, cancels missing targets and resets interrupted plans. Human controls and all physical/gameplay balance constants are preserved. Local full unit/network checks and 12 capture UI cases pass. Long-run arena figures above predate this AI policy and must not be represented as measurements of the new policy. The short follow-up smoke report is recorded separately; human timing/aim feel remains open.
+
+
+## Large-player weapon fairness — local matched exposure pass
+
+See WEAPON_FAIRNESS.md and docs/playtests/weapon-fairness-2026-10-26.json. In matched early-retreat Pulsar controls, credited weapon damage changes from 250 to zero at 1000 starting gems and 1248 to zero at 5000, while the 100-gem control remains zero. Stationary 5000-gem exposure remains dangerous (2182 damage versus 2881 before); direct-hit formulas are unchanged. All six recipes and overlapping sources have authoritative regression coverage. The ten-minute nine-set AI smoke is a functioning-arena check, not evidence of human fun or hours-long balance. Initial core/graze/guard constants remain provisional. Local only, not merged or deployed.

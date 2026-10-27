@@ -13,6 +13,7 @@ import { puffWeaponParts } from "./weapons.js";
 import { stealCapturedPart } from './weaponTheft.js';
 import { followConsumesInhale } from './shotFollow.js';
 import { theftWindowAllows } from '../game/injuryTheft.js';
+import { groupPressureScale } from '../game/groupPressure.js';
 import { puffImpulses } from '../game/puffImpulse.js';
 
 /** Knocked out: any last gems burst out where the player was */
@@ -38,6 +39,7 @@ export function updateInhales(state: GameState, now: number, deltaTime: number) 
   pruneTheftContinuations(state, now);
   const cone = Math.cos((INHALE.ARC * Math.PI) / 180);
   updateHolds(state, now, deltaTime);
+  const pulls = new Map<PlayerSchema, { eater: PlayerSchema; x: number; y: number; speed: number }[]>();
   state.players.forEach((eater) => {
     if (followConsumesInhale(state, eater)) {
       if (eater.stealingFrom) endTheft(state, eater, now);
@@ -146,7 +148,9 @@ export function updateInhales(state: GameState, now: number, deltaTime: number) 
       const across = Math.min(1, Math.abs(velocity.x * (mouthY - py) - velocity.y * (mouthX - px)) / (d * speed));
       pullSpeed *= 1 - INHALE.BODY_STRAFE_ESCAPE * across;
       const pull = Math.min(d, pullSpeed * outgoing * deltaTime);
-      prey.nudge(((mouthX - px) / d) * pull, ((mouthY - py) / d) * pull, state.worldWidth, state.worldHeight);
+      const forces = pulls.get(prey) ?? [];
+      forces.push({ eater, x: ((mouthX - px) / d) * pull, y: ((mouthY - py) / d) * pull, speed: pull });
+      pulls.set(prey, forces);
     });
     fadeLocks(state, eater, locked, deltaTime);
     // Snapshot before growth changes: capture remains valid until firing or release.
@@ -179,10 +183,18 @@ export function updateInhales(state: GameState, now: number, deltaTime: number) 
     if (eater.gulping) {
       if (eater.stealingFrom) endTheft(state, eater, now);
       if (eater.robbing) eater.robbing = "";
-    } else {
-      steal(state, eater, now, deltaTime);
     }
   });
+  // Resolve body pressure together, so several mouths cannot add unbounded displacement.
+  for (const [prey, forces] of pulls) {
+    if (prey.state !== PLAYER_STATE.ALIVE || prey.capturedBy || prey.flying || prey.spawnProtected || now < prey.suctionSafeUntil) continue;
+    const valid = forces.filter(f => f.eater.state === PLAYER_STATE.ALIVE && f.eater.inhaling && !f.eater.gulping && !f.eater.capturedBy && !f.eater.flying);
+    const scale = groupPressureScale(valid.map(f => f.speed));
+    prey.nudge(valid.reduce((n,f) => n+f.x,0)*scale, valid.reduce((n,f) => n+f.y,0)*scale, state.worldWidth, state.worldHeight);
+  }
+  // Freeze valid rates before transfers change body sizes; every actor shares the same snapshot.
+  const plan = planTheft(state, now);
+  state.players.forEach(eater => steal(state, eater, now, deltaTime, plan));
   syncContinuedTheft(state, now);
 }
 
@@ -275,19 +287,46 @@ export function stealStrength(_state: GameState, thief: PlayerSchema, victim: Pl
  * the sustained-contact ramp. Only a damaging hit exposes gems; no shared
  * allowance limits an injury window. Taking the last gem knocks out the injured victim.
  */
-export function steal(state: GameState, thief: PlayerSchema, now: number, deltaTime: number) : void {
+interface TheftFlow { victim: PlayerSchema; weight: number; rate: number }
+type TheftPlan = Map<PlayerSchema, TheftFlow[]>;
+
+/** Only authoritative, positive, eligible connections participate in a victim's shared pressure. */
+export function planTheft(state: GameState, now: number): TheftPlan {
+  const plan: TheftPlan = new Map(), incoming = new Map<PlayerSchema, TheftFlow[]>();
+  for (const thief of state.players.values()) {
+    if (!thief.inhaling || thief.state !== PLAYER_STATE.ALIVE || thief.stunned || thief.flying || thief.capturedBy || thief.gulping || thief.followActive) continue;
+    const outgoing = injuryVulnerable(state, thief, now) ? INHALE.VULNERABLE_OUTGOING : 1;
+    const candidates: { victim: PlayerSchema; weight: number }[] = [];
+    for (const victim of state.players.values()) {
+      if (victim === thief || victim.gems <= INHALE.DRAIN_FLOOR || !theftWindowAllows(thief, victim, state.time) || victim.capturedBy || victim.flying) continue;
+      const weight = stealWeight(state, thief, victim);
+      if (weight > 0) candidates.push({ victim, weight });
+    }
+    const total = candidates.reduce((n, entry) => n + entry.weight, 0), budget = Math.sqrt(candidates.length);
+    const flows: TheftFlow[] = [];
+    for (const entry of candidates) {
+      if (!winsTheftClash(state, thief, entry.victim)) continue;
+      const rate = Math.max(INHALE.STEAL_RATE, entry.victim.injuryGems * INHALE.STEAL_SHARE_PER_S)
+        * budget * entry.weight / total * connectionPower(state, thief, entry.victim) * outgoing;
+      if (!(rate > 0)) continue;
+      const flow = { ...entry, rate }; flows.push(flow);
+      const group = incoming.get(entry.victim) ?? []; group.push(flow); incoming.set(entry.victim, group);
+    }
+    plan.set(thief, flows.sort((a,b) => b.weight-a.weight));
+  }
+  for (const group of incoming.values()) {
+    const scale = groupPressureScale(group.map(f => f.rate));
+    for (const flow of group) flow.rate *= scale;
+  }
+  return plan;
+}
+
+export function steal(state: GameState, thief: PlayerSchema, now: number, deltaTime: number, prepared?: TheftPlan) : void {
   if (!thief.inhaling || thief.state !== PLAYER_STATE.ALIVE || thief.stunned || thief.flying || thief.capturedBy || thief.gulping || thief.followActive) {
     thief.theftContinuations.clear(); thief.robbing = ''; return;
   }
-  const outgoing = injuryVulnerable(state, thief, now) ? INHALE.VULNERABLE_OUTGOING : 1;
   const connected = new Set<string>();
-  const victims: { victim: PlayerSchema; weight: number }[] = [];
-  state.players.forEach((other) => {
-    // Captives use the separate, capped transfer during their hold, never ordinary injury theft.
-    if (other === thief || other.gems <= INHALE.DRAIN_FLOOR || !theftWindowAllows(thief, other, state.time) || other.capturedBy || other.flying) return;
-    const weight = stealWeight(state, thief, other);
-    if (weight > 0) victims.push({ victim: other, weight });
-  });
+  const victims = (prepared ?? planTheft(state, now)).get(thief) ?? [];
   victims.sort((a, b) => b.weight - a.weight);
   const primary = victims[0]?.victim.sessionId ?? "";
   if (primary !== thief.stealingFrom) endTheft(state, thief, now, primary);
@@ -298,18 +337,12 @@ export function steal(state: GameState, thief: PlayerSchema, now: number, deltaT
     const known = state.players.get(id);
     if (!known || known.state !== PLAYER_STATE.ALIVE || !theftWindowAllows(thief, known, state.time)) thief.stealShares.delete(id);
   }
-  const total = victims.reduce((sum, entry) => sum + entry.weight, 0);
-  // Catching several at once pays more than one, though far less than one each
-  const budget = Math.sqrt(victims.length);
-  for (const { victim, weight } of victims) {
-    if (!winsTheftClash(state, thief, victim)) continue;
-    const rate = Math.max(INHALE.STEAL_RATE, victim.injuryGems * INHALE.STEAL_SHARE_PER_S);
-    const flow = budget * (weight / total) * connectionPower(state, thief, victim);
-    if (flow <= 0 || deltaTime <= 0) continue;
+  for (const { victim, rate } of victims) {
+    if (victim.state !== PLAYER_STATE.ALIVE || victim.capturedBy || victim.flying || victim.gems <= INHALE.DRAIN_FLOOR || deltaTime <= 0) continue;
     connected.add(victim.sessionId);
     if (state.time < victim.injuredUntil) thief.theftContinuations.set(victim.sessionId, victim.injuredUntil);
     if (state.time >= victim.injuredUntil) victim.continuedTheft = true;
-    let progress = (thief.stealShares.get(victim.sessionId) ?? 0) + deltaTime * rate * flow * outgoing;
+    let progress = (thief.stealShares.get(victim.sessionId) ?? 0) + deltaTime * rate;
     // Transfer the tick's whole gems together: uncapped scores must not mean one loop per gem.
     const amount = Math.min(Math.floor(progress), victim.gems - INHALE.DRAIN_FLOOR);
     if (amount > 0) {

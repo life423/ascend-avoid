@@ -111,7 +111,9 @@ class PlayerSchema extends Schema {
   puffReadyAt = 0;
   /** World time when the visible post-flight suction shield ends. */
   launchSafeUntil = 0;
-  /** World-time deadline: damaging hits expose gems, without adding movement or input penalties. */
+  /** World-time guard against assembled weapons only; not suction or player cannonballs. */
+  weaponSafeUntil = 0;
+  /** World-time deadline: direct damaging hits expose gems, without adding movement or input penalties. */
   injuredUntil = 0;
   /** Server-only: gem count at the start of this injury; fixes theft rate until the window ends. */
   injuryGems = 0;
@@ -254,6 +256,7 @@ class PlayerSchema extends Schema {
     this.stunned = false;
     this.stunEndsAt = this.stunImmuneUntil = 0;
     this.launchSafeUntil = this.suctionSafeUntil = this.recaptureAfter = 0;
+    this.weaponSafeUntil = 0;
     this.injuredUntil = 0;
     this.injuryGems = 0;
     this.inhaling = false;
@@ -293,6 +296,7 @@ class PlayerSchema extends Schema {
     this.theftContinuations.clear(); this.continuedTheft = false;
     this.followUntil = 0; this.followActive = false; this.followSpeed = 0;
     this.state = PLAYER_STATE.DEAD;
+    this.weaponSafeUntil = 0;
     this.injuredUntil = 0;
     this.injuryGems = 0;
     this.spawnProtected = false;
@@ -715,3 +719,5 @@ type("number")(PlayerSchema.prototype, "bellyCollected");
 type("number")(PlayerSchema.prototype, "bellyPending");
 type("number")(PlayerSchema.prototype, "captureRatio");
 type("number")(PlayerSchema.prototype, "captureHoldMs");
+
+type("number")(PlayerSchema.prototype, "weaponSafeUntil");
