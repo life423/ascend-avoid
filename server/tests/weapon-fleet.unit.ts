@@ -92,7 +92,9 @@ for (const kind of weaponKinds) {
   w.phase = 'active'; w.owner = a.sessionId; w.at = s.time + 16000; w.nextShotAt = s.time + 850; w.activatedAt = s.time; w.originX = 1700; w.originY = 1700;
   b.placeAt(2000, 1800); updateWeapons(s, 0, NOW); const aim = w.angle;
   b.placeAt(1800, 2100); s.time += 800; updateWeapons(s, .02, NOW);
-  assert.equal(w.angle, aim, 'aim lock leaves a dodgeable telegraph'); assert.equal(w.bolts.size, 0);
+  assert(w.aimPoint); assert.deepEqual(w.aimPoint, { x: 2000 + b.width / 2, y: 1800 + b.height / 2 });
+  assert(Math.abs(w.angle - Math.atan2(w.aimPoint.y - w.y, w.aimPoint.x - w.x)) < 1e-8, 'moving satellite keeps its warning on the original point');
+  assert.notEqual(w.angle, aim, 'platform movement is compensated'); assert.equal(w.bolts.size, 0);
   s.time += 50; updateWeapons(s, .02, NOW); assert.equal(w.bolts.size, 1);
 }
 for (const [ox, oy] of [[56, 56], [2000, 2000], [3944, 3944]] as const) {

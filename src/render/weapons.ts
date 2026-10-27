@@ -61,6 +61,12 @@ function drawPart(ctx: CanvasRenderingContext2D, part: SyncedWeaponPart, remaini
         else { ctx.moveTo(19, -25); ctx.lineTo(23, -21); ctx.lineTo(31, -30); }
         ctx.stroke();
     }
+    if (part.carriedBy && part.theftBy && part.theftMs > 0) {
+        const progress = Math.min(1, part.theftMs / PINWHEEL.PART_THEFT_MS);
+        ctx.globalAlpha = 1; ctx.lineWidth = 4; ctx.lineCap = 'round';
+        ctx.strokeStyle = '#33291b'; ctx.beginPath(); ctx.arc(0, 0, 41, 0, Math.PI * 2); ctx.stroke();
+        ctx.strokeStyle = '#ffd47d'; ctx.beginPath(); ctx.arc(0, 0, 41, -Math.PI / 2, -Math.PI / 2 + progress * Math.PI * 2); ctx.stroke();
+    }
     if (!COMPACT.matches && !locked) {
         ctx.font = `800 10px ${FONT}`; ctx.textAlign = 'center'; ctx.fillStyle = COLORS[part.kind];
         ctx.fillText(weaponRecipe(weapon).parts[part.kind], 0, 47);

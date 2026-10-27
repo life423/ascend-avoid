@@ -249,4 +249,6 @@ export interface SyncedWeaponPart {
     y: number
     owner: string
     carriedBy: string
+    theftBy: string
+    theftMs: number
 }

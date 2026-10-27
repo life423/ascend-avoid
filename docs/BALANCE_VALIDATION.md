@@ -1,5 +1,10 @@
 # Balance validation — October 26, 2026
 
+## October 27 contested weapon follow-up
+
+The local contested pass fixes a healthy-cargo close-contact dead zone, clears interrupted theft progress, synchronizes an amber progress arc and prevents shot-follow from also consuming the ordinary part-inhale action. Sentinel now aims at a fixed recorded world point while its platform moves. No damage, projectile-speed or recipe-density tuning changed. Twenty-four two-actor races and 384 placement/response controls are recorded in [WEAPON_CONTEST_PLAYTEST.md](WEAPON_CONTEST_PLAYTEST.md), with raw methodology and human-play limitations.
+
+
 ## Current local group/rim/assembly pass
 
 The current local branch includes safe sliding black-hole rims, capped group pressure and wordless assembly guidance, alongside the preceding weapon-fairness work. Ideal solo/two/three-peer knockout times are 3.80/2.77/2.53s; the base injury window and solo rates remain unchanged. Thirty-six uncontested assembly controls pass for all six recipes, three sizes and contact/inhale collection with moving placement. A ten-minute seed-11 arena run exercised every recipe, continued theft, follow, capture timeouts/rewards and five black-hole knockouts. See [GROUP_ARENA_POLISH.md](GROUP_ARENA_POLISH.md) and its recorded data for methodology, observations and verification. Human balance and physical Android performance remain unvalidated.

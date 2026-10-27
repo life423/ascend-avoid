@@ -17,6 +17,9 @@ type("number")(WeaponPartSchema.prototype, "x");
 type("number")(WeaponPartSchema.prototype, "y");
 type("string")(WeaponPartSchema.prototype, "owner");
 type("string")(WeaponPartSchema.prototype, "carriedBy");
+// Append after existing fields to preserve their wire indices.
+type("string")(WeaponPartSchema.prototype, "theftBy");
+type("number")(WeaponPartSchema.prototype, "theftMs");
 
 export class WeaponBoltSchema extends Schema {
   x = 0;
@@ -58,6 +61,7 @@ export class PinwheelSchema extends Schema {
   originY = 0;
   fixedRecipe = false;
   nextAimAt = 0;
+  aimPoint: { x: number; y: number } | null = null;
   spawnX = 0;
   spawnY = 0;
 }
