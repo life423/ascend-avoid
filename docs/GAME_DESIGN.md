@@ -282,3 +282,12 @@ Knockout uses normal gem spills, capture/theft/follow cleanup, pending-belly rew
 Capture snapshot correction: an actively continued-theft victim is still injured for the separately agreed finisher. Capture now snapshots that eligibility before clearing theft relationships, including after the base seven-second window. It does not extend the injury timer or change rates.
 
 Growth/combat/capture measurements and unresolved human-balance questions: see BLACK_HOLE_PLAYTEST.md. No changes were made to growth, walking, injury duration/rates, puff constants, shot-follow tuning, cannon damage or existing launch speed/drag.
+
+
+## Bot aiming before firing — release follow-up
+
+Capture no longer has a loading prerequisite, so the old AI's 400–650ms reaction alone was too abrupt and its missing-target fallback could fire in the existing facing. Bots now observe after 250ms and every 450ms, choose a valid rival or active black-hole core, turn through the ordinary independent loaded-aim control, and require 450ms continuously within the existing 0.18-radian tolerance. Their first firing decision cannot occur before 1400ms from first observing that capture. These are provisional AI timing values, not human control restrictions.
+
+A target keeps one fallible 0.12–0.24-radian aim offset across periodic observations. Lost/dead/captured/flying/protected/out-of-range targets revoke a shot immediately; a replacement requires fresh reaction and alignment. No target means normal repositioning, never a fallback shot. Stun, skid/recovery, capture or forced flight resets the plan. If no shot is established by the original hold deadline, ordinary protected ejection applies. Human immediate firing, hold durations, movement/turn physics, damage, injury, puff and shot-follow tuning are unchanged.
+
+Verification: focused real-server tests cover acquisition, physical turn/alignment, continuous dwell, missing/lost targets, reacquisition, interruptions and timeout. The complete 25 unit suites and 18 multiplayer scenarios pass; 12 capture UI cases pass on desktop Chrome, Android-layout Chrome and iPhone-layout WebKit. The earlier long balance experiments used the faster AI; they remain historical measurements rather than proof of balance with this changed decision policy.

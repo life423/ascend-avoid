@@ -175,6 +175,8 @@ export const BOTS = {
   FIGHT_BACK_RATIO: 1.1, // theft targets less than this much smaller are approached from behind, avoiding a frontal clash
   MAX_ROBBERS: 2, // including this bot: at most two attackers per victim
   FIRE_RANGE: 1100, // holding someone, a bot looks for another creature within this far to fire them at...
+  FIRE_MIN_CAPTURE_MS: 1400, // AI planning only: never immediately fire a newly caught captive
+  FIRE_SETTLE_MS: 450, // keep the mouth aligned continuously before choosing to shoot
   FIRE_AIM: 0.18, // ...and fires once its facing is within this many radians of it...
   FIRE_REACT_MIN_MS: 400,
   FIRE_REACT_MAX_MS: 650,

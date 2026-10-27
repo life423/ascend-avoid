@@ -6,7 +6,7 @@ import { creatureSize } from '../game/creatureSize.js';
 import { botMouth } from '../systems/bots.js';
 import { stealWeight, updateHolds, updateInhales } from '../systems/inhale.js';
 import { viewShort } from '../game/camera.js';
-import { CANNON, GEMS, TURBINE, WORLD } from '../constants/gameConstants.js';
+import { BOTS, CANNON, GEMS, TURBINE, WORLD } from '../constants/gameConstants.js';
 import { runTurbine } from '../systems/turbines.js';
 import { TurbineSchema } from '../schema/TurbineSchema.js';
 import { GemSchema } from '../schema/GemSchema.js';
@@ -50,28 +50,63 @@ function setup() {
   assert.equal(b.capturedBy, a.sessionId, 'normal capture resumes exactly when the escape shield expires');
 }
 {
-  let reads = 0, target = 1;
-  const aim = new BotCannonAim(() => 0.5), observe = () => { reads++; return target; };
-  assert.equal(aim.update('one', 2800, 0, 0, observe).angle, 0);
-  aim.update('one', 2800, 249, 0, observe); assert.equal(reads, 0);
-  const first = aim.update('one', 2800, 250, 0, observe);
-  assert(Math.abs(first.angle - target) >= 0.12 && Math.abs(first.angle - target) <= 0.24);
-  target = 2; assert.equal(aim.update('one', 2800, 699, 0, observe).angle, first.angle);
-  const second = aim.update('one', 2800, 700, 0, observe); assert.notEqual(second.angle, first.angle);
-  target = -2;
-  assert.equal(aim.update('one', 2800, 2800, 0, observe).angle, second.angle, 'aim commits at loading rather than tracking a last-moment dodge');
-  assert(!aim.update('one', 2800, 3200, 0, observe).ready);
-  assert(aim.update('one', 2800, 3325, 0, observe).ready);
-  assert(!aim.update('two', 0, 9000, 0, observe).ready, 'a newly observed capture never fires instantly');
+  let reads = 0, valid = true, target = { id: 'target', angle: 1 };
+  const aim = new BotCannonAim(() => .5), observe = () => { reads++; return target; };
+  const update = (now: number, facing = 0) => aim.update('one', 0, now, facing, observe, () => valid);
+  assert(!update(0).ready); update(249); assert.equal(reads,0,'first observation is delayed');
+  const first=update(250); assert(first.hasTarget&&!first.ready);
+  assert(Math.abs(first.angle-target.angle)>=BOTS.FIRE_ERROR_MIN&&Math.abs(first.angle-target.angle)<=BOTS.FIRE_ERROR_MAX);
+  assert.equal(update(700).angle,first.angle,'same target retains one imperfect offset');
+  assert(!update(1400).ready,'waiting alone does not count as aiming');
+  assert(!update(1500,first.angle).ready);assert(!update(1949,first.angle).ready);
+  assert(update(1950,first.angle+Math.PI*2).ready,'continuous alignment gates firing and wraps angles');
+  valid=false;assert(!update(1951,first.angle).hasTarget,'a vanished target cancels firing immediately between observations');
+  valid=true;target={id:'another',angle:2};const next=update(2300,2.18);assert(next.hasTarget&&!next.ready,'retargeting has its own reaction time');
+  assert(update(3000,next.angle).ready);
+  aim.reset();assert(!aim.update('one',0,4000,next.angle,observe).ready,'an interrupted plan cannot resume ready to fire');
+  assert(!aim.update('two',0,9000,next.angle,observe).ready,'a new capture always begins a new plan');
 }
 {
-  const { s, a, b } = setup();
-  a.isBot = true; s.brains.set(a.sessionId, new BotBrain());
-  botMouth(s, a, NOW);
-  const loaded = NOW;
-  botMouth(s, a, loaded); assert(!b.flying && b.capturedBy === a.sessionId);
-  botMouth(s, a, loaded + 399); assert(!b.flying, 'actual bot firing respects the reaction delay');
-  botMouth(s, a, loaded + 651); assert(b.flying, 'actual bot firing still launches after its delay');
+  const aim=new BotCannonAim(()=>.5);
+  for(let now=0;now<10000;now+=50)assert(!aim.update('empty',0,now,0,()=>null).ready,'no target never falls back to a blind shot');
+}
+{
+  const aim=new BotCannonAim(()=>.5),observe=()=>({id:'target',angle:0});
+  let angle=0;for(let now=0;now<=1400;now+=50)angle=aim.update('one',0,now,0,observe).angle;
+  assert(!aim.update('one',0,1450,Math.PI,observe).ready,'turning away breaks settled aim');
+  assert(!aim.update('one',0,1500,angle,observe).ready);
+  assert(!aim.update('one',0,1949,angle,observe).ready);
+  assert(aim.update('one',0,1950,angle,observe).ready);
+}
+{
+  const {s,a,b}=setup();s.blackHoles.clear();
+  const target=s.addPlayer('aim-target','Target',NOW);target.spawnProtected=false;
+  a.isBot=true;s.brains.set(a.sessionId,new BotBrain());
+  target.placeAt(a.x,a.y-550);const initial=a.facing;let firedAt=0,turned=false;
+  for(let ms=0;ms<4000;ms+=25){
+    s.time=ms;s.now=NOW+ms;updateHolds(s,s.now,.025);botMouth(s,a,s.now);
+    if(b.flying){firedAt=ms;break;}
+    a.updateMovement(4200,4200,s.now,.025);turned ||= Math.abs(a.facing-initial)>.2;
+    if(ms<BOTS.FIRE_MIN_CAPTURE_MS)assert(!b.flying,'real bot cannot immediately fire a fresh capture');
+  }
+  assert(firedAt>=BOTS.FIRE_MIN_CAPTURE_MS&&firedAt<4000);assert(turned,'the body visibly turns toward the target');
+  assert(Math.abs(Math.atan2(b.flightVy,b.flightVx)+Math.PI/2)<.5,'shot follows the ordinary physically turned mouth');
+}
+for(const loss of ['none','dead','protected','range','disconnect'] as const){
+  const {s,a,b}=setup();s.blackHoles.clear();
+  const target=loss==='none'?null:s.addPlayer('aim-target','Target',NOW);if(target){target.spawnProtected=false;target.placeAt(a.x+500,a.y);}
+  a.isBot=true;s.brains.set(a.sessionId,new BotBrain());s.botFill=2;
+  for(let ms=0;ms<=Math.ceil(b.captureHoldMs);ms+=25){
+    s.time=ms;s.now=NOW+ms;
+    if(ms===1200&&target){
+      if(loss==='dead')target.knockOut(s.now);if(loss==='protected')target.spawnProtected=true;
+      if(loss==='range')target.placeAt(4000,4000);if(loss==='disconnect')s.removePlayer(target.sessionId);
+    }
+    updateHolds(s,s.now,.025);botMouth(s,a,s.now);a.updateMovement(4200,4200,s.now,.025);
+    assert(!b.flying,`${loss}: no blind shot after losing a valid target`);
+  }
+  s.time=b.captureHoldMs;s.now=NOW+s.time;updateHolds(s,s.now);
+  assert(!b.capturedBy&&b.state==='alive',`${loss}: normal hold timeout ejects instead of forcing a shot`);
 }
 {
   const { s, a } = setup();

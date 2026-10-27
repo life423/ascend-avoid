@@ -15,14 +15,15 @@ const { PLAYER_STATE, BOTS, INHALE, BOMBS } = GAME_CONSTANTS;
  * slow, or rooted while inhaling. A lit bomb in the mouth goes straight back out.
  */
 export function botMouth(state: GameState, bot: PlayerSchema, now: number) : void {
-  if (bot.state !== PLAYER_STATE.ALIVE || bot.flying) return;
+  if (bot.state !== PLAYER_STATE.ALIVE || bot.flying) { state.brains.get(bot.sessionId)?.cannonAim.reset(); return; }
   if (bot.capturedBy) {
+    state.brains.get(bot.sessionId)?.cannonAim.reset();
     const gem = BELLY_GEMS.find((_, i) => !(bot.bellyCollected & (1 << i)));
     if (gem) { const x = gem.x - bot.bellyX, y = gem.y - bot.bellyY; const d = Math.max(.01, Math.hypot(x, y)); bot.steer(x / d, y / d); }
     else bot.steer(0, 0);
     return;
   }
-  if (bot.sliding || bot.recovering || bot.stunned) return;
+  if (bot.sliding || bot.recovering || bot.stunned) { state.brains.get(bot.sessionId)?.cannonAim.reset(); return; }
   const cx = bot.x + bot.width / 2;
   const cy = bot.y + bot.height / 2;
   if (bot.gulping) {
@@ -179,41 +180,44 @@ export function addBot(state: GameState, now: number) : void {
   state.spawn(bot, now);
 }
 
-/**
- * Read targets periodically during loading, commit to imperfect aim, then allow reaction time before firing.
- */
+/** Loaded bots choose a real target and settle their ordinary body aim before firing. */
 function botFire(state: GameState, bot: PlayerSchema, cx: number, cy: number, now: number) : void {
   const captive = state.players.get(bot.gulping);
   const brain = state.brains.get(bot.sessionId);
   if (!captive || !brain) return;
-  bot.captureNeedsRelease = false; // AI releases capture input, then makes a separate firing decision.
+  bot.captureNeedsRelease = false; // AI releases capture input; its later shot is a separate decision.
+  const valid = (id: string): boolean => {
+    if (id.startsWith('hole:')) {
+      const hole = state.blackHoles[Number(id.slice(5))];
+      if (!hole || state.time < hole.activeAt || state.shiftPhase === 'grace' || !state.isFloorAt(hole.x, hole.y)) return false;
+      const d = Math.hypot(hole.x - cx, hole.y - cy);
+      return d <= BOTS.FIRE_RANGE && d > (bot.width + captive.width) / 2 + CANNON.LAUNCH_CLEARANCE + hole.radius;
+    }
+    const other = state.players.get(id);
+    return !!other && other !== bot && other !== captive && other.state === PLAYER_STATE.ALIVE
+      && !other.spawnProtected && !other.capturedBy && !other.flying && now >= other.impactImmuneUntil
+      && Math.hypot(other.x + other.width / 2 - cx, other.y + other.height / 2 - cy) <= BOTS.FIRE_RANGE;
+  };
   const shot = brain.cannonAim.update(`${bot.gulping}:${bot.captureStartedAt}`, bot.captureStartedAt, now, bot.facing, () => {
-    let target: PlayerSchema | null = null;
+    let target: { id: string; angle: number } | null = null;
     let best = -Infinity;
-    state.players.forEach((other) => {
-      if (other === bot || other === captive || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected || other.capturedBy || other.flying) return;
-      const d = Math.hypot(other.x + other.width / 2 - cx, other.y + other.height / 2 - cy);
-      if (d > BOTS.FIRE_RANGE) return;
-      // Choose a shot this ammunition can threaten, instead of always wasting tiny rounds on a giant.
+    state.players.forEach((other, id) => {
+      if (!valid(id)) return;
+      const dx = other.x + other.width / 2 - cx, dy = other.y + other.height / 2 - cy, d = Math.hypot(dx, dy);
       const score = cannonTargetAppeal(other.gems, other.width, captive.width, launchSpeed(bot.width, captive.width), d, bot.width);
-      if (score > best) {
-        best = score;
-        target = other;
-      }
+      if (score > best) { best = score; target = { id, angle: Math.atan2(dy, dx) }; }
     });
-    let holeAngle: number | null = null;
-    state.blackHoles.forEach(hole => {
-      const d = Math.hypot(hole.x - cx, hole.y - cy), score = 160 - d * .05;
-      if (state.time < hole.activeAt || state.shiftPhase === 'grace' || !state.isFloorAt(hole.x, hole.y)
-        || d > BOTS.FIRE_RANGE || d <= (bot.width + captive.width) / 2 + CANNON.LAUNCH_CLEARANCE + hole.radius || score <= best) return;
-      best = score; holeAngle = Math.atan2(hole.y - cy, hole.x - cx);
+    state.blackHoles.forEach((hole, index) => {
+      const id = `hole:${index}`;
+      if (!valid(id)) return;
+      const dx = hole.x - cx, dy = hole.y - cy, score = 160 - Math.hypot(dx, dy) * .05;
+      if (score > best) { best = score; target = { id, angle: Math.atan2(dy, dx) }; }
     });
-    if (holeAngle !== null) return holeAngle;
-    const aim = target as PlayerSchema | null;
-    return aim ? Math.atan2(aim.y + aim.height / 2 - cy, aim.x + aim.width / 2 - cx) : null;
-  });
-  bot.steer(Math.cos(shot.angle), Math.sin(shot.angle));
-  if (shot.ready && Math.abs(angleGap(bot.facing, shot.angle)) <= BOTS.FIRE_AIM) fireCaptive(state, bot, now);
+    return target;
+  }, valid);
+  // Use the same independent loaded aim as a human; preserve the brain's movement/repositioning.
+  bot.aimAt(shot.hasTarget ? Math.cos(shot.angle) : 0, shot.hasTarget ? Math.sin(shot.angle) : 0);
+  if (shot.ready) fireCaptive(state, bot, now);
 }
 
 /** The shortest turn from one angle to another, in radians (signed) */

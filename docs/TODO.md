@@ -4,11 +4,23 @@ Updated October 26, 2026. This is the durable list of the user's requests and de
 
 ## Current delivery status
 
-Release 5bb717e (PR #48) is on main and live. It contains the integrated capture, puff, follow, sustained theft, shooter power, weakened inhale and mobile/UI fixes. The user explicitly deferred Ubuntu browser CI; its retained matrix is disabled while build/gameplay checks remain required.
+Release 394a93c (PR #49) is on main and live, adding shot-only black holes after 5bb717e (PR #48)'s capture/combat/mobile changes. The user explicitly deferred Ubuntu browser CI; its retained matrix is disabled while build/gameplay checks remain required. Black-hole release verification passed the production health endpoint, exact Azure image/revision with 100% traffic, the three live synced cores, and ten live browser smoke cases.
 
-Current release batch: `feat/black-holes-balance-playtest`. Three shot-only black holes and balance/capture experiments are complete; the user authorized committing, merging to main and deploying this batch. GitHub pull-request and production Actions records identify the published commit. Normal play includes the feature with no opt-in flag. Details, measurements and human-playtest limitations are recorded in BLACK_HOLE_PLAYTEST.md.
+Current release follow-up: `fix/bot-aim-before-firing`. The user reported bots capturing then firing immediately without aiming during the release task. Bots now select a valid player/core, observe/turn using ordinary body controls, spend at least 1.4s planning after first seeing the capture, and maintain 450ms of continuous alignment. Target loss cancels the plan; an empty search cannot shoot blindly. Stun/recovery/capture/flight interrupts the plan. Human immediate fire and fixed hold deadlines are unchanged. GitHub pull-request and Actions records identify the published follow-up commit.
 
-Still open after this pass: assembled-weapon fairness for large bodies (design decision pending); actual Android Firefox feedback; re-enable Ubuntu browser CI later; human/group assessment of growth, giant tenure and the new capture/combat values. The black-hole implementation is complete; human feel and final tuning remain open. Older sections below preserve the request history and may describe superseded mechanics.
+## Remaining requests and playtest decisions
+
+1. **Large-player assembled-weapon fairness.** Choose a fix for unavoidable hits, especially Pulsar waves and overlapping weapons. Glancing hits/shared hit protection are discussed options, not selected tuning.
+2. **Group inhale pressure.** Assess whether several valid thieves leave enough reaction time, especially with continued vulnerability and the 15% counter-inhale rule. Ideal three-peer contact drains a stationary target in 1.33s. Diminishing returns remain an option, not an approved rule.
+3. **Belly-salvage downtime.** An ideal collector finishes six gems in 3.817s; a 12s hold can leave about 8.2s empty. Choose a pacing improvement after trying the activity. Keep the no-escape/no-aim-influence rules unless explicitly revised.
+4. **Human growth/combat balance.** Measure opening setbacks, earned growth, rare giants and sustainable reigns in a group match. The hour simulation's longest giant streak was 950s; human fun and hours-long survival remain unvalidated.
+5. **Tune the integrated mechanics through play.** Assess fixed 5/8/12s holds, 30% one-time transfer, six pending bonus gems, mass-relative puff, shooter contribution, shot-follow, continued theft, 15% weakened inhale and the three shot-only cores. Automated correctness is complete; values remain provisional. Bot-aim timing now also needs feel feedback.
+6. **Weapon assembly and arena clutter.** Confirm collection/guidance/healthy-player part theft, deployment while moving, six-recipe value, classic availability and reduced satellite density in human matches. These mechanics are implemented; this is a playtest follow-up.
+7. **Real-device mobile and discoverability review.** Confirm Android Firefox lag is resolved on the user's phone; assess touch aim, joystick, drawer scrolling, placement, capture, rotation, focus and safe respawns. Retain the joystick. Emulated profiles do not establish actual-device performance or whether new players understand the controls.
+8. **Fresh production performance/accessibility review.** Recheck responsiveness, layout shifts, console/network errors, accessible Help and current page metadata after the feature batch.
+9. **Deferred Ubuntu browser CI.** Repair and re-enable Chromium/Gecko/WebKit CI later, as the user requested. Do not re-enable it incidentally during another release.
+
+Already implemented: the offscreen incoming-cannonball warning, integrated shot-follow, healthy carrier part theft, capture redesign, weakened vulnerable inhale and black holes. Historical escape sequences/loading/drain were superseded; the 80% injury movement slowdown was withdrawn. Older sections below preserve the request history and can describe superseded mechanics.
 
 ## Active fixes requested after the satellite release
 
