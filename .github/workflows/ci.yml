@@ -84,7 +84,11 @@ jobs:
         E2E_START_SERVER: '1'
         E2E_TEST_HOOKS: '1'
         E2E_URL: http://127.0.0.1:3002
-      run: npx playwright test --project='${{ matrix.projects }}' --retries=0
+      run: |
+        # GitHub mounts a pwuser-owned home but runs this trusted test container as root.
+        # Firefox requires the existing home directory to belong to the launch user.
+        chown "$(id -u):$(id -g)" "$HOME"
+        npx playwright test --project='${{ matrix.projects }}' --retries=0
     - name: Save failure traces, screenshots and performance samples
       if: always()
       uses: actions/upload-artifact@v4
