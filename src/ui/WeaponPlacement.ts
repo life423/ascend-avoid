@@ -4,6 +4,7 @@ import { allWeapons } from '../../server/game/weaponKit';
 /** Touch, mouse and keyboard all issue the same explicit placement request. */
 export class WeaponPlacement {
     private button = document.createElement('button');
+    private touchPlacedAt = -Infinity;
     constructor(private readonly place: () => void) {
         this.button.type = 'button';
         this.button.className = 'weapon-place-button';
@@ -12,11 +13,22 @@ export class WeaponPlacement {
         const key = document.createElement('kbd'); key.textContent = 'E'; key.setAttribute('aria-hidden', 'true');
         this.button.append(key); this.button.hidden = true;
         this.button.addEventListener('click', this.activate);
+        this.button.addEventListener('pointerdown', this.pointerdown);
         window.addEventListener('keydown', this.keydown);
         document.body.append(this.button);
     }
-    private activate = (): void => {
+    private activate = (event?: MouseEvent): void => {
+        // A touch is handled immediately below. Some engines still synthesize its click.
+        if (event?.detail && performance.now() - this.touchPlacedAt < 700) return;
         if (!this.button.hidden && !this.button.disabled) this.place();
+    };
+    private pointerdown = (event: PointerEvent): void => {
+        if (event.pointerType === 'mouse' || this.button.hidden || this.button.disabled) return;
+        // Multitouch does not reliably produce a compatibility click while the other
+        // thumb is steering. Place on this finger's press without taking its focus.
+        event.preventDefault();
+        this.touchPlacedAt = performance.now();
+        this.activate();
     };
     private keydown = (event: KeyboardEvent): void => {
         const target = event.target as HTMLElement | null;
@@ -30,6 +42,7 @@ export class WeaponPlacement {
     }
     dispose(): void {
         this.button.removeEventListener('click', this.activate);
+        this.button.removeEventListener('pointerdown', this.pointerdown);
         window.removeEventListener('keydown', this.keydown);
         this.button.remove();
     }

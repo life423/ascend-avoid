@@ -88,7 +88,8 @@ for (const gems of [0, 3, 8, 9, 13, 14, 100, 1000]) {
   assert.equal(p.state, out ? 'dead' : 'alive');
   assert.equal(p.gems, out ? 0 : gems - Math.max(6, Math.ceil(gems * .25)));
   assert(events.some(e => e.type === 'credit' && e.data.how === 'pulsar' && e.data.byId === owner.sessionId && e.data.out === out), 'wave damage/knockout credits its builder');
-  assert.equal([...s.gems.values()].reduce((sum, gem) => sum + gem.value, 0), gems - p.gems, 'all lost growth spills into collectible gems');
+  assert.equal(s.players.get(w.owner)?.gems, gems - p.gems, 'all lost gems reward the wave assembler');
+  assert.equal([...s.gems.values()].reduce((sum, gem) => sum + gem.value, 0), 0, 'awarded gems are not duplicated as spills');
   if (out) {
     s.weaponsOn = false; s.update(0, p.respawnAt);
     assert.equal(p.state, 'alive'); assert(p.spawnProtected && p.width === 20, 'pulsar knockouts respawn normally');

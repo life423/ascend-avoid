@@ -1,9 +1,9 @@
 import { BOTS, CANNON } from '../constants/gameConstants.js';
-import { impactGems } from './cannon.js';
+import { impactGems, shooterMassContribution } from './cannon.js';
 
 /** Opportunity selection changes the target, never the bot's observation delay, aim error or firing rules. */
-export function cannonTargetAppeal(gems: number, width: number, ammoWidth: number, speed: number, distance: number): number {
-  const lost = impactGems(gems, speed, ammoWidth, width);
+export function cannonTargetAppeal(gems: number, width: number, ammoWidth: number, speed: number, distance: number, shooterWidth?: number): number {
+  const lost = impactGems(gems, speed, ammoWidth, width, shooterWidth === undefined ? 0 : shooterMassContribution(shooterWidth, ammoWidth));
   return (gems - lost < CANNON.IMPACT_KO_GEMS ? 1000 : 0) + 100 * lost / Math.max(1, gems) + Math.sqrt(lost) - distance * .05;
 }
 
@@ -21,6 +21,11 @@ export class BotCannonAim {
       this.capture = capture;
       this.angle = null;
       this.observeAt = now + BOTS.FIRE_READ_MS;
+      if (loadedAt <= now) {
+        const observed = observe();
+        const error = (this.random() < .5 ? -1 : 1) * (BOTS.FIRE_ERROR_MIN + this.random() * (BOTS.FIRE_ERROR_MAX - BOTS.FIRE_ERROR_MIN));
+        this.angle = observed === null ? facing : observed + error;
+      }
       this.fireAt = Math.max(now, loadedAt) + BOTS.FIRE_REACT_MIN_MS + this.random() * (BOTS.FIRE_REACT_MAX_MS - BOTS.FIRE_REACT_MIN_MS);
     }
     if (now < loadedAt && now >= this.observeAt) {

@@ -24,9 +24,9 @@ function setup() {
   for (let i = 0; i < 10; i++) { s.time += 33; steal(s, a, NOW + s.time, .033); }
   assert(b.gems < 40, 'the same cone can steal after a damaging hit');
   assert.equal(b.injuredUntil, until, 'theft cannot refresh the injury');
-  const left = b.gems; s.time = until; steal(s, a, NOW + s.time, 1);
-  assert.equal(b.gems, left, 'the seven-second deadline ends theft exactly without refunding lost gems');
-  assert(!a.stealShares.has(b.sessionId), 'healing discards unfinished theft progress');
+  const left = b.gems; a.stopInhale(NOW + s.time); a.startInhale(NOW + s.time); s.time = until; steal(s, a, NOW + s.time, 1);
+  assert.equal(b.gems, left, 'a broken connection cannot restart at the seven-second deadline');
+  assert(!a.stealShares.has(b.sessionId), 'closed exposure discards unfinished theft progress');
 }
 {
   const { s, a, b, add } = setup(); const c = add('c', 40, 1000);

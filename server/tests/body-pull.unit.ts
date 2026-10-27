@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { GameState } from '../schema/GameState.js';
 import { INHALE, CANNON, EXHALE } from '../constants/gameConstants.js';
-import { updateInhales, updateHolds, escapePress, exhale } from '../systems/inhale.js';
+import { updateInhales, updateHolds, exhale } from '../systems/inhale.js';
 
 const NOW = 100_000;
 function world(attackerGems = 100, targetGems = 100, reachShare = .5) {
@@ -23,7 +23,7 @@ function world(attackerGems = 100, targetGems = 100, reachShare = .5) {
   const early = x - b.x;
   for (let i = 9; i <= 30; i++) tick(i * 1000 / 30);
   const moved = x - b.x;
-  assert(early > 20 && moved > 90, 'a healthy peer visibly moves immediately and closes substantial distance within a second');
+  assert(early > 12 && moved > 50, 'a stationary healthy peer still visibly moves at the requested slower movement curve');
   assert.equal(a.gems, 100); assert.equal(b.gems, 100);
   assert.equal(b.injuredUntil, 0); assert.equal(b.robbedTotal, 0, 'healthy bodily pull never grants gem theft');
   assert.equal(b.capturedBy, '', 'equal-size creatures cannot capture each other');
@@ -42,6 +42,21 @@ const tinyPuller = displacement(4, 1000), peerPuller = displacement(1000, 1000),
 assert(peerPuller > tinyPuller * 3, 'a large target strongly resists a tiny inhaler');
 assert(smallTarget > peerPuller, 'small targets are drawn faster than large ones');
 console.log(JSON.stringify({ tinyPuller, peerPuller, smallTarget }));
+
+for (const [attacker, target, range] of [[100,100,.5],[100,100,.85],[1000,4,.9]] as const) {
+  const {a,b,tick}=world(attacker,target,range), start=b.x;
+  b.steer(1,0);
+  for(let i=1;i<=60;i++)tick(i*1000/30);
+  assert(b.x>start+180&&!b.capturedBy,'deliberate retreat escapes peer suction and the distant edge of a larger mouth');
+  assert(!a.gulping);
+}
+{
+  const pulling=world(), free=world();free.a.stopInhale(NOW);
+  pulling.b.steer(1,0);free.b.steer(1,0);
+  const start=pulling.b.x, reference=free.b.x;
+  for(let i=1;i<=30;i++){pulling.tick(i*1000/30);free.tick(i*1000/30);}
+  assert(pulling.b.x-start>=(free.b.x-reference)*.98,'a peer cannot slow a committed straight retreat');
+}
 
 for (const protectedBy of ['spawn', 'suction', 'flight', 'knockout'] as const) {
   const { state, b, tick } = world();
@@ -84,8 +99,7 @@ for (const wall of [false, true]) {
   b.placeAt(a.x + a.width * .8 - b.width / 2, a.y + a.height / 2 - b.height / 2);
   a.facing = wall ? Math.PI : 0;
   b.capturedBy = a.sessionId; a.gulping = b.sessionId;
-  b.escapeKeys = 'URD'; state.time = 600;
-  for (const key of b.escapeKeys) escapePress(state, b, key);
+  a.gulpEndsAt = 600; state.time = 600;
   updateHolds(state, NOW + 600);
   assert.equal(b.capturedBy, '');
   const distance = Math.hypot(b.x + b.width / 2 - a.x - a.width / 2, b.y + b.height / 2 - a.y - a.height / 2);

@@ -154,19 +154,11 @@ scenario('rapid injury theft immediately takes meaningful gems from a comparable
   assert.equal(me(a).gems + target().gems, 200);
   assert.equal(target().injuredUntil, deadline, 'rapid transfer cannot extend the window');
 });
-scenario('quick keyboard escape presses work; releasing inhale keeps the capture', async (a, join) => {
+scenario('releasing capture input keeps the captive; the next tap fires immediately', async (a, join) => {
   const kid = await capture(a, join);
-  a.send('exhale');
-  await sleep(100);
-  assert.equal(me(kid).capturedBy, a.sessionId);
-  assert.equal(me(kid).flying, false);
-  await until(() => kid.state.time >= me(kid).dazedUntil, 'capture daze ends');
-  const keys = me(kid).escapeKeys;
-  assert.equal(keys.length, 3);
-  for (const key of keys) { kid.send('escape', { key }); await sleep(90); }
-  await until(() => !me(kid).capturedBy, 'explicit key presses free the captive');
-  assert.equal(me(a).gulping, '');
-  assert.equal(me(kid).state, 'alive');
+  a.send('inhale'); await sleep(100); assert(!me(kid).flying && me(kid).capturedBy);
+  a.send('exhale'); await sleep(50); assert(me(kid).capturedBy);
+  a.send('tap'); await until(() => me(kid).flying, 'fresh tap fires with no loading');
 });
 scenario('healthy players are visibly pulled without injury or gem theft', async (a, join) => {
   const b = await join('Healthy pull target');
@@ -186,9 +178,7 @@ scenario('healthy players are visibly pulled without injury or gem theft', async
 });
 scenario('a freed player starts clear and can move away before any repeat capture', async (a, join) => {
   const kid = await capture(a, join);
-  await until(() => kid.state.time >= me(kid).dazedUntil, 'escape input becomes available');
-  for (const key of me(kid).escapeKeys) { kid.send('escape', { key }); await sleep(90); }
-  await until(() => !me(kid).capturedBy, 'escape completes');
+  await until(() => !me(kid).capturedBy, 'automatic ejection completes', 13000);
   const remaining = me(kid).launchSafeUntil - kid.state.time;
   assert(remaining > 3600 && remaining <= 4000, 'a complete four-second recovery starts on release');
   const cap = kid.state.players.get(a.sessionId);
@@ -219,7 +209,7 @@ scenario('a real gust stuns a non-inhaling target and the target recovers', asyn
 });
 scenario('a small missile burns up after missing and respawns protected', async (a, join) => {
   const kid = await capture(a, join);
-  a.send('tap');
+  a.send('exhale'); a.send('tap');
   await until(() => me(kid).flying, 'queued shot launches', 3500);
   await until(() => me(kid).state === 'dead' && !me(kid).flying, 'small missed shot burns up', 4500);
   assert(a.messages.some(m => m.type === 'credit' && m.data.how === 'burnup' && m.data.targetId === kid.sessionId && m.data.byId === a.sessionId));
@@ -236,8 +226,7 @@ scenario('a small armed shot chips a giant, opens injury and preserves shot attr
   await sleep(100);
   assert.equal(me(kid).flying, false, 'a premature tap does not fire');
   kid.send('steer', { x: 0, y: 1 });
-  await sleep(2800);
-  a.send('tap');
+  a.send('exhale'); a.send('tap');
   await until(() => a.messages.some(m => m.type === 'launch'), 'shot launched');
   await until(() => me(target).injuredUntil > target.state.time, 'shot hits the target despite the captive holding sideways');
   assert(me(target).state === 'alive' && me(target).gems >= 970, 'the giant retains at least 97% against a tiny shot');
@@ -257,28 +246,17 @@ scenario('a small armed shot chips a giant, opens injury and preserves shot attr
   assert.equal(me(kid).capturedBy, '', 'the original captor cannot immediately reuse the same bullet');
   assert(Math.abs(me(kid).x - 860) < 2, 'landing protection prevents suction as well as capture');
 });
-scenario('captive gems transfer gradually, conserve value and stop at the entry allowance', async (a, join) => {
-  const kid = await join('Gem captive');
-  const captive = () => a.state.players.get(kid.sessionId);
-  a.send('test:setGems', { count: 250 }); kid.send('test:setGems', { count: 100 });
-  await until(() => me(a).gems === 250 && captive()?.gems === 100, 'entry sizes arrive');
-  a.send('test:moveTo', { x: 1000, y: 1000 }); a.send('test:face', { angle: 0 });
-  kid.send('test:moveTo', { x: 1000 + me(a).width, y: 1000 + (me(a).height - captive().height) / 2 });
-  kid.send('test:protect', { ms: 0 });
-  await sleep(100); a.send('inhale');
-  await until(() => captive()?.capturedBy === a.sessionId, 'larger player captures the peer');
-  const keys = captive().escapeKeys, ready = me(a).fireReadyAt;
-  a.send('cancel');
-  await until(() => captive().gems < 100, 'transfer happens while inside without holding inhale');
-  assert(captive().gems > 80 && captive().capturedBy === a.sessionId);
-  assert.equal(me(a).gems + captive().gems, 350);
-  assert.equal(captive().escapeKeys, keys); assert.equal(me(a).fireReadyAt, ready);
-  await until(() => !captive().capturedBy, 'hold releases automatically', 6000);
-  assert.equal(captive().gems, 80); assert.equal(me(a).gems, 270);
-  assert.equal(captive().robbedTotal, 20); assert.equal(me(a).stolenTotal, 20);
-  assert.equal(captive().state, 'alive'); assert.equal(captive().injuredUntil, 0);
-  await sleep(300);
-  assert.equal(captive().gems, 80); assert.equal(me(a).gems, 270);
+scenario('capture transfers exactly once and holds on a pre-transfer deadline', async (a, join) => {
+  const kid = await join('Gem captive'), captive = () => a.state.players.get(kid.sessionId);
+  a.send('test:setGems', {count:250}); kid.send('test:setGems', {count:100});
+  await until(() => me(a).gems===250 && captive()?.gems===100, 'entry sizes');
+  a.send('test:moveTo',{x:1000,y:1000}); a.send('test:face',{angle:0});
+  kid.send('test:moveTo',{x:1000+me(a).width,y:1000+(me(a).height-captive().height)/2});kid.send('test:protect',{ms:0});
+  await sleep(100);a.send('inhale');await until(()=>captive()?.capturedBy===a.sessionId,'captured');
+  assert.equal(captive().gems,70);assert.equal(me(a).gems,280);
+  const end=me(a).gulpEndsAt; a.send('cancel');await sleep(500);
+  assert.equal(captive().gems,70);assert.equal(me(a).gulpEndsAt,end);
+  await until(()=>!captive().capturedBy,'timeout',13000);assert.equal(captive().gems,70);assert.equal(me(a).gems,280);
 });
 scenario('a captor disconnecting releases the captive', async (a, join) => {
   const kid = await capture(a, join);

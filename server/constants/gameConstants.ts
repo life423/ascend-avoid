@@ -89,7 +89,7 @@ export const WORLD = {
   VIEW_ZOOM_MAX: 1.5, // and never zoomed out past this, so a huge creature looms like a boss on everyone's screen
   OBSTACLE_COUNT: 6, // lane traffic (comets and balls cross it at other angles); open space to fight and charge in
   RESPAWN_DELAY_MS: 2000,
-  SPAWN_PROTECTION_MS: 1500,
+  SPAWN_PROTECTION_MS: 4000,
   /** A respawn spot this far from all traffic is good enough */
   SPAWN_CLEARANCE: 220,
 } as const;
@@ -174,9 +174,6 @@ export const BOTS = {
   SHUN_MS: 5000, // ...and that creature left alone for this long
   FIGHT_BACK_RATIO: 1.1, // theft targets less than this much smaller are approached from behind, avoiding a frontal clash
   MAX_ROBBERS: 2, // including this bot: at most two attackers per victim
-  ESCAPE_EVERY_MS: 450,
-  ESCAPE_READ_MS: 500, // bots take a moment to read their sequence after the daze
-  ESCAPE_SKILL: 0.65,
   FIRE_RANGE: 1100, // holding someone, a bot looks for another creature within this far to fire them at...
   FIRE_AIM: 0.18, // ...and fires once its facing is within this many radians of it...
   FIRE_REACT_MIN_MS: 400,
@@ -314,6 +311,7 @@ export const INHALE = {
   STEAL_ESCAPE: 0.75, // getting away cuts the drain by up to this much...
   STEAL_ESCAPE_AWAY: 0.6, // ...counting speed straight away at this share, and speed across the cone in full (strafing escapes best)...
   STEAL_POINT_BLANK: 0.25, // ...but less and less within this share of the reach: right at the mouth there's no getting away
+  VULNERABLE_OUTGOING: 0.15, // prototype: body suction and injury drain only; capture disabled
   INJURY_MS: 7000, // fixed exposure: neither further hits nor inhaling extend an active window
   DRAIN_FLOOR: 0, // an injured creature drained completely is knocked out; healthy newborns are safe
   CLASH_MARGIN: 0.15, // two creatures inhaling each other never both siphon: only the stronger pull does, once it's ahead by this share (closer than that, whoever has held the other longer keeps the flow), so a clash has a winner, not an endless exchange
@@ -408,25 +406,14 @@ export const CAMERA = {
   ZOOM_OMEGA: 2.5, // ...zoom on a softer one
 } as const;
 
-/**
- * Capture and the living cannonball. A creature pulled to the mouth of one at least INHALE.EAT_RATIO
- * wider is caught for HOLD_MS at most. A captive escapes with three to five directional inputs,
- * depending on the captor's size advantage. A new action press fires it after loading; an early press
- * queues the shot. Releasing inhale leaves the capture intact. Shots follow the captor's aim and deal
- * one damaging hit. After landing, LAND_SAFE_MS blocks incoming suction and recapture; ordinary
- * release/escape uses ESCAPE_SAFE_MS.
- */
+/** Capture tuning is provisional. Hold timing is fixed from pre-transfer physical widths. */
 export const CANNON = {
-  HOLD_MS: 4500, // a brief capture, then automatic release
-  CAPTIVE_GEM_SHARE: 0.2, // transfer at most 20% of gems held at capture, gradually over HOLD_MS
-  CAPTIVE_STUN_MS: 600,
-  ESCAPE_KEYS: 3, // rises to four at a 2x width advantage, five at 4x
-  ESCAPE_PRESS: 0.4, // a moderate push is enough; the thumb need not reach the rim
-  ESCAPE_NEUTRAL: 0.3, // returning here rearms; a deliberate turn can also start the next direction
-  ESCAPE_ARC_DEG: 60, // accept directions within 60 degrees of the requested arrow
-  ESCAPE_TURN_DEG: 30, // a deliberate turn rearms; a held diagonal or small jitter cannot repeat inputs
-  ESCAPE_PUSH: 110, // out, it pops from the mouth this hard before the escape shield starts
-  ARM_MS: 2800, // base loading includes the 600ms daze; each extra escape input adds 300ms, up to 3.4s
+  HOLD_MIN_MS: 5000,
+  HOLD_DOUBLE_MS: 8000,
+  HOLD_MAX_MS: 12000,
+  CAPTIVE_GEM_SHARE: 0.30, // proposed initial playtest share; one transfer on capture
+  BELLY_BONUS_CAP: 6, // proposed bonus gems per capture, paid only after a living return
+  BELLY_MOVE_SPEED: 0.75, // interior radii per second; never affects arena physics
   BREAK_PUSH: 70, // ...pushed this far clear
   ESCAPE_SAFE_MS: 4000, // a full four seconds to move clear after escape/release; damage still applies
   LAND_SAFE_MS: 4000, // same four-second suction/capture recovery after a surviving flight
@@ -442,6 +429,8 @@ export const CANNON = {
   STEER: 520, // turbine throws only: lateral steering acceleration; player-fired missiles ignore input
   LAUNCHER_GRACE_MS: 300, // a projectile can't hit its launcher this soon
   IMPACT_SPEED_REF: 1250,
+  SHOOTER_MASS_WEIGHT: 0.10, // provisional geometric-mean contribution, snapshotted at firing
+  SHOOTER_MASS_CAP: 0.75, // never add more than this fraction of ammunition physical mass
   IMPACT_MASS_PIVOT: 2.4, // the percentage component costs 25% at equal physical mass, before bounded impact energy
   IMPACT_BASE_GEMS: 80, // bounded impact energy matters to small/midgame targets; tiny-to-giant hits remain chips
   IMPACT_MAX_SHARE: 0.85, // ceiling, never a floor; tiny shots cannot erase most of a giant's progress
@@ -556,9 +545,9 @@ export const PINWHEEL = {
   BOLT_RANGE: 900,
   BOLT_RADIUS: 8,
   HIT_PUSH: 65,
-  HIT_SHARE: 0.30,
-  HIT_PER_ROOT: 1.6,
-  HIT_MIN_GEMS: 8,
+  HIT_SHARE: 0.45,
+  HIT_PER_ROOT: 2.4,
+  HIT_MIN_GEMS: 12,
   KO_GEMS: 8,
   HIT_IMMUNE_MS: 500,
 } as const;
@@ -589,9 +578,15 @@ export const WEAPON_RECIPES = {
 } as const;
 export type WeaponKind = keyof typeof WEAPON_RECIPES;
 
-export const WEAPON_FLEET = { SETS: 12, CLAIM_PULSE_MS: 900, ORBIT_MS: 26000, ORBIT_ENTRY_MS: 1800, ION_RANGE: 560, ION_PERIOD_MS: 1800, ION_WARNING_MS: 600, ION_FIRE_MS: 500 } as const;
+/** Initial shot-follow playtest values; independent of weapon damage and walking. */
+export const SHOT_FOLLOW = { WINDOW_MS: 1200, DURATION_MS: 1600, SPEED: 360, ACCELERATION: 900, STOP_DISTANCE: 40, MAX_TRAVEL: 480 } as const;
+
+export const WEAPON_FLEET = { SETS: 9, ORBIT_RESPAWN_MS: 35000, CLAIM_PULSE_MS: 900, ORBIT_MS: 26000, ORBIT_ENTRY_MS: 1800, ION_RANGE: 560, ION_PERIOD_MS: 1800, ION_WARNING_MS: 600, ION_FIRE_MS: 500 } as const;
 
 export const EXHALE = {
+  IMPULSE_RELATIVE_SPEED: 560,
+  IMPULSE_ADDED_SPEED_CAP: 560,
+  IMPULSE_RECOIL_CAP: 420,
   REACH: 160, // the puff reaches this far from the mouth, plus REACH_PER_SIZE times your width (about 200 for a newborn, 450 at 100 gems)
   REACH_PER_SIZE: 2,
   ARC: 55, // degrees either side of where you face
@@ -627,7 +622,7 @@ export const ARENA_RULES = {
   HOP: 60, // one tap = one hop, while you're small...
   HOP_BEYOND_SIZE: 12, // ...and once you're big, your size plus this, so a hop always clears you
   MOVE_SPEED: 320, // top speed (units a second) for a newborn...
-  SPEED_FALLOFF: 0.3, // growth slows movement gently
+  SPEED_FALLOFF: 0.5, // requested square-root speed falloff; retain the 130-unit floor
   MIN_SPEED: 130,
   // Contact grip: creatures are soft bodies, not billiard balls
   CONTACT_SQUISH: 0.15, // touching creatures squish up to this share of the smaller one's width into each other before pushing back hard...

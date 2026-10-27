@@ -215,3 +215,57 @@ The user explicitly corrected a misclicked “too punishing” answer. Their act
 ## Mobile action label layout (local follow-up)
 
 INHALE and its PUFF helper are measured as one vertically centered block with an eight-pixel gap. Each line is centered by its actual ink bounds and scales down to fit the circular control. Cooldown, insufficient-breath, loading, queued, fire and spit states use the same centering. The joystick remains unchanged.
+
+
+## Current follow-up after release 68e1674
+
+The user requires cross-browser/device support, including Android Firefox. Cache the background glow sprites instead of per-star live blur, include all three browser engines and touch phone/landscape/tablet layouts in the required CI gate, and keep real-device claims separate from viewport emulation. Fix the mobile drawer's global touchmove cancellation and place weapons on a second finger's press while the joystick remains held. Keep Pinwheel and Pulsar as central, recognizable recipes in addition to satellites; strengthen Pinwheel bullets about 50% while retaining other damage values.
+
+For every assembled-weapon hit, actual lost gems transfer once to its assembler and increment session damage/knockout totals. Rewarded gems do not also spill. A deployed weapon's owner remains credited across distance and knockout; gems earned during the respawn wait are paid at the next protected spawn. The drawer contains the weapon record and recent activity, keeping mobile play clear of surge bars, event feeds and hit banners. Rival-reserved parts use a muted icon, coral-red ring and red X badge; collector-reserved parts use a bright mint ring/checkmark. Do not add status words.
+
+
+## Current capture redesign (supersedes all older escape/loading/drain descriptions)
+
+Capture eligibility still uses the existing 1.3× physical width rule. Before any transfer, snapshot injury eligibility and the width ratio. `captureHoldMs` interpolates smoothly through provisional 5,000ms at 1.3×, 8,000ms at 2× and 12,000ms at 4×, capped there. The server fixes the deadline once. Transferred growth never extends a hold or invalidates an already-captured state.
+
+The proposed initial `CANNON.CAPTIVE_GEM_SHARE` is **30%**, rounded down. Capture immediately subtracts and credits the identical actual amount, applying normal growth and theft totals once. There is no later captive drain. The share was proposed for playtesting, not selected as final balance by the user.
+
+Arrow escape, capture daze, gun loading and queued fire are removed. The action that initiated capture cannot fire the captive: release first, then make a fresh tap/hold through the existing Space/right control. This release guard is independent of firing readiness; no timer delays a deliberate shot. Captor input alone sets aim; captive input cannot turn the captor or a player-fired projectile. Bots release and make a fallible firing decision through the same mechanical rule.
+
+The local captive sees a magnified translucent belly lens while the arena remains visible around it. Existing joystick/WASD/arrows move an independent normalized interior avatar at 0.75 radii/s. Six fixed bonus-gem locations do not respawn inside a capture. Collection sets authoritative bits and increments a pending bank up to the proposed **six-gem cap**. Neither pending gems nor interior position affect growth, physical mass, shot damage, aim, duration, escape or physical nudges. No extra button is added. Collection/view stop as soon as capture ends.
+
+Pending bonuses pay once on automatic protected ejection or after a surviving flight ends and the player is alive in ordinary arena play. They are discarded on death, respawn and disconnect; reconnecting creates a new session without the old bank. Timeout ejection retains the four-second suction/recapture recovery and is never a finisher. Injury-at-capture remains the sole lethal-shot snapshot: a fired injured captive dies on impact, boundary contact or flight completion, regardless of timer expiry or pending bonuses. Healthy flight and projectile damage retain their existing rules.
+
+All timing, transfer and bonus values above are provisional playtest settings. Automated conservation, lifecycle, routing and collision checks do not validate human balance. This feature is integrated into the normal local game; no opt-in or separate prototype is used. The subsequent release request authorizes merging to main and deploying through the established pipeline.
+
+## Current puff and shot-follow integration
+
+Defensive puff uses `bodyMass(width)`, with per-target impulse based on reduced mass × 560 × existing range falloff. Added target speed is capped at 560 units/s. The entire puff shares an impulse budget of shooter's physical mass × 420, distributed proportionally among valid hits; opposite summed recoil is capped at 420 units/s. Equal masses at the mouth receive about 280 units/s in opposite directions. Ordinary drag and collision handling apply afterward. Existing cost, cone, cooldown, stun, eligibility and brief suction break remain; an empty puff produces no recoil. These are conservative initial playtest constants.
+
+A successful player-cannonball or owned Comet Battery hit offers shot-follow for 1,200ms at a fixed impact point. Already-held inhale remains ordinary; release and press again to engage. Active follow consumes normal inhale, preventing tether theft/capture; releasing stops it. Follow accelerates at 900 units/s² up to 360 units/s for at most 1,600ms and 480 units of travel, stopping at max(40, body radius + 16) units from the destination. The world boundary and swept obstacle checks apply. Repeated hits cannot stack, retarget or extend an existing opportunity. A gold offered cue becomes a mint airflow wake during the active pull. Same mechanical rules for humans/bots; values need human playtesting.
+
+
+## Player-fired captive power and vulnerability counterplay
+
+Only `fireCaptive` sets `shotMassBonus`, after the one-time capture transfer and using physical widths at firing. Proposed tuning: `CANNON.SHOOTER_MASS_WEIGHT = 0.10`, `CANNON.SHOOTER_MASS_CAP = 0.75`. The stored bonus is min(0.10 × sqrt(shooter physical mass × ammunition physical mass), 0.75 × ammunition physical mass). It is independent of later launcher growth, shrinking, death or disconnect. Original launcher ID remains credited even after disconnect.
+
+At impact, preserve the existing CURRENT pre-impact projectile-body mass and add min(stored bonus, current ammunition mass × 0.75) for power calculations. This is an attack-power bonus, not physical body growth: it does not change radius, collision, recoil, projectile mass spent after impact or the existing 90% width-loss rule. Target physical mass remains in the original resistance formula and the existing 85% damage ceiling/rounding and knockout threshold remain. Turbine launches clear the snapshot; comets and assembled weapons retain their own unchanged damage paths. Landing, knockout, respawn and disconnect clear projectile state. The existing size-dependent `launchSpeed` function, drag and stun are unchanged; the new contribution itself adds no speed.
+
+Controlled comparisons (synthetic physical sizes, fixed impact speed 1,250 units/s; target width 200 and score 1,000):
+
+| Shooter width | Ammo width | Damage gems |
+| --- | --- | --- |
+| 80 | 60 | 42 |
+| 200 | 60 | 49 |
+| 800 | 60 | 63 |
+| 400 | 20 | 8 |
+| 400 | 60 | 60 |
+| 400 | 160 | 248 |
+
+These comparisons isolate physical mass from speed, which already varies with the launcher's size in normal play. They are not human balance validation. Tiny ammunition remains tiny: its bonus cannot exceed 75% of its own physical mass, regardless of the shooter's score or size.
+
+`INHALE.VULNERABLE_OUTGOING = 0.15` is a prototype multiplier for outgoing player-body pull and outgoing injury gem-drain progress only. Body pull receives it AFTER close-range overpower, distance caps and escape resistance, preventing those paths from overriding it. Drain receives it once after existing geometry, ramp and clash eligibility. The existing clash-winner comparison is retained; no separate multiplier is applied there. Loose-gem suction, cargo theft, bomb pull, breath use, puff, movement and previously held captives are unchanged. Injury does not prevent firing an already-held captive.
+
+The authoritative vulnerability predicate uses the original seven-second injury deadline OR an existing, still-valid incoming continuation. It validates range, aim/airflow, protection, player state and clash eligibility directly, so actor iteration order cannot permit a late counter-catch. The actual close-contact capture path and final capture commit both reject a vulnerable captor. When the original window expires, any interruption revokes continuation immediately and restores ordinary outgoing pull/drain/capture. No extra timer or refreshed injury is created. Respawn/disconnect clear the underlying injury/continuation state.
+
+Weakened airflow is sparse and coral, with a fragmented mouth halo, while its dotted reach remains full length. Gem side streams retain their ordinary visual/mechanical flow. Applying weakness throughout continued theft intentionally makes sustained pressure stronger; this interaction needs human playtesting and may be too oppressive at the provisional 15% setting.

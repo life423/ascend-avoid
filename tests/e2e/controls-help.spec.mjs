@@ -8,7 +8,7 @@ async function start(page) {
     postData: JSON.stringify({ ...route.request().postDataJSON(), testBots: 0, testFieldGems: 0 }),
   }));
   await page.goto('/');
-  await page.waitForFunction(() => window.game?.currentGameMode?.multiplayerManager?.room?.state?.players?.size === 1);
+  await page.waitForFunction(() => window.game?.currentGameMode?.lastView && window.game?.currentGameMode?.multiplayerManager?.room?.state?.players?.size === 1);
   await expect.poll(() => page.evaluate(() => document.body.classList.contains('intro-playing'))).toBe(false);
 }
 const position = page => page.evaluate(() => {
@@ -41,7 +41,7 @@ test('short Help fits, has reachable actions and keeps keyboard focus inside', a
   await page.keyboard.press('Escape'); await expect(dialog).toBeHidden();
 });
 
-test('gem-surge notice disappears after three seconds while the event continues', async ({ page }) => {
+test('mobile surge HUD stays quiet and desktop notices expire while the event continues', async ({ page }) => {
   await start(page);
   await page.evaluate(() => {
     window.surgeTexts = 0;
@@ -52,6 +52,13 @@ test('gem-surge notice disappears after three seconds while the event continues'
     };
     window.game.currentGameMode.multiplayerManager.room.send('test:surge', { active: true });
   });
+  const quiet = await page.evaluate(() => window.game.currentGameMode.controls.touchDevice || matchMedia('(max-width: 1199px)').matches);
+  if (quiet) {
+    await page.waitForTimeout(400);
+    expect(await page.evaluate(() => window.surgeTexts)).toBe(0);
+    expect(await page.evaluate(() => window.game.currentGameMode.multiplayerManager.room.state.surgePhase)).toBe('active');
+    return;
+  }
   await expect.poll(() => page.evaluate(() => window.surgeTexts)).toBeGreaterThan(0);
   await page.waitForTimeout(3250);
   const count = await page.evaluate(() => window.surgeTexts);

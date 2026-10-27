@@ -6,6 +6,7 @@ import { PART_COLORS, weaponRecipe } from './weaponStyle';
 import { drawPulsarArray, pulsarPartIcon } from './shockwave';
 
 import { allWeapons, weaponProfile, orbitalPosition, ionFiring } from '../../server/game/weaponKit';
+import { inView } from './shared';
 
 const COLORS = PART_COLORS;
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -36,9 +37,9 @@ function partIcon(ctx: CanvasRenderingContext2D, kind: number, x: number, y: num
     ctx.restore();
 }
 
-function drawPart(ctx: CanvasRenderingContext2D, part: SyncedWeaponPart, remaining: number, timestamp: number, weapon: string, own: boolean, locked: boolean): void {
+function drawPart(ctx: CanvasRenderingContext2D, part: SyncedWeaponPart, remaining: number, timestamp: number, weapon: string, own: boolean, locked: boolean, stealable = false): void {
     ctx.save(); ctx.translate(part.x, part.y);
-    if (locked) ctx.globalAlpha = .5;
+    if (locked) ctx.globalAlpha = stealable ? .85 : .3;
     ctx.fillStyle = 'rgba(10, 25, 40, 0.9)'; ctx.strokeStyle = COLORS[part.kind]; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.arc(0, 0, 30, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     if (part.owner && remaining > 0) {
@@ -48,16 +49,31 @@ function drawPart(ctx: CanvasRenderingContext2D, part: SyncedWeaponPart, remaini
     if (weapon === 'pinwheel' || weapon === 'pulsar') partIcon(ctx, part.kind, 0, reducedMotion.matches ? 0 : Math.sin(timestamp / 350 + part.kind) * 2, !reducedMotion.matches && weapon === 'pinwheel' && part.kind === 1 ? timestamp / 1600 : -.1, weapon === 'pulsar');
     else satellitePart(ctx, weapon, part.kind);
     if (part.owner) {
-        ctx.strokeStyle = own ? '#80fff1' : '#d0d8e8'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(24, -27, 4, Math.PI, 0); ctx.stroke();
-        ctx.fillStyle = own ? '#80fff1' : '#d0d8e8'; ctx.fillRect(18, -27, 12, 9);
+        ctx.globalAlpha = 1;
+        const accent = locked ? (stealable ? '#ffd47d' : '#ff7c82') : '#80fff1';
+        ctx.strokeStyle = accent; ctx.lineWidth = 3;
+        if (locked) ctx.setLineDash([5, 4]);
+        ctx.beginPath(); ctx.arc(0, 0, 35, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle = '#102030'; ctx.beginPath(); ctx.arc(25, -25, 12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = accent; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath();
+        if (stealable) { ctx.moveTo(31, -29); ctx.lineTo(19, -21); ctx.moveTo(20, -29); ctx.lineTo(19, -21); ctx.lineTo(27, -20); }
+        else if (locked) { ctx.moveTo(20, -30); ctx.lineTo(30, -20); ctx.moveTo(30, -30); ctx.lineTo(20, -20); }
+        else { ctx.moveTo(19, -25); ctx.lineTo(23, -21); ctx.lineTo(31, -30); }
+        ctx.stroke();
     }
     ctx.font = `800 10px ${FONT}`; ctx.textAlign = 'center'; ctx.fillStyle = COLORS[part.kind];
-    ctx.fillText(weaponRecipe(weapon).parts[part.kind], 0, 47); ctx.restore();
+    ctx.fillText(weaponRecipe(weapon).parts[part.kind], 0, 47);
+    ctx.restore();
 }
 
 export function drawWeapons(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state: SyncedGameState, timestamp: number): void {
-    for (const w of allWeapons(state)) drawWeapon(mode, ctx, state, timestamp, w);
+    const weapons = allWeapons(state);
+    // All satellites share this arena orbit. Draw its path once, rather than once per satellite.
+    if (weapons.some(w => w.phase === 'active' && weaponProfile(w.kind).orbit)) {
+        ctx.save(); ctx.strokeStyle = '#83c9ff'; ctx.globalAlpha = .18; ctx.lineWidth = 2; ctx.setLineDash([8, 18]);
+        ctx.beginPath(); ctx.ellipse(state.worldWidth / 2, state.worldHeight / 2, state.worldWidth * .35, state.worldHeight * .32, 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+    }
+    for (const w of weapons) drawWeapon(mode, ctx, state, timestamp, w);
 }
 
 function drawWeapon(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state: SyncedGameState, timestamp: number, w: SyncedPinwheel): void {
@@ -92,8 +108,8 @@ function drawWeapon(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state:
                 const y = Math.max(30, Math.min(state.worldHeight - 30, at.y + Math.sin(a) * radius));
                 ctx.save(); ctx.strokeStyle = 'rgba(200, 225, 240, 0.4)'; ctx.lineWidth = 1.5;
                 ctx.beginPath(); ctx.moveTo(at.x, at.y); ctx.lineTo(x, y); ctx.stroke(); ctx.restore();
-                drawPart(ctx, { ...p, x, y }, w.claimUntil - now, timestamp, w.kind, own, locked);
-            } else drawPart(ctx, p, w.claimUntil - now, timestamp, w.kind, own, locked);
+                if (inView(mode.renderView, x, y, 85)) drawPart(ctx, { ...p, x, y }, w.claimUntil - now, timestamp, w.kind, own, locked, locked && !carrier.spawnProtected && carrier.launchSafeUntil <= now && !allWeapons(state).some(other => other !== w && other.owner === localId && (other.phase === 'parts' || other.phase === 'carried')));
+            } else if (inView(mode.renderView, p.x, p.y, 85)) drawPart(ctx, p, w.claimUntil - now, timestamp, w.kind, own, locked);
         });
         return;
     }
@@ -102,8 +118,6 @@ function drawWeapon(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state:
     if (w.phase === 'active' && profile.orbit) {
         const at = orbitalPosition(w.originX, w.originY, now - w.activatedAt, state.worldWidth, state.worldHeight);
         drawX = at.x; drawY = at.y;
-        ctx.save(); ctx.strokeStyle = profile.color; ctx.globalAlpha = .18; ctx.lineWidth = 2; ctx.setLineDash([8, 18]);
-        ctx.beginPath(); ctx.ellipse(state.worldWidth / 2, state.worldHeight / 2, state.worldWidth * .35, state.worldHeight * .32, 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
     }
     const carried = w.phase === 'carried';
     const holder = carried ? state.players.get(w.owner) : undefined;
@@ -128,6 +142,7 @@ function drawWeapon(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state:
     }
     ctx.restore();
     w.bolts.forEach(bolt => {
+        if (!inView(mode.renderView, bolt.x, bolt.y, 45)) return;
         ctx.save(); ctx.translate(bolt.x, bolt.y); ctx.rotate(bolt.angle);
         ctx.strokeStyle = 'rgba(255, 212, 125, 0.45)'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(-26, 0); ctx.lineTo(-8, 0); ctx.stroke();
         if (w.kind === 'comet') ctx.scale(1.7, 1.7);

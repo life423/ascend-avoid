@@ -272,7 +272,7 @@ export class BotBrain {
       const edible = other.width * INHALE.EAT_RATIO <= bot.width;
       const reach = INHALE.REACH + bot.width * INHALE.REACH_PER_SIZE;
       const arrivalMs = Math.max(0, distance - reach) / moveSpeed(bot.width) * 1000;
-      if (!edible && other.injuredUntil - world.time <= arrivalMs + BOTS.THINK_MS_MAX) return;
+      if (!edible && !bot.theftContinuations.has(other.sessionId) && other.injuredUntil - world.time <= arrivalMs + BOTS.THINK_MS_MAX) return;
       if (!edible && other.gems < 3) return;
       let pursuers = 0;
       world.brains.forEach((brain, id) => {

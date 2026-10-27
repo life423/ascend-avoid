@@ -104,9 +104,9 @@ function setup() {
   const bolt = new WeaponBoltSchema(); bolt.x = 2090; bolt.y = 2000; bolt.bornAt = s.time; bolt.angle = 0;
   w.bolts.set('test', bolt);
   updateWeapons(s, 0.4, NOW);
-  assert.equal(b.gems, 84, 'a swept bolt removes 16 gems from a 100-gem target');
+  assert.equal(b.gems, 76, 'a swept bolt removes 24 gems from a 100-gem target, up from 16');
   assert(b.injuredUntil > s.time, 'a damaging Pinwheel hit exposes gems');
-  assert.equal(a.gems, 0, 'the builder is not hit by their weapon');
+  assert.equal(a.gems, 24, 'the builder receives the actual removed gems');
   assert(!b.stunned, 'weapon bolts do not repeatedly stun targets');
   assert(!w.bolts.has('test'), 'each bolt hits once');
   s.time = w.at; updateWeapons(s, 0.01, NOW);
@@ -120,11 +120,12 @@ for (const gems of [0, 7, 10, 20, 100, 1000]) {
   w.bolts.set('damage', bolt);
   const credit: Record<string, unknown>[] = []; s.onEvent = (type, data) => { if (type === 'credit') credit.push(data); };
   updateWeapons(s, .4, NOW);
-  const lost = Math.min(gems, Math.ceil(gems * .3), Math.max(8, Math.ceil(Math.sqrt(gems) * 1.6)));
+  const lost = Math.min(gems, Math.ceil(gems * PINWHEEL.HIT_SHARE), Math.max(PINWHEEL.HIT_MIN_GEMS, Math.ceil(Math.sqrt(gems) * PINWHEEL.HIT_PER_ROOT)));
   const out = gems - lost < 8;
   assert.equal(b.state, out ? 'dead' : 'alive'); assert.equal(b.gems, out ? 0 : gems - lost);
   assert(credit.some(c => c.how === 'pinwheel' && c.out === out && c.byId === a.sessionId));
-  assert.equal([...s.gems.values()].reduce((sum, g) => sum + g.value, 0), gems - b.gems, 'bolt losses spill once, including knockouts');
+  assert.equal(a.gems, gems - b.gems, 'actual bolt losses reward the assembler, including knockouts');
+  assert.equal([...s.gems.values()].reduce((sum, g) => sum + g.value, 0), 0, 'rewarded gems do not also spill');
   if (out) { s.weaponsOn = false; s.update(0, b.respawnAt); assert(b.spawnProtected && b.width === 20 && b.state === 'alive'); }
 }
 {

@@ -3,11 +3,10 @@ import { GameState } from '../schema/GameState.js';
 import { CoreSchema } from '../schema/CoreSchema.js';
 import { CANNON, EXHALE, GEMS, SURGE } from '../constants/gameConstants.js';
 import { moveSpeed } from '../game/movement.js';
-import { escapePress, escapeSteer, exhale, fireCaptive, stealWeight, updateHolds, updateInhales } from '../systems/inhale.js';
+import { exhale, fireCaptive, stealWeight, updateHolds, updateInhales } from '../systems/inhale.js';
 import { updateFlights } from '../systems/flights.js';
 import { beginSurge, updateSurges } from '../systems/surges.js';
 import { updateJackpot } from '../systems/gems.js';
-import { captureLoadMs, escapeLength } from '../game/cannon.js';
 import { BotBrain } from '../game/bots.js';
 import { keepApart, pruneBodyContacts } from '../systems/bodies.js';
 
@@ -40,17 +39,9 @@ function capture(gems = 16) {
 }
 
 assert.equal(moveSpeed(20), 320);
-assert(moveSpeed(143) > 130, 'growth leaves mid-size creatures mobile');
+assert.equal(moveSpeed(143), 130, 'the requested 0.5 falloff reaches, but never drops below, the 130 floor');
 assert.equal(moveSpeed(2000), 130, 'late growth has a movement floor');
 assert(moveSpeed(37.5) > moveSpeed(143), 'small players keep a speed advantage');
-assert.equal(escapeLength(39, 20), 3);
-assert.equal(escapeLength(40, 20), 4);
-assert.equal(escapeLength(80, 20), 5);
-assert.equal(escapeLength(800, 20), 5);
-assert.equal(captureLoadMs(3), 2800);
-assert.equal(captureLoadMs(4), 3100);
-assert.equal(captureLoadMs(5), 3400);
-
 for (const gems of [0, 4, 11, 12, 80]) for (const kind of ['missile', 'turbine'] as const) {
   const s = world(), p = player(s, 'flight-end', gems, 1800, 1800);
   const events: Array<{ type: string; data: Record<string, unknown> }> = [];
@@ -152,64 +143,19 @@ for (const targetGems of [12, 40]) for (const protectedTarget of [false, true]) 
   assert(flier.suctionSafeUntil > NOW + 1000, 'the spent missile still gets a recovery shield');
 }
 
-for (const gems of [16, 32, 80]) {
-  const { state, captor, captive } = capture(gems);
-  fireCaptive(state, captor, NOW); // the captor queues the earliest possible shot
-  let elapsed = CANNON.CAPTIVE_STUN_MS + 650;
-  for (const key of captive.escapeKeys) {
-    state.time = elapsed;
-    escapePress(state, captive, key);
-    updateHolds(state, NOW + elapsed);
-    elapsed += 500;
-  }
-  assert.equal(captive.capturedBy, '', 'after a 650ms reaction, a human can type at 500ms per direction before a queued shot');
-  assert.equal(captive.flying, false);
-}
-
-{
-  const { state, captor, captive } = capture();
-  const keys = captive.escapeKeys;
-  assert.equal(keys.length, 3);
-  assert.notEqual(keys[0], keys[1]);
-  escapePress(state, captive, keys[0]);
-  assert.equal(captive.escapeStep, 0, 'cannot escape during the short daze');
-  state.time = CANNON.CAPTIVE_STUN_MS;
-  escapePress(state, captive, keys[0]);
-  const wrong = 'UDLR'.replace(keys[1], '')[0];
-  escapePress(state, captive, wrong);
-  assert.equal(captive.escapeStep, 0, 'a wrong key resets the sequence');
-  for (const key of keys) escapePress(state, captive, key);
-  updateHolds(state, NOW + state.time);
-  assert.equal(captive.capturedBy, '');
-  assert.equal(captor.gulping, '');
-  assert.equal(captive.flying, false, 'escaping never fires the captive');
-}
-{
-  const { state, captive } = capture();
-  state.time = CANNON.CAPTIVE_STUN_MS;
-  const directions: Record<string, [number, number]> = { U: [0, -1], D: [0, 1], L: [-1, 0], R: [1, 0] };
-  for (const key of captive.escapeKeys) {
-    captive.steer(0, 0); escapeSteer(state, captive);
-    captive.steer(...directions[key]); escapeSteer(state, captive);
-    const step = captive.escapeStep;
-    escapeSteer(state, captive);
-    assert.equal(captive.escapeStep, step, 'holding the stick does not count repeatedly');
-  }
-  updateHolds(state, NOW + state.time);
-  assert.equal(captive.capturedBy, '', 'quick joystick edges in one tick free a captive');
-}
 {
   const { state, captor, captive } = capture();
   const events: Array<{ type: string; data: Record<string, unknown> }> = [];
   state.onEvent = (type, data) => events.push({ type, data });
-  assert.equal(fireCaptive(state, captor, NOW + CANNON.ARM_MS - 1), false);
+  assert.equal(fireCaptive(state, captor, NOW), false);
+  captor.captureNeedsRelease = false;
   captive.steer(0, 1);
-  assert.equal(fireCaptive(state, captor, NOW + CANNON.ARM_MS), true);
+  assert.equal(fireCaptive(state, captor, NOW), true);
   assert(captive.flying);
   assert.equal(captive.flightVy, 0, 'holding sideways during launch cannot spoil the captor\'s aim');
   const target = player(state, 'target', 100, 1270, 984.25);
   const had = target.gems;
-  for (let step = 1; step <= 5; step++) updateFlights(state, NOW + CANNON.ARM_MS + step * 100, 0.1);
+  for (let step = 1; step <= 5; step++) updateFlights(state, NOW + step * 100, 0.1);
   assert(target.gems < had, 'a living cannonball spills gems');
   assert(events.some(e => e.type === 'launch'));
   assert(events.some(e => e.type === 'impact' && e.data.projectileId === captive.sessionId));
@@ -220,12 +166,12 @@ for (const facing of [0, Math.PI / 3, -Math.PI / 2]) {
   const { state, captor, captive } = capture();
   captor.facing = facing;
   captive.steer(-Math.sin(facing), Math.cos(facing));
-  fireCaptive(state, captor, NOW + CANNON.ARM_MS);
+  captor.captureNeedsRelease = false; fireCaptive(state, captor, NOW);
   const start = { x: captive.x, y: captive.y };
   for (let step = 1; step <= 30; step++) {
     const sign = step % 2 ? 1 : -1;
     captive.steer(-Math.sin(facing) * sign, Math.cos(facing) * sign);
-    updateFlights(state, NOW + CANNON.ARM_MS + step * 20, 0.02);
+    updateFlights(state, NOW + step * 20, 0.02);
     const lateral = -(captive.x - start.x) * Math.sin(facing) + (captive.y - start.y) * Math.cos(facing);
     assert(Math.abs(lateral) < 1e-7, 'changing direction inputs cannot bend a player-fired missile');
   }
@@ -247,8 +193,8 @@ for (const facing of [0, Math.PI / 3, -Math.PI / 2]) {
 }
 {
   const { state, captive } = capture();
-  state.time = CANNON.HOLD_MS;
-  updateHolds(state, NOW + CANNON.HOLD_MS);
+  state.time = captive.captureHoldMs;
+  updateHolds(state, NOW + captive.captureHoldMs);
   assert.equal(captive.capturedBy, '', 'an idle hold ends promptly');
   assert.equal(captive.state, 'alive');
 }

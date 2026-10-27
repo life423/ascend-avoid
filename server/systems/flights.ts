@@ -4,7 +4,8 @@ import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 import { CANNON } from "../constants/gameConstants.js";
 import { flightStep, impactGems, missileMassAfterImpact, sweptHit } from "../game/cannon.js";
 import { sprayGems } from "./gems.js";
-import { knockOutWithGems } from "./inhale.js";
+import { knockOutWithGems, settleBelly } from "./inhale.js";
+import { offerShotFollow } from './shotFollow.js';
 
 const { PLAYER_STATE } = GAME_CONSTANTS;
 
@@ -21,6 +22,7 @@ export function updateFlights(state: GameState, now: number, deltaTime: number):
       const captor = state.players.get(player.capturedBy);
       if (!captor || captor.gulping !== player.sessionId || captor.state !== PLAYER_STATE.ALIVE || player.state !== PLAYER_STATE.ALIVE) {
         player.capturedBy = "";
+        player.capturedInjured = false;
         player.struggle = 0;
       }
     }
@@ -46,7 +48,8 @@ export function updateFlights(state: GameState, now: number, deltaTime: number):
     const target = player.flightHit ? null : struck(everyone, player, now, fromX, fromY);
     if (target) impact(state, player, target, speed, now);
     else if (speed < CANNON.STOP_SPEED || now >= player.flightEndsAt) {
-      if (player.flightKind === 'missile' && !player.flightHit && player.gems < CANNON.BURNUP_GEMS) burnUp(state, player, now);
+      if (player.fatalMissile) finishInjuredShot(state, player, now);
+      else if (player.flightKind === 'missile' && !player.flightHit && player.gems < CANNON.BURNUP_GEMS) burnUp(state, player, now);
       else land(state, player, now);
     }
   }
@@ -72,7 +75,7 @@ function struck(everyone: PlayerSchema[], flier: PlayerSchema, now: number, from
 function impact(state: GameState, flier: PlayerSchema, target: PlayerSchema, speed: number, now: number): void {
   const ux = flier.flightVx / speed;
   const uy = flier.flightVy / speed;
-  let spill = target.spawnProtected ? 0 : impactGems(target.gems, speed, flier.width, target.width);
+  let spill = target.spawnProtected ? 0 : impactGems(target.gems, speed, flier.width, target.width, flier.flightKind === 'missile' ? flier.shotMassBonus : 0);
   const out = !target.spawnProtected && target.gems - spill < CANNON.IMPACT_KO_GEMS;
   const launcher = flier.launchedBy;
   if (out) {
@@ -92,6 +95,7 @@ function impact(state: GameState, flier: PlayerSchema, target: PlayerSchema, spe
     size: target.width, gems: spill, out,
   });
   state.credit(target, "cannon", now, launcher, { gems: spill, projectileId: flier.sessionId, out });
+  if (spill > 0 || out) offerShotFollow(state, launcher, target.x + target.width / 2, target.y + target.height / 2);
   spendMissileMass(state, flier, now);
   if (!out && !target.spawnProtected && now >= target.stunImmuneUntil) target.stun(now, CANNON.IMPACT_STUN_MS);
   if (flier.state !== PLAYER_STATE.ALIVE) return;
@@ -105,6 +109,7 @@ function impact(state: GameState, flier: PlayerSchema, target: PlayerSchema, spe
 /** Growth powers an impact once; a player-fired missile with none left is knocked out. */
 function spendMissileMass(state: GameState, player: PlayerSchema, now: number): void {
   if (player.flightHit) return;
+  if (player.fatalMissile) { finishInjuredShot(state, player, now); return; }
   player.flightHit = true;
   const kept = missileMassAfterImpact(player.gems, player.width), lost = player.gems - kept;
   const x = player.x + player.width / 2, y = player.y + player.height / 2;
@@ -130,8 +135,19 @@ function burnUp(state: GameState, player: PlayerSchema, now: number): void {
 
 /** A surviving flight ends with a full suction-recovery window. */
 function land(state: GameState, player: PlayerSchema, now: number): void {
+  if (player.fatalMissile) { finishInjuredShot(state, player, now); return; }
   player.land();
+  settleBelly(state, player);
   player.recaptureAfter = Math.max(player.recaptureAfter, now + CANNON.LAND_SAFE_MS);
   player.suctionSafeUntil = Math.max(player.suctionSafeUntil, now + CANNON.LAND_SAFE_MS);
   player.launchSafeUntil = state.time + CANNON.LAND_SAFE_MS;
+}
+
+/** Launching an injured captive commits the finisher; escaping before launch does not. */
+function finishInjuredShot(state: GameState, player: PlayerSchema, now: number): void {
+  const byId = player.launchedBy, gems = player.gems;
+  const x = player.x + player.width / 2, y = player.y + player.height / 2, size = player.width;
+  player.land();
+  knockOutWithGems(state, player, now);
+  state.credit(player, 'cannon', now, byId, { out: true, gems, x, y, size, finisher: true });
 }

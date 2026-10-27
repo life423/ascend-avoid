@@ -34,6 +34,8 @@ import { drawPickups } from '../render/pickups'
 import type { SyncedGameState, SyncedGem, SyncedObstacle, SyncedPlayer, SyncedTurbine } from '../types/synced'
 import { drawCannon } from '../render/cannon'
 import { drawWeapons } from '../render/weapons'
+import { drawIncoming } from '../render/incoming'
+import { drawShotFollow } from '../render/shotFollow'
 import { weaponRecipe } from '../render/weaponStyle'
 
 // Forward reference for the Game type to avoid circular dependencies
@@ -552,6 +554,7 @@ export class MultiplayerMode extends GameMode {
     /** The joystick, INHALE button and mouse steering (drawn on the canvas) */
     controls: OnlineControls | null = null
     private weaponPlacement: WeaponPlacement | null = null
+    private weaponRecord = '';
     private weaponSeen = new Map<number, { owner: string; phase: string; progress: number }>()
     /** Your walking velocity */
     private velocity = { x: 0, y: 0 }
@@ -577,13 +580,12 @@ export class MultiplayerMode extends GameMode {
     private facing = { x: 0, y: -1 }
     /** The steering last sent to the server */
     private sentSteer = { x: 0, y: 0 }
-    private sentSteerAt = 0
-    private sentSteerEscape = false
     /** Where you were drawn over the last second, to compare with the server (which runs a round trip behind) */
     private history: { at: number; x: number; y: number }[] = []
     private lastMoveAt = 0
     /** The view as last drawn, to find your player on screen for mouse steering */
     private lastView: View | null = null
+    get renderView(): View | null { return this.lastView }
     minimapBottom = 0
     hudInsets = { top: 0, right: 0, bottom: 0, left: 0 }
     chromeBottom = 0
@@ -601,7 +603,7 @@ export class MultiplayerMode extends GameMode {
     /** Bomb blasts going off: a flash and a ring racing out to the blast's edge */
     blasts: { x: number; y: number; radius: number; at: number }[] = []
     /** Exhales: a puff of air out of a mouth, arcs rolling out through its cone */
-    puffs: { by: string; x: number; y: number; facing: number; reach: number; at: number }[] = []
+    puffs: { by: string; x: number; y: number; facing: number; reach: number; recoil: number; at: number }[] = []
     /** Gravity theft on screen: each victim's gems last frame, and the stolen gems in flight */
     theftGems = new Map<string, number>()
     theftParticles: { from: string; to: string; at: number; angle: number; flight: number; power: number }[] = []
@@ -645,11 +647,22 @@ export class MultiplayerMode extends GameMode {
         eventBus.on(GameEvents.MULTIPLAYER_DISCONNECTED, () => this.reconnectSoon())
         eventBus.on(GameEvents.MULTIPLAYER_STATE_UPDATE, (state: SyncedGameState) => {
             if (typeof state?.time !== 'number') return
+            const me = this.multiplayerManager?.getLocalPlayer() as SyncedPlayer | undefined
+            const damage = me?.weaponDamage ?? 0, knockouts = me?.weaponKnockouts ?? 0
+            const record = `${damage}/${knockouts}`
+            if (record !== this.weaponRecord) {
+                this.weaponRecord = record
+                window.dispatchEvent(new CustomEvent('ascend:weapon-record', { detail: { damage, knockouts } }))
+            }
             const gap = performance.now() - state.time
             // Keep the quickest arrival, drifting up slowly in case the clocks wander
             this.clockGap = gap < this.clockGap ? gap : this.clockGap + (gap - this.clockGap) * 0.005
         })
         eventBus.on('multiplayer:credit', (data: any) => this.noteCredit(data))
+        eventBus.on('multiplayer:weaponTheft', (data: { by: string; byId: string; from: string; fromId: string; kind: string }) => {
+            this.addNotice(`${this.nameOf(data.byId, data.by)} stole a ${weaponRecipe(data.kind).name} part from ${this.nameOf(data.fromId, data.from)}!`)
+            if (data.byId === this.multiplayerManager?.localSessionId) sound.play('gem')
+        })
         eventBus.on('multiplayer:burst', (data: any) => this.noteBurst(data))
         eventBus.on('multiplayer:impact', (data: any) => this.noteImpact(data))
         eventBus.on('multiplayer:launch', (data: { byId?: string; id?: string }) => {
@@ -665,8 +678,8 @@ export class MultiplayerMode extends GameMode {
             this.addNotice(data?.phase === 'warning' ? 'Gem surge incoming — follow the gold marker!' : 'Gem surge! Jackpot in the final seconds.', true)
         })
         eventBus.on('multiplayer:blast', (data: any) => this.blasts.push({ x: Number(data?.x) || 0, y: Number(data?.y) || 0, radius: Number(data?.radius) || BOMBS.BLAST_RADIUS, at: performance.now() }))
-        eventBus.on('multiplayer:exhale', (data: { id?: string; x?: number; y?: number; facing?: number; reach?: number; breathLeft?: number }) => {
-            this.puffs.push({ by: String(data.id ?? ''), x: Number(data.x) || 0, y: Number(data.y) || 0, facing: Number(data.facing) || 0, reach: Number(data.reach) || 200, at: performance.now() })
+        eventBus.on('multiplayer:exhale', (data: { id?: string; x?: number; y?: number; facing?: number; reach?: number; recoil?: number; breathLeft?: number }) => {
+            this.puffs.push({ by: String(data.id ?? ''), x: Number(data.x) || 0, y: Number(data.y) || 0, facing: Number(data.facing) || 0, reach: Number(data.reach) || 200, recoil: Number(data.recoil) || 0, at: performance.now() })
             if (data.id === this.multiplayerManager?.localSessionId && typeof data.breathLeft === 'number') {
                 this.stamina = Math.max(0, Math.min(1, data.breathLeft))
                 this.staminaAt = performance.now()
@@ -734,18 +747,14 @@ export class MultiplayerMode extends GameMode {
     }
 
     /** Tell the server where you're steering, whenever it changes */
-    private sendSteer(steer: { x: number; y: number }, escape = false): void {
-        const now = performance.now()
+    private sendSteer(steer: { x: number; y: number }): void {
         const x = Math.round(steer.x * 100) / 100
         const y = Math.round(steer.y * 100) / 100
         const wasStill = this.sentSteer.x === 0 && this.sentSteer.y === 0
         const still = x === 0 && y === 0
-        // A held touch must still count when the daze ends, even if the thumb has stopped moving.
-        if (escape === this.sentSteerEscape && !(escape && now - this.sentSteerAt >= 100) && still === wasStill && Math.abs(x - this.sentSteer.x) < 0.04 && Math.abs(y - this.sentSteer.y) < 0.04) return
+        if (still === wasStill && Math.abs(x - this.sentSteer.x) < 0.04 && Math.abs(y - this.sentSteer.y) < 0.04) return
         this.sentSteer = { x, y }
-        this.sentSteerAt = now
-        this.sentSteerEscape = escape
-        this.multiplayerManager?.sendMessage('steer', { x, y, escape })
+        this.multiplayerManager?.sendMessage('steer', { x, y })
     }
 
     private resetMotion(): void {
@@ -775,9 +784,8 @@ export class MultiplayerMode extends GameMode {
         const now = performance.now()
         // The button: hold to inhale (taken every frame, so nothing waits for later)
         const events = this.controls?.takeEvents() ?? []
-        const escapeKeys = this.controls?.takeEscapeKeys() ?? []
         const editing = !!document.activeElement?.matches('input, textarea, [contenteditable="true"]') || !!document.querySelector('.drawer.active')
-        if (editing) { events.length = 0; escapeKeys.length = 0 }
+        if (editing) events.length = 0
         if (this.introPlaying) events.length = 0
         const deltaTime = this.lastMoveAt ? Math.min(0.1, (now - this.lastMoveAt) / 1000) : 0
         this.lastMoveAt = now
@@ -798,12 +806,8 @@ export class MultiplayerMode extends GameMode {
         const keyX = Number(input.right) - Number(input.left)
         const keyY = Number(input.down) - Number(input.up)
         const keyLength = Math.hypot(keyX, keyY)
-        const steer = this.introPlaying || me.stunned || editing ? { x: 0, y: 0 } : me.capturedBy && keyLength > 0 ? { x: keyX / keyLength, y: keyY / keyLength } : this.steerVector(input, me)
-        if (me.capturedBy && !this.introPlaying) {
-            for (const key of escapeKeys) this.multiplayerManager?.sendMessage('escape', { key })
-        }
-        // Inhaling never slows you down: you always steer exactly as usual
-        this.sendSteer(steer, Boolean(me.capturedBy && !keyLength && this.controls?.isPointerSteering))
+        const steer = this.introPlaying || (me.stunned && !me.capturedBy) || editing ? { x: 0, y: 0 } : me.capturedBy && keyLength > 0 ? { x: keyX / keyLength, y: keyY / keyLength } : this.steerVector(input, me)
+        this.sendSteer(steer)
         if (me.state !== 'alive') {
             this.predicted = { x: me.x, y: me.y }
             this.resetMotion()
@@ -1072,6 +1076,7 @@ export class MultiplayerMode extends GameMode {
         drawPuffs(this, ctx, timestamp)
         drawBursts(this, ctx, timestamp)
         drawPickups(this, ctx, me, timestamp)
+        drawShotFollow(this, ctx, state, me, timestamp)
         ctx.restore()
 
         // Screen-space overlays: hidden while the opening plays, then fading in
@@ -1098,19 +1103,20 @@ export class MultiplayerMode extends GameMode {
             drawBanner(this, ctx, canvas)
             drawCapturePrompt(this, ctx, canvas, state, me, timestamp)
             drawSurgeHud(this, ctx, canvas, state, view, timestamp)
-            const loaded = Boolean(me?.gulping) && this.worldNow(state, timestamp) >= me.fireReadyAt
+            const loaded = Boolean(me?.gulping)
             if (loaded && !this.wasLoaded) sound.play('ready')
             this.wasLoaded = loaded
             const captured = Boolean(me?.capturedBy || me?.gulping)
             if (captured && !this.wasCaptured) sound.play('capture')
             this.wasCaptured = captured
             if (this.controls) {
-                this.controls.action = me?.gulping ? (me.fireQueued ? 'QUEUED' : loaded ? 'FIRE' : 'LOADING') : me?.mouth ? 'SPIT' : 'INHALE'
+                this.controls.action = me?.capturedBy ? 'SALVAGE' : me?.gulping ? 'FIRE' : me?.mouth ? 'SPIT' : 'INHALE'
                 this.controls.puffCooldown = Math.max(0, ((me?.puffReadyAt ?? 0) - this.worldNow(state, timestamp)) / 1000)
                 this.controls.puffNeedsBreath = this.stamina < EXHALE.BREATH_COST
             }
             this.firstGuide?.update(me, this.introPlaying)
             this.controls?.draw(ctx, timestamp, this.breath)
+            drawIncoming(this, ctx, canvas, state, me, timestamp)
             if (me && me.state !== 'alive') drawKnockedOut(this, ctx, canvas)
             ctx.globalAlpha = 1
         }
@@ -1156,7 +1162,7 @@ export class MultiplayerMode extends GameMode {
      * reaches the server, which is where the server judges hits. Traffic moves in straight
      * lines, so this is exact, and it also keeps it moving smoothly between updates.
      */
-    private trafficLead(timestamp: number): number {
+    trafficLead(timestamp: number): number {
         const state = this.worldState()
         if (!state || typeof state.time !== 'number' || !Number.isFinite(this.clockGap)) return 0
         const sinceTick = timestamp - (state.time + this.clockGap)
@@ -1170,6 +1176,7 @@ export class MultiplayerMode extends GameMode {
     }
 
     private addNotice(text: string, strong = false, category?: 'weapon'): void {
+        window.dispatchEvent(new CustomEvent('ascend:activity', { detail: text }))
         if (category) this.notices = this.notices.filter(notice => notice.category !== category)
         this.notices.push({ text, at: performance.now(), strong, category })
         if (this.notices.length > 3) this.notices.shift()
@@ -1229,7 +1236,10 @@ export class MultiplayerMode extends GameMode {
             this.noteImpact(data)
             const weapon = weaponRecipe(how).name
             if (targetIsYou && data?.out) this.knockoutCause = { how, by: String(data?.by ?? 'Someone'), at: performance.now() }
-            if (data?.byId === localId) this.banner = { title: `${weapon} ${data?.out ? 'knockout!' : 'hit!'}`, sub: `${Number(data?.gems) || 0} GEMS BLASTED LOOSE`, at: performance.now() }
+            if (data?.byId === localId) {
+                this.banner = { title: `${weapon} ${data?.out ? 'knockout!' : 'hit!'}`, sub: `+${Number(data?.earned) || 0} GEMS EARNED`, at: performance.now() }
+                window.dispatchEvent(new CustomEvent('ascend:activity', { detail: `${weapon}: +${Number(data?.earned) || 0} gems${data?.out ? ' · knockout' : ''}` }))
+            }
             else this.addNotice(`${this.nameOf(data?.byId, data?.by)} blasted ${target} with ${weapon}!`, data?.out === true)
             return
         }

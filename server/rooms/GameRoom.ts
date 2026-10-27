@@ -1,8 +1,9 @@
+import { offerShotFollow } from '../systems/shotFollow';
 import { Room, Client } from "colyseus";
 import { GAME_CONSTANTS } from "../constants/serverConstants";
 import logger from "../utils/logger";
 import { GameState } from "../schema/GameState";
-import { exhale, fireCaptive, escapePress, escapeSteer } from "../systems/inhale";
+import { exhale, fireCaptive } from "../systems/inhale";
 import { beginSurge } from "../systems/surges";
 import { spawnWeapon, deployWeapon, initializeWeaponSets } from "../systems/weapons";
 import { allWeapons, weaponKinds } from '../game/weaponKit';
@@ -76,24 +77,13 @@ export class GameRoom extends Room<GameState> {
       const player = this.state.players.get(client.sessionId);
       if (!player) return;
       player.steer(Number(data?.x) || 0, Number(data?.y) || 0);
-      if (data?.escape === true || (player.capturedBy && Math.hypot(Number(data?.x) || 0, Number(data?.y) || 0) <= 0.3)) escapeSteer(this.state, player);
-    });
-    // Keyboard edges are explicit, so a quick tap is never lost between simulation ticks.
-    this.onMessage("escape", (client, data: { key?: unknown }) => {
-      if (!this.allowMessage(client)) return;
-      const player = this.state.players.get(client.sessionId);
-      const key = data?.key;
-      if (!player || typeof key !== "string" || key.length !== 1 || !"UDLR".includes(key)) return;
-      const now = Date.now();
-      if (now < player.escapeTryAt) return;
-      player.escapeTryAt = now + 60;
-      escapePress(this.state, player, key);
     });
 
     // Where an inhale is aimed: the creature turns to face it (its eyes give it away)
     this.onMessage("aim", (client, data: any) => {
       if (!this.allowMessage(client)) return;
-      this.state.players.get(client.sessionId)?.aimAt(Number(data?.x) || 0, Number(data?.y) || 0);
+      const player = this.state.players.get(client.sessionId);
+      if (player && !player.capturedBy) player.aimAt(Number(data?.x) || 0, Number(data?.y) || 0);
     });
     // Hold the button to inhale, release to stop; tap with something in your mouth to spit it, or with
     // someone caught inside to fire them (a full mouth can't inhale until it's empty)
@@ -124,6 +114,7 @@ export class GameRoom extends Room<GameState> {
       if (!player) return;
       player.releasedAt = Date.now();
       player.stopInhale();
+      player.captureNeedsRelease = false;
     });
     this.onMessage("placeWeapon", (client) => {
       if (!this.allowMessage(client)) return;
@@ -137,7 +128,7 @@ export class GameRoom extends Room<GameState> {
       player?.stopInhale();
       player?.aimAt(0, 0);
       player?.steer(0, 0);
-      if (player) player.fireQueued = false;
+      if (player) player.captureNeedsRelease = false;
     });
     this.onMessage("spit", (client, data: any) => {
       if (!this.allowMessage(client)) return;
@@ -160,6 +151,9 @@ export class GameRoom extends Room<GameState> {
       });
       const playerOf = (client: Client) => this.state.players.get(client.sessionId);
       const { worldWidth, worldHeight } = this.state;
+      this.onMessage("test:follow", (client, data: { x?: number; y?: number }) => {
+        offerShotFollow(this.state, client.sessionId, Number(data?.x) || 0, Number(data?.y) || 0);
+      });
       this.onMessage("test:hit", (client) => {
         const player = playerOf(client);
         if (player) this.state.hitPlayer(player);
@@ -183,6 +177,9 @@ export class GameRoom extends Room<GameState> {
       this.onMessage("test:parkTraffic", () => {
         // Every obstacle but the first stands still in the far corner
         const { worldWidth, worldHeight } = this.state;
+      this.onMessage("test:follow", (client, data: { x?: number; y?: number }) => {
+        offerShotFollow(this.state, client.sessionId, Number(data?.x) || 0, Number(data?.y) || 0);
+      });
         this.state.obstacles.forEach((obstacle, index) => {
           if (index > 0) obstacle.placeAt(worldWidth - 60, worldHeight - 60, 50, 34, 0);
         });

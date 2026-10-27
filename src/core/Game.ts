@@ -119,7 +119,7 @@ export default class Game {
         console.log('Canvas element:', this.canvas)
 
         if (this.canvas) {
-            this.ctx = this.canvas.getContext('2d')!
+            this.ctx = this.canvas.getContext('2d', { alpha: false })!
             console.log('Canvas context:', this.ctx)
 
             // Check canvas dimensions
@@ -138,7 +138,7 @@ export default class Game {
             console.error('Canvas element not found in DOM!')
             // Create a dummy canvas to prevent errors
             this.canvas = document.createElement('canvas')
-            this.ctx = this.canvas.getContext('2d')!
+            this.ctx = this.canvas.getContext('2d', { alpha: false })!
         }
 
         this.scoreElement = document.querySelector(

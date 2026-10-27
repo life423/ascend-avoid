@@ -17,12 +17,27 @@ export class DrawerUI {
     private overlay!: HTMLDivElement;
     private isOpen: boolean = false;
     private returnFocus: HTMLElement | null = null;
+    private activity = (event: Event): void => {
+        const text = (event as CustomEvent<string>).detail;
+        const list = this.drawer.querySelector('.activity-history');
+        if (!list || typeof text !== 'string') return;
+        const item = document.createElement('li'); item.textContent = text;
+        list.prepend(item);
+        while (list.children.length > 20) list.lastElementChild?.remove();
+    };
+    private weaponRecord = (event: Event): void => {
+        const data = (event as CustomEvent<{ damage: number; knockouts: number }>).detail;
+        const record = this.drawer.querySelector('.weapon-record');
+        if (record && data) record.textContent = `${data.damage.toLocaleString()} damage · ${data.knockouts.toLocaleString()} knockouts · +${data.damage.toLocaleString()} gems earned`;
+    };
 
     constructor() {
         this.container = document.body;
         this.createElements();
         this.attachEventListeners();
         this.injectStyles();
+        window.addEventListener('ascend:weapon-record', this.weaponRecord);
+        window.addEventListener('ascend:activity', this.activity);
     }
 
     private createElements(): void {
@@ -67,6 +82,14 @@ export class DrawerUI {
                     <div class="instructions">
                         ${GAME_RULES}
                     </div>
+                </div>
+                <div class="menu-section">
+                    <h3>Weapon record</h3>
+                    <p class="weapon-record">0 damage · 0 knockouts · +0 gems earned</p>
+                </div>
+                <div class="menu-section">
+                    <h3>Recent activity</h3>
+                    <ol class="activity-history"></ol>
                 </div>
                 <div class="menu-section">
                     <h3>Settings</h3>
@@ -261,15 +284,21 @@ export class DrawerUI {
                 background: rgba(10, 10, 10, 0.95);
                 border-right: 1px solid rgba(12, 199, 199, 0.3);
                 transform: translateX(-100%);
-                transition: transform 0.3s ease;
+                visibility: hidden;
+                transition: transform 0.3s ease, visibility 0s linear 0.3s;
                 z-index: 1000;
                 overflow-y: auto;
+                touch-action: pan-y;
+                overscroll-behavior-y: contain;
+                -webkit-overflow-scrolling: touch;
                 backdrop-filter: blur(20px);
                 -webkit-backdrop-filter: blur(20px);
             }
 
             .drawer.active {
                 transform: translateX(0);
+                visibility: visible;
+                transition-delay: 0s;
                 box-shadow: 0 0 50px rgba(12, 199, 199, 0.2);
             }
 
@@ -400,6 +429,9 @@ export class DrawerUI {
                 text-align: left;
             }
 
+            .activity-history { padding-left: 18px; font-size: 12px; line-height: 1.5; }
+            .activity-history li { margin: 6px 0; overflow-wrap: anywhere; }
+
             /* Mobile Responsive */
             @media (max-width: 480px) {
                 .drawer {
@@ -512,12 +544,16 @@ export class DrawerUI {
         this.drawer.classList.remove('active');
         this.overlay.classList.remove('active');
         document.body.style.overflow = '';
-        this.returnFocus?.focus();
+        const canvas = document.querySelector<HTMLCanvasElement>('body.online-mode .game-canvas');
+        if (canvas) { canvas.tabIndex = 0; canvas.focus({ preventScroll: true }); }
+        else this.returnFocus?.focus();
         this.drawer.inert = true;
         this.drawer.setAttribute('aria-hidden', 'true');
     }
 
     public destroy(): void {
+        window.removeEventListener('ascend:weapon-record', this.weaponRecord);
+        window.removeEventListener('ascend:activity', this.activity);
         this.hamburgerBtn.remove();
         this.drawer.remove();
         this.overlay.remove();

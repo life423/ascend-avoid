@@ -23,7 +23,7 @@ test('a small missed cannon shot burns up, explains why and respawns on the map'
     await send(page, 'test:setGems', { count: 4 }); await send(page, 'test:moveTo', { x: 860, y: 1012.75 }); await send(page, 'test:protect', { ms: 0 });
     await page.waitForTimeout(150); captor.send('inhale');
     await page.waitForFunction(() => !!window.game.currentGameMode.multiplayerManager.getLocalPlayer().capturedBy);
-    captor.send('tap');
+    captor.send('exhale'); captor.send('tap');
     await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getLocalPlayer().flying);
     await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getLocalPlayer().state === 'dead' && window.game.currentGameMode.knockoutCause?.how === 'burnup');
     await page.screenshot({ path: test.info().outputPath('missile-burnup.png') });

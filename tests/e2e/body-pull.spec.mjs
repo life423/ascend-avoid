@@ -44,7 +44,7 @@ test('a healthy local player visibly moves toward an inhaler while keeping its g
   } finally { await peer.leave(); }
 });
 
-test('escaping a giant begins clear of its body with four seconds to move away', async ({ page, baseURL }) => {
+test('timeout ejection from a giant begins clear of its body with four seconds to move away', async ({ page, baseURL }) => {
   const { peer, send, mine } = await start(page, baseURL);
   try {
     peer.send('test:setGems', { count: 10000 }); await send('test:setGems', { count: 4 });
@@ -55,12 +55,7 @@ test('escaping a giant begins clear of its body with four seconds to move away',
     await send('test:protect', { ms: 0 });
     await page.waitForTimeout(100); peer.send('inhale');
     await page.waitForFunction(() => !!window.game.currentGameMode.multiplayerManager.getLocalPlayer().capturedBy);
-    await page.waitForFunction(() => {
-      const m = window.game.currentGameMode; return m.multiplayerManager.room.state.time >= m.multiplayerManager.getLocalPlayer().dazedUntil;
-    });
-    const keys = await page.evaluate(() => window.game.currentGameMode.multiplayerManager.getLocalPlayer().escapeKeys);
-    for (const key of keys) await page.keyboard.press({ U: 'ArrowUp', D: 'ArrowDown', L: 'ArrowLeft', R: 'ArrowRight' }[key], { delay: 90 });
-    await expect.poll(async () => (await mine()).capturedBy).toBe('');
+    await expect.poll(async () => (await mine()).capturedBy, {timeout: 14000, intervals:[30,60,100]}).toBe('');
     const escaped = await mine(); expect(escaped.shield).toBeGreaterThan(3600);
     const captor = peer.state.players.get(peer.sessionId);
     const d = Math.hypot(escaped.x + escaped.width / 2 - captor.x - captor.width / 2, escaped.y + escaped.width / 2 - captor.y - captor.height / 2);

@@ -4,8 +4,7 @@ import { BotBrain } from '../game/bots.js';
 import { BotCannonAim, cannonTargetAppeal } from '../game/botAim.js';
 import { creatureSize } from '../game/creatureSize.js';
 import { botMouth } from '../systems/bots.js';
-import { escapePress, stealWeight, updateHolds, updateInhales } from '../systems/inhale.js';
-import { captureLoadMs } from '../game/cannon.js';
+import { stealWeight, updateHolds, updateInhales } from '../systems/inhale.js';
 import { viewShort } from '../game/camera.js';
 import { CANNON, GEMS, TURBINE, WORLD } from '../constants/gameConstants.js';
 import { runTurbine } from '../systems/turbines.js';
@@ -27,8 +26,7 @@ function setup() {
 }
 {
   const { s, a, b } = setup();
-  s.time = CANNON.CAPTIVE_STUN_MS; s.now = NOW + s.time;
-  for (const key of b.escapeKeys) escapePress(s, b, key);
+  s.time = b.captureHoldMs; s.now = NOW + s.time;
   updateHolds(s, s.now);
   assert.equal(b.capturedBy, '');
   const ends = s.now + CANNON.ESCAPE_SAFE_MS;
@@ -70,7 +68,7 @@ function setup() {
   const { s, a, b } = setup();
   a.isBot = true; s.brains.set(a.sessionId, new BotBrain());
   botMouth(s, a, NOW);
-  const loaded = NOW + captureLoadMs(b.escapeKeys.length);
+  const loaded = NOW;
   botMouth(s, a, loaded); assert(!b.flying && b.capturedBy === a.sessionId);
   botMouth(s, a, loaded + 399); assert(!b.flying, 'actual bot firing respects the reaction delay');
   botMouth(s, a, loaded + 651); assert(b.flying, 'actual bot firing still launches after its delay');

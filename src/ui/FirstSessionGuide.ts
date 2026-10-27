@@ -33,7 +33,7 @@ export class FirstSessionGuide {
         }
         const tip = this.step === 0 ? 'Move with the mouse, WASD, arrows or the left stick. Grab a gem to grow.'
             : this.step === 1 ? 'Hold Space or the right button to inhale gems and steal from creatures ahead.'
-            : this.step === 2 ? 'Catch someone smaller, then tap FIRE when loaded. Caught yourself? Follow the arrows to escape.'
+            : this.step === 2 ? 'Catch someone smaller, release, aim and tap FIRE. Caught yourself? Move inside the belly to collect a safe-return bonus.'
             : 'Aim by moving, then tap FIRE. Your aim sets the shot; the captive cannot steer it.';
         if (this.text.textContent !== tip) this.text.textContent = tip;
     }

@@ -17,8 +17,9 @@ import type { Direction } from "../game/movement.js";
 import { updateLatches } from "../systems/latches.js";
 import { updateTurbines, clearanceAt } from "../systems/turbines.js";
 import { updateTraffic, reshuffleLanes, launchObstacle } from "../systems/traffic.js";
-import { updateInhales, knockOutWithGems } from "../systems/inhale.js";
+import { updateInhales, knockOutWithGems, clearCapture, syncContinuedTheft } from "../systems/inhale.js";
 import { updateFlights } from "../systems/flights.js";
+import { updateShotFollow } from '../systems/shotFollow.js';
 import { botMouth, bombDanger, balanceBots } from "../systems/bots.js";
 import { updateBombs } from "../systems/bombs.js";
 import { updateShift, startGrace, startShift, endShift, fall } from "../systems/shift.js";
@@ -197,8 +198,20 @@ class GameState extends Schema {
   }
 
   removePlayer(sessionId: string): void {
+    clearCapture(this, sessionId, this.now);
+    this.clearTheftFor(sessionId);
     this.players.delete(sessionId);
     balanceBots(this, Date.now());
+  }
+
+  clearTheftFor(id: string): void {
+    this.players.get(id)?.theftContinuations.clear();
+    this.players.forEach(p => {
+      p.theftContinuations.delete(id); p.stealShares.delete(id);
+      if (p.stealingFrom === id) { p.stealingFrom = ''; p.stolenRun = 0; }
+      p.robbing = p.robbing.split(',').filter(key => key !== id).join(',');
+    });
+    syncContinuedTheft(this);
   }
 
   /** One server tick: move traffic, gems and players, collect gems, decide hits, bring players back */
@@ -288,6 +301,7 @@ class GameState extends Schema {
       const fromX = player.x;
       const fromY = player.y;
       player.updateMovement(this.worldWidth, this.worldHeight, now, deltaTime);
+      updateShotFollow(this, player, deltaTime);
       keepApart(this, player);
       collectGems(this, player, now, fromX, fromY);
       player.decay(deltaTime, this.worldWidth, this.worldHeight);
@@ -333,6 +347,12 @@ class GameState extends Schema {
       }
     });
 
+    this.players.forEach(p => {
+      const v = p.velocity();
+      p.movementVx = v.x + (deltaTime > 0 ? p.tickNudgeX / deltaTime : 0);
+      p.movementVy = v.y + (deltaTime > 0 ? p.tickNudgeY / deltaTime : 0);
+      p.flightRemainingMs = p.flying ? Math.max(0, p.flightEndsAt - now) : 0;
+    });
     topUpField(this);
   }
 
@@ -465,7 +485,7 @@ class GameState extends Schema {
   credit(target: PlayerSchema, how: string, now: number, byId?: string, extra: Record<string, unknown> = {}): void {
     const who = byId ?? target.shovedBy(now, SHIFT.CREDIT_MS);
     const by = who ? this.players.get(who) : undefined;
-    if (!this.onEvent || (!by && how !== 'burnup')) return;
+    if (!this.onEvent || (!by && how !== 'burnup' && !(byId && how === 'cannon'))) return;
     this.onEvent("credit", {
       byId: who,
       by: by?.name ?? 'Someone',
@@ -599,6 +619,12 @@ class GameState extends Schema {
    * the leader.
    */
   spawn(player: PlayerSchema, now: number): void {
+    clearCapture(this, player.sessionId, now);
+    this.clearTheftFor(player.sessionId);
+    if (player.pendingWeaponGems > 0) {
+      player.setGems(player.gems + player.pendingWeaponGems, this.worldWidth, this.worldHeight);
+      player.pendingWeaponGems = 0;
+    }
     const size = player.width;
     // Keep a centered newborn view wholly on the map, including wide desktops.
     const halfView = viewShort(ARENA_RULES.PLAYER_SIZE) * WORLD.MAX_VIEW_ASPECT / 2 + 120;

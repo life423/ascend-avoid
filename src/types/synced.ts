@@ -180,6 +180,25 @@ export interface SyncedPlayer {
     fireQueued: boolean
     launchSafeUntil: number
     injuredUntil: number
+    weaponDamage: number
+    weaponKnockouts: number
+    movementVx: number
+    movementVy: number
+    flightVx: number
+    flightVy: number
+    flightKind: string
+    flightRemainingMs: number
+    continuedTheft: boolean
+    followX: number
+    followY: number
+    followUntil: number
+    followActive: boolean
+    bellyX: number
+    bellyY: number
+    bellyCollected: number
+    bellyPending: number
+    captureRatio: number
+    captureHoldMs: number
 }
 
 /** TurbineSchema, as synced to the browser */

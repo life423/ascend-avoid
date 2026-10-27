@@ -10,9 +10,10 @@ test('collect and place a Pulsar Array with a quiet HUD and visible pulses', asy
     url: route.request().url().replace('/joinOrCreate/', '/create/'),
     postData: JSON.stringify({ ...route.request().postDataJSON(), testBots: 0, testFieldGems: 0 }),
   }));
+  await page.addInitScript(()=>{localStorage.setItem('ascend.mouseFollow','off');localStorage.setItem('ascend.guideSeen','true');});
   await page.goto('/');
   await page.waitForFunction(() => window.game?.currentGameMode?.multiplayerManager?.room?.state?.players?.size === 1);
-  await expect.poll(() => page.evaluate(() => document.body.classList.contains('intro-playing'))).toBe(false);
+  await page.waitForFunction(()=>window.game?.currentGameMode?.lastView&&!document.body.classList.contains('intro-playing'));
   await page.evaluate(() => {
     const room = window.game.currentGameMode.multiplayerManager.room;
     room.send('test:moveTo', { x: 2000, y: 2100 });
@@ -68,6 +69,8 @@ test('collect and place a Pulsar Array with a quiet HUD and visible pulses', asy
     await page.screenshot({ path: test.info().outputPath('pulsar-wave.png') });
     await expect.poll(() => peer.state.players.get(peer.sessionId)?.x).toBeGreaterThan(position.x + 100);
     expect(peer.state.players.get(peer.sessionId).gems).toBe(75);
+    await expect.poll(() => page.evaluate(() => window.game.currentGameMode.multiplayerManager.getLocalPlayer().weaponDamage)).toBe(25);
+    await expect(page.locator('.weapon-record')).toContainText('25 damage');
     expect(await page.evaluate(() => window.game.currentGameMode.banner?.title)).toBe('Pulsar Array hit!');
     expect(peer.state.players.get(peer.sessionId).stunned).toBe(false);
     await expect(button).toBeHidden();

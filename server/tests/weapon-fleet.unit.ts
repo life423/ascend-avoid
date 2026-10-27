@@ -17,10 +17,10 @@ function setup() {
 }
 {
   const { s, a, b, builds } = setup();
-  assert.equal(builds.length, 12); assert.equal(new Set(builds.map(w => w.kind)).size, 6);
-  for (const kind of weaponKinds) assert.equal(builds.filter(w => w.kind === kind).length, 2);
-  assert.equal(builds.reduce((n, w) => n + w.parts.length, 0), 36);
-  const w = required(builds[2]), duplicate = required(builds[8]), part = required(w.parts[0]);
+  assert.equal(builds.length, 9); assert.equal(new Set(builds.map(w => w.kind)).size, 6);
+  for (const kind of weaponKinds) assert.equal(builds.filter(w => w.kind === kind).length, weaponProfile(kind).orbit ? 1 : 2);
+  assert.equal(builds.reduce((n, w) => n + w.parts.length, 0), 27);
+  const w = required(builds[1]), duplicate = required(builds[7]), part = required(w.parts[0]);
   a.placeAt(part.x - a.width / 2, part.y - a.height / 2); updateWeapons(s, .01, NOW);
   assert.equal(w.owner, a.sessionId); assert.equal(w.progress, 1);
   assert(w.parts.every(p => p.owner === a.sessionId), 'first pickup reserves the entire matching set');

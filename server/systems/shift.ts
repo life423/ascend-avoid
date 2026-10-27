@@ -85,6 +85,7 @@ export function fall(state: GameState, player: PlayerSchema, now: number) : void
   state.credit(player, "edge", now);
   if (player.gems <= 0 || !state.layout) {
     player.knockOut(now);
+    state.clearTheftFor(player.sessionId);
     return;
   }
   const centerX = player.x + player.width / 2;

@@ -1,32 +1,50 @@
+import { BELLY_GEMS } from '../../server/game/cannon'
 import type { MultiplayerMode } from '../core/GameModes'
-import { CANNON, GEMS, PLAYER_COLORS, SHIFT, WORLD } from '../../server/constants/gameConstants'
+import { GEMS, PLAYER_COLORS, SHIFT, WORLD } from '../../server/constants/gameConstants'
 import { drawCreature } from './creatures'
-import { COMPACT, FONT, GOLD, drawCrown, drawRobot, hudPanel, roundedRect } from './style'
+import { COMPACT, FONT, GOLD, drawCrown, drawRobot, drawPeople, hudPanel, roundedRect } from './style'
 import { JOIN_NOTICE_MS, View } from './shared'
 import type { SyncedGameState, SyncedPlayer, SyncedTurbine } from '../types/synced'
 import { weaponRecipe } from './weaponStyle'
-import { allWeapons } from '../../server/game/weaponKit'
+import { allWeapons, weaponProfile } from '../../server/game/weaponKit'
 import { formatGems } from '../utils/score'
+
+function weaponMarker(ctx: CanvasRenderingContext2D, x: number, y: number, kind: string, own: boolean, charging = false): void {
+    ctx.save(); ctx.translate(x, y); ctx.fillStyle = '#0c1725';
+    ctx.strokeStyle = kind === 'pulsar' ? '#dfa4ff' : weaponProfile(kind).color; ctx.lineWidth = 1.5;
+    if (charging) ctx.setLineDash([2, 2]);
+    ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.setLineDash([]);
+    if (kind === 'pulsar') {
+        ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(0, 0, 1.5, 0, Math.PI * 2); ctx.stroke();
+    } else if (kind === 'pinwheel') {
+        ctx.beginPath(); for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2; ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * 5, Math.sin(a) * 5); } ctx.stroke();
+    } else if (weaponProfile(kind).orbit) {
+        ctx.strokeRect(-2, -4, 4, 8); ctx.strokeRect(-6, -2, 3, 4); ctx.strokeRect(3, -2, 3, 4);
+    } else {
+        ctx.beginPath(); ctx.moveTo(-4, 4); ctx.lineTo(0, -5); ctx.lineTo(4, 4); ctx.closePath(); ctx.stroke();
+    }
+    if (own) { ctx.strokeStyle = '#80fff1'; ctx.beginPath(); ctx.arc(0, 0, 9, 0, Math.PI * 2); ctx.stroke(); }
+    ctx.restore();
+}
 
 /** The whole world in a corner: everyone in it, and the part your screen shows */
 export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, state: SyncedGameState, view: View, localId: string | null, leaderId: string | null) : void {
-    const size = Math.round(Math.min(150, Math.max(84, Math.min(canvas.width, canvas.height) * 0.24)))
+    const compact = COMPACT.matches, u = compact ? mode.cssScale : 1
+    const size = compact ? (canvas.clientHeight < 500 ? 84 : Math.min(128, Math.max(96, canvas.clientWidth * .27))) * u
+        : Math.round(Math.min(150, Math.max(84, Math.min(canvas.width, canvas.height) * .24)))
     const scale = size / Math.max(state.worldWidth, state.worldHeight)
-    const width = state.worldWidth * scale
-    const height = state.worldHeight * scale
-    const x = canvas.width - width - mode.hudInsets.right - (COMPACT.matches ? 10 * mode.cssScale : 12)
-    // On phones and tablets it sits under the menu button; elsewhere, on a touchscreen the INHALE button has the bottom right, so it moves to the top
-    const y = COMPACT.matches ? mode.hudInsets.top + Math.round(76 * mode.cssScale) : mode.controls?.touchDevice ? Math.max(mode.hudInsets.top + 76, mode.chromeBottom + 24) : canvas.height - height - mode.hudInsets.bottom - 12
+    const width = state.worldWidth * scale, height = state.worldHeight * scale
+    const dockX = canvas.width - width - mode.hudInsets.right - 26 * u
+    const dockY = mode.hudInsets.top + 10 * u
+    const x = compact ? dockX + 8 * u : canvas.width - width - mode.hudInsets.right - 12
+    const y = compact ? dockY + 52 * u : mode.controls?.touchDevice ? Math.max(mode.hudInsets.top + 76, mode.chromeBottom + 24) : canvas.height - height - mode.hudInsets.bottom - 12
     mode.minimapBottom = y + height
     ctx.save()
-    ctx.fillStyle = 'rgba(5, 12, 24, 0.72)'
-    roundedRect(ctx, x - 4, y - 4, width + 8, height + 8, 10)
-    ctx.fill()
-    ctx.strokeStyle = 'rgba(79, 209, 197, 0.5)'
-    ctx.lineWidth = 1.5
-    ctx.stroke()
+    if (compact) hudPanel(ctx, dockX, dockY, width + 16 * u, height + 60 * u, 12 * u)
+    else hudPanel(ctx, x - 4, y - 4, width + 8, height + 8, 10)
     ctx.lineWidth = 1
-    ctx.strokeStyle = 'rgba(79, 209, 197, 0.55)'
+    ctx.strokeStyle = 'rgba(79, 209, 197, 0.25)'
     ctx.strokeRect(x, y, width, height)
     if (state.floor) {
         // The (new) floor: the void is dark, or red while it's still coming
@@ -123,17 +141,22 @@ export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
                 ctx.beginPath(); ctx.arc(px, py, own ? 6 : 3, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
                 if (own && part.carriedBy !== localId) { ctx.fillStyle = '#80fff1'; ctx.fillText(letters[part.kind], px, py); }
             }
+            if (!w.owner && (w.kind === 'pinwheel' || w.kind === 'pulsar')) weaponMarker(ctx, x + w.x * scale, y + w.y * scale, w.kind, false);
         } else {
             const wx = x + w.x * scale, wy = y + w.y * scale;
-            ctx.fillStyle = own ? '#80fff1' : '#ffa8be'; ctx.fillRect(wx - 3, wy - 3, 6, 6);
+            weaponMarker(ctx, wx, wy, w.kind, own, w.phase === 'charging');
         }
     }
     ctx.globalAlpha = 1;
     ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-    ctx.font = `600 11px ${FONT}`
-    ctx.textAlign = 'right'
-    ctx.textBaseline = 'bottom'
-    ctx.fillText(`${playing} playing`, x + width, y - 8)
+    if (compact) {
+        ctx.strokeStyle = '#d1e5ef'; drawPeople(ctx, dockX + 15 * u, dockY + 22 * u, 12 * u, '#d1e5ef')
+        ctx.font = `700 ${12 * u}px ${FONT}`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#d1e5ef'
+        ctx.fillText(String(playing), dockX + 30 * u, dockY + 27 * u)
+    } else {
+        ctx.font = `600 11px ${FONT}`; ctx.textAlign = 'right'; ctx.textBaseline = 'bottom'
+        ctx.fillText(`${playing} playing`, x + width, y - 8)
+    }
     ctx.restore()
 }
 
@@ -145,11 +168,12 @@ export function drawBanner(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
         mode.banner = null
         return
     }
+    if (COMPACT.matches || mode.controls?.touchDevice) return
     const pop = age < 160 ? 1.35 - (age / 160) * 0.35 : 1
     ctx.save()
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     ctx.globalAlpha = age > 1350 ? Math.max(0, 1 - (age - 1350) / 350) : 1
-    ctx.translate(canvas.width / 2, canvas.height * 0.3)
+    ctx.translate(canvas.width / 2, Math.max(mode.hudInsets.top + 24, mode.chromeBottom + 24))
     ctx.scale(pop, pop)
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
@@ -243,8 +267,8 @@ export function drawLeaderboard(mode: MultiplayerMode, ctx: CanvasRenderingConte
     // Sizes in screen points on phones, so it lines up with everything else there
     const u = compact ? mode.cssScale : 1
     const x = mode.hudInsets.left + (compact ? 10 : 12) * u
-    const width = (compact ? (_canvas.clientWidth < 380 ? 104 : 132) : 190) * u
-    const y = Math.max(mode.hudInsets.top + (compact ? 10 : 12) * u, mode.chromeLeft < x + width + 12 * u ? mode.chromeBottom + 12 * u : 0)
+    const width = (compact ? 132 : 190) * u
+    const y = compact ? mode.hudInsets.top + 52 * u : Math.max(mode.hudInsets.top + 12, mode.chromeLeft < x + width + 12 ? mode.chromeBottom + 12 : 0)
     const rowHeight = (compact ? 21 : 24) * u
     const gapForYou = apart ? 7 * u : 0
     ctx.save()
@@ -311,21 +335,18 @@ export function drawTopBar(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
     const gems = me?.gems ?? 0
     const value = formatGems(gems)
     ctx.font = `600 ${12.5 * u}px ${FONT}`
-    const labelWidth = ctx.measureText(label).width
     ctx.font = `800 ${18 * u}px ${FONT}`
-    const valueWidth = ctx.measureText(value).width
     const pillHeight = 34 * u
-    const pillWidth = labelWidth + valueWidth + 36 * u
-    const minX = mode.hudInsets.left + (canvas.clientWidth < 380 ? 126 : 154) * u
-    const maxX = canvas.width - mode.hudInsets.right - 64 * u - pillWidth
-    const pillX = Math.min(maxX, Math.max(minX, canvas.width / 2 - pillWidth / 2))
+    const pillWidth = 132 * u
+    const pillX = mode.hudInsets.left + 10 * u
     hudPanel(ctx, pillX, top, pillWidth, pillHeight, pillHeight / 2)
     ctx.font = `600 ${12.5 * u}px ${FONT}`
     ctx.fillStyle = '#e8f4f8'
     ctx.fillText(label, pillX + 14 * u, top + pillHeight / 2)
     ctx.font = `800 ${18 * u}px ${FONT}`
     ctx.fillStyle = '#4fd1c5'
-    ctx.fillText(value, pillX + 22 * u + labelWidth, top + pillHeight / 2 + 1 * u)
+    ctx.textAlign = 'right'
+    ctx.fillText(value, pillX + pillWidth - 14 * u, top + pillHeight / 2 + 1 * u)
     ctx.restore()
 }
 
@@ -333,7 +354,8 @@ export function drawTopBar(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
 export function drawNotices(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) : void {
     const now = performance.now()
     mode.notices = mode.notices.filter((notice) => now - notice.at < JOIN_NOTICE_MS)
-    let y = mode.controls?.touchDevice || COMPACT.matches ? mode.minimapBottom + 12 : Math.max(mode.hudInsets.top + 12, mode.chromeBottom + 12)
+    if (COMPACT.matches || mode.controls?.touchDevice) return
+    let y = Math.max(mode.hudInsets.top + 12, mode.chromeBottom + 12)
     const phase = mode.multiplayerManager?.getState()?.surgePhase
     if (phase === 'warning' || phase === 'active') y += 54 * mode.cssScale
     ctx.save()
@@ -397,167 +419,41 @@ export function drawMessage(_mode: MultiplayerMode, ctx: CanvasRenderingContext2
     ctx.restore()
 }
 
-/**
- * Caught, or holding someone: the prompt at the bottom of the screen. Caught: the directions to push, in
- * order, lighting up as you get them (greyed while you're dazed; a wrong one flashes red and starts you
- * over). Holding someone: who you've got, and that letting go fires them.
- */
-export function drawCapturePrompt(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, state: SyncedGameState, me: SyncedPlayer | undefined, timestamp: number) : void {
+/** Captive-only magnified interior. It never alters world camera, controls or physical coordinates. */
+export function drawCapturePrompt(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, state: SyncedGameState, me: SyncedPlayer | undefined, timestamp: number): void {
     if (!me || me.state !== 'alive') return
-    const compact = COMPACT.matches
-    const u = compact ? mode.cssScale : 1
-    const touch = Boolean(mode.controls?.touchDevice)
-    const centerX = canvas.width / 2
-    const bottom = canvas.height - mode.hudInsets.bottom - (touch ? 180 : 36) * u
+    const u = mode.cssScale
+    const now = mode.worldNow(state, timestamp)
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0)
     if (me.capturedBy) {
         const captor = state.players.get(me.capturedBy)
-        const keys = String(me.escapeKeys ?? '').split('').filter(Boolean)
-        if (keys.length === 0) return
-        const now = mode.worldNow(state, timestamp)
-        const dazed = now < me.dazedUntil
-        // When the captor can first fire: the hold's safety net ends HOLD_MS after the catch, the gun loads ARM_MS after it
-        const armedAt = captor?.fireReadyAt ?? 0
-        const loadMs = captor ? armedAt - (captor.gulpEndsAt - CANNON.HOLD_MS) : CANNON.ARM_MS
-        const loading = captor ? Math.max(0, Math.min(1, 1 - (armedAt - now) / loadMs)) : 1
-        const sinceMiss = now - me.escapeMissAt
-        const missed = me.escapeMissAt > 0 && sinceMiss < 380
+        if (!captor || captor.gulping !== me.sessionId || captor.state !== 'alive') { ctx.restore(); return }
         const short = canvas.clientHeight < 500
-        const gap = (short ? 6 : 10) * u
-        const available = canvas.width - mode.hudInsets.left - mode.hudInsets.right - 24 * u
-        const cell = Math.min((short ? 32 : 46) * u, (available - 48 * u - (keys.length - 1) * gap) / keys.length)
-        const width = Math.min(available, Math.max((short ? 224 : 240) * u, keys.length * (cell + gap) - gap + 48 * u))
-        const height = (short ? 96 : 120) * u
-        const x = centerX - width / 2
-        const y = short ? Math.max(mode.hudInsets.top + 8 * u, mode.chromeBottom + 8 * u) : bottom - height
-        ctx.save()
-        ctx.setTransform(1, 0, 0, 1, 0, 0)
-        hudPanel(ctx, x, y, width, height, 16 * u)
-        if (missed) {
-            ctx.strokeStyle = `rgba(255, 90, 90, ${0.9 * (1 - sinceMiss / 380)})`
-            ctx.lineWidth = 3 * u
-            roundedRect(ctx, x, y, width, height, 16 * u)
-            ctx.stroke()
-        }
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'middle'
-        ctx.font = `800 ${16 * u}px ${FONT}`
-        ctx.fillStyle = dazed ? '#cfd8dc' : GOLD
-        const who = captor ? String(captor.name ?? '') : 'someone'
-        ctx.fillText(dazed ? `Caught by ${who}!` : 'Wriggle out!', centerX, y + (short ? 16 : 22) * u, width - 24 * u)
-        ctx.font = `600 ${12 * u}px ${FONT}`
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.75)'
-        const hint = dazed ? 'Hang on…' : missed ? 'Wrong one: from the top' : loading >= 1 ? 'They can fire you now' : touch ? 'Move the stick in this order' : 'Tap these, in order (WASD or arrows)'
-        ctx.fillStyle = loading >= 1 && !dazed && !missed ? 'rgba(255, 120, 120, 0.9)' : 'rgba(255, 255, 255, 0.75)'
-        ctx.fillText(hint, centerX, y + (short ? 34 : 42) * u, width - 24 * u)
-        // The directions, lit as they're got; the next one pulses
-        const rowY = y + (short ? 61 : 82) * u
-        const startX = centerX - (keys.length * (cell + gap) - gap) / 2
-        for (let i = 0; i < keys.length; i++) {
-            const kx = startX + i * (cell + gap)
-            const done = i < me.escapeStep
-            const current = i === me.escapeStep && !dazed
-            ctx.fillStyle = done ? GOLD : current ? 'rgba(255, 255, 255, 0.16)' : 'rgba(255, 255, 255, 0.07)'
-            roundedRect(ctx, kx, rowY - cell / 2, cell, cell, 10 * u)
-            ctx.fill()
-            if (current) {
-                ctx.strokeStyle = `rgba(255, 255, 255, ${0.55 + 0.45 * Math.sin(timestamp / 110)})`
-                ctx.lineWidth = 2 * u
-                roundedRect(ctx, kx, rowY - cell / 2, cell, cell, 10 * u)
-                ctx.stroke()
-            }
-            drawArrow(ctx, kx + cell / 2, rowY, cell * 0.5, keys[i], done ? '#2a2000' : dazed ? 'rgba(255, 255, 255, 0.35)' : current ? '#ffffff' : 'rgba(255, 255, 255, 0.6)')
-        }
-        // Along the bottom: the captor's gun loading (red, filling up), and while you're dazed, your daze draining (blue, above it)
-        if (loading < 1) {
-            ctx.fillStyle = 'rgba(255, 90, 90, 0.25)'
-            roundedRect(ctx, x + 14 * u, y + height - 10 * u, width - 28 * u, 4 * u, 2 * u)
-            ctx.fill()
-            ctx.fillStyle = 'rgba(255, 90, 90, 0.9)'
-            roundedRect(ctx, x + 14 * u, y + height - 10 * u, Math.max(1, (width - 28 * u) * loading), 4 * u, 2 * u)
-            ctx.fill()
-        }
-        if (dazed) {
-            const left = Math.max(0, Math.min(1, (me.dazedUntil - now) / CANNON.CAPTIVE_STUN_MS))
-            ctx.fillStyle = 'rgba(160, 230, 255, 0.85)'
-            roundedRect(ctx, x + 14 * u, y + height - 17 * u, Math.max(1, (width - 28 * u) * left), 4 * u, 2 * u)
-            ctx.fill()
-        }
+        const r = Math.min((short ? 90 : 142) * u, canvas.width * .34, canvas.height * .24)
+        const cx = canvas.width / 2, cy = canvas.height * (short ? .48 : .47)
+        const color = PLAYER_COLORS[captor.playerIndex % PLAYER_COLORS.length]
+        ctx.fillStyle = 'rgba(13, 29, 44, .82)'; ctx.strokeStyle = color; ctx.lineWidth = 3 * u
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke()
+        ctx.save(); ctx.clip()
+        // Translucency keeps the surrounding moving arena present, without a full-screen scrim.
+        ctx.strokeStyle = 'rgba(128,255,241,.13)'; ctx.lineWidth = u
+        for (const fraction of [.4, .7]) { ctx.beginPath(); ctx.arc(cx, cy, r * fraction, 0, Math.PI * 2); ctx.stroke() }
+        BELLY_GEMS.forEach((gem, i) => {
+            if (me.bellyCollected & (1 << i)) return
+            const x = cx + gem.x * r, y = cy + gem.y * r, size = 7 * u
+            ctx.fillStyle = GOLD; ctx.beginPath(); ctx.moveTo(x, y - size); ctx.lineTo(x + size * .7, y); ctx.lineTo(x, y + size); ctx.lineTo(x - size * .7, y); ctx.closePath(); ctx.fill()
+        })
+        drawCreature(ctx, cx + me.bellyX * r, cy + me.bellyY * r, 24 * u, '#ffffff', me.facing)
         ctx.restore()
-        return
-    }
-    if (me.flying) {
-        ctx.save()
-        ctx.font = `700 ${14 * u}px ${FONT}`
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#e5f6ff'; ctx.font = `700 ${12 * u}px ${FONT}`
+        ctx.fillText('BELLY SALVAGE', cx, cy - r - 17 * u)
+        ctx.font = `600 ${11 * u}px ${FONT}`
+        ctx.fillText(`Move to collect · ${me.bellyPending} pending`, cx, cy + r + 17 * u)
         ctx.fillStyle = GOLD
-        ctx.textAlign = 'center'
-        ctx.fillText('YOU ARE THE CANNONBALL — hang on until you land!', centerX, bottom - 20 * u, canvas.width - 32 * u)
-        ctx.restore()
-        return
+        ctx.fillText(`Safe return pays · ${Math.max(0, (captor.gulpEndsAt - now) / 1000).toFixed(1)}s`, cx, cy + r + 34 * u)
+    } else if (me.gulping && !COMPACT.matches) {
+        ctx.fillStyle = GOLD; ctx.textAlign = 'center'; ctx.font = `700 ${13 * u}px ${FONT}`
+        ctx.fillText(`Aim, then tap FIRE · ${Math.max(0, (me.gulpEndsAt - now) / 1000).toFixed(1)}s`, canvas.width / 2, canvas.height - mode.hudInsets.bottom - 68 * u)
     }
-    if (me.gulping) {
-        // The creature badge and action button already show this state. Keep thumb space clear.
-        if (compact) return
-        const captive = state.players.get(me.gulping)
-        if (!captive || captive.capturedBy !== me.sessionId) return
-        const now = mode.worldNow(state, timestamp)
-        const armedAt = me.fireReadyAt
-        const loadMs = armedAt - (me.gulpEndsAt - CANNON.HOLD_MS)
-        const loading = Math.max(0, Math.min(1, 1 - (armedAt - now) / loadMs))
-        const armed = loading >= 1
-        const width = 270 * u
-        const height = 64 * u
-        const x = centerX - width / 2
-        const y = bottom - height
-        ctx.save()
-        ctx.setTransform(1, 0, 0, 1, 0, 0)
-        hudPanel(ctx, x, y, width, height, 14 * u)
-        // Loading: a bar fills along the bottom; loaded: the frame glows
-        if (armed) {
-            ctx.strokeStyle = `rgba(255, 209, 102, ${0.5 + 0.4 * Math.sin(timestamp / 160)})`
-            ctx.lineWidth = 2 * u
-            roundedRect(ctx, x, y, width, height, 14 * u)
-            ctx.stroke()
-        } else {
-            ctx.fillStyle = 'rgba(255, 209, 102, 0.2)'
-            roundedRect(ctx, x + 14 * u, y + height - 9 * u, width - 28 * u, 4 * u, 2 * u)
-            ctx.fill()
-            ctx.fillStyle = GOLD
-            roundedRect(ctx, x + 14 * u, y + height - 9 * u, Math.max(1, (width - 28 * u) * loading), 4 * u, 2 * u)
-            ctx.fill()
-        }
-        ctx.fillStyle = PLAYER_COLORS[captive.playerIndex % PLAYER_COLORS.length]
-        ctx.beginPath()
-        ctx.arc(x + 26 * u, y + height / 2, 9 * u, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.textAlign = 'left'
-        ctx.textBaseline = 'middle'
-        ctx.font = `800 ${15 * u}px ${FONT}`
-        ctx.fillStyle = GOLD
-        ctx.fillText(`${armed ? 'Loaded' : 'Loading'}: ${String(captive.name ?? '')}`, x + 44 * u, y + 22 * u, width - 56 * u)
-        ctx.font = `600 ${12 * u}px ${FONT}`
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
-        const ready = me.fireQueued ? 'Shot queued — keep aiming' : armed ? (touch ? 'Face your target, then tap the button to fire' : 'Face your target, then tap to fire') : `Ready in ${Math.max(0, (armedAt - now) / 1000).toFixed(1)}s · tap to queue`
-        ctx.fillText(ready, x + 44 * u, y + 41 * u, width - 56 * u)
-        ctx.restore()
-    }
-}
-
-/** An arrow pointing U, D, L or R: a stem and a head */
-function drawArrow(ctx: CanvasRenderingContext2D, cx: number, cy: number, size: number, key: string, color: string) : void {
-    const angle = key === 'U' ? -Math.PI / 2 : key === 'D' ? Math.PI / 2 : key === 'L' ? Math.PI : 0
-    ctx.save()
-    ctx.translate(cx, cy)
-    ctx.rotate(angle)
-    ctx.strokeStyle = color
-    ctx.lineWidth = Math.max(2, size * 0.16)
-    ctx.lineCap = 'round'
-    ctx.lineJoin = 'round'
-    ctx.beginPath()
-    ctx.moveTo(-size * 0.45, 0)
-    ctx.lineTo(size * 0.45, 0)
-    ctx.moveTo(size * 0.1, -size * 0.35)
-    ctx.lineTo(size * 0.45, 0)
-    ctx.lineTo(size * 0.1, size * 0.35)
-    ctx.stroke()
     ctx.restore()
 }

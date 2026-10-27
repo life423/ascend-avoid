@@ -52,6 +52,7 @@ export function drawAirflow(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
     const spread = arc * (1 - 0.35 * ahead) * (1 - 0.4 * tight) * (1 - 0.6 * Math.max(0, Math.min(1, (flow.coherence - LATCH.BEAM_FOCUS_FROM) / (LATCH.BEAM_FULL_AT - LATCH.BEAM_FOCUS_FROM))))
     // It leans toward whoever it's draining
     const world = mode.multiplayerManager?.getState()
+    const weakened = Boolean(player.continuedTheft || world && player.injuredUntil > mode.worldNow(world, timestamp))
     // Focused on its latched creature if it has one, else whoever it's robbing
     const target = player.latchTarget ? world?.players?.get(player.latchTarget) : player.stealingFrom ? world?.players?.get(player.stealingFrom) : null
     const mouthX = x + Math.cos(facing) * size * 0.3
@@ -97,7 +98,7 @@ export function drawAirflow(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
     ctx.arc(mouthX, mouthY, reach, facing - arc, facing + arc)
     ctx.closePath()
     ctx.fill()
-    ctx.strokeStyle = 'rgba(200, 240, 255, 0.16)'
+    ctx.strokeStyle = weakened ? 'rgba(255, 174, 148, .45)' : 'rgba(200, 240, 255, 0.16)'
     ctx.lineWidth = 1
     ctx.setLineDash([3, 9])
     ctx.beginPath()
@@ -112,10 +113,10 @@ export function drawAirflow(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
     const turbulence = 0.06 * heft * (1 - 0.5 * tight) + 0.12 * weak
     const segment = 0.1 + 0.04 * power
     ctx.lineCap = 'round'
-    ctx.strokeStyle = 'rgba(220, 245, 255, 1)'
+    ctx.strokeStyle = weakened ? '#ffae94' : 'rgba(220, 245, 255, 1)'
     for (let i = 0; i < streaks; i++) {
         // Low on breath, the flow breaks up
-        if (weak > 0 && (i + Math.floor(timestamp / 120)) % 3 === 0) continue
+        if (weakened && i % 3 !== 0 || weak > 0 && (i + Math.floor(timestamp / 120)) % 3 === 0) continue
         const lane = Math.sin(i * 2.3 + 0.7)
         const t = (((timestamp / period + i / streaks + 0.37 * Math.sin(i * 1.7)) % 1) + 1) % 1
         // Curling in from the flow, or (hooked) a straight beam from the victim
@@ -136,7 +137,7 @@ export function drawAirflow(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
         const mid = onCurve(ax, ay, bx, by, mouthX, mouthY, Math.min(1, t + reachOf / 2))
         const to = onCurve(ax, ay, bx, by, mouthX, mouthY, Math.min(1, t + reachOf))
         const flicker = weak > 0 ? 0.5 + 0.5 * Math.sin(timestamp / 40 + i) : 1
-        ctx.globalAlpha = Math.min(0.95, (0.45 + 0.08 * power) * (1 + 0.4 * straight)) * Math.min(1, t * 4) * (1 - 0.6 * weak * (1 - flicker))
+        ctx.globalAlpha = (weakened ? .45 : 1) * Math.min(0.95, (0.45 + 0.08 * power) * (1 + 0.4 * straight)) * Math.min(1, t * 4) * (1 - 0.6 * weak * (1 - flicker))
         ctx.lineWidth = (0.8 + 0.45 * power) * (0.55 + 0.25 * heft) * (1 + 0.3 * straight) * (1 - 0.5 * weak)
         ctx.beginPath()
         ctx.moveTo(from.x, from.y)
@@ -146,7 +147,7 @@ export function drawAirflow(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
     // The stream to a latched creature, drawn from the real airflow numbers
     const streamTarget = player.latchTarget ? world?.players?.get(player.latchTarget) : null
     if (streamTarget && flow.coherence > 0.02) {
-        drawStream(mode, ctx, id, player, streamTarget, mouthX, mouthY, facing, timestamp, flow.coherence, fraying, power, heft, flow, dt)
+        drawStream(mode, ctx, id, player, streamTarget, mouthX, mouthY, facing, timestamp, flow.coherence, fraying, power, heft, flow, dt, weakened)
     }
     // Side streams peeling off to each creature it's robbing and each gem in its pull
     const pulled: { x: number; y: number; color: string }[] = []
@@ -204,7 +205,7 @@ export function drawAirflow(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
  * and, between two inhaling each other, the flows meet in a turbulent pressure zone pushed toward
  * whichever side is losing. Coherence, not brightness, says how strong it is.
  */
-export function drawStream(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, id: string, player: SyncedPlayer, target: SyncedPlayer, mouthX: number, mouthY: number, facing: number, timestamp: number, coherence: number, fraying: number, power: number, heft: number, flow: Airflow, dt: number) : void {
+export function drawStream(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, id: string, player: SyncedPlayer, target: SyncedPlayer, mouthX: number, mouthY: number, facing: number, timestamp: number, coherence: number, fraying: number, power: number, heft: number, flow: Airflow, dt: number, weakened = false) : void {
     const at = mode.drawnPositions.get(player.latchTarget) ?? target
     const tx = at.x + target.width / 2
     const ty = at.y + target.height / 2
@@ -274,7 +275,7 @@ export function drawStream(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
     const period = (Math.max(30, span) / (INHALE_LOOK.STREAK_SPEED * Math.max(1, power) * (0.8 + 0.6 * look.coherence))) * 1000
     ctx.save()
     ctx.lineCap = 'round'
-    ctx.strokeStyle = look.recharging ? 'rgba(190, 255, 235, 1)' : 'rgba(220, 245, 255, 1)'
+    ctx.strokeStyle = weakened ? '#ffae94' : look.recharging ? 'rgba(190, 255, 235, 1)' : 'rgba(220, 245, 255, 1)'
     ctx.lineWidth = 1.1 + 1.3 * look.coherence
     const pointAt = (u: number, lane: number, phase: number) => {
         const base = along(u)
@@ -288,14 +289,14 @@ export function drawStream(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
     }
     for (let i = 0; i < lanes; i++) {
         // A wasteful beam is broken up; an efficient one runs unbroken
-        if (look.efficiency < 0.5 && look.coherence < 0.6 && (i + Math.floor(timestamp / 90)) % 3 === 0) continue
+        if (weakened && i % 3 !== 0 || look.efficiency < 0.5 && look.coherence < 0.6 && (i + Math.floor(timestamp / 90)) % 3 === 0) continue
         const lane = lanes > 1 ? (i / (lanes - 1)) * 2 - 1 : 0
         const t = (((timestamp / period + i * 0.37) % 1) + 1) % 1
         const end = Math.min(1, t + segment)
         const from = pointAt(t, lane, i * 2.1)
         const mid = pointAt((t + end) / 2, lane, i * 2.1)
         const to = pointAt(end, lane, i * 2.1)
-        ctx.globalAlpha = (0.3 + 0.5 * look.coherence) * Math.min(1, t * 4)
+        ctx.globalAlpha = (weakened ? .4 : 1) * (0.3 + 0.5 * look.coherence) * Math.min(1, t * 4)
         ctx.beginPath()
         ctx.moveTo(from.x, from.y)
         ctx.quadraticCurveTo(mid.x, mid.y, to.x, to.y)

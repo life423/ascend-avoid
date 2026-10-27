@@ -27,3 +27,9 @@ export interface View {
     height: number
     scale: number
 }
+
+/** Avoid submitting offscreen paths/text; Canvas clipping still has CPU cost in Gecko. */
+export function inView(view: View | null | undefined, x: number, y: number, radius: number): boolean {
+    return !view || (x + radius >= view.x - view.width / 2 && x - radius <= view.x + view.width / 2
+        && y + radius >= view.y - view.height / 2 && y - radius <= view.y + view.height / 2)
+}
