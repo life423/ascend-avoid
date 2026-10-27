@@ -1,0 +1,1812 @@
+{
+  "date": "2026-10-27",
+  "baseline": "3b3dddc",
+  "branch": "fix/contested-weapon-assembly",
+  "method": "30Hz authoritative world, seed11. Claim races have two scripted controllers and ordinary movement/pickup. Utility begins after real collection/deployment; one stationary builder and one scripted target, no incoming attacks, loose gems, holes or traffic. Only actual weapon credits count. Seed17 also supplies 48 shared stationary target positions inside the central 2800-unit square for spatial coverage controls. No human outcomes or comparative weapon rankings are inferred.",
+  "unchangedTuning": {
+    "cargoTheftMs": 650,
+    "maximumCargoReach": 240,
+    "recipes": 6,
+    "sets": 9,
+    "orbitingSets": 3,
+    "damageAndProjectileSpeeds": "unchanged"
+  },
+  "claimRaces": [
+    {
+      "kind": "pinwheel",
+      "lateMs": 0,
+      "reverseInsertion": false,
+      "claimant": "a",
+      "claimMs": 367,
+      "finishMs": 3333,
+      "placedWhileMoving": true
+    },
+    {
+      "kind": "pinwheel",
+      "lateMs": 0,
+      "reverseInsertion": true,
+      "claimant": "b",
+      "claimMs": 367,
+      "finishMs": 3333,
+      "placedWhileMoving": true
+    },
+    {
+      "kind": "pinwheel",
+      "lateMs": 150,
+      "reverseInsertion": false,
+      "claimant": "a",
+      "claimMs": 400,
+      "finishMs": 3333,
+      "placedWhileMoving": true
+    },
+    {
+      "kind": "pinwheel",
+      "lateMs": 150,
+      "reverseInsertion": true,
+      "claimant": "b",
+      "claimMs": 500,
+      "finishMs": 3467,
+      "placedWhileMoving": true
+    },
+    {
+      "kind": "pulsar",
+      "lateMs": 0,
+      "reverseInsertion": false,
+      "claimant": "a",
+      "claimMs": 367,
+      "finishMs": 3333,
+      "placedWhileMoving": true
+    },
+    {
+      "kind": "pulsar",
+      "lateMs": 0,
+      "reverseInsertion": true,
+      "claimant": "b",
+      "claimMs": 367,
+      "finishMs": 3333,
+      "placedWhileMoving": true
+    },
+    {
+      "kind": "pulsar",
+      "lateMs": 150,
+      "reverseInsertion": false,
+      "claimant": "a",
+      "claimMs": 400,
+      "finishMs": 3333,
+      "placedWhileMoving": true
+    },
+    {
+      "kind": "pulsar",
+      "lateMs": 150,
+      "reverseInsertion": true,
+      "claimant": "b",
+      "claimMs": 500,
+      "finishMs": 3467,
+      "placedWhileMoving": true
+    },
+    {
+      "kind": "sentinel",
+      "lateMs": 0,
+      "reverseInsertion": false,
+      "claimant": "a",
+      "claimMs": 367,
+      "finishMs": 3333,
+      "placedWhileMoving": true
+    },
+    {
+      "kind": "sentinel",
+      "lateMs": 0,
+      "reverseInsertion": true,
+      "claimant": "b",
+      "claimMs": 367,
+      "finishMs": 3333,
+      "placedWhileMoving": true
+    },
+    {
+      "kind": "sentinel",
+      "lateMs": 150,
+      "reverseInsertion": false,
+      "claimant": "a",
+      "claimMs": 400,
+      "finishMs": 3333,
+      "placedWhileMoving": true
+    },
+    {
+      "kind": "sentinel",
+      "lateMs": 150,
+      "reverseInsertion": true,
+      "claimant": "b",
+      "claimMs": 500,
+      "finishMs": 3467,
+      "placedWhileMoving": true
+    },
+    {
+      "kind": "ricochet",
+      "lateMs": 0,
+      "reverseInsertion": false,
+      "claimant": "a",
+      "claimMs": 367,
+      "finishMs": 3333,
+      "placedWhileMoving": true
+    },
+    {
+      "kind": "ricochet",
+      "lateMs": 0,
+      "reverseInsertion": true,
+      "claimant": "b",
+      "claimMs": 367,
+      "finishMs": 3333,
+      "placedWhileMoving": true
+    },
+    {
+      "kind": "ricochet",
+      "lateMs": 150,
+      "reverseInsertion": false,
+      "claimant": "a",
+      "claimMs": 400,
+      "finishMs": 3333,
+      "placedWhileMoving": true
+    },
+    {
+      "kind": "ricochet",
+      "lateMs": 150,
+      "reverseInsertion": true,
+      "claimant": "b",
+      "claimMs": 500,
+      "finishMs": 3467,
+      "placedWhileMoving": true
+    },
+    {
+      "kind": "ion",
+      "lateMs": 0,
+      "reverseInsertion": false,
+      "claimant": "a",
+      "claimMs": 367,
+      "finishMs": 3333,
+      "placedWhileMoving": true
+    },
+    {
+      "kind": "ion",
+      "lateMs": 0,
+      "reverseInsertion": true,
+      "claimant": "b",
+      "claimMs": 367,
+      "finishMs": 3333,
+      "placedWhileMoving": true
+    },
+    {
+      "kind": "ion",
+      "lateMs": 150,
+      "reverseInsertion": false,
+      "claimant": "a",
+      "claimMs": 400,
+      "finishMs": 3333,
+      "placedWhileMoving": true
+    },
+    {
+      "kind": "ion",
+      "lateMs": 150,
+      "reverseInsertion": true,
+      "claimant": "b",
+      "claimMs": 500,
+      "finishMs": 3467,
+      "placedWhileMoving": true
+    },
+    {
+      "kind": "comet",
+      "lateMs": 0,
+      "reverseInsertion": false,
+      "claimant": "a",
+      "claimMs": 367,
+      "finishMs": 3333,
+      "placedWhileMoving": true
+    },
+    {
+      "kind": "comet",
+      "lateMs": 0,
+      "reverseInsertion": true,
+      "claimant": "b",
+      "claimMs": 367,
+      "finishMs": 3333,
+      "placedWhileMoving": true
+    },
+    {
+      "kind": "comet",
+      "lateMs": 150,
+      "reverseInsertion": false,
+      "claimant": "a",
+      "claimMs": 400,
+      "finishMs": 3333,
+      "placedWhileMoving": true
+    },
+    {
+      "kind": "comet",
+      "lateMs": 150,
+      "reverseInsertion": true,
+      "claimant": "b",
+      "claimMs": 500,
+      "finishMs": 3467,
+      "placedWhileMoving": true
+    }
+  ],
+  "nearBuildControls": [
+    {
+      "kind": "pinwheel",
+      "gems": 100,
+      "response": "idle",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 2,
+      "directHits": 2,
+      "grazes": 0,
+      "damage": 45,
+      "earned": 45,
+      "knockouts": 0,
+      "firstHitMs": 4433,
+      "maxBolts": 9
+    },
+    {
+      "kind": "pinwheel",
+      "gems": 100,
+      "response": "early-retreat",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 0,
+      "directHits": 0,
+      "grazes": 0,
+      "damage": 0,
+      "earned": 0,
+      "knockouts": 0,
+      "firstHitMs": null,
+      "maxBolts": 9
+    },
+    {
+      "kind": "pinwheel",
+      "gems": 100,
+      "response": "reactive-retreat",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 1,
+      "directHits": 1,
+      "grazes": 0,
+      "damage": 24,
+      "earned": 24,
+      "knockouts": 0,
+      "firstHitMs": 4433,
+      "maxBolts": 9
+    },
+    {
+      "kind": "pinwheel",
+      "gems": 100,
+      "response": "crossing",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 2,
+      "directHits": 2,
+      "grazes": 0,
+      "damage": 45,
+      "earned": 45,
+      "knockouts": 0,
+      "firstHitMs": 1933,
+      "maxBolts": 9
+    },
+    {
+      "kind": "pinwheel",
+      "gems": 4000,
+      "response": "idle",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 4,
+      "directHits": 1,
+      "grazes": 3,
+      "damage": 264,
+      "earned": 264,
+      "knockouts": 0,
+      "firstHitMs": 1367,
+      "maxBolts": 9
+    },
+    {
+      "kind": "pinwheel",
+      "gems": 4000,
+      "response": "early-retreat",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 2,
+      "directHits": 1,
+      "grazes": 1,
+      "damage": 189,
+      "earned": 189,
+      "knockouts": 0,
+      "firstHitMs": 1567,
+      "maxBolts": 9
+    },
+    {
+      "kind": "pinwheel",
+      "gems": 4000,
+      "response": "reactive-retreat",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 3,
+      "directHits": 0,
+      "grazes": 3,
+      "damage": 114,
+      "earned": 114,
+      "knockouts": 0,
+      "firstHitMs": 1367,
+      "maxBolts": 9
+    },
+    {
+      "kind": "pinwheel",
+      "gems": 4000,
+      "response": "crossing",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 2,
+      "directHits": 1,
+      "grazes": 1,
+      "damage": 189,
+      "earned": 189,
+      "knockouts": 0,
+      "firstHitMs": 1367,
+      "maxBolts": 9
+    },
+    {
+      "kind": "pulsar",
+      "gems": 100,
+      "response": "idle",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 1,
+      "directHits": 1,
+      "grazes": 0,
+      "damage": 25,
+      "earned": 25,
+      "knockouts": 0,
+      "firstHitMs": 2300,
+      "maxBolts": 0
+    },
+    {
+      "kind": "pulsar",
+      "gems": 100,
+      "response": "early-retreat",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 0,
+      "directHits": 0,
+      "grazes": 0,
+      "damage": 0,
+      "earned": 0,
+      "knockouts": 0,
+      "firstHitMs": null,
+      "maxBolts": 0
+    },
+    {
+      "kind": "pulsar",
+      "gems": 100,
+      "response": "reactive-retreat",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 1,
+      "directHits": 1,
+      "grazes": 0,
+      "damage": 25,
+      "earned": 25,
+      "knockouts": 0,
+      "firstHitMs": 2300,
+      "maxBolts": 0
+    },
+    {
+      "kind": "pulsar",
+      "gems": 100,
+      "response": "crossing",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 0,
+      "directHits": 0,
+      "grazes": 0,
+      "damage": 0,
+      "earned": 0,
+      "knockouts": 0,
+      "firstHitMs": null,
+      "maxBolts": 0
+    },
+    {
+      "kind": "pulsar",
+      "gems": 4000,
+      "response": "idle",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 2,
+      "directHits": 2,
+      "grazes": 0,
+      "damage": 1745,
+      "earned": 1745,
+      "knockouts": 0,
+      "firstHitMs": 2200,
+      "maxBolts": 0
+    },
+    {
+      "kind": "pulsar",
+      "gems": 4000,
+      "response": "early-retreat",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 0,
+      "directHits": 0,
+      "grazes": 0,
+      "damage": 0,
+      "earned": 0,
+      "knockouts": 0,
+      "firstHitMs": null,
+      "maxBolts": 0
+    },
+    {
+      "kind": "pulsar",
+      "gems": 4000,
+      "response": "reactive-retreat",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 1,
+      "directHits": 1,
+      "grazes": 0,
+      "damage": 998,
+      "earned": 998,
+      "knockouts": 0,
+      "firstHitMs": 2200,
+      "maxBolts": 0
+    },
+    {
+      "kind": "pulsar",
+      "gems": 4000,
+      "response": "crossing",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 1,
+      "directHits": 1,
+      "grazes": 0,
+      "damage": 998,
+      "earned": 998,
+      "knockouts": 0,
+      "firstHitMs": 2600,
+      "maxBolts": 0
+    },
+    {
+      "kind": "sentinel",
+      "gems": 100,
+      "response": "idle",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 2,
+      "directHits": 2,
+      "grazes": 0,
+      "damage": 31,
+      "earned": 31,
+      "knockouts": 0,
+      "firstHitMs": 2467,
+      "maxBolts": 2
+    },
+    {
+      "kind": "sentinel",
+      "gems": 100,
+      "response": "early-retreat",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 0,
+      "directHits": 0,
+      "grazes": 0,
+      "damage": 0,
+      "earned": 0,
+      "knockouts": 0,
+      "firstHitMs": null,
+      "maxBolts": 2
+    },
+    {
+      "kind": "sentinel",
+      "gems": 100,
+      "response": "reactive-retreat",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 1,
+      "directHits": 1,
+      "grazes": 0,
+      "damage": 16,
+      "earned": 16,
+      "knockouts": 0,
+      "firstHitMs": 2467,
+      "maxBolts": 2
+    },
+    {
+      "kind": "sentinel",
+      "gems": 100,
+      "response": "crossing",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 2,
+      "directHits": 2,
+      "grazes": 0,
+      "damage": 31,
+      "earned": 31,
+      "knockouts": 0,
+      "firstHitMs": 6733,
+      "maxBolts": 2
+    },
+    {
+      "kind": "sentinel",
+      "gems": 4000,
+      "response": "idle",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 2,
+      "directHits": 2,
+      "grazes": 0,
+      "damage": 202,
+      "earned": 202,
+      "knockouts": 0,
+      "firstHitMs": 2133,
+      "maxBolts": 2
+    },
+    {
+      "kind": "sentinel",
+      "gems": 4000,
+      "response": "early-retreat",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 3,
+      "directHits": 3,
+      "grazes": 0,
+      "damage": 301,
+      "earned": 301,
+      "knockouts": 0,
+      "firstHitMs": 2067,
+      "maxBolts": 2
+    },
+    {
+      "kind": "sentinel",
+      "gems": 4000,
+      "response": "reactive-retreat",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 2,
+      "directHits": 2,
+      "grazes": 0,
+      "damage": 202,
+      "earned": 202,
+      "knockouts": 0,
+      "firstHitMs": 2133,
+      "maxBolts": 2
+    },
+    {
+      "kind": "sentinel",
+      "gems": 4000,
+      "response": "crossing",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 7,
+      "directHits": 3,
+      "grazes": 4,
+      "damage": 397,
+      "earned": 397,
+      "knockouts": 0,
+      "firstHitMs": 2133,
+      "maxBolts": 2
+    },
+    {
+      "kind": "ricochet",
+      "gems": 100,
+      "response": "idle",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 0,
+      "directHits": 0,
+      "grazes": 0,
+      "damage": 0,
+      "earned": 0,
+      "knockouts": 0,
+      "firstHitMs": null,
+      "maxBolts": 6
+    },
+    {
+      "kind": "ricochet",
+      "gems": 100,
+      "response": "early-retreat",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 0,
+      "directHits": 0,
+      "grazes": 0,
+      "damage": 0,
+      "earned": 0,
+      "knockouts": 0,
+      "firstHitMs": null,
+      "maxBolts": 6
+    },
+    {
+      "kind": "ricochet",
+      "gems": 100,
+      "response": "reactive-retreat",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 0,
+      "directHits": 0,
+      "grazes": 0,
+      "damage": 0,
+      "earned": 0,
+      "knockouts": 0,
+      "firstHitMs": null,
+      "maxBolts": 6
+    },
+    {
+      "kind": "ricochet",
+      "gems": 100,
+      "response": "crossing",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 2,
+      "directHits": 2,
+      "grazes": 0,
+      "damage": 30,
+      "earned": 30,
+      "knockouts": 0,
+      "firstHitMs": 3900,
+      "maxBolts": 6
+    },
+    {
+      "kind": "ricochet",
+      "gems": 4000,
+      "response": "idle",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 3,
+      "directHits": 2,
+      "grazes": 1,
+      "damage": 227,
+      "earned": 227,
+      "knockouts": 0,
+      "firstHitMs": 1667,
+      "maxBolts": 6
+    },
+    {
+      "kind": "ricochet",
+      "gems": 4000,
+      "response": "early-retreat",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 2,
+      "directHits": 1,
+      "grazes": 1,
+      "damage": 127,
+      "earned": 127,
+      "knockouts": 0,
+      "firstHitMs": 1667,
+      "maxBolts": 6
+    },
+    {
+      "kind": "ricochet",
+      "gems": 4000,
+      "response": "reactive-retreat",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 2,
+      "directHits": 1,
+      "grazes": 1,
+      "damage": 127,
+      "earned": 127,
+      "knockouts": 0,
+      "firstHitMs": 1667,
+      "maxBolts": 6
+    },
+    {
+      "kind": "ricochet",
+      "gems": 4000,
+      "response": "crossing",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 4,
+      "directHits": 1,
+      "grazes": 3,
+      "damage": 177,
+      "earned": 177,
+      "knockouts": 0,
+      "firstHitMs": 1667,
+      "maxBolts": 6
+    },
+    {
+      "kind": "ion",
+      "gems": 100,
+      "response": "idle",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 0,
+      "directHits": 0,
+      "grazes": 0,
+      "damage": 0,
+      "earned": 0,
+      "knockouts": 0,
+      "firstHitMs": null,
+      "maxBolts": 0
+    },
+    {
+      "kind": "ion",
+      "gems": 100,
+      "response": "early-retreat",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 0,
+      "directHits": 0,
+      "grazes": 0,
+      "damage": 0,
+      "earned": 0,
+      "knockouts": 0,
+      "firstHitMs": null,
+      "maxBolts": 0
+    },
+    {
+      "kind": "ion",
+      "gems": 100,
+      "response": "reactive-retreat",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 0,
+      "directHits": 0,
+      "grazes": 0,
+      "damage": 0,
+      "earned": 0,
+      "knockouts": 0,
+      "firstHitMs": null,
+      "maxBolts": 0
+    },
+    {
+      "kind": "ion",
+      "gems": 100,
+      "response": "crossing",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 0,
+      "directHits": 0,
+      "grazes": 0,
+      "damage": 0,
+      "earned": 0,
+      "knockouts": 0,
+      "firstHitMs": null,
+      "maxBolts": 0
+    },
+    {
+      "kind": "ion",
+      "gems": 4000,
+      "response": "idle",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 1,
+      "directHits": 0,
+      "grazes": 1,
+      "damage": 26,
+      "earned": 26,
+      "knockouts": 0,
+      "firstHitMs": 1800,
+      "maxBolts": 0
+    },
+    {
+      "kind": "ion",
+      "gems": 4000,
+      "response": "early-retreat",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 1,
+      "directHits": 0,
+      "grazes": 1,
+      "damage": 26,
+      "earned": 26,
+      "knockouts": 0,
+      "firstHitMs": 1800,
+      "maxBolts": 0
+    },
+    {
+      "kind": "ion",
+      "gems": 4000,
+      "response": "reactive-retreat",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 1,
+      "directHits": 0,
+      "grazes": 1,
+      "damage": 26,
+      "earned": 26,
+      "knockouts": 0,
+      "firstHitMs": 1800,
+      "maxBolts": 0
+    },
+    {
+      "kind": "ion",
+      "gems": 4000,
+      "response": "crossing",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 2,
+      "directHits": 0,
+      "grazes": 2,
+      "damage": 51,
+      "earned": 51,
+      "knockouts": 0,
+      "firstHitMs": 1800,
+      "maxBolts": 0
+    },
+    {
+      "kind": "comet",
+      "gems": 100,
+      "response": "idle",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 6,
+      "directHits": 6,
+      "grazes": 0,
+      "damage": 100,
+      "earned": 100,
+      "knockouts": 1,
+      "firstHitMs": 3000,
+      "maxBolts": 1
+    },
+    {
+      "kind": "comet",
+      "gems": 100,
+      "response": "early-retreat",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 2,
+      "directHits": 2,
+      "grazes": 0,
+      "damage": 55,
+      "earned": 55,
+      "knockouts": 0,
+      "firstHitMs": 4367,
+      "maxBolts": 3
+    },
+    {
+      "kind": "comet",
+      "gems": 100,
+      "response": "reactive-retreat",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 4,
+      "directHits": 4,
+      "grazes": 0,
+      "damage": 82,
+      "earned": 82,
+      "knockouts": 0,
+      "firstHitMs": 3000,
+      "maxBolts": 3
+    },
+    {
+      "kind": "comet",
+      "gems": 100,
+      "response": "crossing",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 0,
+      "directHits": 0,
+      "grazes": 0,
+      "damage": 0,
+      "earned": 0,
+      "knockouts": 0,
+      "firstHitMs": null,
+      "maxBolts": 3
+    },
+    {
+      "kind": "comet",
+      "gems": 4000,
+      "response": "idle",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 7,
+      "directHits": 7,
+      "grazes": 0,
+      "damage": 1232,
+      "earned": 1232,
+      "knockouts": 0,
+      "firstHitMs": 2700,
+      "maxBolts": 1
+    },
+    {
+      "kind": "comet",
+      "gems": 4000,
+      "response": "early-retreat",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 5,
+      "directHits": 5,
+      "grazes": 0,
+      "damage": 902,
+      "earned": 902,
+      "knockouts": 0,
+      "firstHitMs": 3467,
+      "maxBolts": 3
+    },
+    {
+      "kind": "comet",
+      "gems": 4000,
+      "response": "reactive-retreat",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 5,
+      "directHits": 5,
+      "grazes": 0,
+      "damage": 903,
+      "earned": 903,
+      "knockouts": 0,
+      "firstHitMs": 2700,
+      "maxBolts": 2
+    },
+    {
+      "kind": "comet",
+      "gems": 4000,
+      "response": "crossing",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 5,
+      "directHits": 0,
+      "grazes": 5,
+      "damage": 235,
+      "earned": 235,
+      "knockouts": 0,
+      "firstHitMs": 3000,
+      "maxBolts": 2
+    }
+  ],
+  "fixedSpatialControls": [
+    {
+      "x": 1379,
+      "y": 2997,
+      "creditedDamageByRecipe": {
+        "pinwheel": 0,
+        "pulsar": 0,
+        "sentinel": 71,
+        "ricochet": 16,
+        "ion": 0,
+        "comet": 89
+      }
+    },
+    {
+      "x": 1987,
+      "y": 1532,
+      "creditedDamageByRecipe": {
+        "pinwheel": 24,
+        "pulsar": 0,
+        "sentinel": 16,
+        "ricochet": 0,
+        "ion": 0,
+        "comet": 100
+      }
+    },
+    {
+      "x": 2699,
+      "y": 1632,
+      "creditedDamageByRecipe": {
+        "pinwheel": 24,
+        "pulsar": 0,
+        "sentinel": 16,
+        "ricochet": 0,
+        "ion": 0,
+        "comet": 100
+      }
+    },
+    {
+      "x": 2580,
+      "y": 1301,
+      "creditedDamageByRecipe": {
+        "pinwheel": 24,
+        "pulsar": 0,
+        "sentinel": 16,
+        "ricochet": 0,
+        "ion": 0,
+        "comet": 100
+      }
+    },
+    {
+      "x": 1137,
+      "y": 2264,
+      "creditedDamageByRecipe": {
+        "pinwheel": 0,
+        "pulsar": 0,
+        "sentinel": 71,
+        "ricochet": 16,
+        "ion": 0,
+        "comet": 100
+      }
+    },
+    {
+      "x": 2128,
+      "y": 1762,
+      "creditedDamageByRecipe": {
+        "pinwheel": 45,
+        "pulsar": 25,
+        "sentinel": 16,
+        "ricochet": 0,
+        "ion": 0,
+        "comet": 100
+      }
+    },
+    {
+      "x": 1317,
+      "y": 885,
+      "creditedDamageByRecipe": {
+        "pinwheel": 0,
+        "pulsar": 0,
+        "sentinel": 0,
+        "ricochet": 0,
+        "ion": 0,
+        "comet": 0
+      }
+    },
+    {
+      "x": 3187,
+      "y": 1927,
+      "creditedDamageByRecipe": {
+        "pinwheel": 0,
+        "pulsar": 0,
+        "sentinel": 31,
+        "ricochet": 0,
+        "ion": 0,
+        "comet": 100
+      }
+    },
+    {
+      "x": 1572,
+      "y": 2296,
+      "creditedDamageByRecipe": {
+        "pinwheel": 24,
+        "pulsar": 0,
+        "sentinel": 64,
+        "ricochet": 0,
+        "ion": 0,
+        "comet": 100
+      }
+    },
+    {
+      "x": 1988,
+      "y": 2716,
+      "creditedDamageByRecipe": {
+        "pinwheel": 24,
+        "pulsar": 0,
+        "sentinel": 71,
+        "ricochet": 16,
+        "ion": 0,
+        "comet": 100
+      }
+    },
+    {
+      "x": 1465,
+      "y": 1007,
+      "creditedDamageByRecipe": {
+        "pinwheel": 0,
+        "pulsar": 0,
+        "sentinel": 0,
+        "ricochet": 0,
+        "ion": 0,
+        "comet": 71
+      }
+    },
+    {
+      "x": 2924,
+      "y": 2005,
+      "creditedDamageByRecipe": {
+        "pinwheel": 24,
+        "pulsar": 0,
+        "sentinel": 44,
+        "ricochet": 0,
+        "ion": 0,
+        "comet": 100
+      }
+    },
+    {
+      "x": 723,
+      "y": 2873,
+      "creditedDamageByRecipe": {
+        "pinwheel": 0,
+        "pulsar": 0,
+        "sentinel": 71,
+        "ricochet": 42,
+        "ion": 0,
+        "comet": 0
+      }
+    },
+    {
+      "x": 1182,
+      "y": 2527,
+      "creditedDamageByRecipe": {
+        "pinwheel": 0,
+        "pulsar": 0,
+        "sentinel": 71,
+        "ricochet": 0,
+        "ion": 0,
+        "comet": 89
+      }
+    },
+    {
+      "x": 1318,
+      "y": 2458,
+      "creditedDamageByRecipe": {
+        "pinwheel": 24,
+        "pulsar": 0,
+        "sentinel": 64,
+        "ricochet": 0,
+        "ion": 0,
+        "comet": 100
+      }
+    },
+    {
+      "x": 1631,
+      "y": 2546,
+      "creditedDamageByRecipe": {
+        "pinwheel": 24,
+        "pulsar": 0,
+        "sentinel": 71,
+        "ricochet": 0,
+        "ion": 0,
+        "comet": 100
+      }
+    },
+    {
+      "x": 2792,
+      "y": 2619,
+      "creditedDamageByRecipe": {
+        "pinwheel": 45,
+        "pulsar": 0,
+        "sentinel": 71,
+        "ricochet": 30,
+        "ion": 0,
+        "comet": 100
+      }
+    },
+    {
+      "x": 2790,
+      "y": 1574,
+      "creditedDamageByRecipe": {
+        "pinwheel": 24,
+        "pulsar": 0,
+        "sentinel": 16,
+        "ricochet": 0,
+        "ion": 0,
+        "comet": 100
+      }
+    },
+    {
+      "x": 1180,
+      "y": 1110,
+      "creditedDamageByRecipe": {
+        "pinwheel": 0,
+        "pulsar": 0,
+        "sentinel": 16,
+        "ricochet": 30,
+        "ion": 0,
+        "comet": 0
+      }
+    },
+    {
+      "x": 1401,
+      "y": 856,
+      "creditedDamageByRecipe": {
+        "pinwheel": 0,
+        "pulsar": 0,
+        "sentinel": 0,
+        "ricochet": 0,
+        "ion": 0,
+        "comet": 0
+      }
+    },
+    {
+      "x": 2598,
+      "y": 1285,
+      "creditedDamageByRecipe": {
+        "pinwheel": 24,
+        "pulsar": 0,
+        "sentinel": 16,
+        "ricochet": 0,
+        "ion": 0,
+        "comet": 100
+      }
+    },
+    {
+      "x": 1003,
+      "y": 1477,
+      "creditedDamageByRecipe": {
+        "pinwheel": 0,
+        "pulsar": 0,
+        "sentinel": 44,
+        "ricochet": 30,
+        "ion": 0,
+        "comet": 71
+      }
+    },
+    {
+      "x": 1677,
+      "y": 1118,
+      "creditedDamageByRecipe": {
+        "pinwheel": 0,
+        "pulsar": 0,
+        "sentinel": 0,
+        "ricochet": 0,
+        "ion": 0,
+        "comet": 89
+      }
+    },
+    {
+      "x": 3063,
+      "y": 826,
+      "creditedDamageByRecipe": {
+        "pinwheel": 0,
+        "pulsar": 0,
+        "sentinel": 0,
+        "ricochet": 0,
+        "ion": 0,
+        "comet": 0
+      }
+    },
+    {
+      "x": 1702,
+      "y": 2204,
+      "creditedDamageByRecipe": {
+        "pinwheel": 24,
+        "pulsar": 0,
+        "sentinel": 64,
+        "ricochet": 0,
+        "ion": 0,
+        "comet": 100
+      }
+    },
+    {
+      "x": 1842,
+      "y": 2874,
+      "creditedDamageByRecipe": {
+        "pinwheel": 0,
+        "pulsar": 0,
+        "sentinel": 71,
+        "ricochet": 16,
+        "ion": 0,
+        "comet": 100
+      }
+    },
+    {
+      "x": 2823,
+      "y": 2764,
+      "creditedDamageByRecipe": {
+        "pinwheel": 24,
+        "pulsar": 0,
+        "sentinel": 77,
+        "ricochet": 16,
+        "ion": 0,
+        "comet": 100
+      }
+    },
+    {
+      "x": 2143,
+      "y": 2392,
+      "creditedDamageByRecipe": {
+        "pinwheel": 63,
+        "pulsar": 25,
+        "sentinel": 44,
+        "ricochet": 16,
+        "ion": 0,
+        "comet": 100
+      }
+    },
+    {
+      "x": 3014,
+      "y": 922,
+      "creditedDamageByRecipe": {
+        "pinwheel": 0,
+        "pulsar": 0,
+        "sentinel": 0,
+        "ricochet": 0,
+        "ion": 0,
+        "comet": 0
+      }
+    },
+    {
+      "x": 1354,
+      "y": 1970,
+      "creditedDamageByRecipe": {
+        "pinwheel": 24,
+        "pulsar": 0,
+        "sentinel": 55,
+        "ricochet": 16,
+        "ion": 0,
+        "comet": 100
+      }
+    },
+    {
+      "x": 1153,
+      "y": 1672,
+      "creditedDamageByRecipe": {
+        "pinwheel": 0,
+        "pulsar": 0,
+        "sentinel": 44,
+        "ricochet": 0,
+        "ion": 0,
+        "comet": 89
+      }
+    },
+    {
+      "x": 1093,
+      "y": 970,
+      "creditedDamageByRecipe": {
+        "pinwheel": 0,
+        "pulsar": 0,
+        "sentinel": 16,
+        "ricochet": 0,
+        "ion": 12,
+        "comet": 0
+      }
+    },
+    {
+      "x": 3466,
+      "y": 2003,
+      "creditedDamageByRecipe": {
+        "pinwheel": 0,
+        "pulsar": 0,
+        "sentinel": 31,
+        "ricochet": 16,
+        "ion": 0,
+        "comet": 89
+      }
+    },
+    {
+      "x": 2487,
+      "y": 2660,
+      "creditedDamageByRecipe": {
+        "pinwheel": 45,
+        "pulsar": 0,
+        "sentinel": 77,
+        "ricochet": 16,
+        "ion": 0,
+        "comet": 100
+      }
+    },
+    {
+      "x": 1745,
+      "y": 2203,
+      "creditedDamageByRecipe": {
+        "pinwheel": 24,
+        "pulsar": 0,
+        "sentinel": 55,
+        "ricochet": 0,
+        "ion": 0,
+        "comet": 100
+      }
+    },
+    {
+      "x": 1402,
+      "y": 2471,
+      "creditedDamageByRecipe": {
+        "pinwheel": 0,
+        "pulsar": 0,
+        "sentinel": 64,
+        "ricochet": 16,
+        "ion": 0,
+        "comet": 100
+      }
+    },
+    {
+      "x": 1565,
+      "y": 2409,
+      "creditedDamageByRecipe": {
+        "pinwheel": 24,
+        "pulsar": 0,
+        "sentinel": 71,
+        "ricochet": 0,
+        "ion": 0,
+        "comet": 100
+      }
+    },
+    {
+      "x": 3432,
+      "y": 2228,
+      "creditedDamageByRecipe": {
+        "pinwheel": 0,
+        "pulsar": 0,
+        "sentinel": 44,
+        "ricochet": 16,
+        "ion": 0,
+        "comet": 89
+      }
+    },
+    {
+      "x": 3107,
+      "y": 3022,
+      "creditedDamageByRecipe": {
+        "pinwheel": 0,
+        "pulsar": 0,
+        "sentinel": 64,
+        "ricochet": 0,
+        "ion": 0,
+        "comet": 82
+      }
+    },
+    {
+      "x": 781,
+      "y": 3485,
+      "creditedDamageByRecipe": {
+        "pinwheel": 0,
+        "pulsar": 0,
+        "sentinel": 55,
+        "ricochet": 0,
+        "ion": 0,
+        "comet": 0
+      }
+    },
+    {
+      "x": 3023,
+      "y": 3058,
+      "creditedDamageByRecipe": {
+        "pinwheel": 0,
+        "pulsar": 0,
+        "sentinel": 71,
+        "ricochet": 16,
+        "ion": 0,
+        "comet": 89
+      }
+    },
+    {
+      "x": 2245,
+      "y": 1024,
+      "creditedDamageByRecipe": {
+        "pinwheel": 0,
+        "pulsar": 0,
+        "sentinel": 0,
+        "ricochet": 0,
+        "ion": 0,
+        "comet": 100
+      }
+    },
+    {
+      "x": 2541,
+      "y": 2444,
+      "creditedDamageByRecipe": {
+        "pinwheel": 45,
+        "pulsar": 0,
+        "sentinel": 71,
+        "ricochet": 0,
+        "ion": 0,
+        "comet": 100
+      }
+    },
+    {
+      "x": 1020,
+      "y": 1045,
+      "creditedDamageByRecipe": {
+        "pinwheel": 0,
+        "pulsar": 0,
+        "sentinel": 31,
+        "ricochet": 0,
+        "ion": 12,
+        "comet": 0
+      }
+    },
+    {
+      "x": 2056,
+      "y": 950,
+      "creditedDamageByRecipe": {
+        "pinwheel": 0,
+        "pulsar": 0,
+        "sentinel": 0,
+        "ricochet": 0,
+        "ion": 0,
+        "comet": 89
+      }
+    },
+    {
+      "x": 945,
+      "y": 2509,
+      "creditedDamageByRecipe": {
+        "pinwheel": 0,
+        "pulsar": 0,
+        "sentinel": 77,
+        "ricochet": 16,
+        "ion": 0,
+        "comet": 71
+      }
+    },
+    {
+      "x": 2386,
+      "y": 1145,
+      "creditedDamageByRecipe": {
+        "pinwheel": 24,
+        "pulsar": 0,
+        "sentinel": 16,
+        "ricochet": 0,
+        "ion": 0,
+        "comet": 100
+      }
+    },
+    {
+      "x": 1320,
+      "y": 1160,
+      "creditedDamageByRecipe": {
+        "pinwheel": 0,
+        "pulsar": 0,
+        "sentinel": 16,
+        "ricochet": 0,
+        "ion": 0,
+        "comet": 82
+      }
+    }
+  ],
+  "spatialSummary": {
+    "pinwheel": {
+      "positionsTested": 48,
+      "positionsHit": 21,
+      "actualCreditedDamage": 627
+    },
+    "pulsar": {
+      "positionsTested": 48,
+      "positionsHit": 2,
+      "actualCreditedDamage": 50
+    },
+    "sentinel": {
+      "positionsTested": 48,
+      "positionsHit": 40,
+      "actualCreditedDamage": 1970
+    },
+    "ricochet": {
+      "positionsTested": 48,
+      "positionsHit": 17,
+      "actualCreditedDamage": 340
+    },
+    "ion": {
+      "positionsTested": 48,
+      "positionsHit": 2,
+      "actualCreditedDamage": 24
+    },
+    "comet": {
+      "positionsTested": 48,
+      "positionsHit": 39,
+      "actualCreditedDamage": 3689
+    }
+  },
+  "sentinelBefore": [
+    {
+      "kind": "sentinel",
+      "gems": 100,
+      "response": "idle",
+      "hits": 0,
+      "directHits": 0,
+      "grazes": 0,
+      "damage": 0,
+      "earned": 0,
+      "knockouts": 0,
+      "firstHitMs": null,
+      "maxBolts": 2
+    },
+    {
+      "kind": "sentinel",
+      "gems": 100,
+      "response": "early-retreat",
+      "hits": 0,
+      "directHits": 0,
+      "grazes": 0,
+      "damage": 0,
+      "earned": 0,
+      "knockouts": 0,
+      "firstHitMs": null,
+      "maxBolts": 2
+    },
+    {
+      "kind": "sentinel",
+      "gems": 100,
+      "response": "reactive-retreat",
+      "hits": 0,
+      "directHits": 0,
+      "grazes": 0,
+      "damage": 0,
+      "earned": 0,
+      "knockouts": 0,
+      "firstHitMs": null,
+      "maxBolts": 2
+    },
+    {
+      "kind": "sentinel",
+      "gems": 100,
+      "response": "crossing",
+      "hits": 2,
+      "directHits": 2,
+      "grazes": 0,
+      "damage": 31,
+      "earned": 31,
+      "knockouts": 0,
+      "firstHitMs": 4800,
+      "maxBolts": 2
+    },
+    {
+      "kind": "sentinel",
+      "gems": 4000,
+      "response": "idle",
+      "hits": 1,
+      "directHits": 0,
+      "grazes": 1,
+      "damage": 26,
+      "earned": 26,
+      "knockouts": 0,
+      "firstHitMs": 4100,
+      "maxBolts": 2
+    },
+    {
+      "kind": "sentinel",
+      "gems": 4000,
+      "response": "early-retreat",
+      "hits": 1,
+      "directHits": 0,
+      "grazes": 1,
+      "damage": 26,
+      "earned": 26,
+      "knockouts": 0,
+      "firstHitMs": 2067,
+      "maxBolts": 2
+    },
+    {
+      "kind": "sentinel",
+      "gems": 4000,
+      "response": "reactive-retreat",
+      "hits": 1,
+      "directHits": 0,
+      "grazes": 1,
+      "damage": 26,
+      "earned": 26,
+      "knockouts": 0,
+      "firstHitMs": 4100,
+      "maxBolts": 2
+    },
+    {
+      "kind": "sentinel",
+      "gems": 4000,
+      "response": "crossing",
+      "hits": 3,
+      "directHits": 1,
+      "grazes": 2,
+      "damage": 152,
+      "earned": 152,
+      "knockouts": 0,
+      "firstHitMs": 4133,
+      "maxBolts": 2
+    }
+  ],
+  "sentinelAfter": [
+    {
+      "kind": "sentinel",
+      "gems": 100,
+      "response": "idle",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 2,
+      "directHits": 2,
+      "grazes": 0,
+      "damage": 31,
+      "earned": 31,
+      "knockouts": 0,
+      "firstHitMs": 2467,
+      "maxBolts": 2
+    },
+    {
+      "kind": "sentinel",
+      "gems": 100,
+      "response": "early-retreat",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 0,
+      "directHits": 0,
+      "grazes": 0,
+      "damage": 0,
+      "earned": 0,
+      "knockouts": 0,
+      "firstHitMs": null,
+      "maxBolts": 2
+    },
+    {
+      "kind": "sentinel",
+      "gems": 100,
+      "response": "reactive-retreat",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 1,
+      "directHits": 1,
+      "grazes": 0,
+      "damage": 16,
+      "earned": 16,
+      "knockouts": 0,
+      "firstHitMs": 2467,
+      "maxBolts": 2
+    },
+    {
+      "kind": "sentinel",
+      "gems": 100,
+      "response": "crossing",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 2,
+      "directHits": 2,
+      "grazes": 0,
+      "damage": 31,
+      "earned": 31,
+      "knockouts": 0,
+      "firstHitMs": 6733,
+      "maxBolts": 2
+    },
+    {
+      "kind": "sentinel",
+      "gems": 4000,
+      "response": "idle",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 2,
+      "directHits": 2,
+      "grazes": 0,
+      "damage": 202,
+      "earned": 202,
+      "knockouts": 0,
+      "firstHitMs": 2133,
+      "maxBolts": 2
+    },
+    {
+      "kind": "sentinel",
+      "gems": 4000,
+      "response": "early-retreat",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 3,
+      "directHits": 3,
+      "grazes": 0,
+      "damage": 301,
+      "earned": 301,
+      "knockouts": 0,
+      "firstHitMs": 2067,
+      "maxBolts": 2
+    },
+    {
+      "kind": "sentinel",
+      "gems": 4000,
+      "response": "reactive-retreat",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 2,
+      "directHits": 2,
+      "grazes": 0,
+      "damage": 202,
+      "earned": 202,
+      "knockouts": 0,
+      "firstHitMs": 2133,
+      "maxBolts": 2
+    },
+    {
+      "kind": "sentinel",
+      "gems": 4000,
+      "response": "crossing",
+      "placement": "near-build",
+      "lane": null,
+      "hits": 7,
+      "directHits": 3,
+      "grazes": 4,
+      "damage": 397,
+      "earned": 397,
+      "knockouts": 0,
+      "firstHitMs": 2133,
+      "maxBolts": 2
+    }
+  ],
+  "verification": {
+    "unitSuites": 29,
+    "networkScenarios": 18,
+    "browserCases": 80,
+    "browserCoverage": "Chromium/Gecko/WebKit desktop, phone/landscape/tablets. One initial case received a transient 404 while the local build directory was replaced; rerun after build completion.",
+    "scriptedClaimRaces": 24,
+    "utilityControls": 384,
+    "types": "pass",
+    "schema": "pass",
+    "build": "pass",
+    "lintErrors": 0,
+    "lintWarnings": 186
+  },
+  "limitations": [
+    "Scripted controllers and fixtures, not human matches",
+    "No physical Android/iOS performance claim",
+    "Stationary spatial controls share one deployment point and equal initial target gems; coverage is not a weapon ranking",
+    "Contested human-match feel and balance remain pending",
+    "Not committed, merged or deployed in this task"
+  ]
+}
