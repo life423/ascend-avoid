@@ -12,7 +12,9 @@ test('six recipes synchronize, reserved siblings show radar, and satellites depl
   await page.goto('/');
   await page.waitForFunction(() => window.game?.currentGameMode?.lastView && !document.body.classList.contains('intro-playing'));
   await page.evaluate(() => {
-    window.weaponTexts = [];
+    window.weaponTexts = []; window.weaponGuidanceDots = 0;
+    const arc = CanvasRenderingContext2D.prototype.arc;
+    CanvasRenderingContext2D.prototype.arc = function(x,y,r,...args) { if(y===45 && r===3.5) window.weaponGuidanceDots++; return arc.call(this,x,y,r,...args); };
     const fill = CanvasRenderingContext2D.prototype.fillText;
     CanvasRenderingContext2D.prototype.fillText = function(text, ...args) { if (['TRACKER', 'LASER'].includes(String(text))) window.weaponTexts.push(String(text)); return fill.call(this, text, ...args); };
     window.game.currentGameMode.multiplayerManager.room.send('test:pinwheel', { kind: 'sentinel', slot: 2, x: 2100, y: 2100 });
@@ -30,7 +32,8 @@ test('six recipes synchronize, reserved siblings show radar, and satellites depl
   await moveToPart(0);
   await expect.poll(async () => (await snapshot()).owner).toBe((await snapshot()).id);
   const claimed = await snapshot(); expect(claimed.parts.every(p => p.owner === claimed.id)).toBe(true);
-  await expect.poll(() => page.evaluate(() => window.weaponTexts.length)).toBeGreaterThan(0);
+  await expect.poll(() => page.evaluate(() => window.weaponGuidanceDots)).toBeGreaterThan(0);
+  if (await page.evaluate(() => matchMedia('(max-width: 1199px)').matches)) expect(await page.evaluate(() => window.weaponTexts.length)).toBe(0);
   await page.screenshot({ path: test.info().outputPath('satellite-radar-and-locks.png') });
   await moveToPart(1); await expect.poll(async () => (await snapshot()).parts.filter(p => p.carriedBy).length).toBe(2);
   await moveToPart(2); await expect.poll(async () => (await snapshot()).phase).toBe('carried');

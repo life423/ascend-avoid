@@ -20,6 +20,7 @@ import { updateLatches } from "../systems/latches.js";
 import { updateTurbines, clearanceAt } from "../systems/turbines.js";
 import { updateTraffic, reshuffleLanes, launchObstacle } from "../systems/traffic.js";
 import { updateInhales, knockOutWithGems, clearCapture, syncContinuedTheft } from "../systems/inhale.js";
+import { slideBlackHoleRims } from "../game/blackHole.js";
 import { updateFlights } from "../systems/flights.js";
 import { updateShotFollow } from '../systems/shotFollow.js';
 import { botMouth, bombDanger, balanceBots } from "../systems/bots.js";
@@ -307,6 +308,11 @@ class GameState extends Schema {
       player.updateMovement(this.worldWidth, this.worldHeight, now, deltaTime);
       updateShotFollow(this, player, deltaTime);
       keepApart(this, player);
+      if (!player.flying && !player.capturedBy) {
+        const routed = slideBlackHoleRims(player, player.tickX - player.width / 2, player.tickY - player.height / 2,
+          this.blackHoles.filter(h => this.isFloorAt(h.x, h.y)), this.worldWidth, this.worldHeight, deltaTime);
+        player.nudge(routed.x - player.x, routed.y - player.y, this.worldWidth, this.worldHeight);
+      }
       collectGems(this, player, now, fromX, fromY);
       player.decay(deltaTime, this.worldWidth, this.worldHeight);
       // A skid after a hit never carries anyone off the edge
@@ -648,6 +654,14 @@ class GameState extends Schema {
         bestClearance = clearance;
       }
       if (clearance >= WORLD.SPAWN_CLEARANCE) break;
+    }
+    // Crowding or an unlucky random stream should not hide an available safe spawn.
+    if (bestClearance < WORLD.SPAWN_CLEARANCE) for (let row = 0; row < 5; row++) for (let col = 0; col < 5; col++) {
+      const x = marginX + col / 4 * (this.worldWidth - size - 2 * marginX);
+      const y = marginY + row / 4 * (this.worldHeight - size - 2 * marginY);
+      if (!this.isFloorAt(x + size / 2, y + size / 2)) continue;
+      const clearance = clearanceAt(this, x + size / 2, y + size / 2, player, leader);
+      if (clearance > bestClearance) { best = { x, y }; bestClearance = clearance; }
     }
     player.spawnAt(Math.round(best.x), Math.round(best.y), now);
   }

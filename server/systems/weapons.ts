@@ -3,6 +3,7 @@ import type { PlayerSchema } from '../schema/PlayerSchema.js';
 import { PinwheelSchema, WeaponPartSchema, WeaponBoltSchema } from '../schema/PinwheelSchema.js';
 import { EXHALE, INHALE, PINWHEEL, SHOCKWAVE, WEAPON_FLEET, type WeaponKind } from '../constants/gameConstants.js';
 import { allWeapons, weaponProfile, orbitalPosition, ionFiring } from '../game/weaponKit.js';
+import { weaponGraze } from '../game/weaponFairness.js';
 import { sweptHit } from '../game/cannon.js';
 import { weaponDamage } from './weaponDamage.js';
 import { tryPartTheft } from './weaponTheft.js';
@@ -29,7 +30,7 @@ export function initializeWeaponSets(state: GameState, count: number = WEAPON_FL
 
 export function spawnWeapon(state: GameState, x = state.worldWidth / 2, y = state.worldHeight / 2, kind: WeaponKind = 'pinwheel', w = state.pinwheel): void {
   w.parts.clear(); w.bolts.clear(); w.hitAt.clear();
-  w.kind = kind; w.beatAt = w.pulseAt = 0; w.pulseHits.clear(); w.pulseDistances.clear();
+  w.kind = kind; w.beatAt = w.pulseAt = 0; w.pulseHits.clear(); w.pulseGrazes.clear(); w.pulseDistances.clear();
   w.phase = 'parts'; w.at = state.time + PINWHEEL.PARTS_MS;
   w.owner = ''; w.claimUntil = 0; w.progress = 0;
   w.claimedAt = w.activatedAt = w.nextAimAt = 0;
@@ -223,7 +224,7 @@ function updateWeapon(state: GameState, w: PinwheelSchema, dt: number, now: numb
     if (w.kind === 'ion') {
       if (ionFiring(state.time - w.activatedAt)) for (const p of state.players.values()) {
         if (!canHit(w, p, state.time)) continue;
-        if (sweptHit(w.x, w.y, w.x + Math.cos(w.angle) * WEAPON_FLEET.ION_RANGE, w.y + Math.sin(w.angle) * WEAPON_FLEET.ION_RANGE, p.x + p.width / 2, p.y + p.height / 2, p.width / 2 + 10)) damagePlayer(state, w, p, now, w.angle);
+        if (sweptHit(w.x, w.y, w.x + Math.cos(w.angle) * WEAPON_FLEET.ION_RANGE, w.y + Math.sin(w.angle) * WEAPON_FLEET.ION_RANGE, p.x + p.width / 2, p.y + p.height / 2, p.width / 2 + 10)) damagePlayer(state, w, p, now, w.angle, w.x, w.y, 10);
       }
       return;
     }
@@ -246,23 +247,29 @@ function updateWeapon(state: GameState, w: PinwheelSchema, dt: number, now: numb
       bolt.x = Math.max(0, Math.min(state.worldWidth, bolt.x)); bolt.y = Math.max(0, Math.min(state.worldHeight, bolt.y));
     }
     for (const p of state.players.values()) {
-      if (!canHit(w, p, state.time)) continue;
+      if (!canHit(w, p, state.time, state.time < p.weaponSafeUntil)) continue;
       if (!sweptHit(x, y, bolt.x, bolt.y, p.x + p.width / 2, p.y + p.height / 2, p.width / 2 + profile.radius)) continue;
-      damagePlayer(state, w, p, now, travelAngle); w.bolts.delete(id); break;
+      damagePlayer(state, w, p, now, travelAngle, x, y, profile.radius); w.bolts.delete(id); break;
     }
   }
 }
 
-function canHit(w: PinwheelSchema, p: PlayerSchema, time: number): boolean {
-  return p.sessionId !== w.owner && p.state === 'alive' && !p.spawnProtected && !p.capturedBy && !p.flying && time >= (w.hitAt.get(p.sessionId) ?? 0);
+function canHit(w: PinwheelSchema, p: PlayerSchema, time: number, sharedBlocked = false): boolean {
+  return p.sessionId !== w.owner && p.state === 'alive' && !p.spawnProtected && !p.capturedBy && !p.flying && (sharedBlocked || time >= (w.hitAt.get(p.sessionId) ?? 0));
 }
 
-function damagePlayer(state: GameState, w: PinwheelSchema, p: PlayerSchema, now: number, angle: number): void {
+function damagePlayer(state: GameState, w: PinwheelSchema, p: PlayerSchema, now: number, angle: number, fromX: number, fromY: number, radius: number): void {
   const profile = weaponProfile(w.kind), x = p.x + p.width / 2, y = p.y + p.height / 2, size = p.width;
   const amount = Math.min(p.gems, Math.ceil(p.gems * profile.share), Math.max(profile.minimum, Math.ceil(Math.sqrt(p.gems) * profile.root)));
-  const { lost, out, earned } = weaponDamage(state, p, w.owner, amount, now);
-  if (!out) p.skid(Math.cos(angle), Math.sin(angle), PINWHEEL.HIT_PUSH);
-  state.credit(p, w.kind, now, w.owner, { gems: lost, earned, out, x, y, size });
+  const glancing = weaponGraze(size, x, y, fromX, fromY, angle, radius, w.kind === 'ion' ? WEAPON_FLEET.ION_RANGE : Infinity);
+  const { lost, out, earned, blocked } = weaponDamage(state, p, w.owner, amount, now, glancing);
+  if (blocked) return;
+  if (!out && !glancing) p.skid(Math.cos(angle), Math.sin(angle), PINWHEEL.HIT_PUSH);
+  const lateral = (x - fromX) * Math.sin(angle) - (y - fromY) * Math.cos(angle);
+  const entry = Math.sqrt(Math.max(0, size * size / 4 - lateral * lateral));
+  const hitX = glancing ? x - Math.sin(angle) * lateral - Math.cos(angle) * entry : x;
+  const hitY = glancing ? y + Math.cos(angle) * lateral - Math.sin(angle) * entry : y;
+  state.credit(p, w.kind, now, w.owner, { gems: lost, earned, out, x: hitX, y: hitY, size, glancing });
   if (w.kind === 'comet' && (lost > 0 || out)) offerShotFollow(state, w.owner, x, y);
   w.hitAt.set(p.sessionId, state.time + (w.kind === 'ion' ? 900 : PINWHEEL.HIT_IMMUNE_MS));
 }
@@ -271,6 +278,6 @@ function retireWeapon(state: GameState, w: PinwheelSchema): void {
   if (!w.fixedRecipe) w.kind = w.kind === 'pulsar' ? 'pinwheel' : 'pulsar';
   w.phase = 'waiting'; w.at = state.time + (weaponProfile(w.kind).orbit ? WEAPON_FLEET.ORBIT_RESPAWN_MS : PINWHEEL.RESPAWN_MS);
   w.owner = ''; w.claimUntil = 0; w.progress = 0;
-  w.parts.clear(); w.bolts.clear(); w.pulseHits.clear(); w.pulseDistances.clear();
+  w.parts.clear(); w.bolts.clear(); w.pulseHits.clear(); w.pulseGrazes.clear(); w.pulseDistances.clear();
   w.pulseAt = w.beatAt = 0;
 }

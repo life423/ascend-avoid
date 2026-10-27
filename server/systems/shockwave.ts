@@ -1,12 +1,13 @@
 import type { GameState } from '../schema/GameState.js';
 import { SHOCKWAVE } from '../constants/gameConstants.js';
+import { weaponCoreRadius } from '../game/weaponFairness.js';
 import { weaponDamage } from './weaponDamage.js';
 
 /** Each expanding wave hits once. Previous radial distance catches players crossing a wave between ticks. */
 export function updateShockwave(state: GameState, dt: number, now: number, w = state.pinwheel): void {
   if (state.time >= w.beatAt) {
     w.pulseAt = state.time; w.beatAt = state.time + SHOCKWAVE.BEAT_MS;
-    w.pulseHits.clear();
+    w.pulseHits.clear(); w.pulseGrazes.clear();
   }
   const age = state.time - w.pulseAt;
   const previousAge = age - dt * 1000;
@@ -18,12 +19,21 @@ export function updateShockwave(state: GameState, dt: number, now: number, w = s
     w.pulseDistances.set(p.sessionId, distance);
     if (!w.pulseAt || (age > SHOCKWAVE.WAVE_MS && previousAge >= SHOCKWAVE.WAVE_MS) || p.sessionId === w.owner || p.state !== 'alive' || p.spawnProtected || p.capturedBy || p.flying || w.pulseHits.has(p.sessionId)) continue;
     const body = p.width / 2;
-    if (Math.min(previous, distance) - body > radius || Math.max(previous, distance) + body < previousRadius) continue;
+    const core = weaponCoreRadius(p.width);
+    const outerContact = Math.min(previous, distance) - body <= radius && Math.max(previous, distance) + body >= previousRadius;
+    const coreContact = Math.min(previous, distance) - core <= radius && Math.max(previous, distance) + core >= previousRadius;
+    if (outerContact && !coreContact && body > core && !w.pulseGrazes.has(p.sessionId)) {
+      w.pulseGrazes.add(p.sessionId);
+      const at = Math.max(0, Math.min(body, distance - radius));
+      state.onEvent?.('impact', { x: w.x + dx * (distance - at) / Math.max(1, distance), y: w.y + dy * (distance - at) / Math.max(1, distance), size: 28, glancing: true });
+    }
+    if (!coreContact) continue;
     w.pulseHits.add(p.sessionId);
     const push = Math.max(SHOCKWAVE.MIN_PUSH, SHOCKWAVE.PUSH / Math.sqrt(p.weight()));
     const x = p.x + body, y = p.y + body, size = p.width;
     const amount = Math.min(p.gems, Math.max(SHOCKWAVE.DAMAGE_MIN_GEMS, Math.ceil(p.gems * SHOCKWAVE.DAMAGE_SHARE)));
-    const { lost, out, earned } = weaponDamage(state, p, w.owner, amount, now);
+    const { lost, out, earned, blocked } = weaponDamage(state, p, w.owner, amount, now);
+    if (blocked) continue;
     state.credit(p, 'pulsar', now, w.owner, { gems: lost, earned, out, x, y, size });
     if (out) continue;
     p.shoveAlong(distance > 0 ? dx / distance : 1, distance > 0 ? dy / distance : 0, push, w.owner, now, 'pulsar');

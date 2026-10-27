@@ -12,6 +12,8 @@ export function drawBlackHoles(mode: MultiplayerMode, ctx: CanvasRenderingContex
     ctx.save(); ctx.translate(hole.x, hole.y);
     ctx.fillStyle = '#02030c'; ctx.strokeStyle = ready ? '#d6a0ff' : '#ffd47d';
     ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, hole.radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = 'rgba(188, 153, 255, .22)'; ctx.lineWidth = 12;
+    ctx.beginPath(); ctx.arc(0, 0, hole.radius + BLACK_HOLE.RIM_CLEARANCE, 0, Math.PI * 2); ctx.stroke();
     ctx.strokeStyle = 'rgba(184, 133, 255, .3)'; ctx.lineWidth = 7;
     ctx.beginPath(); ctx.ellipse(0, 0, hole.radius + 19, (hole.radius + 19) * .45, -.35, 0, Math.PI * 2); ctx.stroke();
     ctx.lineWidth = 2; ctx.strokeStyle = ready ? '#aa7ce1' : '#ffd47d';

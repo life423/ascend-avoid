@@ -26,13 +26,15 @@ import { drawBall, drawBomb, drawComet, drawGem, drawLaunchPuff, gemColor } from
 import { SMOOTHING, SNAP_DISTANCE, View } from '../render/shared'
 import { drawTopBar, drawLeaderboard, drawMinimap, drawBanner, drawShiftChip, drawTrafficChip, drawNotices, drawKnockedOut, drawMessage, drawCapturePrompt } from '../render/hud'
 import { drawGemBursts, drawBlasts, drawBursts, drawPuffs, drawTheft } from '../render/effects'
+import { SHIFT as RIM_SHIFT } from '../../server/constants/gameConstants'
+import { slideBlackHoleRims } from '../../server/game/blackHole'
 import { drawBlackHoles } from '../render/blackHoles'
 import { drawTurbines, drawTurbineFlights } from '../render/turbines'
 import { drawFloor, drawShiftFloor, drawJackpot } from '../render/floor'
 import { captorOf, drawPlayer } from '../render/players'
 import { drawObstacle } from '../render/obstacles'
 import { drawPickups } from '../render/pickups'
-import type { SyncedGameState, SyncedGem, SyncedObstacle, SyncedPlayer, SyncedTurbine } from '../types/synced'
+import type { SyncedBlackHole, SyncedGameState, SyncedGem, SyncedObstacle, SyncedPlayer, SyncedTurbine } from '../types/synced'
 import { drawCannon } from '../render/cannon'
 import { drawWeapons } from '../render/weapons'
 import { drawIncoming } from '../render/incoming'
@@ -875,6 +877,7 @@ export class MultiplayerMode extends GameMode {
         const turn = turnStep(this.localFacing, this.localSpin, Math.hypot(aimed.x, aimed.y) > 0.25 ? Math.atan2(aimed.y, aimed.x) : null, me.width, Boolean(me.inhaling), deltaTime)
         this.localFacing = turn.facing
         this.localSpin = turn.spin
+        const rimFrom = { x: box.x, y: box.y }
         walk(box, this.velocity, steer, deltaTime, state.worldWidth, state.worldHeight)
         // Creatures are solid: stop at anyone you walk into and slide along them, as the server does
         const myId = this.multiplayerManager?.localSessionId
@@ -917,6 +920,9 @@ export class MultiplayerMode extends GameMode {
             box.x = Math.max(ARENA_RULES.EDGE_MARGIN, Math.min(state.worldWidth - box.width - ARENA_RULES.EDGE_MARGIN, box.x + push.x))
             box.y = Math.max(ARENA_RULES.EDGE_MARGIN, Math.min(state.worldHeight - box.height - ARENA_RULES.EDGE_MARGIN, box.y + push.y))
         })
+
+        const rim = slideBlackHoleRims(box, rimFrom.x, rimFrom.y, state.blackHoles?.filter((h: SyncedBlackHole) => !state.floor || state.floor[Math.floor(h.y / state.worldHeight * RIM_SHIFT.GRID) * RIM_SHIFT.GRID + Math.floor(h.x / state.worldWidth * RIM_SHIFT.GRID)] === '1') ?? [], state.worldWidth, state.worldHeight, deltaTime)
+        box.x = rim.x; box.y = rim.y
 
         // The server shows where you were about a round trip ago: quietly correct any drift from that
         this.history.push({ at: now, x: box.x, y: box.y })
@@ -1243,6 +1249,10 @@ export class MultiplayerMode extends GameMode {
         }
         if (how in WEAPON_RECIPES) {
             this.noteImpact(data)
+            if (data?.glancing && !data?.out) {
+                if (data?.byId === localId) window.dispatchEvent(new CustomEvent('ascend:activity', { detail: `${weaponRecipe(how).name}: +${Number(data?.earned) || 0} gems · graze` }))
+                return
+            }
             const weapon = weaponRecipe(how).name
             if (targetIsYou && data?.out) this.knockoutCause = { how, by: String(data?.by ?? 'Someone'), at: performance.now() }
             if (data?.byId === localId) {
@@ -1289,8 +1299,9 @@ export class MultiplayerMode extends GameMode {
         const y = Number(data?.y)
         const size = Number(data?.size) || 20
         if (!Number.isFinite(x) || !Number.isFinite(y)) return
-        this.impacts.push({ x, y, size, at: performance.now() })
+        this.impacts.push({ x, y, size: data?.glancing ? Math.min(32, size) : size, at: performance.now() })
         if (this.impacts.length > 12) this.impacts.shift()
+        if (data?.glancing) return
         const localId = this.multiplayerManager?.localSessionId
         if (data?.byId === localId || data?.targetId === localId || data?.projectileId === localId) {
             this.addShake(Math.min(12, 3 + size * 0.08))

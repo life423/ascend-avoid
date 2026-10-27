@@ -50,6 +50,7 @@ export class PinwheelSchema extends Schema {
   beatAt = 0;
   pulseAt = 0;
   pulseHits = new Set<string>();
+  pulseGrazes = new Set<string>();
   pulseDistances = new Map<string, number>();
   claimedAt = 0;
   activatedAt = 0;

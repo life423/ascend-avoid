@@ -20,12 +20,17 @@ const local = page => page.evaluate(() => {
   return { id: p.sessionId, x: p.x, y: p.y, width: p.width, gems: p.gems, capturedBy: p.capturedBy, flying: p.flying, state: p.state };
 });
 
-test('black holes are visible landmarks and existing keyboard/joystick movement crosses the core safely', async ({ page, hasTouch }) => {
+test('black holes are visible landmarks and existing keyboard/joystick movement slides around the soft rim safely', async ({ page, hasTouch }) => {
   await start(page); await send(page, 'test:setGems', { count: 40 });
   await expect.poll(async () => (await local(page)).gems).toBe(40);
   const p = await local(page);
   await send(page, 'test:moveTo', { x: 900 - p.width / 2, y: 1260 - p.width / 2 });
   await send(page, 'test:protect', { ms: 0 });
+  await expect.poll(() => page.evaluate(() => { const p = window.game.currentGameMode.multiplayerManager.getLocalPlayer(); return Math.abs(p.x+p.width/2-900); })).toBeLessThan(2);
+  await page.evaluate(() => {
+    const room=window.game.currentGameMode.multiplayerManager.room; window.__rimMinimum=Infinity;
+    room.onStateChange(state=>{const p=state.players.get(room.sessionId);if(p)window.__rimMinimum=Math.min(window.__rimMinimum,Math.hypot(p.x+p.width/2-1050,p.y+p.width/2-1260)-p.width/2);});
+  });
   await page.screenshot({ path: test.info().outputPath('black-hole-landmark.png') });
   if (hasTouch) {
     await page.evaluate(() => {
@@ -38,6 +43,8 @@ test('black holes are visible landmarks and existing keyboard/joystick movement 
   if (hasTouch) await page.evaluate(() => window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, pointerType: 'touch', isPrimary: true, bubbles: true })));
   else await page.keyboard.up('ArrowRight');
   expect((await local(page)).state).toBe('alive'); expect((await local(page)).gems).toBe(40);
+  expect(await page.evaluate(()=>window.__rimMinimum)).toBeGreaterThan(69);
+  expect(Math.abs((await local(page)).y+p.width/2-1260)).toBeGreaterThan(80);
 });
 
 test('an actual capture and fresh fire into a core ends a healthy run, credits the shooter and safely respawns', async ({ page, baseURL }) => {

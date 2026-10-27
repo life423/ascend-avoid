@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { GameState } from '../schema/GameState.js';
 import { INHALE } from '../constants/gameConstants.js';
-import { steal } from '../systems/inhale.js';
+import { steal, planTheft } from '../systems/inhale.js';
 
 const NOW = 100_000;
 function setup(victimGems: number, thiefGems: number, count = 1) {
@@ -29,8 +29,9 @@ function measure(victimGems: number, thiefGems: number, count = 1) {
       const distance = (victim.width + p.width) / 2 + 4;
       p.placeAt(2100 + Math.cos(angle) * distance - p.width / 2, 2100 + Math.sin(angle) * distance - p.height / 2);
       p.facing = angle + Math.PI; p.heldFor.set(victim.sessionId, state.time / 1000);
-      steal(state, p, state.now, 1 / 30);
     }
+    const plan = planTheft(state, state.now);
+    for (const p of thieves) steal(state, p, state.now, 1 / 30, plan);
     if (tick === 30) firstSecond = victimGems - victim.gems;
     if (victim.gems === 0) knockoutMs = state.time;
   }

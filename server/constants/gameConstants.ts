@@ -313,6 +313,7 @@ export const INHALE = {
   STEAL_ESCAPE: 0.75, // getting away cuts the drain by up to this much...
   STEAL_ESCAPE_AWAY: 0.6, // ...counting speed straight away at this share, and speed across the cone in full (strafing escapes best)...
   STEAL_POINT_BLANK: 0.25, // ...but less and less within this share of the reach: right at the mouth there's no getting away
+  GROUP_EXTRA_MAX: 0.6, // valid combined body pull/theft approaches at most 1.6x the strongest connection
   VULNERABLE_OUTGOING: 0.15, // prototype: body suction and injury drain only; capture disabled
   INJURY_MS: 7000, // fixed exposure: neither further hits nor inhaling extend an active window
   DRAIN_FLOOR: 0, // an injured creature drained completely is knocked out; healthy newborns are safe
@@ -753,5 +754,15 @@ export const BLACK_HOLE = {
   CORE_RADIUS: 64,
   RING_RADIUS: 96,
   WARNING_MS: 2500,
+  RIM_CLEARANCE: 8,
+  RIM_RECOVERY_SPEED: 180,
   POSITIONS: [[0.25, 0.30], [0.75, 0.30], [0.50, 0.74]],
+} as const;
+
+/** Provisional assembled-weapon counterplay; independent of player-fired cannonballs. */
+export const WEAPON_FAIRNESS = {
+  CORE_RADIUS_MAX: 90,
+  GRAZE_DAMAGE_SHARE: 0.25,
+  SHARED_HIT_MS: 900,
+  FULL_GUARD_WIDTH: 500,
 } as const;

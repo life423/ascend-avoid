@@ -4,7 +4,11 @@
 
 The approved experience is the six-stage [lasting-dominance loop](GAME_LOOP.md): start small, become capable, build an advantage, become enormous, maintain a long reign, and eventually fall into another climb. The user explicitly wants giant size to feel almost untouchable and sustainable for hours through good play. The initial size-based missile/theft pass below starts supporting that goal; hours-long survival has not been established by playtesting. GAME_LOOP.md separates this implemented pass from remaining proposals.
 
-Collect gems, grow, steal from injured creatures, capture someone smaller, aim and fire them as a living cannonball, then compete for spilled gems. The captor controls the shot; the captive's chance is escaping before launch. The world is continuous: no lobby or round wait. The background field target is 950 gems, about 25% fewer than the former 1,270; combat spills are additional, within the overall 2,000-object cap. This is a field-density reduction, not a cap of 950 total objects after fights.
+Collect gems, grow, steal from injured creatures, capture someone smaller, aim and fire them as a living cannonball, then compete for spilled gems. The captor controls the shot; the captive collects capped pending belly bonuses until firing or automatic ejection. The world is continuous: no lobby or round wait. The background field target is 950 gems, about 25% fewer than the former 1,270; combat spills are additional, within the overall 2,000-object cap. This is a field-density reduction, not a cap of 950 total objects after fights.
+
+## Current local arena polish
+
+Ordinary bodies safely slide around a soft black-hole rim; eligible fired captives can enter the lethal core. Body pull and injury theft from several valid attackers have diminishing returns, approaching 1.6× the strongest connection; solo behavior is unchanged. Owner guidance uses a missing-component icon and three progress sockets; compact views omit floating component names. See [GROUP_ARENA_POLISH.md](GROUP_ARENA_POLISH.md) for provisional constants, measurements and remaining human playtests.
 
 ## World and presentation
 
@@ -291,3 +295,10 @@ Capture no longer has a loading prerequisite, so the old AI's 400–650ms reacti
 A target keeps one fallible 0.12–0.24-radian aim offset across periodic observations. Lost/dead/captured/flying/protected/out-of-range targets revoke a shot immediately; a replacement requires fresh reaction and alignment. No target means normal repositioning, never a fallback shot. Stun, skid/recovery, capture or forced flight resets the plan. If no shot is established by the original hold deadline, ordinary protected ejection applies. Human immediate firing, hold durations, movement/turn physics, damage, injury, puff and shot-follow tuning are unchanged.
 
 Verification: focused real-server tests cover acquisition, physical turn/alignment, continuous dwell, missing/lost targets, reacquisition, interruptions and timeout. The complete 25 unit suites and 18 multiplayer scenarios pass; 12 capture UI cases pass on desktop Chrome, Android-layout Chrome and iPhone-layout WebKit. The earlier long balance experiments used the faster AI; they remain historical measurements rather than proof of balance with this changed decision policy.
+
+
+## Large-player assembled-weapon fairness — local follow-up
+
+The user selected weapon fairness as the next fix. `WEAPON_FAIRNESS` bounds the central hit radius at 90 world units; smaller bodies retain their original area. Center-directed bolts/beam intersections retain the original damage. Outer grazes deal 25% without a new injury or skid; previous injury/continuation is unchanged. Forward rays and finite beam reach prevent an overlapped weapon firing away from the center from receiving a full-hit benefit. Pulsar outer-shell contact is cosmetic and damage waits for the central area.
+
+Shared assembled-weapon protection ramps from zero at width 180 to 900ms at width 500, capped thereafter; existing local cooldowns still apply. Blocked hits do not refresh the guard or pay rewards. A broken blue rim indicates the actual window, separate from the mint suction-recovery ring. Player cannonballs, theft, capture, puff and other hazards ignore this weapon-only guard. Death/respawn clears it. Small-body damage, direct-hit profiles, ordinary movement/growth and all unrelated controls/tuning remain unchanged. See WEAPON_FAIRNESS.md and its JSON for before/after measurements and human-playtest limits. This pass is local and has not been merged or deployed.
