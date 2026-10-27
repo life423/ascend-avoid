@@ -1,0 +1,224 @@
+{
+  "baseCommit": "394a93c8c62ef7613a14a3c2b5a7f2d5f8d6e550",
+  "description": "Five-minute seeded AI smoke for the local bot-aim follow-up, not final balance validation.",
+  "methodology": {
+    "tickHz": 30,
+    "seededRandomAndClock": true,
+    "blackHoles": true,
+    "weaponSets": 9,
+    "captureShare": 0.3,
+    "bellyBonusCap": 6,
+    "vulnerableOutgoing": 0.15,
+    "shotFollowMaxTravel": 480,
+    "puffRecoilCap": 420,
+    "arenaSecondsPerRun": 300,
+    "stopAtWidthShare": null,
+    "initialFieldCrystals": 950,
+    "fieldReplenishPerSecond": 30,
+    "growthMassPerGem": 0.5,
+    "missileBaseGems": 80,
+    "ownerPickupDelayMs": 3000,
+    "missileOwnerPickupDelayMs": 6000,
+    "growthScale": 600,
+    "growthExponent": 0.8,
+    "decayStart": 300,
+    "decayRate": 0.001,
+    "seeds": [
+      11
+    ],
+    "scenarios": [
+      "human-newborn"
+    ],
+    "probeController": "existing fallible BotBrain; roles retain their current shared gameplay rules; no human skill or subjective fun is inferred",
+    "weaponsInArena": "all nine production sets across six recipes; ordinary pickup/placement by current AI; every set activation is counted",
+    "decay": "actual PlayerSchema.decay, no combat or collecting",
+    "weaponExposure": "actual full world update; idle/radial/sideways/warning escape, open arena/wall, with/without spilled gem recovery; contested cases add an unopposed builder following/inhaling",
+    "creditedKnockouts": "missile-target versus spent-missile distinguished; state-transition death count is separate; missing milestones mean not reached"
+  },
+  "aiTiming": {
+    "minCapturePlanningMs": 1400,
+    "alignedDwellMs": 450
+  },
+  "arena": {
+    "actualDeaths": 57,
+    "deathsByPreKnockoutWidth": {
+      "below150": 57,
+      "from150To500": 0,
+      "atLeast500": 0
+    },
+    "creditedKnockouts": {
+      "pinwheel": 8,
+      "missile-target": 7,
+      "spent-missile": 30,
+      "ion": 3,
+      "blackhole": 2,
+      "pulsar": 5,
+      "sentinel": 1,
+      "comet": 1
+    },
+    "captures": 44,
+    "launches": 43,
+    "captureOutcomes": {
+      "timedEjections": 2,
+      "fires": 41,
+      "injuredFires": 10,
+      "capturedPostTransferGems": 2671,
+      "bellyBonusPaid": 20,
+      "bellyBonusDiscarded": 80,
+      "continuedTheftSeconds": 11.333333333333304,
+      "followActiveSeconds": 7.533333333333316
+    },
+    "captureTiming": {
+      "count": 44,
+      "minRatio": 1.3018867924528301,
+      "meanHoldMs": 6438
+    },
+    "meanGiantsAt500Width": 0,
+    "mostGiantsAt500Width": 0,
+    "finalGiantsAt500Width": 0,
+    "finalPopulation": [
+      {
+        "gems": 23,
+        "width": 52
+      },
+      {
+        "gems": 160,
+        "width": 127
+      },
+      {
+        "gems": 338,
+        "width": 181.5
+      },
+      {
+        "gems": 4,
+        "width": 28.5
+      },
+      {
+        "gems": 160,
+        "width": 127
+      },
+      {
+        "gems": 389,
+        "width": 194
+      },
+      {
+        "gems": 6,
+        "width": 31.5
+      },
+      {
+        "gems": 129,
+        "width": 115
+      },
+      {
+        "gems": 808,
+        "width": 273
+      },
+      {
+        "gems": 784,
+        "width": 269
+      },
+      {
+        "gems": 2,
+        "width": 24.5
+      },
+      {
+        "gems": 11,
+        "width": 38.5
+      },
+      {
+        "gems": 738,
+        "width": 261.5
+      },
+      {
+        "gems": 504,
+        "width": 219
+      },
+      {
+        "gems": 67,
+        "width": 84
+      },
+      {
+        "gems": 131,
+        "width": 115.5
+      },
+      {
+        "gems": 586,
+        "width": 235
+      },
+      {
+        "gems": 1057,
+        "width": 308.5
+      },
+      {
+        "gems": 81,
+        "width": 92
+      },
+      {
+        "gems": 0,
+        "width": 20
+      }
+    ],
+    "leaderChangesAt100PlusGems": 13,
+    "longestLeaderTenureAt100PlusGems": 64,
+    "biggestFinalPlayer": 1057,
+    "weaponPhase": "parts",
+    "deployments": {
+      "pinwheel": 15,
+      "ion": 5,
+      "pulsar": 13,
+      "sentinel": 3,
+      "comet": 12,
+      "ricochet": 3
+    },
+    "weaponActiveSeconds": {
+      "pinwheel": 120,
+      "ion": 80,
+      "pulsar": 108,
+      "sentinel": 48,
+      "comet": 142,
+      "ricochet": 48
+    }
+  },
+  "minuteSamples": [
+    {
+      "seconds": 60,
+      "probe": 84,
+      "leader": 162,
+      "deaths": 19,
+      "giantsAt500Width": 0,
+      "fieldCrystals": 950
+    },
+    {
+      "seconds": 120,
+      "probe": 193,
+      "leader": 246,
+      "deaths": 28,
+      "giantsAt500Width": 0,
+      "fieldCrystals": 950
+    },
+    {
+      "seconds": 180,
+      "probe": 158,
+      "leader": 449,
+      "deaths": 35,
+      "giantsAt500Width": 0,
+      "fieldCrystals": 950
+    },
+    {
+      "seconds": 240,
+      "probe": 11,
+      "leader": 699,
+      "deaths": 48,
+      "giantsAt500Width": 0,
+      "fieldCrystals": 950
+    },
+    {
+      "seconds": 300,
+      "probe": 23,
+      "leader": 1057,
+      "deaths": 57,
+      "giantsAt500Width": 0,
+      "fieldCrystals": 929
+    }
+  ]
+}

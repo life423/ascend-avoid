@@ -7,33 +7,55 @@ export function cannonTargetAppeal(gems: number, width: number, ammoWidth: numbe
   return (gems - lost < CANNON.IMPACT_KO_GEMS ? 1000 : 0) + 100 * lost / Math.max(1, gems) + Math.sqrt(lost) - distance * .05;
 }
 
-/** Read periodically while loading, then commit to a fallible shot rather than track every tick. */
+export interface BotShotTarget { id: string; angle: number }
+
+/** A fallible firing decision: observe, turn normally, settle, then shoot a real target. */
 export class BotCannonAim {
   private capture = '';
   private observeAt = 0;
-  private fireAt = 0;
-  private angle: number | null = null;
+  private firstSeenAt = 0;
+  private fireAt = Infinity;
+  private target: BotShotTarget | null = null;
+  private error = 0;
+  private alignedSince: number | null = null;
 
   constructor(private readonly random: () => number = Math.random) {}
 
-  update(capture: string, loadedAt: number, now: number, facing: number, observe: () => number | null): { angle: number; ready: boolean } {
+  reset(): void { this.capture = ''; this.target = null; this.alignedSince = null; this.fireAt = Infinity; }
+
+  update(capture: string, capturedAt: number, now: number, facing: number,
+    observe: () => BotShotTarget | null, valid: (id: string) => boolean = () => true): { angle: number; ready: boolean; hasTarget: boolean } {
     if (this.capture !== capture) {
       this.capture = capture;
-      this.angle = null;
+      this.firstSeenAt = Math.max(capturedAt, now);
       this.observeAt = now + BOTS.FIRE_READ_MS;
-      if (loadedAt <= now) {
-        const observed = observe();
-        const error = (this.random() < .5 ? -1 : 1) * (BOTS.FIRE_ERROR_MIN + this.random() * (BOTS.FIRE_ERROR_MAX - BOTS.FIRE_ERROR_MIN));
-        this.angle = observed === null ? facing : observed + error;
-      }
-      this.fireAt = Math.max(now, loadedAt) + BOTS.FIRE_REACT_MIN_MS + this.random() * (BOTS.FIRE_REACT_MAX_MS - BOTS.FIRE_REACT_MIN_MS);
+      this.target = null; this.alignedSince = null; this.fireAt = Infinity;
     }
-    if (now < loadedAt && now >= this.observeAt) {
+    if (this.target && !valid(this.target.id)) {
+      this.target = null; this.alignedSince = null; this.fireAt = Infinity;
+      this.observeAt = now + BOTS.FIRE_READ_MS;
+    }
+    if (now >= this.observeAt) {
       this.observeAt = now + BOTS.FIRE_OBSERVE_MS;
       const observed = observe();
-      const error = (this.random() < 0.5 ? -1 : 1) * (BOTS.FIRE_ERROR_MIN + this.random() * (BOTS.FIRE_ERROR_MAX - BOTS.FIRE_ERROR_MIN));
-      this.angle = observed === null ? facing : observed + error;
+      if (!observed || !Number.isFinite(observed.angle) || !valid(observed.id)) {
+        this.target = null; this.alignedSince = null; this.fireAt = Infinity;
+      } else {
+        if (observed.id !== this.target?.id) {
+          this.error = (this.random() < .5 ? -1 : 1) * (BOTS.FIRE_ERROR_MIN + this.random() * (BOTS.FIRE_ERROR_MAX - BOTS.FIRE_ERROR_MIN));
+          this.fireAt = now + BOTS.FIRE_REACT_MIN_MS + this.random() * (BOTS.FIRE_REACT_MAX_MS - BOTS.FIRE_REACT_MIN_MS);
+          this.alignedSince = null;
+        }
+        // Keep the same imperfect offset while observing this target, rather than jitter every read.
+        this.target = { id: observed.id, angle: observed.angle + this.error };
+      }
     }
-    return { angle: this.angle ?? facing, ready: now >= this.fireAt };
+    const angle = this.target?.angle ?? facing;
+    const aligned = this.target && Math.abs(Math.atan2(Math.sin(angle - facing), Math.cos(angle - facing))) <= BOTS.FIRE_AIM;
+    if (aligned) this.alignedSince ??= now;
+    else this.alignedSince = null;
+    return { angle, hasTarget: this.target !== null, ready: this.target !== null
+      && now >= this.firstSeenAt + BOTS.FIRE_MIN_CAPTURE_MS && now >= this.fireAt
+      && this.alignedSince !== null && now - this.alignedSince >= BOTS.FIRE_SETTLE_MS };
   }
 }
