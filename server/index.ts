@@ -40,15 +40,17 @@ const app = express();
 const distPath = path.resolve(__dirname, path.basename(__dirname) === "dist" ? "../../dist" : "../dist");
 
 // Enable CORS to allow connections from your game client
-// Security headers (HSTS, no sniffing, no framing, a content security policy for the game) and no
+// Security headers (HSTS, no sniffing, restricted framing, a content security policy for the game) and no
 // advertising the stack. The policy allows only this site's scripts, Google Fonts, inline styles (the
 // menu injects a <style>) and websocket connections for the game.
 app.disable("x-powered-by");
 app.use(
   helmet({
+    frameguard: false,
     contentSecurityPolicy: {
       useDefaults: true,
       directives: {
+        "frame-ancestors": ["'self'", "https://itch.io", "https://*.itch.io", "https://*.itch.zone"],
         "script-src": ["'self'", ...inlineScriptHashes(path.join(distPath, "index.html"))],
         "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         "font-src": ["'self'", "https://fonts.gstatic.com", "data:"],
