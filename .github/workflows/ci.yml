@@ -49,6 +49,10 @@ jobs:
     name: Browser regressions (${{ matrix.browser }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # The matching image already contains browsers and Linux libraries; avoid slow apt mirrors.
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      options: --init --ipc=host
     strategy:
       fail-fast: false
       matrix:
@@ -69,8 +73,9 @@ jobs:
       run: |
         npm ci
         cd server && npm ci
-    - name: Install browser and system dependencies
-      run: npx playwright install --with-deps ${{ matrix.browser }}
+    - name: Verify bundled browser runtime
+      run: |
+        node -e "const fs=require('fs'); const p=require('playwright'); const version=require('@playwright/test/package.json').version; if(version!=='1.64.1') throw new Error('Update the CI image to match Playwright '+version); for(const name of ['chromium','firefox','webkit']) { const path=p[name].executablePath(); if(!fs.existsSync(path)) throw new Error('Missing bundled '+name); console.log(name+' runtime ready'); }"
     - name: Build application
       run: npm run build
     - name: Cross-browser gameplay, touch and render regressions
