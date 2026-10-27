@@ -3,7 +3,7 @@ import { PlayerSchema } from '../schema/PlayerSchema.js';
 import { GameState } from '../schema/GameState.js';
 import { BotBrain } from '../game/bots.js';
 import { GemSchema } from '../schema/GemSchema.js';
-import { escapePress, updateInhales, updateHolds, exhale } from '../systems/inhale.js';
+import { updateInhales, updateHolds, exhale } from '../systems/inhale.js';
 import { updateFlights } from '../systems/flights.js';
 import { spawnWeapon, updateWeapons, deployWeapon } from '../systems/weapons.js';
 import { weaponKinds } from '../game/weaponKit.js';
@@ -43,15 +43,12 @@ for (const role of [false, true]) {
   const s = empty(), captor = add(s, 'captor', role, 60, 1000, 1000), captive = add(s, 'captive', role, 4);
   captive.placeAt(captor.x + captor.width, captor.y + (captor.height - captive.height) / 2);
   captor.facing = 0; captor.startInhale(NOW); seeded(() => updateInhales(s, NOW, 1 / 30));
-  assert(captive.capturedBy); captures.push({ length: captive.escapeKeys.length, daze: captive.dazedUntil, ready: captor.fireReadyAt });
-  assert.equal(captive.escapeTryAt, 0, 'the capture rule does not schedule different input eligibility for bots');
-  const first = captive.escapeKeys[0]; escapePress(s, captive, first); assert.equal(captive.escapeStep, 0, 'both roles wait for the same daze');
-  s.time = CANNON.CAPTIVE_STUN_MS; s.now = NOW + s.time;
-  for (const key of captive.escapeKeys) escapePress(s, captive, key);
+  assert(captive.capturedBy); captures.push({ ratio: captive.captureRatio, hold: captive.captureHoldMs, transfer: captive.gems });
+  s.time = captive.captureHoldMs; s.now = NOW + s.time;
   updateHolds(s, s.now);
   assert(!captive.capturedBy && captive.suctionSafeUntil === s.now + CANNON.ESCAPE_SAFE_MS);
 }
-assert.deepEqual(captures[0], captures[1], 'puzzle length, daze, loading and escape protection are role invariant');
+assert.deepEqual(captures[0], captures[1], 'hold timing, transfer and ejection protection are role invariant');
 
 for (const role of [false, true]) {
   const s = empty(), p = add(s, 'defender', role, 40, 1000, 1000), other = add(s, 'target', !role, 40, 1100, 1000);

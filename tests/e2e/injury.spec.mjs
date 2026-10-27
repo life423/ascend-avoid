@@ -120,7 +120,7 @@ test('a real small shot wounds a giant while retaining earned size and a clear v
     await expect.poll(() => !!captor.state.players.get(missile.sessionId) && captor.state.players.get(missile.sessionId).gems === 4 && !captor.state.players.get(missile.sessionId).spawnProtected).toBe(true);
     captor.send('inhale');
     await expect.poll(() => missile.state.players.get(missile.sessionId)?.capturedBy).toBe(captor.sessionId);
-    captor.send('tap');
+    captor.send('exhale'); captor.send('tap');
     await page.waitForFunction(() => { const m = window.game.currentGameMode, p = m.multiplayerManager.getLocalPlayer(); return p.injuredUntil > m.multiplayerManager.room.state.time; });
     const result = await page.evaluate(() => {
       const m = window.game.currentGameMode, p = m.multiplayerManager.getLocalPlayer(), v = m.lastView, s = m.multiplayerManager.room.state;

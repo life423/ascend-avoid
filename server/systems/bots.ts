@@ -2,9 +2,9 @@ import type { GameState } from "../schema/GameState.js";
 import { PlayerSchema } from "../schema/PlayerSchema.js";
 import { BotBrain } from "../game/bots.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
-import { captureLoadMs, launchSpeed } from "../game/cannon.js";
+import { BELLY_GEMS, launchSpeed } from "../game/cannon.js";
 import { cannonTargetAppeal } from '../game/botAim.js';
-import { escapePress, exhale, fireCaptive, stealWeight } from "./inhale.js";
+import { exhale, fireCaptive, stealWeight } from "./inhale.js";
 import { botPreyAvailable, botRobber } from '../game/botTargets.js';
 import { EXHALE } from '../constants/gameConstants.js';
 
@@ -15,11 +15,14 @@ const { PLAYER_STATE, BOTS, INHALE, BOMBS } = GAME_CONSTANTS;
  * slow, or rooted while inhaling. A lit bomb in the mouth goes straight back out.
  */
 export function botMouth(state: GameState, bot: PlayerSchema, now: number) : void {
-  if (bot.state !== PLAYER_STATE.ALIVE || bot.sliding || bot.recovering || bot.stunned || bot.flying) return;
+  if (bot.state !== PLAYER_STATE.ALIVE || bot.flying) return;
   if (bot.capturedBy) {
-    botEscape(state, bot, now);
+    const gem = BELLY_GEMS.find((_, i) => !(bot.bellyCollected & (1 << i)));
+    if (gem) { const x = gem.x - bot.bellyX, y = gem.y - bot.bellyY; const d = Math.max(.01, Math.hypot(x, y)); bot.steer(x / d, y / d); }
+    else bot.steer(0, 0);
     return;
   }
+  if (bot.sliding || bot.recovering || bot.stunned) return;
   const cx = bot.x + bot.width / 2;
   const cy = bot.y + bot.height / 2;
   if (bot.gulping) {
@@ -103,7 +106,7 @@ export function botMouth(state: GameState, bot: PlayerSchema, now: number) : voi
   // creature it isn't clearly bigger than is robbed only from behind (outside its front cone), and never
   // one that MAX_ROBBERS are already on
   state.players.forEach((other) => {
-    if (want || !botPreyAvailable(state, bot, other, now) || state.time >= other.injuredUntil || other.gems < 1) return;
+    if (want || !botPreyAvailable(state, bot, other, now) || state.time >= other.injuredUntil && !bot.theftContinuations.has(other.sessionId) || other.gems < 1) return;
     const ox = other.x + other.width / 2;
     const oy = other.y + other.height / 2;
     const d = Math.hypot(ox - cx, oy - cy);
@@ -183,7 +186,8 @@ function botFire(state: GameState, bot: PlayerSchema, cx: number, cy: number, no
   const captive = state.players.get(bot.gulping);
   const brain = state.brains.get(bot.sessionId);
   if (!captive || !brain) return;
-  const shot = brain.cannonAim.update(`${bot.gulping}:${bot.captureStartedAt}`, bot.captureStartedAt + captureLoadMs(captive.escapeKeys.length), now, bot.facing, () => {
+  bot.captureNeedsRelease = false; // AI releases capture input, then makes a separate firing decision.
+  const shot = brain.cannonAim.update(`${bot.gulping}:${bot.captureStartedAt}`, bot.captureStartedAt, now, bot.facing, () => {
     let target: PlayerSchema | null = null;
     let best = -Infinity;
     state.players.forEach((other) => {
@@ -191,7 +195,7 @@ function botFire(state: GameState, bot: PlayerSchema, cx: number, cy: number, no
       const d = Math.hypot(other.x + other.width / 2 - cx, other.y + other.height / 2 - cy);
       if (d > BOTS.FIRE_RANGE) return;
       // Choose a shot this ammunition can threaten, instead of always wasting tiny rounds on a giant.
-      const score = cannonTargetAppeal(other.gems, other.width, captive.width, launchSpeed(bot.width, captive.width), d);
+      const score = cannonTargetAppeal(other.gems, other.width, captive.width, launchSpeed(bot.width, captive.width), d, bot.width);
       if (score > best) {
         best = score;
         target = other;
@@ -202,17 +206,6 @@ function botFire(state: GameState, bot: PlayerSchema, cx: number, cy: number, no
   });
   bot.steer(Math.cos(shot.angle), Math.sin(shot.angle));
   if (shot.ready && Math.abs(angleGap(bot.facing, shot.angle)) <= BOTS.FIRE_AIM) fireCaptive(state, bot, now);
-}
-
-/** Caught: dazed at first, then it tries a direction every ESCAPE_EVERY_MS, the right one ESCAPE_SKILL of the time */
-function botEscape(state: GameState, bot: PlayerSchema, now: number) : void {
-  if (state.time < bot.dazedUntil || bot.escapeStep >= bot.escapeKeys.length) return;
-  if (!bot.escapeTryAt) { bot.escapeTryAt = now + BOTS.ESCAPE_READ_MS; return; }
-  if (now < bot.escapeTryAt) return;
-  bot.escapeTryAt = now + BOTS.ESCAPE_EVERY_MS;
-  const right = bot.escapeKeys[bot.escapeStep];
-  const wrong = "UDLR".replace(right, "");
-  escapePress(state, bot, Math.random() < BOTS.ESCAPE_SKILL ? right : wrong[Math.floor(Math.random() * wrong.length)]);
 }
 
 /** The shortest turn from one angle to another, in radians (signed) */

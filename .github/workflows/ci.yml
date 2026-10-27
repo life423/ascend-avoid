@@ -1,14 +1,13 @@
 name: CI
 
 # Every pull request: types, lint, synced schema, production build, unit and multiplayer regressions.
-# Device/browser checks run locally with npm run test:browsers.
+# Browser matrix retained for follow-up; Ubuntu compatibility is temporarily deferred for this release.
 on:
   pull_request:
 
 jobs:
   build-and-test:
-    # CI Build and Test is the check branch protection requires
-    name: CI Build and Test
+    name: Build and gameplay checks
     runs-on: ubuntu-latest
 
     steps:
@@ -45,3 +44,71 @@ jobs:
 
     - name: Isolated multiplayer scenarios
       run: node scripts/multiplayer-smoke.mjs
+
+  browsers:
+    # Temporarily deferred at release request; restore this job when Ubuntu browser CI is resumed.
+    if: false
+    name: Browser regressions (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # The matching image already contains browsers and Linux libraries; avoid slow apt mirrors.
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      options: --init --ipc=host
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - browser: chromium
+            projects: '*Chrome*'
+          - browser: firefox
+            projects: '*Firefox*'
+          - browser: webkit
+            projects: '*Safari*'
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+    - name: Install dependencies
+      run: |
+        npm ci
+        cd server && npm ci
+    - name: Verify bundled browser runtime
+      run: |
+        node -e "const fs=require('fs'); const p=require('playwright'); const version=require('@playwright/test/package.json').version; if(version!=='1.64.1') throw new Error('Update the CI image to match Playwright '+version); for(const name of ['chromium','firefox','webkit']) { const path=p[name].executablePath(); if(!fs.existsSync(path)) throw new Error('Missing bundled '+name); console.log(name+' runtime ready'); }"
+    - name: Build application
+      run: npm run build
+    - name: Cross-browser gameplay, touch and render regressions
+      env:
+        CI: '1'
+        E2E_START_SERVER: '1'
+        E2E_TEST_HOOKS: '1'
+        E2E_URL: http://127.0.0.1:3002
+      run: |
+        # GitHub mounts a pwuser-owned home but runs this trusted test container as root.
+        # Firefox requires the existing home directory to belong to the launch user.
+        chown "$(id -u):$(id -g)" "$HOME"
+        npx playwright test --project='${{ matrix.projects }}' --retries=0
+    - name: Save failure traces, screenshots and performance samples
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: browser-results-${{ matrix.browser }}
+        path: test-results/
+        retention-days: 7
+
+  required-checks:
+    # Preserve the required check name; the explicitly deferred browser matrix may be skipped.
+    name: CI Build and Test
+    if: always()
+    needs: [build-and-test, browsers]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Require gameplay; Ubuntu browser matrix explicitly deferred
+      run: |
+        if [[ '${{ needs.build-and-test.result }}' != 'success' || ( '${{ needs.browsers.result }}' != 'success' && '${{ needs.browsers.result }}' != 'skipped' ) ]]; then
+          echo 'Gameplay or browser regressions failed.'
+          exit 1
+        fi

@@ -232,7 +232,7 @@ function initializeUIControls() {
     document.addEventListener(
         'touchmove',
         function (e) {
-            if ((e.target as HTMLElement).closest('.modal-content')) {
+            if ((e.target as HTMLElement).closest('.modal-content, .drawer')) {
                 return
             }
             e.preventDefault()

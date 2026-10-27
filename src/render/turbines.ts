@@ -3,6 +3,7 @@ import { GEMS, TURBINE } from '../../server/constants/gameConstants'
 import { exhaustAngle } from '../../server/game/turbine'
 import { drawExhaustWind, drawGem, drawIntakeWind, drawTurbineBody, drawTurbineWarning } from './world'
 import type { SyncedGameState, SyncedTurbine, SyncedTurbineFlight } from '../types/synced'
+import { inView } from './shared'
 
 /** Gems lying around, and sprayed ones sliding to a stop (eased, like other players) */
 /** Turbines, under the gems and players: warnings, the intake's suction, the exhaust's wind, and the machines */
@@ -10,6 +11,7 @@ export function drawTurbines(mode: MultiplayerMode, ctx: CanvasRenderingContext2
     if (!state.turbines?.length) return
     const now = mode.worldNow(state, timestamp)
     state.turbines.forEach((turbine: SyncedTurbine) => {
+        if (!inView(mode.renderView, turbine.x, turbine.y, Math.max(TURBINE.INTAKE_REACH, TURBINE.EXHAUST_REACH) + TURBINE.BODY_RADIUS)) return
         if (turbine.phase === 'warning') {
             const progress = Math.max(0, Math.min(1, 1 - (turbine.phaseEndsAt - now) / TURBINE.WARNING_MS))
             drawTurbineWarning(ctx, turbine.x, turbine.y, turbine.intake, progress, timestamp)

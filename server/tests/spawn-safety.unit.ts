@@ -1,0 +1,25 @@
+import assert from 'node:assert/strict';
+import { GameState } from '../schema/GameState.js';
+import { WeaponBoltSchema } from '../schema/PinwheelSchema.js';
+import { clearanceAt } from '../systems/turbines.js';
+import { WORLD } from '../constants/gameConstants.js';
+import { moveSpeed } from '../game/movement.js';
+const NOW=100000;
+const s=new GameState(0);s.botFill=0;s.weaponsOn=true;s.surgesOn=false;s.setTurbines('off');s.obstacles.clear();s.comets.clear();s.balls.clear();
+const self=s.addPlayer('newborn','Newborn',NOW),enemy=s.addPlayer('enemy','Enemy',NOW);enemy.placeAt(100,100);
+const w=s.pinwheel;w.owner=enemy.sessionId;w.kind='pulsar';w.phase='active';w.x=w.y=2100;w.at=20000;
+assert(clearanceAt(s,2100,2100,self,enemy)<0,'wave radius is an unsafe respawn area');
+assert(clearanceAt(s,850,850,self,enemy)>WORLD.SPAWN_CLEARANCE,'an open corner remains available');
+w.phase='charging';assert(clearanceAt(s,2200,2100,self,enemy)<0,'charging weapons count too');
+w.kind='sentinel';w.phase='active';w.originX=w.x;w.originY=w.y;w.activatedAt=s.time;
+assert(clearanceAt(s,2100,2100,self,enemy)<0,'moving satellites and their next positions are considered');
+w.kind='pinwheel';w.x=w.y=3500;const bolt=new WeaponBoltSchema();bolt.x=1000;bolt.y=1800;bolt.angle=0;w.bolts.set('incoming',bolt);
+assert(clearanceAt(s,1300,1800,self,enemy)<0,'incoming projectile paths count, even far from the weapon');
+w.bolts.clear();w.kind='pulsar';w.x=w.y=2100;
+const random=Math.random;Math.random=()=>.15;
+try{s.spawn(self,NOW);}finally{Math.random=random;}
+assert(clearanceAt(s,self.x+self.width/2,self.y+self.height/2,self,enemy)>WORLD.SPAWN_CLEARANCE,'spawn selects a genuinely clear candidate');
+self.updateMovement(4200,4200,NOW+3000,0);assert(self.spawnProtected,'a new run has four seconds to move clear');
+self.updateMovement(4200,4200,NOW+4001,0);assert(!self.spawnProtected);
+assert.equal(moveSpeed(80),160,'movement uses the requested square-root falloff');assert.equal(moveSpeed(1200),130,'minimum speed remains 130');
+console.log('Spawn safety passed: current/future weapon danger, incoming bolts, safe candidate selection, protected recovery and exact movement settings.');

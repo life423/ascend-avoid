@@ -174,13 +174,13 @@ export function drawPlayer(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
     const heading = headings.get(sessionId) ?? facing
     // Pressed against someone, the body gives a little along the line of contact
     const squash = squashFor(mode, sessionId, left + size / 2, top + size / 2, size)
-    // Holding someone inside: the body quivers with their struggle
+    // A full belly breathes gently; the captive cannot nudge its captor.
     const holding = player.gulping ? world?.players.get(player.gulping) : undefined
-    const quiver = holding ? 1 + 0.02 * Math.sin(timestamp / 45) * (0.4 + 0.6 * Math.min(1, holding.struggle)) : 1
+    const quiver = holding ? 1 + 0.008 * Math.sin(timestamp / 300) : 1
     // Exhaling: the body puffs out as the air goes, then settles
     const puff = mode.puffs.find((p) => p.by === sessionId)
     const puffed = puff ? 1 + 0.14 * Math.sin(Math.PI * Math.min(1, (timestamp - puff.at) / 260)) : 1
-    const injuryRemaining = (player.injuredUntil ?? 0) - (world ? mode.worldNow(world, timestamp) : 0)
+    const injuryRemaining = player.continuedTheft ? 1000 : (player.injuredUntil ?? 0) - (world ? mode.worldNow(world, timestamp) : 0)
     const injuryAge = INHALE.INJURY_MS - injuryRemaining
     const impactPop = !REDUCED_MOTION.matches && player.injuredUntil > 0 && injuryAge >= 0 && injuryAge < 220 ? Math.sin(Math.PI * injuryAge / 220) : 0
     const bulge = quiver * puffed
@@ -206,15 +206,21 @@ export function drawPlayer(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
         ctx.translate(-(left + size / 2), -(top + size / 2))
     }
     const color = isLocal ? '#ffffff' : PLAYER_COLORS[player.playerIndex % PLAYER_COLORS.length]
-    // Cheeks inflate during the gulp, then stay full until firing or escape.
-    const heldFor = world && holding ? mode.worldNow(world, timestamp) - (player.gulpEndsAt - CANNON.HOLD_MS) : 0
+    // Cheeks inflate during the gulp, then stay full until firing or release.
+    const heldFor = world && holding ? mode.worldNow(world, timestamp) - (player.gulpEndsAt - holding.captureHoldMs) : 0
     const cheekProgress = holding ? Math.max(0, Math.min(1, heldFor / SUCK_MS)) : 0
     const cheeks = 1 - Math.pow(1 - cheekProgress, 3)
     if (player.flying) drawProjectile(ctx, left + size / 2, top + size / 2, size, color, heading, timestamp)
     else drawCreature(ctx, left + size / 2, top + size / 2, size, color, facing, timestamp, player.mouth ?? '', Boolean(player.inhaling), cheeks, Boolean(player.stunned))
+    if (player.inhaling && (player.continuedTheft || world && player.injuredUntil > mode.worldNow(world, timestamp))) {
+        const mouth = mouthOf(centerX, centerY, size, facing)
+        const unit = 1 / Math.max(.001, Math.abs(ctx.getTransform().a))
+        ctx.save(); ctx.strokeStyle = '#ffae94'; ctx.lineWidth = 2 * unit; ctx.setLineDash([3 * unit, 4 * unit])
+        ctx.beginPath(); ctx.arc(mouth.x, mouth.y, Math.max(7 * unit, size * .065), 0, Math.PI * 2); ctx.stroke(); ctx.restore()
+    }
     if (!held && !player.flying && player.injuredUntil > 0) drawInjury(ctx, centerX, centerY, size, facing, injuryAge, injuryRemaining, REDUCED_MOTION.matches)
     ctx.restore()
-    // The loading badge stays beneath the puffed cheeks and clear eyes.
+    // The hold badge stays beneath the puffed cheeks and clear eyes.
     if (player.gulping) drawMouthful(mode, ctx, player, left + size / 2, top + size / 2, size, facing, timestamp)
     // Dazed: spiral pupils, a slight wobble, and a halo outside the face.
     if (player.stunned) {
@@ -248,7 +254,7 @@ export function drawPlayer(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
     ctx.restore()
 }
 
-/** A compact loading badge below the body keeps the face and eyes unobscured. */
+/** A compact hold countdown below the body keeps the face and eyes unobscured. */
 function drawMouthful(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, captor: SyncedPlayer, cx: number, cy: number, size: number, facing: number, timestamp: number): void {
     const state = mode.multiplayerManager?.getState() as SyncedGameState | undefined
     const id = captor.gulping
@@ -264,7 +270,7 @@ function drawMouthful(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, capt
     mode.drawnPositions.set(id, { x: m.x - captive.width / 2, y: m.y - captive.height / 2 })
     if (id === localId) {
         mode.breath = mode.breathOf(false, performance.now(), 0)
-        // The captive's escape panel already contains loading progress. Keep its header clear.
+        // The local captive has its own interior view.
         return
     }
     const u = 1 / Math.max(0.001, Math.abs(ctx.getTransform().a))
@@ -273,9 +279,9 @@ function drawMouthful(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, capt
     const x = cx - width / 2
     const y = cy + size / 2 + 12 * u
     const now = mode.worldNow(state, timestamp)
-    const duration = Math.max(1, captor.fireReadyAt - (captor.gulpEndsAt - CANNON.HOLD_MS))
-    const loading = Math.max(0, Math.min(1, 1 - (captor.fireReadyAt - now) / duration))
-    const ready = loading >= 1
+    const remaining = Math.max(0, (captor.gulpEndsAt - now) / 1000)
+    const loading = Math.max(0, Math.min(1, (captor.gulpEndsAt - now) / Math.max(1, captive.captureHoldMs)))
+    const ready = true
     ctx.save()
     ctx.fillStyle = 'rgba(9, 19, 32, 0.95)'
     roundedRect(ctx, x, y, width, height, 10 * u)
@@ -288,7 +294,7 @@ function drawMouthful(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, capt
     ctx.textBaseline = 'middle'
     ctx.font = '700 ' + 10 * u + 'px ' + FONT
     ctx.fillStyle = ready ? GOLD : '#dce8ee'
-    const label = captor.fireQueued ? 'QUEUED' : ready ? 'READY' : 'LOADING'
+    const label = own ? `FIRE · ${remaining.toFixed(1)}s` : `${remaining.toFixed(1)}s`
     ctx.fillText(label, x + 30 * u, y + (own ? 13 : 10) * u)
     const barX = x + 30 * u
     const barY = y + height - 9 * u

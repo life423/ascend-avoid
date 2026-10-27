@@ -44,64 +44,73 @@ async function setup(page, baseURL, localCaptor) {
   }, { captiveId });
   await send(captorId, 'inhale');
   await page.waitForFunction(({ captorId, captiveId }) => window.game.currentGameMode.multiplayerManager.room.state.players.get(captiveId).capturedBy === captorId, { captorId, captiveId });
-  await send(captorId, 'cancel');
+
   const snapshot = () => page.evaluate(({ captorId, captiveId }) => {
     const mode = window.game.currentGameMode, s = mode.multiplayerManager.room.state;
     const captor = s.players.get(captorId), captive = s.players.get(captiveId);
     return {
       gems: captive.gems, gained: captor.gems, width: captive.width, captorWidth: captor.width,
-      capturedBy: captive.capturedBy, state: captive.state, keys: captive.escapeKeys, ready: captor.fireReadyAt,
+      capturedBy: captive.capturedBy, state: captive.state, flying: captive.flying,
+      bellyX: captive.bellyX, bellyY: captive.bellyY, pending: captive.bellyPending, collected: captive.bellyCollected,
+      facing: captor.facing, hold: captive.captureHoldMs, ratio: captive.captureRatio, deadline: captor.gulpEndsAt, time: s.time,
       robbed: captive.robbedTotal, stolen: captor.stolenTotal,
       particles: mode.theftParticles.filter(p => p.from === captiveId && p.to === captorId).length,
     };
   }, { captorId, captiveId });
-  return { peer, captorId, captiveId, snapshot, sizes };
+  return { peer, captorId, captiveId, snapshot, sizes, send };
 }
 
-for (const localCaptor of [true, false]) test(`captive transfer is visible to the ${localCaptor ? 'captor' : 'captive'} and stops at 20%`, async ({ page, baseURL }) => {
-  const { peer, snapshot, sizes } = await setup(page, baseURL, localCaptor);
-  try {
-    const initial = await snapshot();
-    await expect.poll(async () => (await snapshot()).gems).toBeLessThanOrEqual(94);
-    const during = await snapshot();
-    expect(during.capturedBy).toBeTruthy(); expect(during.gems).toBeGreaterThan(80);
-    expect(during.gems + during.gained).toBe(350);
-    expect(during.width).toBeLessThan(sizes.captive); expect(during.captorWidth).toBeGreaterThan(sizes.captor);
-    expect(during.keys).toBe(initial.keys); expect(during.ready).toBe(initial.ready);
-    await expect.poll(async () => (await snapshot()).particles, { intervals: [50, 100] }).toBeGreaterThan(0);
-    await page.screenshot({ path: test.info().outputPath('captive-transfer.png') });
-    await expect.poll(async () => (await snapshot()).capturedBy, { timeout: 6000 }).toBe('');
-    const released = await snapshot();
-    expect(released.gems).toBe(80); expect(released.gained).toBe(270);
-    expect(released.robbed).toBe(20); expect(released.stolen).toBe(20); expect(released.state).toBe('alive');
-    await page.waitForTimeout(250);
-    expect((await snapshot()).gems).toBe(80);
-  } finally { await peer.leave(); }
+
+for (const localCaptor of [true, false]) test(`capture transfers once and has no loading or escape panel (${localCaptor ? 'captor' : 'captive'})`, async ({ page, baseURL }) => {
+ const { peer, snapshot, sizes, send, captorId } = await setup(page, baseURL, localCaptor);
+ try {
+  const first = await snapshot(); expect(first.gems).toBe(70); expect(first.gained).toBe(280);
+  expect(first.ratio).toBeCloseTo(sizes.captor / sizes.captive, 5);
+  expect(first.width).toBeLessThan(sizes.captive); expect(first.captorWidth).toBeGreaterThan(sizes.captor);
+  await send(captorId, 'inhale'); await page.waitForTimeout(150);
+  expect((await snapshot()).capturedBy).toBe(captorId); expect((await snapshot()).flying).toBe(false);
+  const control = await page.evaluate(() => window.game.currentGameMode.controls.action);
+  expect(control).toBe(localCaptor ? 'FIRE' : 'SALVAGE');
+  await page.screenshot({ path: test.info().outputPath(localCaptor ? 'immediate-fire-captor.png' : 'translucent-belly-salvage.png') });
+  await page.waitForTimeout(400);const during = await snapshot(); expect(during.gems).toBe(70);expect(during.deadline).toBe(first.deadline);
+  await expect.poll(async () => (await snapshot()).capturedBy, { timeout: 13000 }).toBe('');
+  const after=await snapshot(); expect(after.gems).toBe(70);expect(after.gained).toBe(280);expect(after.state).toBe('alive');expect(after.pending).toBe(0);
+ } finally { await peer.leave(); }
 });
 
-test('escaping with actual keyboard input stops captive transfer and keeps the loss', async ({ page, baseURL }) => {
-  const { peer, snapshot } = await setup(page, baseURL, false);
-  try {
-    await expect.poll(async () => (await snapshot()).gems).toBeLessThan(100);
-    await page.waitForFunction(() => {
-      const m = window.game.currentGameMode;
-      return m.multiplayerManager.room.state.time >= m.multiplayerManager.getLocalPlayer().dazedUntil;
-    });
-    const keys = (await snapshot()).keys;
-    for (let i = 0; i < keys.length; i++) {
-      // Real input has a 60ms escape-message debounce; wait for each accepted direction.
-      await page.keyboard.press({ U: 'ArrowUp', D: 'ArrowDown', L: 'ArrowLeft', R: 'ArrowRight' }[keys[i]], { delay: 80 });
-      await page.waitForFunction(step => {
-        const p = window.game.currentGameMode.multiplayerManager.getLocalPlayer();
-        return !p.capturedBy || p.escapeStep >= step;
-      }, i + 1);
-    }
-    await expect.poll(async () => (await snapshot()).capturedBy).toBe('');
-    const escaped = await snapshot();
-    expect(escaped.gems).toBeGreaterThan(80); expect(escaped.gems).toBeLessThan(100);
-    expect(escaped.gems + escaped.gained).toBe(350);
-    await page.waitForTimeout(750);
-    expect((await snapshot()).gems).toBe(escaped.gems);
-    await page.screenshot({ path: test.info().outputPath('escaped-with-gem-loss.png') });
-  } finally { await peer.leave(); }
+test('keyboard and existing mobile joystick move only the interior avatar; safe ejection pays pending gems once', async ({ page, baseURL, hasTouch }) => {
+ const { peer, snapshot } = await setup(page, baseURL, false);
+ try {
+  const first=await snapshot();
+  if (hasTouch) await page.evaluate(() => {
+   const canvas=document.querySelector('canvas.game-canvas'),r=canvas.getBoundingClientRect();
+   const x=r.left+r.width*.23,y=r.top+r.height*.7;
+   canvas.dispatchEvent(new PointerEvent('pointerdown',{pointerId:99,pointerType:'touch',clientX:x,clientY:y,bubbles:true}));
+   window.dispatchEvent(new PointerEvent('pointermove',{pointerId:99,pointerType:'touch',clientX:x+70,clientY:y,bubbles:true}));
+  }); else await page.keyboard.down('ArrowRight');
+  await expect.poll(async () => (await snapshot()).pending, {timeout:2000,intervals:[50,75]}).toBeGreaterThan(0);
+  if (hasTouch) await page.evaluate(() => window.dispatchEvent(new PointerEvent('pointerup',{pointerId:99,pointerType:'touch',bubbles:true})));
+  else await page.keyboard.up('ArrowRight');
+  const active=await snapshot();expect(active.bellyX).toBeGreaterThan(.4);expect(active.gems).toBe(70);expect(active.width).toBe(first.width);expect(active.facing).toBe(first.facing);expect(active.deadline).toBe(first.deadline);
+  await page.screenshot({path:test.info().outputPath('belly-collected-pending.png')});
+  await expect.poll(async () => (await snapshot()).capturedBy,{timeout:13000}).toBe('');
+  const returned=await snapshot();expect(returned.gems).toBe(70+active.pending);expect(returned.pending).toBe(0);
+  await page.waitForTimeout(250);expect((await snapshot()).gems).toBe(returned.gems);
+  expect(await page.evaluate(() => window.game.currentGameMode.controls.action)).toBe('INHALE');
+ } finally {await peer.leave();}
+});
+
+test('the existing desktop or mobile action fires immediately after a release, without auto-firing from held capture input', async ({page,baseURL,hasTouch})=>{
+ const {peer,snapshot,send,captorId}=await setup(page,baseURL,true);
+ try{
+  await page.waitForTimeout(300);expect((await snapshot()).flying).toBe(false);
+  await send(captorId,'exhale');
+  if(hasTouch)await page.evaluate(()=>{
+   const canvas=document.querySelector('canvas.game-canvas'),r=canvas.getBoundingClientRect(),b={x:r.width-75,y:r.height-90};
+   const event=type=>new PointerEvent(type,{pointerId:77,pointerType:'touch',clientX:r.left+b.x,clientY:r.top+b.y,bubbles:true});
+   canvas.dispatchEvent(event('pointerdown'));window.dispatchEvent(event('pointerup'));
+  });else await page.keyboard.press('Space',{delay:35});
+  await expect.poll(async()=>(await snapshot()).flying,{timeout:1500,intervals:[25,50]}).toBe(true);
+  expect((await snapshot()).capturedBy).toBe('');expect((await snapshot()).gems).toBe(70);
+ }finally{await peer.leave();}
 });

@@ -9,6 +9,8 @@ export class WeaponPartSchema extends Schema {
   carriedBy = '';
   vx = 0;
   vy = 0;
+  theftBy = '';
+  theftMs = 0;
 }
 type("number")(WeaponPartSchema.prototype, "kind");
 type("number")(WeaponPartSchema.prototype, "x");

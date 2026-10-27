@@ -191,6 +191,15 @@ export function drawPuffs(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, 
             ctx.lineTo(puff.x + Math.cos(a) * head, puff.y + Math.sin(a) * head)
             ctx.stroke()
         }
+        if (puff.recoil > 0) {
+            ctx.strokeStyle = `rgba(128,255,241,${.65 * (1 - t)})`; ctx.lineWidth = 2
+            for (const side of [-1, 0, 1]) {
+                const a = puff.facing + Math.PI + side * .18
+                const length = Math.min(70, puff.recoil * .15) * (1 + t)
+                ctx.beginPath(); ctx.moveTo(puff.x + Math.cos(a) * 10, puff.y + Math.sin(a) * 10)
+                ctx.lineTo(puff.x + Math.cos(a) * length, puff.y + Math.sin(a) * length); ctx.stroke()
+            }
+        }
         // The front of the gust: a ring rolling out to the edge of the reach
         ctx.strokeStyle = `rgba(220, 240, 255, ${0.8 * (1 - t)})`
         ctx.lineWidth = 5 * (1 - t) + 1

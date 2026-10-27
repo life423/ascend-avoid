@@ -7,9 +7,10 @@ test('gliding over a weapon part collects it without inhaling', async ({ page })
     url: route.request().url().replace('/joinOrCreate/', '/create/'),
     postData: JSON.stringify({ ...route.request().postDataJSON(), testBots: 0, testFieldGems: 0 }),
   }));
+  await page.addInitScript(()=>{localStorage.setItem('ascend.mouseFollow','off');localStorage.setItem('ascend.guideSeen','true');});
   await page.goto('/');
   await page.waitForFunction(() => window.game?.currentGameMode?.multiplayerManager?.room?.state?.players?.size === 1);
-  await expect.poll(() => page.evaluate(() => document.body.classList.contains('intro-playing'))).toBe(false);
+  await page.waitForFunction(()=>window.game?.currentGameMode?.lastView&&!document.body.classList.contains('intro-playing'));
   await page.evaluate(() => {
     const room = window.game.currentGameMode.multiplayerManager.room;
     room.send('test:moveTo', { x: 2150, y: 2090 });
@@ -37,9 +38,10 @@ test('collect, carry and deliberately place a pinwheel with a button or E', asyn
     url: route.request().url().replace('/joinOrCreate/', '/create/'),
     postData: JSON.stringify({ ...route.request().postDataJSON(), testBots: 0, testFieldGems: 0, testCores: 0 }),
   }));
+  await page.addInitScript(()=>{localStorage.setItem('ascend.mouseFollow','off');localStorage.setItem('ascend.guideSeen','true');});
   await page.goto('/');
   await page.waitForFunction(() => window.game?.currentGameMode?.multiplayerManager?.room?.state?.players?.size === 1);
-  await expect.poll(() => page.evaluate(() => document.body.classList.contains('intro-playing'))).toBe(false);
+  await page.waitForFunction(()=>window.game?.currentGameMode?.lastView&&!document.body.classList.contains('intro-playing'));
   await page.evaluate(() => {
     const mode = window.game.currentGameMode, room = mode.multiplayerManager.room;
     room.send('test:setGems', { count: 200 });
@@ -109,9 +111,10 @@ test('a collected part stays carried after release, movement and turning; gust s
     url: route.request().url().replace('/joinOrCreate/', '/create/'),
     postData: JSON.stringify({ ...route.request().postDataJSON(), testBots: 0, testFieldGems: 0, testCores: 0 }),
   }));
+  await page.addInitScript(()=>{localStorage.setItem('ascend.mouseFollow','off');localStorage.setItem('ascend.guideSeen','true');});
   await page.goto('/');
   await page.waitForFunction(() => window.game?.currentGameMode?.multiplayerManager?.room?.state?.players?.size === 1);
-  await expect.poll(() => page.evaluate(() => document.body.classList.contains('intro-playing'))).toBe(false);
+  await page.waitForFunction(()=>window.game?.currentGameMode?.lastView&&!document.body.classList.contains('intro-playing'));
   await page.evaluate(() => window.game.currentGameMode.multiplayerManager.room.send('test:setGems', { count: 100 }));
   await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getLocalPlayer().gems === 100);
   await page.evaluate(() => {

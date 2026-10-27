@@ -1,0 +1,37 @@
+import assert from 'node:assert/strict';
+import { GameState } from '../schema/GameState.js';
+import { updateInhales, updateHolds, fireCaptive } from '../systems/inhale.js';
+import { updateFlights } from '../systems/flights.js';
+import { CANNON } from '../constants/gameConstants.js';
+const NOW=100000;
+function capture(injured=true) {
+ const s=new GameState(0);s.botFill=0;s.surgesOn=false;s.weaponsOn=false;s.setTurbines('off');s.time=10000;
+ const a=s.addPlayer('captor','Captor',NOW),b=s.addPlayer('prey','Prey',NOW);
+ a.setGems(100000,4200,4200);b.setGems(1000,4200,4200);a.placeAt(1100,1100);a.facing=0;a.spawnProtected=b.spawnProtected=false;
+ b.placeAt(a.x+a.width*.8-b.width/2+10,a.y+(a.height-b.height)/2);
+ if(injured)b.injure(s.time-6000);
+ a.startInhale(NOW);updateInhales(s,NOW,.01);assert.equal(b.capturedBy,a.sessionId);
+ const ms=2000; a.captureNeedsRelease=false;
+ return {s,a,b,ms};
+}
+for(const ending of ['expiry','wall','impact'] as const) {
+ const {s,a,b,ms}=capture();b.bellyPending=6;s.time+=ms;assert(b.injuredUntil<s.time,'injury can expire while captured');
+ const credits:Record<string,unknown>[]=[];s.onEvent=(type,data)=>{if(type==='credit')credits.push(data);};
+ assert(fireCaptive(s,a,NOW+ms));assert(b.fatalMissile&&b.state==='alive','the run ends on landing, not while still airborne');
+ if(ending==='impact') {const target=s.addPlayer('target','Target',NOW);target.setGems(1000,4200,4200);target.placeAt(b.x+b.width+250,b.y);target.spawnProtected=false;updateFlights(s,NOW+ms+300,.3);}
+ else if(ending==='wall') {b.placeAt(4200-b.width-9,b.y);updateFlights(s,NOW+ms+100,.1);}
+ else updateFlights(s,NOW+ms+CANNON.FLIGHT_MS+1,0);
+ assert.equal(b.state,'dead',`${ending} finishes an injured captive`);assert.equal(b.gems,0);assert.equal(b.bellyPending,0,'salvage cannot prevent a lethal outcome');assert(!b.flying);
+ assert.equal(credits.filter(c=>c.targetId===b.sessionId&&c.byId===a.sessionId&&c.finisher===true).length,1,'one launcher credit');
+ s.spawn(b,b.respawnAt);assert.equal(b.state,'alive');assert(b.spawnProtected&&!b.fatalMissile);
+}
+{
+ const {s,a,b,ms}=capture(false);s.time+=ms;assert(fireCaptive(s,a,NOW+ms));assert(!b.fatalMissile);
+ updateFlights(s,NOW+ms+CANNON.FLIGHT_MS+1,0);assert.equal(b.state,'alive','healthy captures retain normal flight survival');
+}
+{
+ const {s,a,b}=capture();s.time=a.gulpEndsAt;updateHolds(s,NOW+b.captureHoldMs);
+ assert.equal(b.capturedBy,'');assert.equal(a.gulping,'');assert(!b.capturedInjured&&b.state==='alive','timeout ejection cancels the finisher');
+ b.launch(NOW+1000,200,0,'turbine',100,1,'turbine');updateFlights(s,NOW+1200,0);assert.equal(b.state,'alive','turbines do not execute injured players');
+}
+console.log('Capture finishers passed: injury snapshot, impact/wall/expiry KO, launcher credit, escape, healthy capture, turbines and protected respawn.');

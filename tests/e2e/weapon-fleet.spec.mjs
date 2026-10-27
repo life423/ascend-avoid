@@ -7,7 +7,7 @@ test('six recipes synchronize, reserved siblings show radar, and satellites depl
   await page.addInitScript(() => { localStorage.setItem('ascend.guideSeen', 'true'); localStorage.setItem('ascend.mouseFollow', 'off'); });
   await page.route('**/matchmake/joinOrCreate/game_room', route => route.continue({
     url: route.request().url().replace('/joinOrCreate/', '/create/'),
-    postData: JSON.stringify({ ...route.request().postDataJSON(), testBots: 0, testFieldGems: 0, testWeaponSets: 12, testTurbines: 'manual' }),
+    postData: JSON.stringify({ ...route.request().postDataJSON(), testBots: 0, testFieldGems: 0, testWeaponSets: 9, testTurbines: 'manual' }),
   }));
   await page.goto('/');
   await page.waitForFunction(() => window.game?.currentGameMode?.lastView && !document.body.classList.contains('intro-playing'));
@@ -22,7 +22,7 @@ test('six recipes synchronize, reserved siblings show radar, and satellites depl
     return { kinds: all.map(w => w.kind), phase: w.phase, parts: [...w.parts].map(p => ({ x: p.x, y: p.y, owner: p.owner, carriedBy: p.carriedBy })), x: w.x, y: w.y, owner: w.owner, id: room.sessionId };
   });
   await expect.poll(async () => (await snapshot()).parts.length).toBe(3);
-  expect(new Set((await snapshot()).kinds).size).toBe(6); expect((await snapshot()).kinds.length).toBe(12);
+  expect(new Set((await snapshot()).kinds).size).toBe(6); expect((await snapshot()).kinds.length).toBe(9);
   const moveToPart = async index => {
     const part = (await snapshot()).parts[index];
     await page.evaluate(({ x, y }) => { const m = window.game.currentGameMode, p = m.multiplayerManager.getLocalPlayer(); m.multiplayerManager.room.send('test:moveTo', { x: x - p.width / 2, y: y - p.height / 2 }); }, part);

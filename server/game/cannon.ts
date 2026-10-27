@@ -3,14 +3,21 @@ import { bodyMass, creatureSize, gemsForGrowthMass } from './creatureSize.js';
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
-export function escapeLength(captorWidth: number, captiveWidth: number): number {
-  const ratio = captorWidth / Math.max(1, captiveWidth);
-  return ratio >= 4 ? 5 : ratio >= 2 ? 4 : 3;
+/** Smooth, monotone interpolation through the provisional 5s / 8s / 12s anchors. */
+export function captureHoldMs(captorWidth: number, captiveWidth: number): number {
+  const ratio = clamp(captorWidth / Math.max(1, captiveWidth), INHALE.EAT_RATIO, 4);
+  const low = ratio <= 2;
+  const t = low ? (ratio - INHALE.EAT_RATIO) / (2 - INHALE.EAT_RATIO) : (ratio - 2) / 2;
+  const smooth = t * t * (3 - 2 * t);
+  return low ? CANNON.HOLD_MIN_MS + smooth * (CANNON.HOLD_DOUBLE_MS - CANNON.HOLD_MIN_MS)
+    : CANNON.HOLD_DOUBLE_MS + smooth * (CANNON.HOLD_MAX_MS - CANNON.HOLD_DOUBLE_MS);
 }
 
-export function captureLoadMs(keys: number): number {
-  return CANNON.ARM_MS + Math.max(0, Math.min(2, keys - 3)) * 300;
-}
+/** Fixed interior collectibles; bits in bellyCollected prevent duplicate collection. */
+export const BELLY_GEMS = Array.from({ length: CANNON.BELLY_BONUS_CAP }, (_, i) => ({
+  x: Math.cos(i * Math.PI * 2 / CANNON.BELLY_BONUS_CAP) * .60,
+  y: Math.sin(i * Math.PI * 2 / CANNON.BELLY_BONUS_CAP) * .60,
+}));
 
 /** Whether a mouth this wide can catch (hold at its mouth) a creature this wide: INHALE.EAT_RATIO times as wide, whatever the creature holds (an empty one is no exception) */
 export function canCatch(captorWidth: number, preyWidth: number): boolean {
@@ -34,10 +41,21 @@ export function missileMassAfterImpact(gems: number, width: number = creatureSiz
   return Math.floor(gemsForGrowthMass(Math.max(0, bodyMass(width * CANNON.MISSILE_WIDTH_KEEP) - GEMS.BASE_MASS)));
 }
 
+/** Stored physical-mass bonus: only a player's deliberate captive launch sets it. */
+export function shooterMassContribution(shooterWidth: number, ammoWidth: number): number {
+  const ammo = bodyMass(ammoWidth), shooter = bodyMass(shooterWidth);
+  if (!Number.isFinite(ammo + shooter) || ammo <= 0) return 0;
+  return Math.min(ammo * CANNON.SHOOTER_MASS_CAP, Math.sqrt(ammo * shooter) * CANNON.SHOOTER_MASS_WEIGHT);
+}
+
 /** Pre-impact projectile mass sets the threat; a tiny shot chips a giant instead of erasing its growth. */
-export function impactGems(targetGems: number, speed: number, flierWidth: number, targetWidth: number = creatureSize(targetGems)): number {
+export function impactGems(targetGems: number, speed: number, flierWidth: number, targetWidth: number = creatureSize(targetGems), storedShooterMass = 0): number {
   if (targetGems <= 0) return 0;
-  const relativeMass = bodyMass(flierWidth) / Math.max(GEMS.BASE_MASS, bodyMass(targetWidth));
+  const ammo = bodyMass(flierWidth);
+  // Keep the existing CURRENT pre-impact ammunition mass rule. If ammunition changes,
+  // its stored shooter bonus still cannot overwhelm that current physical body.
+  const bonus = Math.max(0, Math.min(ammo * CANNON.SHOOTER_MASS_CAP, Number.isFinite(storedShooterMass) ? storedShooterMass : 0));
+  const relativeMass = (ammo + bonus) / Math.max(GEMS.BASE_MASS, bodyMass(targetWidth));
   const pace = clamp(speed / CANNON.IMPACT_SPEED_REF, 0.65, 1.15);
   const share = CANNON.IMPACT_MAX_SHARE * relativeMass / (relativeMass + CANNON.IMPACT_MASS_PIVOT);
   const energy = CANNON.IMPACT_BASE_GEMS * relativeMass / (relativeMass + 1);

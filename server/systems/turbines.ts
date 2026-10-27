@@ -2,7 +2,9 @@ import type { GameState } from "../schema/GameState.js";
 import { PlayerSchema } from "../schema/PlayerSchema.js";
 import { GemSchema } from "../schema/GemSchema.js";
 import { TurbineSchema } from "../schema/TurbineSchema.js";
-import { distanceToRect } from "../game/geometry.js";
+import { distanceToRect, distanceToSegment } from "../game/geometry.js";
+import { allWeapons, orbitalPosition, weaponProfile } from '../game/weaponKit.js';
+import { INHALE, SHOCKWAVE, WEAPON_FLEET, WORLD } from '../constants/gameConstants.js';
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 
 import { fitsTurbine, intakePull, turbineBodyPush } from "../game/turbine.js";
@@ -219,7 +221,31 @@ export function clearanceAt(state: GameState, cx: number, cy: number, self: Play
     const distance = Math.hypot(other.x + other.width / 2 - cx, other.y + other.height / 2 - cy);
     // Another player 300 units away counts like traffic 150 away; the leader, like traffic 75 away
     nearest = Math.min(nearest, other === leader ? distance / 4 : distance / 2);
+    nearest = Math.min(nearest, distance - (other.width + self.width) / 2);
+    if (other.flying) nearest = Math.min(nearest, distanceToSegment(cx, cy, other.x + other.width / 2, other.y + other.height / 2,
+      other.x + other.width / 2 + other.flightVx, other.y + other.height / 2 + other.flightVy) - (other.width + self.width) / 2);
+    if (other.inhaling) {
+      const mx = other.x + other.width / 2 + Math.cos(other.facing) * other.width * .3;
+      const my = other.y + other.height / 2 + Math.sin(other.facing) * other.width * .3;
+      const d = Math.hypot(cx - mx, cy - my);
+      if (d && ((cx - mx) * Math.cos(other.facing) + (cy - my) * Math.sin(other.facing)) / d > Math.cos(INHALE.ARC * Math.PI / 180))
+        nearest = Math.min(nearest, d - INHALE.REACH - other.width * INHALE.REACH_PER_SIZE - self.width / 2);
+    }
   });
+  for (const t of state.turbines) if (t.phase !== 'warning') nearest = Math.min(nearest,
+    Math.hypot(cx - t.x, cy - t.y) - TURBINE.BODY_RADIUS - TURBINE.INTAKE_REACH - self.width / 2);
+  for (const w of allWeapons(state)) {
+    if (w.owner === self.sessionId || (w.phase !== 'active' && w.phase !== 'charging')) continue;
+    const profile = weaponProfile(w.kind);
+    const reach = w.kind === 'pulsar' ? SHOCKWAVE.START_RADIUS + SHOCKWAVE.RANGE : w.kind === 'ion' ? WEAPON_FLEET.ION_RANGE : profile.range;
+    for (const ahead of [0, WORLD.SPAWN_PROTECTION_MS / 2, WORLD.SPAWN_PROTECTION_MS]) {
+      const age = w.phase === 'active' ? state.time + ahead - w.activatedAt : Math.max(0, state.time + ahead - w.at);
+      const at = profile.orbit ? orbitalPosition(w.originX, w.originY, age, state.worldWidth, state.worldHeight) : w;
+      nearest = Math.min(nearest, Math.hypot(cx - at.x, cy - at.y) - reach - self.width / 2);
+    }
+    for (const bolt of w.bolts.values()) nearest = Math.min(nearest, distanceToSegment(cx, cy, bolt.x, bolt.y,
+      bolt.x + Math.cos(bolt.angle) * profile.speed, bolt.y + Math.sin(bolt.angle) * profile.speed) - profile.radius - self.width / 2);
+  }
   return nearest;
 }
 
