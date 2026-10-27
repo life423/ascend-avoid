@@ -2,6 +2,7 @@ import type { GameState } from "../schema/GameState.js";
 import type { PlayerSchema } from "../schema/PlayerSchema.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 import { CANNON } from "../constants/gameConstants.js";
+import { circleEntry } from "../game/blackHole.js";
 import { flightStep, impactGems, missileMassAfterImpact, sweptHit } from "../game/cannon.js";
 import { sprayGems } from "./gems.js";
 import { knockOutWithGems, settleBelly } from "./inhale.js";
@@ -39,14 +40,32 @@ export function updateFlights(state: GameState, now: number, deltaTime: number):
     const fromX = player.x;
     const fromY = player.y;
     player.nudge(next.vx * deltaTime, next.vy * deltaTime, state.worldWidth, state.worldHeight);
-    // Stopped by the edge of the world
-    if (Math.hypot(player.x - fromX, player.y - fromY) < speed * deltaTime * 0.5) {
+    // Resolve only the path before the first core; a player hit in front of it wins.
+    // The center must enter: a giant's outer edge never enlarges a hole's lethal area.
+    let coreEntry: number | null = null;
+    if (player.flightKind === 'missile' && player.shotOwner && !player.spawnProtected && state.shiftPhase !== 'grace') {
+      state.blackHoles.forEach(hole => {
+        if (state.time < hole.activeAt || !state.isFloorAt(hole.x, hole.y)) return;
+        const t = circleEntry(fromX + player.width / 2, fromY + player.height / 2,
+          player.x + player.width / 2, player.y + player.height / 2, hole.x, hole.y, hole.radius);
+        if (t !== null && (coreEntry === null || t < coreEntry)) coreEntry = t;
+      });
+    }
+    const t = coreEntry ?? 1;
+    const endX = fromX + (player.x - fromX) * t, endY = fromY + (player.y - fromY) * t;
+    const target = player.flightHit ? null : struck(everyone, player, now, fromX, fromY, endX, endY);
+    if (target) impact(state, player, target, speed, now);
+    else if (coreEntry !== null) {
+      const byId = player.shotOwner, gems = player.gems, size = player.width;
+      player.placeAt(endX, endY);
+      const x = endX + size / 2, y = endY + size / 2;
+      player.land();
+      knockOutWithGems(state, player, now);
+      state.credit(player, 'blackhole', now, byId, { out: true, gems, x, y, size });
+    } else if (Math.hypot(player.x - fromX, player.y - fromY) < speed * deltaTime * 0.5) {
       spendMissileMass(state, player, now);
       if (player.state === PLAYER_STATE.ALIVE) land(state, player, now);
-      continue;
     }
-    const target = player.flightHit ? null : struck(everyone, player, now, fromX, fromY);
-    if (target) impact(state, player, target, speed, now);
     else if (speed < CANNON.STOP_SPEED || now >= player.flightEndsAt) {
       if (player.fatalMissile) finishInjuredShot(state, player, now);
       else if (player.flightKind === 'missile' && !player.flightHit && player.gems < CANNON.BURNUP_GEMS) burnUp(state, player, now);
@@ -56,11 +75,11 @@ export function updateFlights(state: GameState, now: number, deltaTime: number):
 }
 
 /** The creature a flier has just flown into (anywhere along this tick's path, from fromX/fromY), if any */
-function struck(everyone: PlayerSchema[], flier: PlayerSchema, now: number, fromX: number, fromY: number): PlayerSchema | null {
+function struck(everyone: PlayerSchema[], flier: PlayerSchema, now: number, fromX: number, fromY: number, endX: number, endY: number): PlayerSchema | null {
   const ax = fromX + flier.width / 2;
   const ay = fromY + flier.height / 2;
-  const fx = flier.x + flier.width / 2;
-  const fy = flier.y + flier.height / 2;
+  const fx = endX + flier.width / 2;
+  const fy = endY + flier.height / 2;
   for (const other of everyone) {
     if (other === flier || other.state !== PLAYER_STATE.ALIVE || other.flying || other.capturedBy || now < other.impactImmuneUntil) continue;
     if (other.sessionId === flier.launchedBy && now - flier.flightStartedAt < CANNON.LAUNCHER_GRACE_MS) continue;

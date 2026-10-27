@@ -152,6 +152,7 @@ export function updateInhales(state: GameState, now: number, deltaTime: number) 
     // Snapshot before growth changes: capture remains valid until firing or release.
     const caught = held as PlayerSchema | null;
     if (caught && !eater.gulping && !injuryVulnerable(state, eater, now)) {
+      const injuredAtCapture = injuryVulnerable(state, caught, now);
       eater.gulping = caught.sessionId;
       eater.captureStartedAt = now;
       caught.captureRatio = eater.width / caught.width;
@@ -160,7 +161,7 @@ export function updateInhales(state: GameState, now: number, deltaTime: number) 
       eater.captureNeedsRelease = true;
       caught.capturedBy = eater.sessionId;
       state.clearTheftFor(caught.sessionId); state.clearTheftFor(eater.sessionId);
-      caught.capturedInjured = caught.injuredUntil > state.time;
+      caught.capturedInjured = injuredAtCapture;
       caught.bellyPending = caught.bellyCollected = caught.bellyX = caught.bellyY = 0;
       const amount = Math.min(caught.gems, Math.floor(caught.gems * CANNON.CAPTIVE_GEM_SHARE));
       caught.setGems(caught.gems - amount, state.worldWidth, state.worldHeight);

@@ -26,6 +26,7 @@ import { drawBall, drawBomb, drawComet, drawGem, drawLaunchPuff, gemColor } from
 import { SMOOTHING, SNAP_DISTANCE, View } from '../render/shared'
 import { drawTopBar, drawLeaderboard, drawMinimap, drawBanner, drawShiftChip, drawTrafficChip, drawNotices, drawKnockedOut, drawMessage, drawCapturePrompt } from '../render/hud'
 import { drawGemBursts, drawBlasts, drawBursts, drawPuffs, drawTheft } from '../render/effects'
+import { drawBlackHoles } from '../render/blackHoles'
 import { drawTurbines, drawTurbineFlights } from '../render/turbines'
 import { drawFloor, drawShiftFloor, drawJackpot } from '../render/floor'
 import { captorOf, drawPlayer } from '../render/players'
@@ -1005,6 +1006,7 @@ export class MultiplayerMode extends GameMode {
         const right = view.x + view.width / 2 + margin
         const top = view.y - view.height / 2 - margin
         const bottom = view.y + view.height / 2 + margin
+        drawBlackHoles(this, ctx, state, timestamp)
         drawTurbines(this, ctx, state, timestamp)
         drawCannon(this, ctx, state, timestamp)
         this.drawGems(ctx, state, left, right, top, bottom, timestamp)
@@ -1215,6 +1217,13 @@ export class MultiplayerMode extends GameMode {
         if (how === 'drain') {
             if (targetIsYou) this.knockoutCause = { how, by: String(data?.by ?? 'Someone'), at: performance.now() }
             this.addNotice(`${this.nameOf(data?.byId, data?.by)} drained ${target} dry!`, true)
+            return
+        }
+        if (how === 'blackhole') {
+            if (targetIsYou) this.knockoutCause = { how, by: String(data?.by ?? 'Someone'), at: performance.now() }
+            const x = Number(data?.x), y = Number(data?.y)
+            if (Number.isFinite(x) && Number.isFinite(y) && !matchMedia('(prefers-reduced-motion: reduce)').matches) this.bursts.push({ x, y, size: 100, color: '#d6a0ff', at: performance.now() })
+            this.addNotice(`${this.nameOf(data?.byId, data?.by)} fired ${target} into a black hole!`, true)
             return
         }
         if (how === 'burnup') {

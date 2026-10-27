@@ -180,6 +180,8 @@ class PlayerSchema extends Schema {
   flightStartedAt = 0;
   flightEndsAt = 0;
   launchedBy = "";
+  /** Original player shooter, retained through bounces for black-hole credit. */
+  shotOwner = "";
   /** When this creature caught its current captive, and when it can next be caught itself */
   captureStartedAt = 0;
   recaptureAfter = 0;
@@ -242,7 +244,7 @@ class PlayerSchema extends Schema {
     this.capturedInjured = false;
     this.theftContinuations.clear(); this.continuedTheft = false;
     this.followUntil = 0; this.followActive = false; this.followSpeed = this.followTravel = 0;
-    this.capturedInjured = this.fatalMissile = false; this.shotMassBonus = 0;
+    this.capturedInjured = this.fatalMissile = false; this.shotMassBonus = 0; this.shotOwner = "";
     this.x = x;
     this.y = y;
     this.state = PLAYER_STATE.ALIVE;
@@ -284,7 +286,7 @@ class PlayerSchema extends Schema {
 
   /** Hit with no gems left: out of play until respawnAt */
   knockOut(now: number): void {
-    this.shotMassBonus = 0;
+    this.shotMassBonus = 0; this.shotOwner = "";
     this.bellyPending = this.bellyCollected = this.bellyX = this.bellyY = 0;
     this.capturedBy = this.gulping = ""; this.captureNeedsRelease = false;
     this.capturedInjured = false;
@@ -459,7 +461,7 @@ class PlayerSchema extends Schema {
 
   /** Launched at this velocity until it slows or `maxMs` passes. Only turbine throws opt into steering. */
   launch(now: number, vx: number, vy: number, by: string, maxMs: number, drag: number = CANNON.DRAG, kind: 'missile' | 'turbine' = 'missile'): void {
-    this.fatalMissile = false; this.shotMassBonus = 0;
+    this.fatalMissile = false; this.shotMassBonus = 0; this.shotOwner = "";
     this.flying = true;
     this.flightVx = vx;
     this.flightVy = vy;
@@ -468,6 +470,7 @@ class PlayerSchema extends Schema {
     this.flightStartedAt = now;
     this.flightEndsAt = now + maxMs;
     this.launchedBy = by;
+    this.shotOwner = kind === "missile" ? by : "";
     this.flightHit = false;
     this.capturedBy = "";
     this.struggle = 0;
@@ -480,7 +483,7 @@ class PlayerSchema extends Schema {
 
   /** The flight is over */
   land(): void {
-    this.fatalMissile = false; this.shotMassBonus = 0;
+    this.fatalMissile = false; this.shotMassBonus = 0; this.shotOwner = "";
     this.flying = false;
     this.flightKind = 'missile';
     this.flightVx = 0;

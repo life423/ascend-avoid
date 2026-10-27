@@ -269,3 +269,16 @@ These comparisons isolate physical mass from speed, which already varies with th
 The authoritative vulnerability predicate uses the original seven-second injury deadline OR an existing, still-valid incoming continuation. It validates range, aim/airflow, protection, player state and clash eligibility directly, so actor iteration order cannot permit a late counter-catch. The actual close-contact capture path and final capture commit both reject a vulnerable captor. When the original window expires, any interruption revokes continuation immediately and restores ordinary outgoing pull/drain/capture. No extra timer or refreshed injury is created. Respawn/disconnect clear the underlying injury/continuation state.
 
 Weakened airflow is sparse and coral, with a fragmented mouth halo, while its dotted reach remains full length. Gem side streams retain their ordinary visual/mechanical flow. Applying weakness throughout continued theft intentionally makes sustained pressure stronger; this interaction needs human playtesting and may be too oppressive at the provisional 15% setting.
+
+
+## Shot-only black holes — local October 26 follow-up
+
+Three fixed black holes stand at (1050,1260), (3150,1260) and (2100,3108) in the 4200-square arena. Provisional core radius is 64 world units; the 96-unit broken violet ring, accretion ellipse and cannonball glyph identify a shot destination. A 2500ms opening warning precedes activation. They have distinct ringed minimap symbols, reduced-motion support and culled, bounded canvas paths without live blur/gradient effects.
+
+Only an alive player-fired captive's center entering an active core during flight is lethal. The server sweeps the actual boundary-clamped flight segment and selects the earliest crossed core; a player encountered before it still receives the ordinary cannon impact first. Large ammunition does not enlarge the lethal core. Walking, ordinary suction, puff/skid, shot-follow and turbine flight never activate it. There is no outer gravity or solid rim, leaving giant navigation unchanged. Spawn protection and shift grace are respected; a core over absent shift floor is inactive.
+
+Knockout uses normal gem spills, capture/theft/follow cleanup, pending-belly reward discard, two-second respawn and four-second spawn protection. Credit retains the original shooter through bounces and disconnects. Bots can select holes through their existing delayed, imperfect aim and normal firing path; no bot-only hit assistance is added. Mobile play gets no new central notice or action button. Help explains safe walking versus fired entry.
+
+Capture snapshot correction: an actively continued-theft victim is still injured for the separately agreed finisher. Capture now snapshots that eligibility before clearing theft relationships, including after the base seven-second window. It does not extend the injury timer or change rates.
+
+Growth/combat/capture measurements and unresolved human-balance questions: see BLACK_HOLE_PLAYTEST.md. No changes were made to growth, walking, injury duration/rates, puff constants, shot-follow tuning, cannon damage or existing launch speed/drag.

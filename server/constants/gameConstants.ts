@@ -745,3 +745,11 @@ export const GAME_CONSTANTS = {
 
 // Export everything as default for legacy imports
 export default GAME_CONSTANTS;
+
+/** Shot-only positional hazards; no walking collision or outer gravity. Provisional layout. */
+export const BLACK_HOLE = {
+  CORE_RADIUS: 64,
+  RING_RADIUS: 96,
+  WARNING_MS: 2500,
+  POSITIONS: [[0.25, 0.30], [0.75, 0.30], [0.50, 0.74]],
+} as const;

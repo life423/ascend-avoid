@@ -2,12 +2,20 @@
 
 Updated October 26, 2026. This is the durable list of the user's requests and decisions. Current code and later feedback override historical tuning. The approved injury-only theft change supersedes ordinary healthy-player stealing and the earlier theft-allowance suggestion. The fifteen archived balance options remain proposals unless separately accepted.
 
+## Current delivery status
+
+Release 5bb717e (PR #48) is on main and live. It contains the integrated capture, puff, follow, sustained theft, shooter power, weakened inhale and mobile/UI fixes. The user explicitly deferred Ubuntu browser CI; its retained matrix is disabled while build/gameplay checks remain required.
+
+Current release batch: `feat/black-holes-balance-playtest`. Three shot-only black holes and balance/capture experiments are complete; the user authorized committing, merging to main and deploying this batch. GitHub pull-request and production Actions records identify the published commit. Normal play includes the feature with no opt-in flag. Details, measurements and human-playtest limitations are recorded in BLACK_HOLE_PLAYTEST.md.
+
+Still open after this pass: assembled-weapon fairness for large bodies (design decision pending); actual Android Firefox feedback; re-enable Ubuntu browser CI later; human/group assessment of growth, giant tenure and the new capture/combat values. The black-hole implementation is complete; human feel and final tuning remain open. Older sections below preserve the request history and may describe superseded mechanics.
+
 ## Active fixes requested after the satellite release
 
-Previous release: 68e1674 (PR #47). The current release candidate contains the completed local fixes below, including the capture redesign and vulnerable-inhale counterplay; the user has authorized committing, merging to main and deploying through the existing GitHub Actions pipeline. Browser checks gate that merge. Balance values remain provisional. The user requires cross-browser and cross-device support, and reported these issues on October 26. Keep the following requested fixes in scope:
+Release history: 68e1674 (PR #47), followed by 5bb717e (PR #48), which shipped the completed fixes below including capture redesign and vulnerable-inhale counterplay. Ubuntu browser CI was explicitly deferred before that merge. Balance values remain provisional. The user requires cross-browser and cross-device support, and reported these issues on October 26. Keep the following requested fixes in scope:
 
-1. **Firefox on Android is severely laggy; Chrome on the same phone works.** Profile and fix rendering, then check a Firefox phone viewport and actual-phone feedback. Caching star glows is in progress after a measured Firefox blur bottleneck.
-2. **Run browser checks in CI.** Include Chromium, Gecko and WebKit across desktop, phone/landscape and tablet layouts. Preserve the required CI gate. Emulated viewports must not be mislabeled as actual Android/iOS device runs.
+1. **Firefox on Android is severely laggy; Chrome on the same phone works.** Profile and fix rendering, then check a Firefox phone viewport and actual-phone feedback. Star-glow caching and culling are shipped after a measured Firefox blur bottleneck; actual-phone feedback remains pending.
+2. **Run browser checks in CI.** Include Chromium, Gecko and WebKit across desktop, phone/landscape and tablet layouts. Preserve the required CI gate; the browser matrix is currently deferred at the user’s request. Emulated viewports must not be mislabeled as actual Android/iOS device runs.
 3. **Preserve the old weapons.** Satellites are additions, not replacements for the Pinwheel spinning machine gun or Pulsar wave machine. Verify production spawn/availability and visibility. A live check found both recipes still present; investigate why they appear missing.
 4. **Make the mobile side drawer touch-scrollable.** A visible scrollbar currently does not guarantee finger scrolling. Test real touch gestures and reachable bottom actions.
 5. **Credit weapon damage to its assembler.** Every bolt, pulse, beam damage tick and knockout should attribute to the builder. The user selected both a damage/knockout tally and gems awarded to the builder. Verify every recipe, conserve transferred gems and keep the owner credited at distance.

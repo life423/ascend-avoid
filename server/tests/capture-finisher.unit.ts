@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { GameState } from '../schema/GameState.js';
-import { updateInhales, updateHolds, fireCaptive } from '../systems/inhale.js';
+import { updateInhales, updateHolds, fireCaptive, steal } from '../systems/inhale.js';
 import { updateFlights } from '../systems/flights.js';
 import { CANNON } from '../constants/gameConstants.js';
 const NOW=100000;
@@ -34,4 +34,21 @@ for(const ending of ['expiry','wall','impact'] as const) {
  assert.equal(b.capturedBy,'');assert.equal(a.gulping,'');assert(!b.capturedInjured&&b.state==='alive','timeout ejection cancels the finisher');
  b.launch(NOW+1000,200,0,'turbine',100,1,'turbine');updateFlights(s,NOW+1200,0);assert.equal(b.state,'alive','turbines do not execute injured players');
 }
+
+// Continued theft is the same vulnerability: snapshot it BEFORE capture clears the connection.
+{
+ const s=new GameState(0);s.botFill=0;s.surgesOn=s.weaponsOn=false;s.setTurbines('off');s.time=6900;
+ const thief=s.addPlayer('thief','Thief',NOW),prey=s.addPlayer('continued','Prey',NOW);
+ thief.setGems(40,4200,4200);prey.setGems(1000,4200,4200);thief.placeAt(1200,1600);thief.facing=0;
+ prey.placeAt(thief.x+thief.width*.8+200-prey.width/2,thief.y+(thief.height-prey.height)/2);
+ thief.spawnProtected=prey.spawnProtected=false;prey.injure(0);thief.startInhale(NOW);steal(s,thief,NOW,.01);
+ assert(thief.theftContinuations.has(prey.sessionId));s.time=7100;
+ const captor=s.addPlayer('new-captor','Captor',NOW);captor.setGems(100000,4200,4200);captor.spawnProtected=false;captor.facing=0;
+ captor.placeAt(prey.x+prey.width/2-captor.width*.8-10,prey.y+(prey.height-captor.height)/2);
+ captor.startInhale(NOW);updateInhales(s,NOW+200,.001);
+ assert.equal(prey.capturedBy,captor.sessionId);assert(prey.capturedInjured,'continued vulnerability is snapshotted before cleanup');
+ captor.captureNeedsRelease=false;assert(fireCaptive(s,captor,NOW+201));assert(prey.fatalMissile);
+ updateFlights(s,NOW+201+CANNON.FLIGHT_MS+1,0);assert.equal(prey.state,'dead');
+}
+
 console.log('Capture finishers passed: injury snapshot, impact/wall/expiry KO, launcher credit, escape, healthy capture, turbines and protected respawn.');
