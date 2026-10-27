@@ -10,6 +10,9 @@ const COLUMN_GAP = 32;
 const CONTENT_PADDING = 25;
 /** Text sizes to try, largest first */
 const TEXT_STEPS = [1, 0.94, 0.88, 0.82, 0.76, 0.7, 0.66, 0.62];
+const PLAY_URL = 'https://ascend.drewclark.io/';
+// Static QR: qrcode@1.5.4, error correction M, four-module quiet zone; encodes PLAY_URL.
+const PLAY_QR = new URL('../assets/play-qr.svg', import.meta.url).href;
 export class DrawerUI {
     private container: HTMLElement;
     private hamburgerBtn!: HTMLButtonElement;
@@ -77,6 +80,14 @@ export class DrawerUI {
                     </form>
                     <p class="name-note">Everyone sees it above your creature and on the leaderboard.</p>
                 </div>
+                <section class="menu-section invite-section" aria-labelledby="invite-title">
+                    <div class="invite-card">
+                        <h3 id="invite-title">Play with friends</h3>
+                        <p>Scan with your phone to join.</p>
+                        <img class="invite-qr" src="${PLAY_QR}" width="148" height="148" alt="QR code to play Ascend Avoid at ascend.drewclark.io" draggable="false">
+                        <a class="invite-link" href="${PLAY_URL}" target="_blank" rel="noopener noreferrer" aria-label="Open Ascend Avoid in a new tab">ascend.drewclark.io <span aria-hidden="true">↗</span></a>
+                    </div>
+                </section>
                 <div class="menu-section">
                     <h3>How to Play</h3>
                     <div class="instructions">
@@ -128,7 +139,7 @@ export class DrawerUI {
         document.addEventListener('keydown', (e: KeyboardEvent) => {
             if (!this.isOpen) return;
             if (e.key === 'Tab') {
-                const targets = [...this.drawer.querySelectorAll<HTMLElement>('button, input, [tabindex="0"]')];
+                const targets = [...this.drawer.querySelectorAll<HTMLElement>('button, input, a[href], [tabindex="0"]')];
                 const first = targets[0], last = targets[targets.length - 1];
                 if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
                 else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
