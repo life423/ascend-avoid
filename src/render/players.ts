@@ -83,8 +83,8 @@ export function drawPlayer(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
         ctx.stroke()
     }
     if (player.recovering) {
-        // Just hit: blink until traffic can touch you again
-        ctx.globalAlpha = Math.floor(timestamp / 90) % 2 ? 0.25 : 0.9
+        // Keep damage readable; injury must not resemble blinking invincibility.
+        ctx.globalAlpha = 0.9
     }
     // Size changes pop: a quick overshoot and settle, centered on where the player is
     let grow = mode.drawnSizes.get(sessionId)
@@ -212,12 +212,6 @@ export function drawPlayer(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
     const cheeks = 1 - Math.pow(1 - cheekProgress, 3)
     if (player.flying) drawProjectile(ctx, left + size / 2, top + size / 2, size, color, heading, timestamp)
     else drawCreature(ctx, left + size / 2, top + size / 2, size, color, facing, timestamp, player.mouth ?? '', Boolean(player.inhaling), cheeks, Boolean(player.stunned))
-    if (player.inhaling && (player.continuedTheft || world && player.injuredUntil > mode.worldNow(world, timestamp))) {
-        const mouth = mouthOf(centerX, centerY, size, facing)
-        const unit = 1 / Math.max(.001, Math.abs(ctx.getTransform().a))
-        ctx.save(); ctx.strokeStyle = '#ffae94'; ctx.lineWidth = 2 * unit; ctx.setLineDash([3 * unit, 4 * unit])
-        ctx.beginPath(); ctx.arc(mouth.x, mouth.y, Math.max(7 * unit, size * .065), 0, Math.PI * 2); ctx.stroke(); ctx.restore()
-    }
     if (!held && !player.flying && player.injuredUntil > 0) drawInjury(ctx, centerX, centerY, size, facing, injuryAge, injuryRemaining, REDUCED_MOTION.matches)
     ctx.restore()
     const weaponProtection = world ? Math.max(0, player.weaponSafeUntil - mode.worldNow(world, timestamp)) : 0

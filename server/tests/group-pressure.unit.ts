@@ -27,7 +27,7 @@ for(const bot of [false,true]) {
   t[1].facing=Math.PI*2;t[1].stunned=true;assert.equal(planTheft(s,NOW).get(t[0])![0].rate,solo,'invalid state does not participate');t[1].stunned=false;
   v.spawnProtected=true;assert.equal(planTheft(s,NOW).get(t[0])!.length,0);v.spawnProtected=false;
   t[0].injure(s.time);t[1].stopInhale(NOW);
-  assert(Math.abs(planTheft(s,NOW).get(t[0])![0].rate/solo-.15)<1e-8,'outgoing injury multiplier is applied once');
+  assert.equal(planTheft(s,NOW).has(t[0]),false,'an injured attacker cannot contribute outgoing theft');
 }
 function payout(reverse:boolean) {
  const {s,v,thieves}=setup();const plan=planTheft(s,NOW);

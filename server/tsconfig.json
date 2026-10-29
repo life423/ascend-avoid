@@ -22,7 +22,7 @@
     "lib": ["ES2022", "DOM"]
   },
   "include": ["**/*.ts"],
-  "exclude": ["node_modules", "dist"],
+  "exclude": ["**/* (1).*", "node_modules", "dist"],
   "ts-node": {
     "esm": true,
     "experimentalSpecifierResolution": "node"

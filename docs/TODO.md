@@ -1,6 +1,20 @@
 # Ascend Avoid — ordered work and idea inventory
 
-Updated October 27, 2026. This is the durable list of the user's requests and decisions. Current code and later feedback override historical tuning. The approved injury-only theft change supersedes ordinary healthy-player stealing and the earlier theft-allowance suggestion. The fifteen archived balance options remain proposals unless separately accepted.
+Updated October 29, 2026. This is the durable list of the user's requests and decisions. Current code and later feedback override historical tuning. The approved injury-only theft change supersedes ordinary healthy-player stealing and the earlier theft-allowance suggestion. The fifteen archived balance options remain proposals unless separately accepted.
+
+## October 29 combat follow-up — verified and authorized for release
+
+The full requirements, historical baseline, initial choices, measurements and validation are in [COMBAT_FOLLOW_UP.md](COMBAT_FOLLOW_UP.md). The local implementation removes shot-follow and the captive minigame, adds injured mouth finishes and direct lethal rewards, and blocks injured breathing. Initial choices keep already-held firing and nonlethal spills; lethality uses a measured mass/speed threshold. Older release notes below are historical where they conflict. The user authorized merge/deployment after CI; human/group balance feedback remains a follow-up.
+
+1. Finish injured prey only when fully pulled to the mouth; transfer their remaining gems directly. Healthy smaller prey remain ammunition, and injured targets can move to escape before contact.
+2. Strengthen branching injury cracks with a warm red-orange internal glow and slow pulse; preserve eyes, healing and reduced motion, and burst along the same cracks on a finish.
+3. Disable inhale and exhale/puff while injured, preserving movement. Initial local choice: already-held firing remains available.
+4. Transfer lethal player-cannonball rewards directly to the shooter. Playtest the initial mass/speed threshold; nonlethal rewards remain ordinary spills.
+5. Add spatial gem-return animation and authoritative single-credit rewards to existing black-hole eliminations. Animated gems cannot be collected or stolen.
+6. Remove shot-follow movement, activation and cues, including its other hit integrations. Remove the captive minigame and bonus payouts as subsequently requested.
+7. Measure bot capture/fire frequency and visibility before changing behavior. No tutorial.
+
+Source baseline verified October 29: local planning branch and local `main` were synchronized to GitHub `origin/main` at `508c3a2` (PR #54). Black holes and shot-follow already exist there. The user authorized committing, merging and deploying the verified gameplay edits on October 29; use the GitHub PR and production workflow for release status. Test injured movement/sideways escape without puff, accounting and shared bot/human behavior before treating the changes as balanced.
 
 ## Current delivery status
 

@@ -292,6 +292,7 @@ export const INHALE = {
   PREY_PULL_CAP: 0.9, // ...but never more than this share of its own top speed: react early, or slip out of the cone sideways, and it can get away...
   PREY_PULL_CLOSE: 1.6, // ...except in the close range of a mouth big enough to catch it, where the suction rises past its top speed, to this share at the mouth: running straight away from right in front of a bigger mouth, you're pulled in (sideways out of the cone still escapes)
   EAT_RATIO: 1.3, // you can catch a creature 1.3 times narrower (about 1.7 times lighter)...
+  FINISH_MOUTH_REACH: 0.20, // front-shell contact for an injured finish
   CAPTURE_REACH: 0.35, // ...held this close to your mouth (times your width, plus its radius)...
   LOCK_MS: 650, // base time to full pull; larger inhalers still take longer to establish their airflow
   LOCK_DECAY_MS: 350, // ...that fades this fast once it's out of the cone (or you stop), so breaking the cone frees it
@@ -314,7 +315,6 @@ export const INHALE = {
   STEAL_ESCAPE_AWAY: 0.6, // ...counting speed straight away at this share, and speed across the cone in full (strafing escapes best)...
   STEAL_POINT_BLANK: 0.25, // ...but less and less within this share of the reach: right at the mouth there's no getting away
   GROUP_EXTRA_MAX: 0.6, // valid combined body pull/theft approaches at most 1.6x the strongest connection
-  VULNERABLE_OUTGOING: 0.15, // prototype: body suction and injury drain only; capture disabled
   INJURY_MS: 7000, // fixed exposure: neither further hits nor inhaling extend an active window
   DRAIN_FLOOR: 0, // an injured creature drained completely is knocked out; healthy newborns are safe
   CLASH_MARGIN: 0.15, // two creatures inhaling each other never both siphon: only the stronger pull does, once it's ahead by this share (closer than that, whoever has held the other longer keeps the flow), so a clash has a winner, not an endless exchange
@@ -415,8 +415,6 @@ export const CANNON = {
   HOLD_DOUBLE_MS: 8000,
   HOLD_MAX_MS: 12000,
   CAPTIVE_GEM_SHARE: 0.30, // proposed initial playtest share; one transfer on capture
-  BELLY_BONUS_CAP: 6, // proposed bonus gems per capture, paid only after a living return
-  BELLY_MOVE_SPEED: 0.75, // interior radii per second; never affects arena physics
   BREAK_PUSH: 70, // ...pushed this far clear
   ESCAPE_SAFE_MS: 4000, // a full four seconds to move clear after escape/release; damage still applies
   LAND_SAFE_MS: 4000, // same four-second suction/capture recovery after a surviving flight
@@ -437,6 +435,7 @@ export const CANNON = {
   IMPACT_MASS_PIVOT: 2.4, // the percentage component costs 25% at equal physical mass, before bounded impact energy
   IMPACT_BASE_GEMS: 80, // bounded impact energy matters to small/midgame targets; tiny-to-giant hits remain chips
   IMPACT_MAX_SHARE: 0.85, // ceiling, never a floor; tiny shots cannot erase most of a giant's progress
+  LETHAL_ENERGY_RATIO: 1.5, // provisional: effective ammo/target mass × bounded squared speed
   IMPACT_KO_GEMS: 12, // heavily damaged targets below this mass are knocked out and return at a fresh spawn
   BURNUP_GEMS: 12, // a smaller player-fired missile also burns up at flight end if it misses
   MISSILE_WIDTH_KEEP: 0.1, // the missile player keeps one tenth of their width after impact, floored at newborn size
@@ -582,8 +581,6 @@ export const WEAPON_RECIPES = {
 } as const;
 export type WeaponKind = keyof typeof WEAPON_RECIPES;
 
-/** Initial shot-follow playtest values; independent of weapon damage and walking. */
-export const SHOT_FOLLOW = { WINDOW_MS: 1200, DURATION_MS: 1600, SPEED: 360, ACCELERATION: 900, STOP_DISTANCE: 40, MAX_TRAVEL: 480 } as const;
 
 export const WEAPON_FLEET = { SETS: 9, ORBIT_RESPAWN_MS: 35000, CLAIM_PULSE_MS: 900, ORBIT_MS: 26000, ORBIT_ENTRY_MS: 1800, ION_RANGE: 560, ION_PERIOD_MS: 1800, ION_WARNING_MS: 600, ION_FIRE_MS: 500 } as const;
 

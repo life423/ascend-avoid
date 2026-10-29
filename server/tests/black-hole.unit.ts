@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import { GameState } from '../schema/GameState.js';
 import { BlackHoleSchema } from '../schema/BlackHoleSchema.js';
 import { circleEntry } from '../game/blackHole.js';
-import { offerShotFollow, updateShotFollow } from '../systems/shotFollow.js';
 import { updateFlights } from '../systems/flights.js';
 import { BLACK_HOLE, WORLD } from '../constants/gameConstants.js';
 const NOW = 100000;
@@ -19,29 +18,29 @@ assert.equal(circleEntry(0, 0, 100, 0, 50, 0, 10), .4);
 assert.equal(circleEntry(0, 10, 100, 10, 50, 0, 10), null, 'a tangent misses');
 assert.equal(circleEntry(50, 0, 50, 0, 50, 0, 10), 0);
 for (const bot of [false, true]) {
-  const { s, p, owner, events } = setup(bot); p.bellyPending = 6;
+  const { s, p, owner, events } = setup(bot);
   p.launch(NOW, 2200, 0, owner.sessionId, 5000, 0);
   updateFlights(s, NOW + 300, .3);
   assert.equal(p.state, 'dead', 'a fast shot cannot tunnel through the core'); assert(!p.flying);
-  assert.equal(p.bellyPending, 0); assert.equal(p.gems, 0);
-  assert.equal([...s.gems.values()].reduce((n, g) => n + g.value, 0), 100, 'normal knockout spill conserves actual gems');
+ assert.equal(p.gems, 0);
+  assert.equal([...s.gems.values()].reduce((n, g) => n + g.value, 0), 0, 'credited gems never also spill');
+  assert.equal(owner.gems, 100, 'shooter receives the remaining bank');
   assert.equal(events.length, 1); assert.equal(events[0].byId, owner.sessionId); assert.equal(events[0].how, 'blackhole');
   updateFlights(s, NOW + 400, .1); assert.equal(events.length, 1, 'no duplicate knockout');
   s.spawn(p, p.respawnAt); assert(p.spawnProtected); assert.equal(p.state, 'alive'); assert.equal(p.shotOwner, '');
 }
-for (const kind of ['walking', 'skid', 'turbine', 'follow', 'protected', 'warning', 'grace'] as const) {
+for (const kind of ['walking', 'skid', 'turbine', 'protected', 'warning', 'grace'] as const) {
   const { s, p, owner } = setup();
-  if (kind === 'walking' || kind === 'skid' || kind === 'follow') {
+  if (kind === 'walking' || kind === 'skid') {
     if (kind === 'walking') p.setGems(1000000, 4200, 4200);
     p.placeAt(2100 - p.width / 2, 2100 - p.height / 2);
     if (kind === 'walking') p.steer(1, 0);
     if (kind === 'skid') p.skid(1, 0, 300);
-    if (kind === 'follow') { offerShotFollow(s, p.sessionId, 2450, 2100); p.startInhale(NOW); updateShotFollow(s, p, .1); assert(p.followActive); }
     s.update(.03, NOW + 30);
   } else {
     p.launch(NOW, 2200, 0, owner.sessionId, 5000, 0, kind === 'turbine' ? 'turbine' : 'missile');
     if (kind === 'protected') p.spawnProtected = true;
-    if (kind === 'warning') s.blackHoles[0]!.activeAt = s.time + 1000;
+    if (kind === 'warning') s.blackHoles.at(0)!.activeAt = s.time + 1000;
     if (kind === 'grace') s.shiftPhase = 'grace';
     updateFlights(s, NOW + 300, .3);
   }
@@ -59,7 +58,7 @@ for (const kind of ['walking', 'skid', 'turbine', 'follow', 'protected', 'warnin
   assert.equal(events[0].byId, owner.sessionId, 'original shooter credit survives bounce and disconnect');
 }
 {
-  const { s, p, owner, events } = setup(); s.blackHoles[0]!.x = 2400; s.blackHoles.push(new BlackHoleSchema(2100, 2100, 64, 0));
+  const { s, p, owner, events } = setup(); s.blackHoles.at(0)!.x = 2400; s.blackHoles.push(new BlackHoleSchema(2100, 2100, 64, 0));
   p.launch(NOW, 2200, 0, owner.sessionId, 5000, 0); updateFlights(s, NOW + 300, .3);
   assert(Math.abs(events[0].x - 2036) < .001, 'nearest crossed core wins regardless of array order');
 }
@@ -70,7 +69,7 @@ for (const before of [false, true]) {
   assert.equal(events.some(e => e.how === 'blackhole'), !before, 'a player before the core is struck first; one behind it is safe');
 }
 {
-  const { s, p, owner } = setup(); s.blackHoles[0]!.x = 4100;
+  const { s, p, owner } = setup(); s.blackHoles.at(0)!.x = 4100;
   p.placeAt(3950 - p.width / 2, 2100 - p.height / 2); p.launch(NOW, 2200, 0, owner.sessionId, 5000, 0);
   updateFlights(s, NOW + 300, .3); assert.equal(p.state, 'dead', 'crossing a core before reaching the boundary still counts');
 }

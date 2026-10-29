@@ -1,10 +1,14 @@
 # Ascend Avoid
 
+## Latest agreed combat direction — October 29, 2026
+
+The [combat follow-up](COMBAT_FOLLOW_UP.md) is implemented and verified; the user authorized merge/deployment on October 29 (GitHub PR/workflow records identify the release): injured smaller prey finish only at the mouth; injury blocks inhale/puff while movement and already-held firing remain available; lethal player-cannonball and existing black-hole eliminations directly reward the shooter; shared branching cracks, a cached warm pulse, shatter and spatial reward returns communicate the outcome. Shot-follow and the captive minigame are removed. Healthy captures remain ammunition with the existing one-time share, hold deadline and deliberate firing. Nonlethal cannonball spills remain. The follow-up document records the provisional size/speed threshold, accounting, escape limitations and bot-visibility measurements. Its October 29 rules supersede conflicting historical descriptions below.
+
 ## Core loop
 
 The approved experience is the six-stage [lasting-dominance loop](GAME_LOOP.md): start small, become capable, build an advantage, become enormous, maintain a long reign, and eventually fall into another climb. The user explicitly wants giant size to feel almost untouchable and sustainable for hours through good play. The initial size-based missile/theft pass below starts supporting that goal; hours-long survival has not been established by playtesting. GAME_LOOP.md separates this implemented pass from remaining proposals.
 
-Collect gems, grow, steal from injured creatures, capture someone smaller, aim and fire them as a living cannonball, then compete for spilled gems. The captor controls the shot; the captive collects capped pending belly bonuses until firing or automatic ejection. The world is continuous: no lobby or round wait. The background field target is 950 gems, about 25% fewer than the former 1,270; combat spills are additional, within the overall 2,000-object cap. This is a field-density reduction, not a cap of 950 total objects after fights.
+Collect gems, grow, steal from injured creatures, capture someone smaller, aim and fire them as a living cannonball, then compete for spilled gems. The captor controls the shot; healthy captives remain held ammunition until firing or automatic ejection. Injured prey finish at the mouth; lethal shot rewards transfer directly. The world is continuous: no lobby or round wait. The background field target is 950 gems, about 25% fewer than the former 1,270; combat spills are additional, within the overall 2,000-object cap. This is a field-density reduction, not a cap of 950 total objects after fights.
 
 ## Current local arena polish
 

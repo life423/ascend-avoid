@@ -13,24 +13,13 @@ async function button(page,type){await page.evaluate(type=>{
  const dispatch=t=>{const e=new PointerEvent(t,{pointerId:88,pointerType:'touch',clientX:r.right-75,clientY:r.bottom-90,bubbles:true,cancelable:true});(t==='pointerdown'?c:window).dispatchEvent(e);};
  if(type==='tap'){dispatch('pointerdown');dispatch('pointerup');}else dispatch(type);
 },type);}
-test('fresh held inhale follows the offered wake and releasing immediately stops it on keyboard and touch',async({page,hasTouch})=>{
- await start(page);await send(page,'test:moveTo',{x:1800,y:1800});await page.waitForTimeout(100);
- await page.evaluate(()=>{window.wakeStrokes=0;const stroke=CanvasRenderingContext2D.prototype.stroke;CanvasRenderingContext2D.prototype.stroke=function(...args){if(this.strokeStyle==='#80fff1')window.wakeStrokes++;return stroke.apply(this,args);};});
- const first=await mine(page);
- // Keep transport/setup latency outside the brief game opportunity. The unit suite
- // separately verifies an offered hit does not move the player or engage held input.
- await send(page,'test:follow',{x:2250,y:1810});
- if(hasTouch)await button(page,'pointerdown');else await page.keyboard.down('Space');
- await expect.poll(async()=>(await mine(page)).active,{intervals:[25,50]}).toBe(true);
- await expect.poll(async()=>(await mine(page)).x,{intervals:[25,50]}).toBeGreaterThan(first.x+12);
- expect(await page.evaluate(()=>window.wakeStrokes)).toBeGreaterThan(3);await page.screenshot({path:test.info().outputPath('active-shot-follow-wake.png')});
- if(hasTouch)await button(page,'pointerup');else await page.keyboard.up('Space');
- await expect.poll(async()=>(await mine(page)).active).toBe(false);const stopped=await mine(page);await page.waitForTimeout(200);expect((await mine(page)).x-stopped.x).toBeLessThan(2);
- // The opportunity has ended; a later held input remains ordinary inhale.
- if(hasTouch)await button(page,'pointerdown');else await page.keyboard.down('Space');
- await expect.poll(async()=>(await mine(page)).inhaling).toBe(true);expect((await mine(page)).active).toBe(false);
- if(hasTouch)await button(page,'pointerup');else await page.keyboard.up('Space');
+test('ordinary held inhale has no shot-follow movement or activation state',async({page})=>{
+ await start(page);await send(page,'test:moveTo',{x:1800,y:1800});
+ await page.waitForFunction(()=>Math.abs(window.game.currentGameMode.multiplayerManager.getLocalPlayer().x-1800)<2);
+ const before=await mine(page);await page.keyboard.down('Space');await expect.poll(async()=>(await mine(page)).inhaling).toBe(true);
+ await page.waitForTimeout(250);const after=await mine(page);expect(Math.abs(after.x-before.x)).toBeLessThan(2);expect(after.active).toBeUndefined();expect(after.until).toBeUndefined();await page.keyboard.up('Space');
 });
+
 test('the existing tap puffs a peer away with matching recoil, preserving suction break and no damage',async({page,baseURL,hasTouch})=>{
  await start(page);const id=await page.evaluate(()=>window.game.currentGameMode.multiplayerManager.room.id);
  const peer=await new Client(baseURL.replace(/^http/,'ws')).joinById(id,{name:'Puff peer'});peer.onMessage('*',()=>{});const puffEvents=[];peer.onMessage('exhale',data=>puffEvents.push(data));

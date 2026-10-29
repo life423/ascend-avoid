@@ -1,42 +1,44 @@
-/** Damage is readable on the rear shell, away from eyes, without an overlay or countdown. */
+/** Shared seam geometry for the injured shell and finishing shatter. Front/eyes stay clear. */
+export const INJURY_CRACKS: ReadonlyArray<ReadonlyArray<readonly [number, number]>> = [
+    [[.98, -.1], [.77, .02], [.61, -.11], [.32, .05]],
+    [[.78, .02], [.71, .25], [.43, .34], [.28, .57]],
+    [[.61, -.11], [.63, -.37], [.44, -.51], [.51, -.79]],
+    [[.43, .34], [.65, .53], [.67, .73]],
+    [[.32, .05], [.15, -.1], [-.06, -.05]],
+    [[.44, -.51], [.2, -.52], [.07, -.68]],
+    [[.71, .25], [.94, .4]],
+]
+
+let glow: HTMLCanvasElement | null = null
+function shellGlow(): HTMLCanvasElement {
+    if (glow) return glow
+    glow = document.createElement('canvas'); glow.width = glow.height = 128
+    const paint = glow.getContext('2d')!
+    const gradient = paint.createRadialGradient(64, 64, 6, 64, 64, 64)
+    gradient.addColorStop(0, 'rgba(255, 91, 30, .9)')
+    gradient.addColorStop(.55, 'rgba(255, 79, 34, .55)')
+    gradient.addColorStop(1, 'rgba(255, 79, 34, 0)')
+    paint.fillStyle = gradient; paint.fillRect(0, 0, 128, 128)
+    return glow
+}
+
+/** Cached internal glow with a slow two-second pulse; no invincibility-style flashing. */
 export function drawInjury(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, facing: number, age: number, remaining: number, reduced: boolean): void {
-    if (remaining < -220) return
-    const r = size / 2, u = 1 / Math.max(.001, Math.abs(ctx.getTransform().a))
-    const opening = Math.max(0, Math.min(1, age / 160))
-    const healing = Math.max(0, Math.min(1, remaining / 850))
-    ctx.save()
-    ctx.translate(x, y)
-    ctx.rotate(facing + Math.PI)
-    ctx.lineCap = 'round'
-    ctx.lineJoin = 'round'
-    if (remaining > 0) {
-        const depth = (reduced ? 1 : opening) * healing
-        // Broken seams are a shape cue as well as a color cue. The face stays untouched.
-        for (const offset of [-.95, 0, .95]) {
-            ctx.save(); ctx.rotate(offset)
-            ctx.beginPath()
-            ctx.moveTo(r * 1.025, -r * .08 * depth)
-            ctx.lineTo(r * .94, r * .025 * depth)
-            ctx.lineTo(r * .88, -r * .025 * depth)
-            ctx.lineTo(r * (1 - .28 * depth), r * .055 * depth)
-            ctx.moveTo(r * .88, -r * .025 * depth)
-            ctx.lineTo(r * .85, -r * .11 * depth)
-            ctx.lineTo(r * (1 - .21 * depth), -r * .14 * depth)
-            ctx.strokeStyle = '#402536'; ctx.lineWidth = Math.max(3.5 * u, size * .035); ctx.stroke()
-            ctx.strokeStyle = '#ffbd77'; ctx.lineWidth = Math.max(1.5 * u, size * .014); ctx.stroke()
-            ctx.restore()
-        }
-        if (!reduced && age < 300) {
-            const hit = age / 300
-            ctx.strokeStyle = `rgba(255, 189, 119, ${.65 * (1 - hit)})`
-            ctx.lineWidth = 2 * u
-            ctx.beginPath(); ctx.arc(0, 0, r * (1.05 + .45 * hit), -.95, .95); ctx.stroke()
-        }
-    } else if (!reduced) {
-        const seal = -remaining / 220
-        ctx.strokeStyle = `rgba(255, 241, 206, ${.55 * Math.sin(Math.PI * seal)})`
-        ctx.lineWidth = Math.max(2 * u, size * .025)
-        ctx.beginPath(); ctx.arc(0, 0, r * 1.025, -1.2, 1.2); ctx.stroke()
+    if (remaining <= 0) return
+    const r = size / 2, unit = 1 / Math.max(.001, Math.abs(ctx.getTransform().a))
+    const heal = Math.min(1, remaining / 850), open = reduced ? 1 : Math.min(1, Math.max(0, age / 160))
+    const pulse = reduced ? .7 : .7 + .12 * Math.sin(age * Math.PI / 1000)
+    ctx.save(); ctx.translate(x, y); ctx.rotate(facing + Math.PI)
+    ctx.globalAlpha = pulse * heal
+    ctx.drawImage(shellGlow(), -r * .12, -r * .84, r * 1.1, r * 1.68)
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round'
+    for (const seam of INJURY_CRACKS) {
+        ctx.beginPath()
+        seam.forEach(([sx, sy], i) => { if (i) ctx.lineTo(sx * r, sy * r); else ctx.moveTo(sx * r, sy * r) })
+        ctx.globalAlpha = heal * open
+        ctx.strokeStyle = '#402536'; ctx.lineWidth = Math.max(4 * unit, size * .045) * heal; ctx.stroke()
+        ctx.strokeStyle = '#ff653d'; ctx.lineWidth = Math.max(2.5 * unit, size * .025) * heal; ctx.stroke()
+        ctx.strokeStyle = '#ffbd77'; ctx.lineWidth = Math.max(1.25 * unit, size * .011) * heal; ctx.stroke()
     }
     ctx.restore()
 }

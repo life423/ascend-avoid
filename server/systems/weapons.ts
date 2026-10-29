@@ -7,7 +7,6 @@ import { weaponGraze } from '../game/weaponFairness.js';
 import { sweptHit } from '../game/cannon.js';
 import { weaponDamage } from './weaponDamage.js';
 import { resetPartTheft, tryPartTheft } from './weaponTheft.js';
-import { offerShotFollow } from './shotFollow.js';
 import { updateShockwave } from './shockwave.js';
 
 export function initializeWeaponSets(state: GameState, count: number = WEAPON_FLEET.SETS): void {
@@ -134,7 +133,7 @@ function updateWeapon(state: GameState, w: PinwheelSchema, dt: number, now: numb
           if (!touching || contact < nearest) { puller = p; nearest = contact; touching = true; }
           continue;
         }
-        if (touching || !p.inhaling || p.followActive) continue;
+        if (touching || !p.inhaling) continue;
         const fx = Math.cos(p.facing), fy = Math.sin(p.facing);
         const mx = p.x + p.width / 2 + fx * p.width * 0.3, my = p.y + p.height / 2 + fy * p.height * 0.3;
         const dx = part.x - mx, dy = part.y - my, d = Math.hypot(dx, dy);
@@ -274,7 +273,6 @@ function damagePlayer(state: GameState, w: PinwheelSchema, p: PlayerSchema, now:
   const hitX = glancing ? x - Math.sin(angle) * lateral - Math.cos(angle) * entry : x;
   const hitY = glancing ? y + Math.cos(angle) * lateral - Math.sin(angle) * entry : y;
   state.credit(p, w.kind, now, w.owner, { gems: lost, earned, out, x: hitX, y: hitY, size, glancing });
-  if (w.kind === 'comet' && (lost > 0 || out)) offerShotFollow(state, w.owner, x, y);
   w.hitAt.set(p.sessionId, state.time + (w.kind === 'ion' ? 900 : PINWHEEL.HIT_IMMUNE_MS));
 }
 

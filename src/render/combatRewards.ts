@@ -1,0 +1,65 @@
+import type { MultiplayerMode } from '../core/GameModes'
+import type { SyncedGameState } from '../types/synced'
+import { INJURY_CRACKS } from './injury'
+
+export interface CombatRewardEvent {
+    eventId: string; byId: string; targetId: string; how: string
+    x: number; y: number; size: number; facing: number; earned: number
+    holeX?: number; holeY?: number
+}
+export interface CombatRewardEffect extends CombatRewardEvent { at: number }
+
+/** Visual only: the server has already settled the reward. */
+export function drawCombatRewards(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state: SyncedGameState, now: number): void {
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
+    mode.rewardEffects = mode.rewardEffects.filter(e => now - e.at < (reduced ? 650 : 1550))
+    for (const effect of mode.rewardEffects) {
+        const age = now - effect.at, t = Math.min(1, age / 1550)
+        const owner = state.players.get(effect.byId)
+        const end = owner ? mode.centerOf(effect.byId, owner) : { x: effect.x, y: effect.y }
+        ctx.save()
+        const gemRadius = 5 * mode.cssScale / Math.max(.001, Math.abs(ctx.getTransform().a))
+        if (effect.how === 'mouth' || effect.how === 'cannon') {
+            const shatter = Math.min(1, age / 550)
+            ctx.save(); ctx.translate(effect.x, effect.y); ctx.rotate(effect.facing + Math.PI)
+            ctx.strokeStyle = '#ffbd77'; ctx.lineWidth = Math.max(1.5, effect.size * .016)
+            ctx.globalAlpha = 1 - shatter
+            for (const seam of INJURY_CRACKS) {
+                ctx.beginPath()
+                seam.forEach(([x, y], i) => {
+                    const scale = effect.size / 2 * (1 + (reduced ? 0 : shatter * 1.6))
+                    if (i) ctx.lineTo(x * scale, y * scale); else ctx.moveTo(x * scale, y * scale)
+                }); ctx.stroke()
+            }
+            ctx.restore()
+        }
+        if (effect.earned > 0) {
+            if (reduced) {
+                ctx.globalAlpha = Math.max(0, 1 - age / 650)
+                ctx.strokeStyle = '#ffd166'; ctx.lineWidth = 2
+                ctx.beginPath(); ctx.arc(end.x, end.y, 14, 0, Math.PI * 2); ctx.stroke()
+            } else for (let i = 0; i < 8; i++) {
+                const p = Math.max(0, Math.min(1, (t - i * .015) / .86))
+                let x: number, y: number
+                const angle = i * Math.PI / 4
+                if (effect.how === 'blackhole' && p < .3) {
+                    const spiral = p / .3, radius = (1 - spiral) * 60
+                    x = (effect.holeX ?? effect.x) + Math.cos(angle + spiral * Math.PI * 2) * radius
+                    y = (effect.holeY ?? effect.y) + Math.sin(angle + spiral * Math.PI * 2) * radius
+                } else {
+                    const travel = effect.how === 'blackhole' ? Math.max(0, (p - .3) / .7) : p
+                    const ease = travel * travel
+                    const sx = effect.holeX ?? effect.x, sy = effect.holeY ?? effect.y
+                    const dx = end.x - sx, dy = end.y - sy, d = Math.hypot(dx, dy) || 1
+                    const arc = Math.sin(Math.PI * travel) * Math.min(100, d * .2) * (i % 2 ? 1 : -1)
+                    x = sx + dx * ease - dy / d * arc
+                    y = sy + dy * ease + dx / d * arc
+                }
+                ctx.globalAlpha = Math.min(1, (1 - p) * 8)
+                ctx.fillStyle = '#ffd166'; ctx.beginPath()
+                ctx.moveTo(x, y - gemRadius); ctx.lineTo(x + gemRadius * .7, y); ctx.lineTo(x, y + gemRadius); ctx.lineTo(x - gemRadius * .7, y); ctx.closePath(); ctx.fill()
+            }
+        }
+        ctx.restore()
+    }
+}

@@ -1,4 +1,4 @@
-import { offerShotFollow } from '../systems/shotFollow';
+import { syncContinuedTheft } from '../systems/inhale.js';
 import { Room, Client } from "colyseus";
 import { GAME_CONSTANTS } from "../constants/serverConstants";
 import logger from "../utils/logger";
@@ -92,7 +92,7 @@ export class GameRoom extends Room<GameState> {
       const player = this.state.players.get(client.sessionId);
       if (!player) return;
       if (player.gulping) fireCaptive(this.state, player, Date.now());
-      else player.startInhale(Date.now());
+      else { syncContinuedTheft(this.state, Date.now()); player.startInhale(Date.now()); }
     });
     // A quick tap (the button let go within the browser's tap window, so never an inhale): fires a
     // captive, spits a bomb, or, with an empty mouth, exhales a puff, all along the creature's facing
@@ -151,9 +151,6 @@ export class GameRoom extends Room<GameState> {
       });
       const playerOf = (client: Client) => this.state.players.get(client.sessionId);
       const { worldWidth, worldHeight } = this.state;
-      this.onMessage("test:follow", (client, data: { x?: number; y?: number }) => {
-        offerShotFollow(this.state, client.sessionId, Number(data?.x) || 0, Number(data?.y) || 0);
-      });
       this.onMessage("test:hit", (client) => {
         const player = playerOf(client);
         if (player) this.state.hitPlayer(player);
@@ -177,9 +174,6 @@ export class GameRoom extends Room<GameState> {
       this.onMessage("test:parkTraffic", () => {
         // Every obstacle but the first stands still in the far corner
         const { worldWidth, worldHeight } = this.state;
-      this.onMessage("test:follow", (client, data: { x?: number; y?: number }) => {
-        offerShotFollow(this.state, client.sessionId, Number(data?.x) || 0, Number(data?.y) || 0);
-      });
         this.state.obstacles.forEach((obstacle, index) => {
           if (index > 0) obstacle.placeAt(worldWidth - 60, worldHeight - 60, 50, 34, 0);
         });

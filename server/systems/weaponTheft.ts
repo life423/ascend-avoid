@@ -22,7 +22,7 @@ export function tryPartTheft(state: GameState, w: PinwheelSchema, part: WeaponPa
   if (w.phase !== 'parts' || w.owner !== victim.sessionId || part.carriedBy !== victim.sessionId || victim.state !== 'alive' || victim.capturedBy || victim.flying) { resetPartTheft(part); return; }
   let nearest = Infinity, chosen: PlayerSchema | undefined;
   if (!victim.spawnProtected && now >= victim.suctionSafeUntil) for (const thief of state.players.values()) {
-    if (thief === victim || !thief.inhaling || thief.state !== 'alive' || thief.stunned || thief.capturedBy || thief.gulping || thief.flying || thief.followActive || !freeBuildSlot(state, thief, w)) continue;
+    if (thief === victim || !thief.inhaling || thief.state !== 'alive' || thief.stunned || thief.capturedBy || thief.gulping || thief.flying || !freeBuildSlot(state, thief, w)) continue;
     const fx = Math.cos(thief.facing), fy = Math.sin(thief.facing);
     const dx = part.x - thief.x - thief.width * .5 - fx * thief.width * .3;
     const dy = part.y - thief.y - thief.height * .5 - fy * thief.width * .3;

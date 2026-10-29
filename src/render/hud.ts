@@ -1,4 +1,3 @@
-import { BELLY_GEMS } from '../../server/game/cannon'
 import type { MultiplayerMode } from '../core/GameModes'
 import { GEMS, PLAYER_COLORS, SHIFT, WORLD } from '../../server/constants/gameConstants'
 import { drawCreature } from './creatures'
@@ -425,39 +424,13 @@ export function drawMessage(_mode: MultiplayerMode, ctx: CanvasRenderingContext2
     ctx.restore()
 }
 
-/** Captive-only magnified interior. It never alters world camera, controls or physical coordinates. */
+/** Contextual aiming hint for the captor; no captive minigame or interior overlay. */
 export function drawCapturePrompt(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, state: SyncedGameState, me: SyncedPlayer | undefined, timestamp: number): void {
     if (!me || me.state !== 'alive') return
     const u = mode.cssScale
     const now = mode.worldNow(state, timestamp)
     ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0)
-    if (me.capturedBy) {
-        const captor = state.players.get(me.capturedBy)
-        if (!captor || captor.gulping !== me.sessionId || captor.state !== 'alive') { ctx.restore(); return }
-        const short = canvas.clientHeight < 500
-        const r = Math.min((short ? 90 : 142) * u, canvas.width * .34, canvas.height * .24)
-        const cx = canvas.width / 2, cy = canvas.height * (short ? .48 : .47)
-        const color = PLAYER_COLORS[captor.playerIndex % PLAYER_COLORS.length]
-        ctx.fillStyle = 'rgba(13, 29, 44, .82)'; ctx.strokeStyle = color; ctx.lineWidth = 3 * u
-        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke()
-        ctx.save(); ctx.clip()
-        // Translucency keeps the surrounding moving arena present, without a full-screen scrim.
-        ctx.strokeStyle = 'rgba(128,255,241,.13)'; ctx.lineWidth = u
-        for (const fraction of [.4, .7]) { ctx.beginPath(); ctx.arc(cx, cy, r * fraction, 0, Math.PI * 2); ctx.stroke() }
-        BELLY_GEMS.forEach((gem, i) => {
-            if (me.bellyCollected & (1 << i)) return
-            const x = cx + gem.x * r, y = cy + gem.y * r, size = 7 * u
-            ctx.fillStyle = GOLD; ctx.beginPath(); ctx.moveTo(x, y - size); ctx.lineTo(x + size * .7, y); ctx.lineTo(x, y + size); ctx.lineTo(x - size * .7, y); ctx.closePath(); ctx.fill()
-        })
-        drawCreature(ctx, cx + me.bellyX * r, cy + me.bellyY * r, 24 * u, '#ffffff', me.facing)
-        ctx.restore()
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#e5f6ff'; ctx.font = `700 ${12 * u}px ${FONT}`
-        ctx.fillText('BELLY SALVAGE', cx, cy - r - 17 * u)
-        ctx.font = `600 ${11 * u}px ${FONT}`
-        ctx.fillText(`Move to collect · ${me.bellyPending} pending`, cx, cy + r + 17 * u)
-        ctx.fillStyle = GOLD
-        ctx.fillText(`Safe return pays · ${Math.max(0, (captor.gulpEndsAt - now) / 1000).toFixed(1)}s`, cx, cy + r + 34 * u)
-    } else if (me.gulping && !COMPACT.matches) {
+    if (me.gulping && !COMPACT.matches) {
         ctx.fillStyle = GOLD; ctx.textAlign = 'center'; ctx.font = `700 ${13 * u}px ${FONT}`
         ctx.fillText(`Aim, then tap FIRE · ${Math.max(0, (me.gulpEndsAt - now) / 1000).toFixed(1)}s`, canvas.width / 2, canvas.height - mode.hudInsets.bottom - 68 * u)
     }
