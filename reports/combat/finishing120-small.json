@@ -1,0 +1,1830 @@
+{
+  "createdAt": "2026-10-29T22:10:39.748Z",
+  "parameters": {
+    "pivot": 1.2,
+    "energy": 100,
+    "lethalRatio": 1.2,
+    "shooterRatio": 1.2,
+    "ammoRatio": 0.6,
+    "requestedAmmoRatio": 0.45,
+    "suctionRecoveryMs": 1500
+  },
+  "method": "Authoritative 30 Hz world, ordinary capture/release/launch/hit, then fallible bot inputs; 45 seconds or first primary-fighter knockout. Five visible shooter widths (100/200/400/650/900 world units) × six shooter/target WIDTH ratios (1/1.1/1.15/1.2/1.3/1.5), with balanced close/medium/long spacing. Ammunition is selected by visible width and capped at what the shooter can legally capture before the normal growth transfer. Only the attacker starts with one captive; defender starts empty, no assembled weapons, parts or field gems. Scores are retained only as engine setup/debug values, not size comparisons. The living projectile retains normal rules without an independent third combat controller.",
+  "summary": {
+    "fights": 30,
+    "openingHits": 30,
+    "attackerWins": 22,
+    "defenderWins": 0,
+    "unresolved": 8,
+    "openingShatters": 1,
+    "sizeAdvantageFinishes": 0,
+    "underTwoSeconds": 1,
+    "medianSeconds": 5.92,
+    "counterHitFights": 0,
+    "theftFights": 20,
+    "weaponHitFights": 0
+  },
+  "fights": [
+    {
+      "id": 1,
+      "seed": 71237,
+      "nominal": {
+        "attacker": 97,
+        "defender": 97,
+        "ammo": 25
+      },
+      "defenderStartsEmpty": true,
+      "spacing": "close",
+      "initialGap": 80,
+      "start": {
+        "attacker": 97,
+        "defender": 97,
+        "attackerWidth": 100,
+        "defenderWidth": 100,
+        "ammo": 18,
+        "ammoWidth": 47,
+        "shooterRatio": 1,
+        "ammoRatio": 0.47
+      },
+      "opening": {
+        "gems": 42,
+        "out": false,
+        "size": 100,
+        "x": 1180,
+        "y": 2100,
+        "ammoWidth": 47,
+        "shooterWidth": 100,
+        "speed": 1446.254930693246,
+        "shooterRatio": 1,
+        "ammoRatio": 0.47,
+        "energyFinish": false,
+        "advantageFinish": false
+      },
+      "durationSeconds": 4.67,
+      "outcome": "attacker wins",
+      "end": {
+        "attacker": 196,
+        "defender": 0
+      },
+      "counts": {
+        "captures": 0,
+        "launches": 0,
+        "pairHits": 1,
+        "counterHits": 0,
+        "theftCredits": 1,
+        "puffs": 0,
+        "parries": 0,
+        "placements": 0,
+        "weaponHits": 0
+      },
+      "defenderStunSeconds": 0.7,
+      "defenderInjurySeconds": 4.67,
+      "defenderTravel": 473,
+      "stolen": {
+        "attacker": 71,
+        "defender": 0
+      }
+    },
+    {
+      "id": 2,
+      "seed": 71334,
+      "nominal": {
+        "attacker": 97,
+        "defender": 78,
+        "ammo": 19
+      },
+      "defenderStartsEmpty": true,
+      "spacing": "medium",
+      "initialGap": 360,
+      "start": {
+        "attacker": 97,
+        "defender": 78,
+        "attackerWidth": 100,
+        "defenderWidth": 90.5,
+        "ammo": 14,
+        "ammoWidth": 42.5,
+        "shooterRatio": 1.1049723756906078,
+        "ammoRatio": 0.4696132596685083
+      },
+      "opening": {
+        "gems": 37,
+        "out": false,
+        "size": 90.5,
+        "x": 1455.25,
+        "y": 2100,
+        "ammoWidth": 42.5,
+        "shooterWidth": 100,
+        "speed": 1388.622568707818,
+        "shooterRatio": 1.1049723756906078,
+        "ammoRatio": 0.4696132596685083,
+        "energyFinish": false,
+        "advantageFinish": false
+      },
+      "durationSeconds": 4.77,
+      "outcome": "attacker wins",
+      "end": {
+        "attacker": 171,
+        "defender": 0
+      },
+      "counts": {
+        "captures": 0,
+        "launches": 0,
+        "pairHits": 1,
+        "counterHits": 0,
+        "theftCredits": 1,
+        "puffs": 0,
+        "parries": 0,
+        "placements": 0,
+        "weaponHits": 0
+      },
+      "defenderStunSeconds": 0.7,
+      "defenderInjurySeconds": 4.77,
+      "defenderTravel": 609,
+      "stolen": {
+        "attacker": 50,
+        "defender": 0
+      }
+    },
+    {
+      "id": 3,
+      "seed": 71431,
+      "nominal": {
+        "attacker": 97,
+        "defender": 71,
+        "ammo": 18
+      },
+      "defenderStartsEmpty": true,
+      "spacing": "long",
+      "initialGap": 800,
+      "start": {
+        "attacker": 97,
+        "defender": 71,
+        "attackerWidth": 100,
+        "defenderWidth": 86.5,
+        "ammo": 13,
+        "ammoWidth": 41,
+        "shooterRatio": 1.1560693641618498,
+        "ammoRatio": 0.47398843930635837
+      },
+      "opening": {
+        "gems": 33,
+        "out": false,
+        "size": 86.5,
+        "x": 1893.25,
+        "y": 2100,
+        "ammoWidth": 41,
+        "shooterWidth": 100,
+        "speed": 1248.4637876659656,
+        "shooterRatio": 1.1560693641618498,
+        "ammoRatio": 0.47398843930635837,
+        "energyFinish": false,
+        "advantageFinish": false
+      },
+      "durationSeconds": 45,
+      "outcome": "unresolved",
+      "end": {
+        "attacker": 132,
+        "defender": 42
+      },
+      "counts": {
+        "captures": 1,
+        "launches": 0,
+        "pairHits": 1,
+        "counterHits": 0,
+        "theftCredits": 0,
+        "puffs": 0,
+        "parries": 0,
+        "placements": 0,
+        "weaponHits": 0
+      },
+      "defenderStunSeconds": 0.7,
+      "defenderInjurySeconds": 7,
+      "defenderTravel": 6372,
+      "stolen": {
+        "attacker": 27,
+        "defender": 0
+      }
+    },
+    {
+      "id": 4,
+      "seed": 71528,
+      "nominal": {
+        "attacker": 97,
+        "defender": 65,
+        "ammo": 15
+      },
+      "defenderStartsEmpty": true,
+      "spacing": "close",
+      "initialGap": 80,
+      "start": {
+        "attacker": 97,
+        "defender": 65,
+        "attackerWidth": 100,
+        "defenderWidth": 83,
+        "ammo": 11,
+        "ammoWidth": 38.5,
+        "shooterRatio": 1.2048192771084338,
+        "ammoRatio": 0.463855421686747
+      },
+      "opening": {
+        "gems": 36,
+        "out": false,
+        "size": 83,
+        "x": 1171.5,
+        "y": 2100,
+        "ammoWidth": 38.5,
+        "shooterWidth": 100,
+        "speed": 1531.5941690789994,
+        "shooterRatio": 1.2048192771084338,
+        "ammoRatio": 0.463855421686747,
+        "energyFinish": false,
+        "advantageFinish": false
+      },
+      "durationSeconds": 45,
+      "outcome": "unresolved",
+      "end": {
+        "attacker": 125,
+        "defender": 30
+      },
+      "counts": {
+        "captures": 0,
+        "launches": 0,
+        "pairHits": 1,
+        "counterHits": 0,
+        "theftCredits": 0,
+        "puffs": 0,
+        "parries": 0,
+        "placements": 0,
+        "weaponHits": 0
+      },
+      "defenderStunSeconds": 0.47,
+      "defenderInjurySeconds": 7,
+      "defenderTravel": 7291,
+      "stolen": {
+        "attacker": 4,
+        "defender": 0
+      }
+    },
+    {
+      "id": 5,
+      "seed": 71625,
+      "nominal": {
+        "attacker": 97,
+        "defender": 54,
+        "ammo": 12
+      },
+      "defenderStartsEmpty": true,
+      "spacing": "medium",
+      "initialGap": 360,
+      "start": {
+        "attacker": 97,
+        "defender": 54,
+        "attackerWidth": 100,
+        "defenderWidth": 76,
+        "ammo": 9,
+        "ammoWidth": 36,
+        "shooterRatio": 1.3157894736842106,
+        "ammoRatio": 0.47368421052631576
+      },
+      "opening": {
+        "gems": 36,
+        "out": false,
+        "size": 76,
+        "x": 1448,
+        "y": 2100,
+        "ammoWidth": 36,
+        "shooterWidth": 100,
+        "speed": 1454.828608919546,
+        "shooterRatio": 1.3157894736842106,
+        "ammoRatio": 0.47368421052631576,
+        "energyFinish": false,
+        "advantageFinish": false
+      },
+      "durationSeconds": 45,
+      "outcome": "unresolved",
+      "end": {
+        "attacker": 130,
+        "defender": 19
+      },
+      "counts": {
+        "captures": 1,
+        "launches": 1,
+        "pairHits": 1,
+        "counterHits": 0,
+        "theftCredits": 0,
+        "puffs": 0,
+        "parries": 0,
+        "placements": 0,
+        "weaponHits": 0
+      },
+      "defenderStunSeconds": 0.7,
+      "defenderInjurySeconds": 7,
+      "defenderTravel": 7868,
+      "stolen": {
+        "attacker": 3,
+        "defender": 0
+      }
+    },
+    {
+      "id": 6,
+      "seed": 71722,
+      "nominal": {
+        "attacker": 97,
+        "defender": 40,
+        "ammo": 8
+      },
+      "defenderStartsEmpty": true,
+      "spacing": "long",
+      "initialGap": 800,
+      "start": {
+        "attacker": 97,
+        "defender": 40,
+        "attackerWidth": 100,
+        "defenderWidth": 66.5,
+        "ammo": 6,
+        "ammoWidth": 31.5,
+        "shooterRatio": 1.5037593984962405,
+        "ammoRatio": 0.47368421052631576
+      },
+      "opening": {
+        "gems": 40,
+        "out": true,
+        "size": 66.5,
+        "x": 1883.25,
+        "y": 2100,
+        "ammoWidth": 31.5,
+        "shooterWidth": 100,
+        "speed": 1357.7703302325283,
+        "shooterRatio": 1.5037593984962405,
+        "ammoRatio": 0.47368421052631576,
+        "energyFinish": false,
+        "advantageFinish": false
+      },
+      "durationSeconds": 0,
+      "outcome": "attacker wins",
+      "end": {
+        "attacker": 137,
+        "defender": 0
+      },
+      "counts": {
+        "captures": 0,
+        "launches": 0,
+        "pairHits": 1,
+        "counterHits": 0,
+        "theftCredits": 0,
+        "puffs": 0,
+        "parries": 0,
+        "placements": 0,
+        "weaponHits": 0
+      },
+      "defenderStunSeconds": 0,
+      "defenderInjurySeconds": 0,
+      "defenderTravel": 33,
+      "stolen": {
+        "attacker": 2,
+        "defender": 0
+      }
+    },
+    {
+      "id": 7,
+      "seed": 71819,
+      "nominal": {
+        "attacker": 414,
+        "defender": 414,
+        "ammo": 110
+      },
+      "defenderStartsEmpty": true,
+      "spacing": "medium",
+      "initialGap": 360,
+      "start": {
+        "attacker": 414,
+        "defender": 414,
+        "attackerWidth": 200,
+        "defenderWidth": 200,
+        "ammo": 77,
+        "ammoWidth": 90,
+        "shooterRatio": 1,
+        "ammoRatio": 0.45
+      },
+      "opening": {
+        "gems": 88,
+        "out": false,
+        "size": 200,
+        "x": 1560,
+        "y": 2100,
+        "ammoWidth": 90,
+        "shooterWidth": 200,
+        "speed": 1381.8518748493411,
+        "shooterRatio": 1,
+        "ammoRatio": 0.45,
+        "energyFinish": false,
+        "advantageFinish": false
+      },
+      "durationSeconds": 5.37,
+      "outcome": "attacker wins",
+      "end": {
+        "attacker": 882,
+        "defender": 0
+      },
+      "counts": {
+        "captures": 0,
+        "launches": 0,
+        "pairHits": 1,
+        "counterHits": 0,
+        "theftCredits": 1,
+        "puffs": 0,
+        "parries": 0,
+        "placements": 0,
+        "weaponHits": 0
+      },
+      "defenderStunSeconds": 0.7,
+      "defenderInjurySeconds": 5.37,
+      "defenderTravel": 645,
+      "stolen": {
+        "attacker": 382,
+        "defender": 0
+      }
+    },
+    {
+      "id": 8,
+      "seed": 71916,
+      "nominal": {
+        "attacker": 414,
+        "defender": 338,
+        "ammo": 90
+      },
+      "defenderStartsEmpty": true,
+      "spacing": "long",
+      "initialGap": 800,
+      "start": {
+        "attacker": 414,
+        "defender": 338,
+        "attackerWidth": 200,
+        "defenderWidth": 181.5,
+        "ammo": 63,
+        "ammoWidth": 82,
+        "shooterRatio": 1.1019283746556474,
+        "ammoRatio": 0.45179063360881544
+      },
+      "opening": {
+        "gems": 71,
+        "out": false,
+        "size": 181.5,
+        "x": 1990.75,
+        "y": 2100,
+        "ammoWidth": 82,
+        "shooterWidth": 200,
+        "speed": 1263.114494803747,
+        "shooterRatio": 1.1019283746556474,
+        "ammoRatio": 0.45179063360881544,
+        "energyFinish": false,
+        "advantageFinish": false
+      },
+      "durationSeconds": 45,
+      "outcome": "unresolved",
+      "end": {
+        "attacker": 605,
+        "defender": 192
+      },
+      "counts": {
+        "captures": 1,
+        "launches": 0,
+        "pairHits": 1,
+        "counterHits": 0,
+        "theftCredits": 1,
+        "puffs": 0,
+        "parries": 0,
+        "placements": 0,
+        "weaponHits": 0
+      },
+      "defenderStunSeconds": 0.7,
+      "defenderInjurySeconds": 7.4,
+      "defenderTravel": 5073,
+      "stolen": {
+        "attacker": 155,
+        "defender": 0
+      }
+    },
+    {
+      "id": 9,
+      "seed": 72013,
+      "nominal": {
+        "attacker": 414,
+        "defender": 308,
+        "ammo": 83
+      },
+      "defenderStartsEmpty": true,
+      "spacing": "close",
+      "initialGap": 80,
+      "start": {
+        "attacker": 414,
+        "defender": 308,
+        "attackerWidth": 200,
+        "defenderWidth": 173.5,
+        "ammo": 59,
+        "ammoWidth": 79.5,
+        "shooterRatio": 1.1527377521613833,
+        "ammoRatio": 0.45821325648414984
+      },
+      "opening": {
+        "gems": 78,
+        "out": false,
+        "size": 173.5,
+        "x": 1266.75,
+        "y": 2100,
+        "ammoWidth": 79.5,
+        "shooterWidth": 200,
+        "speed": 1517.925644667415,
+        "shooterRatio": 1.1527377521613833,
+        "ammoRatio": 0.45821325648414984,
+        "energyFinish": false,
+        "advantageFinish": false
+      },
+      "durationSeconds": 3.13,
+      "outcome": "attacker wins",
+      "end": {
+        "attacker": 760,
+        "defender": 0
+      },
+      "counts": {
+        "captures": 0,
+        "launches": 0,
+        "pairHits": 1,
+        "counterHits": 0,
+        "theftCredits": 0,
+        "puffs": 0,
+        "parries": 0,
+        "placements": 0,
+        "weaponHits": 0
+      },
+      "defenderStunSeconds": 0.47,
+      "defenderInjurySeconds": 3.13,
+      "defenderTravel": 276,
+      "stolen": {
+        "attacker": 276,
+        "defender": 0
+      }
+    },
+    {
+      "id": 10,
+      "seed": 72110,
+      "nominal": {
+        "attacker": 414,
+        "defender": 282,
+        "ammo": 75
+      },
+      "defenderStartsEmpty": true,
+      "spacing": "medium",
+      "initialGap": 360,
+      "start": {
+        "attacker": 414,
+        "defender": 282,
+        "attackerWidth": 200,
+        "defenderWidth": 166.5,
+        "ammo": 53,
+        "ammoWidth": 75.5,
+        "shooterRatio": 1.2012012012012012,
+        "ammoRatio": 0.45345345345345345
+      },
+      "opening": {
+        "gems": 73,
+        "out": false,
+        "size": 166.5,
+        "x": 1543.25,
+        "y": 2100,
+        "ammoWidth": 75.5,
+        "shooterWidth": 200,
+        "speed": 1452.745979370262,
+        "shooterRatio": 1.2012012012012012,
+        "ammoRatio": 0.45345345345345345,
+        "energyFinish": false,
+        "advantageFinish": false
+      },
+      "durationSeconds": 5.1,
+      "outcome": "attacker wins",
+      "end": {
+        "attacker": 740,
+        "defender": 0
+      },
+      "counts": {
+        "captures": 0,
+        "launches": 0,
+        "pairHits": 1,
+        "counterHits": 0,
+        "theftCredits": 1,
+        "puffs": 0,
+        "parries": 0,
+        "placements": 0,
+        "weaponHits": 0
+      },
+      "defenderStunSeconds": 0.7,
+      "defenderInjurySeconds": 5.1,
+      "defenderTravel": 600,
+      "stolen": {
+        "attacker": 243,
+        "defender": 0
+      }
+    },
+    {
+      "id": 11,
+      "seed": 72207,
+      "nominal": {
+        "attacker": 414,
+        "defender": 238,
+        "ammo": 63
+      },
+      "defenderStartsEmpty": true,
+      "spacing": "long",
+      "initialGap": 800,
+      "start": {
+        "attacker": 414,
+        "defender": 238,
+        "attackerWidth": 200,
+        "defenderWidth": 153.5,
+        "ammo": 45,
+        "ammoWidth": 70,
+        "shooterRatio": 1.3029315960912051,
+        "ammoRatio": 0.4560260586319218
+      },
+      "opening": {
+        "gems": 61,
+        "out": false,
+        "size": 153.5,
+        "x": 1976.75,
+        "y": 2100,
+        "ammoWidth": 70,
+        "shooterWidth": 200,
+        "speed": 1319.9343161988575,
+        "shooterRatio": 1.3029315960912051,
+        "ammoRatio": 0.4560260586319218,
+        "energyFinish": false,
+        "advantageFinish": false
+      },
+      "durationSeconds": 11.73,
+      "outcome": "attacker wins",
+      "end": {
+        "attacker": 550,
+        "defender": 0
+      },
+      "counts": {
+        "captures": 1,
+        "launches": 1,
+        "pairHits": 1,
+        "counterHits": 0,
+        "theftCredits": 1,
+        "puffs": 0,
+        "parries": 0,
+        "placements": 0,
+        "weaponHits": 0
+      },
+      "defenderStunSeconds": 0.7,
+      "defenderInjurySeconds": 7,
+      "defenderTravel": 3177,
+      "stolen": {
+        "attacker": 102,
+        "defender": 0
+      }
+    },
+    {
+      "id": 12,
+      "seed": 72304,
+      "nominal": {
+        "attacker": 414,
+        "defender": 176,
+        "ammo": 46
+      },
+      "defenderStartsEmpty": true,
+      "spacing": "close",
+      "initialGap": 80,
+      "start": {
+        "attacker": 414,
+        "defender": 176,
+        "attackerWidth": 200,
+        "defenderWidth": 133,
+        "ammo": 33,
+        "ammoWidth": 61,
+        "shooterRatio": 1.5037593984962405,
+        "ammoRatio": 0.45864661654135336
+      },
+      "opening": {
+        "gems": 58,
+        "out": false,
+        "size": 133,
+        "x": 1246.5,
+        "y": 2100,
+        "ammoWidth": 61,
+        "shooterWidth": 200,
+        "speed": 1631.2395922081619,
+        "shooterRatio": 1.5037593984962405,
+        "ammoRatio": 0.45864661654135336,
+        "energyFinish": false,
+        "advantageFinish": false
+      },
+      "durationSeconds": 5.77,
+      "outcome": "attacker wins",
+      "end": {
+        "attacker": 609,
+        "defender": 0
+      },
+      "counts": {
+        "captures": 0,
+        "launches": 0,
+        "pairHits": 1,
+        "counterHits": 0,
+        "theftCredits": 1,
+        "puffs": 0,
+        "parries": 0,
+        "placements": 0,
+        "weaponHits": 0
+      },
+      "defenderStunSeconds": 0.7,
+      "defenderInjurySeconds": 5.77,
+      "defenderTravel": 843,
+      "stolen": {
+        "attacker": 135,
+        "defender": 0
+      }
+    },
+    {
+      "id": 13,
+      "seed": 72401,
+      "nominal": {
+        "attacker": 1881,
+        "defender": 1881,
+        "ammo": 475
+      },
+      "defenderStartsEmpty": true,
+      "spacing": "long",
+      "initialGap": 800,
+      "start": {
+        "attacker": 1881,
+        "defender": 1881,
+        "attackerWidth": 400,
+        "defenderWidth": 400,
+        "ammo": 333,
+        "ammoWidth": 180.5,
+        "shooterRatio": 1,
+        "ammoRatio": 0.45125
+      },
+      "opening": {
+        "gems": 296,
+        "out": false,
+        "size": 400,
+        "x": 2200,
+        "y": 2100,
+        "ammoWidth": 180.5,
+        "shooterWidth": 400,
+        "speed": 1257.6951436589968,
+        "shooterRatio": 1,
+        "ammoRatio": 0.45125,
+        "energyFinish": false,
+        "advantageFinish": false
+      },
+      "durationSeconds": 21.03,
+      "outcome": "attacker wins",
+      "end": {
+        "attacker": 4022,
+        "defender": 0
+      },
+      "counts": {
+        "captures": 2,
+        "launches": 2,
+        "pairHits": 1,
+        "counterHits": 0,
+        "theftCredits": 1,
+        "puffs": 1,
+        "parries": 1,
+        "placements": 0,
+        "weaponHits": 0
+      },
+      "defenderStunSeconds": 0.47,
+      "defenderInjurySeconds": 7,
+      "defenderTravel": 7123,
+      "stolen": {
+        "attacker": 938,
+        "defender": 0
+      }
+    },
+    {
+      "id": 14,
+      "seed": 72498,
+      "nominal": {
+        "attacker": 1881,
+        "defender": 1521,
+        "ammo": 389
+      },
+      "defenderStartsEmpty": true,
+      "spacing": "close",
+      "initialGap": 80,
+      "start": {
+        "attacker": 1881,
+        "defender": 1521,
+        "attackerWidth": 400,
+        "defenderWidth": 363.5,
+        "ammo": 273,
+        "ammoWidth": 164,
+        "shooterRatio": 1.1004126547455295,
+        "ammoRatio": 0.4511691884456671
+      },
+      "opening": {
+        "gems": 282,
+        "out": false,
+        "size": 363.5,
+        "x": 1461.75,
+        "y": 2100,
+        "ammoWidth": 164,
+        "shooterWidth": 400,
+        "speed": 1504.6803630831937,
+        "shooterRatio": 1.1004126547455295,
+        "ammoRatio": 0.4511691884456671,
+        "energyFinish": false,
+        "advantageFinish": false
+      },
+      "durationSeconds": 2.5,
+      "outcome": "attacker wins",
+      "end": {
+        "attacker": 3669,
+        "defender": 0
+      },
+      "counts": {
+        "captures": 0,
+        "launches": 0,
+        "pairHits": 1,
+        "counterHits": 0,
+        "theftCredits": 0,
+        "puffs": 0,
+        "parries": 0,
+        "placements": 0,
+        "weaponHits": 0
+      },
+      "defenderStunSeconds": 0.47,
+      "defenderInjurySeconds": 2.5,
+      "defenderTravel": 420,
+      "stolen": {
+        "attacker": 1505,
+        "defender": 0
+      }
+    },
+    {
+      "id": 15,
+      "seed": 72595,
+      "nominal": {
+        "attacker": 1881,
+        "defender": 1376,
+        "ammo": 353
+      },
+      "defenderStartsEmpty": true,
+      "spacing": "medium",
+      "initialGap": 360,
+      "start": {
+        "attacker": 1881,
+        "defender": 1376,
+        "attackerWidth": 400,
+        "defenderWidth": 347.5,
+        "ammo": 248,
+        "ammoWidth": 156.5,
+        "shooterRatio": 1.1510791366906474,
+        "ammoRatio": 0.4503597122302158
+      },
+      "opening": {
+        "gems": 259,
+        "out": false,
+        "size": 347.5,
+        "x": 1733.75,
+        "y": 2100,
+        "ammoWidth": 156.5,
+        "shooterWidth": 400,
+        "speed": 1472.2637130571507,
+        "shooterRatio": 1.1510791366906474,
+        "ammoRatio": 0.4503597122302158,
+        "energyFinish": false,
+        "advantageFinish": false
+      },
+      "durationSeconds": 4.03,
+      "outcome": "attacker wins",
+      "end": {
+        "attacker": 3495,
+        "defender": 0
+      },
+      "counts": {
+        "captures": 0,
+        "launches": 0,
+        "pairHits": 1,
+        "counterHits": 0,
+        "theftCredits": 0,
+        "puffs": 0,
+        "parries": 0,
+        "placements": 0,
+        "weaponHits": 0
+      },
+      "defenderStunSeconds": 0.47,
+      "defenderInjurySeconds": 4.03,
+      "defenderTravel": 542,
+      "stolen": {
+        "attacker": 1249,
+        "defender": 0
+      }
+    },
+    {
+      "id": 16,
+      "seed": 72692,
+      "nominal": {
+        "attacker": 1881,
+        "defender": 1252,
+        "ammo": 323
+      },
+      "defenderStartsEmpty": true,
+      "spacing": "long",
+      "initialGap": 800,
+      "start": {
+        "attacker": 1881,
+        "defender": 1252,
+        "attackerWidth": 400,
+        "defenderWidth": 333,
+        "ammo": 227,
+        "ammoWidth": 150.5,
+        "shooterRatio": 1.2012012012012012,
+        "ammoRatio": 0.4519519519519519
+      },
+      "opening": {
+        "gems": 222,
+        "out": false,
+        "size": 333,
+        "x": 2166.5,
+        "y": 2100,
+        "ammoWidth": 150.5,
+        "shooterWidth": 400,
+        "speed": 1324.5107209152566,
+        "shooterRatio": 1.2012012012012012,
+        "ammoRatio": 0.4519519519519519,
+        "energyFinish": false,
+        "advantageFinish": false
+      },
+      "durationSeconds": 28.1,
+      "outcome": "attacker wins",
+      "end": {
+        "attacker": 2918,
+        "defender": 0
+      },
+      "counts": {
+        "captures": 1,
+        "launches": 1,
+        "pairHits": 1,
+        "counterHits": 0,
+        "theftCredits": 2,
+        "puffs": 2,
+        "parries": 2,
+        "placements": 0,
+        "weaponHits": 0
+      },
+      "defenderStunSeconds": 0.47,
+      "defenderInjurySeconds": 11.9,
+      "defenderTravel": 4304,
+      "stolen": {
+        "attacker": 806,
+        "defender": 0
+      }
+    },
+    {
+      "id": 17,
+      "seed": 72789,
+      "nominal": {
+        "attacker": 1881,
+        "defender": 1051,
+        "ammo": 273
+      },
+      "defenderStartsEmpty": true,
+      "spacing": "close",
+      "initialGap": 80,
+      "start": {
+        "attacker": 1881,
+        "defender": 1051,
+        "attackerWidth": 400,
+        "defenderWidth": 307.5,
+        "ammo": 192,
+        "ammoWidth": 138.5,
+        "shooterRatio": 1.3008130081300813,
+        "ammoRatio": 0.4504065040650406
+      },
+      "opening": {
+        "gems": 208,
+        "out": false,
+        "size": 307.5,
+        "x": 1433.75,
+        "y": 2100,
+        "ammoWidth": 138.5,
+        "shooterWidth": 400,
+        "speed": 1576.974938701355,
+        "shooterRatio": 1.3008130081300813,
+        "ammoRatio": 0.4504065040650406,
+        "energyFinish": false,
+        "advantageFinish": false
+      },
+      "durationSeconds": 3.23,
+      "outcome": "attacker wins",
+      "end": {
+        "attacker": 3108,
+        "defender": 0
+      },
+      "counts": {
+        "captures": 0,
+        "launches": 0,
+        "pairHits": 1,
+        "counterHits": 0,
+        "theftCredits": 0,
+        "puffs": 0,
+        "parries": 0,
+        "placements": 0,
+        "weaponHits": 0
+      },
+      "defenderStunSeconds": 0.7,
+      "defenderInjurySeconds": 3.23,
+      "defenderTravel": 409,
+      "stolen": {
+        "attacker": 1138,
+        "defender": 0
+      }
+    },
+    {
+      "id": 18,
+      "seed": 72886,
+      "nominal": {
+        "attacker": 1881,
+        "defender": 769,
+        "ammo": 202
+      },
+      "defenderStartsEmpty": true,
+      "spacing": "medium",
+      "initialGap": 360,
+      "start": {
+        "attacker": 1881,
+        "defender": 769,
+        "attackerWidth": 400,
+        "defenderWidth": 266.5,
+        "ammo": 142,
+        "ammoWidth": 120,
+        "shooterRatio": 1.5009380863039399,
+        "ammoRatio": 0.450281425891182
+      },
+      "opening": {
+        "gems": 163,
+        "out": false,
+        "size": 266.5,
+        "x": 1693.25,
+        "y": 2100,
+        "ammoWidth": 120,
+        "shooterWidth": 400,
+        "speed": 1563.6126486768112,
+        "shooterRatio": 1.5009380863039399,
+        "ammoRatio": 0.450281425891182,
+        "energyFinish": false,
+        "advantageFinish": false
+      },
+      "durationSeconds": 3.77,
+      "outcome": "attacker wins",
+      "end": {
+        "attacker": 2785,
+        "defender": 0
+      },
+      "counts": {
+        "captures": 0,
+        "launches": 0,
+        "pairHits": 1,
+        "counterHits": 0,
+        "theftCredits": 0,
+        "puffs": 0,
+        "parries": 0,
+        "placements": 0,
+        "weaponHits": 0
+      },
+      "defenderStunSeconds": 0.47,
+      "defenderInjurySeconds": 3.77,
+      "defenderTravel": 495,
+      "stolen": {
+        "attacker": 701,
+        "defender": 0
+      }
+    },
+    {
+      "id": 19,
+      "seed": 72983,
+      "nominal": {
+        "attacker": 5759,
+        "defender": 5759,
+        "ammo": 1342
+      },
+      "defenderStartsEmpty": true,
+      "spacing": "close",
+      "initialGap": 80,
+      "start": {
+        "attacker": 5759,
+        "defender": 5759,
+        "attackerWidth": 650,
+        "defenderWidth": 650,
+        "ammo": 940,
+        "ammoWidth": 292.5,
+        "shooterRatio": 1,
+        "ammoRatio": 0.45
+      },
+      "opening": {
+        "gems": 985,
+        "out": false,
+        "size": 650,
+        "x": 1730,
+        "y": 2100,
+        "ammoWidth": 292.5,
+        "shooterWidth": 650,
+        "speed": 1464.8573580423138,
+        "shooterRatio": 1,
+        "ammoRatio": 0.45,
+        "energyFinish": false,
+        "advantageFinish": false
+      },
+      "durationSeconds": 3.37,
+      "outcome": "attacker wins",
+      "end": {
+        "attacker": 12131,
+        "defender": 0
+      },
+      "counts": {
+        "captures": 0,
+        "launches": 0,
+        "pairHits": 1,
+        "counterHits": 0,
+        "theftCredits": 1,
+        "puffs": 0,
+        "parries": 0,
+        "placements": 0,
+        "weaponHits": 0
+      },
+      "defenderStunSeconds": 0.7,
+      "defenderInjurySeconds": 3.37,
+      "defenderTravel": 715,
+      "stolen": {
+        "attacker": 5668,
+        "defender": 0
+      }
+    },
+    {
+      "id": 20,
+      "seed": 73080,
+      "nominal": {
+        "attacker": 5759,
+        "defender": 4602,
+        "ammo": 1092
+      },
+      "defenderStartsEmpty": true,
+      "spacing": "medium",
+      "initialGap": 360,
+      "start": {
+        "attacker": 5759,
+        "defender": 4602,
+        "attackerWidth": 650,
+        "defenderWidth": 590.5,
+        "ammo": 765,
+        "ammoWidth": 266,
+        "shooterRatio": 1.100762066045724,
+        "ammoRatio": 0.4504657070279424
+      },
+      "opening": {
+        "gems": 805,
+        "out": false,
+        "size": 590.5,
+        "x": 1980.25,
+        "y": 2100,
+        "ammoWidth": 266,
+        "shooterWidth": 650,
+        "speed": 1488.0218043487582,
+        "shooterRatio": 1.100762066045724,
+        "ammoRatio": 0.4504657070279424,
+        "energyFinish": false,
+        "advantageFinish": false
+      },
+      "durationSeconds": 45,
+      "outcome": "unresolved",
+      "end": {
+        "attacker": 10659,
+        "defender": 6
+      },
+      "counts": {
+        "captures": 3,
+        "launches": 2,
+        "pairHits": 2,
+        "counterHits": 0,
+        "theftCredits": 1,
+        "puffs": 3,
+        "parries": 1,
+        "placements": 0,
+        "weaponHits": 0
+      },
+      "defenderStunSeconds": 0.93,
+      "defenderInjurySeconds": 7,
+      "defenderTravel": 8545,
+      "stolen": {
+        "attacker": 2516,
+        "defender": 0
+      }
+    },
+    {
+      "id": 21,
+      "seed": 73177,
+      "nominal": {
+        "attacker": 5759,
+        "defender": 4153,
+        "ammo": 992
+      },
+      "defenderStartsEmpty": true,
+      "spacing": "long",
+      "initialGap": 800,
+      "start": {
+        "attacker": 5759,
+        "defender": 4153,
+        "attackerWidth": 650,
+        "defenderWidth": 565,
+        "ammo": 695,
+        "ammoWidth": 254.5,
+        "shooterRatio": 1.1504424778761062,
+        "ammoRatio": 0.4504424778761062
+      },
+      "opening": {
+        "gems": 685,
+        "out": false,
+        "size": 565,
+        "x": 2407.5,
+        "y": 2100,
+        "ammoWidth": 254.5,
+        "shooterWidth": 650,
+        "speed": 1340.7927165759477,
+        "shooterRatio": 1.1504424778761062,
+        "ammoRatio": 0.4504424778761062,
+        "energyFinish": false,
+        "advantageFinish": false
+      },
+      "durationSeconds": 45,
+      "outcome": "unresolved",
+      "end": {
+        "attacker": 8829,
+        "defender": 1343
+      },
+      "counts": {
+        "captures": 4,
+        "launches": 3,
+        "pairHits": 2,
+        "counterHits": 0,
+        "theftCredits": 1,
+        "puffs": 3,
+        "parries": 2,
+        "placements": 0,
+        "weaponHits": 0
+      },
+      "defenderStunSeconds": 0.93,
+      "defenderInjurySeconds": 7,
+      "defenderTravel": 8109,
+      "stolen": {
+        "attacker": 2254,
+        "defender": 0
+      }
+    },
+    {
+      "id": 22,
+      "seed": 73274,
+      "nominal": {
+        "attacker": 5759,
+        "defender": 3763,
+        "ammo": 906
+      },
+      "defenderStartsEmpty": true,
+      "spacing": "close",
+      "initialGap": 80,
+      "start": {
+        "attacker": 5759,
+        "defender": 3763,
+        "attackerWidth": 650,
+        "defenderWidth": 541.5,
+        "ammo": 635,
+        "ammoWidth": 244,
+        "shooterRatio": 1.2003693444136658,
+        "ammoRatio": 0.45060018467220686
+      },
+      "opening": {
+        "gems": 673,
+        "out": false,
+        "size": 541.5,
+        "x": 1675.75,
+        "y": 2100,
+        "ammoWidth": 244,
+        "shooterWidth": 650,
+        "speed": 1542.413876329896,
+        "shooterRatio": 1.2003693444136658,
+        "ammoRatio": 0.45060018467220686,
+        "energyFinish": false,
+        "advantageFinish": false
+      },
+      "durationSeconds": 2.6,
+      "outcome": "attacker wins",
+      "end": {
+        "attacker": 9826,
+        "defender": 0
+      },
+      "counts": {
+        "captures": 0,
+        "launches": 0,
+        "pairHits": 1,
+        "counterHits": 0,
+        "theftCredits": 0,
+        "puffs": 0,
+        "parries": 0,
+        "placements": 0,
+        "weaponHits": 0
+      },
+      "defenderStunSeconds": 0.47,
+      "defenderInjurySeconds": 2.6,
+      "defenderTravel": 583,
+      "stolen": {
+        "attacker": 3694,
+        "defender": 0
+      }
+    },
+    {
+      "id": 23,
+      "seed": 73371,
+      "nominal": {
+        "attacker": 5759,
+        "defender": 3131,
+        "ammo": 762
+      },
+      "defenderStartsEmpty": true,
+      "spacing": "medium",
+      "initialGap": 360,
+      "start": {
+        "attacker": 5759,
+        "defender": 3131,
+        "attackerWidth": 650,
+        "defenderWidth": 500,
+        "ammo": 534,
+        "ammoWidth": 225,
+        "shooterRatio": 1.3,
+        "ammoRatio": 0.45
+      },
+      "opening": {
+        "gems": 571,
+        "out": false,
+        "size": 500,
+        "x": 1935,
+        "y": 2100,
+        "ammoWidth": 225,
+        "shooterWidth": 650,
+        "speed": 1540.7208982947616,
+        "shooterRatio": 1.3,
+        "ammoRatio": 0.45,
+        "energyFinish": false,
+        "advantageFinish": false
+      },
+      "durationSeconds": 45,
+      "outcome": "unresolved",
+      "end": {
+        "attacker": 8044,
+        "defender": 1006
+      },
+      "counts": {
+        "captures": 3,
+        "launches": 2,
+        "pairHits": 2,
+        "counterHits": 0,
+        "theftCredits": 2,
+        "puffs": 1,
+        "parries": 1,
+        "placements": 0,
+        "weaponHits": 0
+      },
+      "defenderStunSeconds": 0.93,
+      "defenderInjurySeconds": 7,
+      "defenderTravel": 6101,
+      "stolen": {
+        "attacker": 1690,
+        "defender": 0
+      }
+    },
+    {
+      "id": 24,
+      "seed": 73468,
+      "nominal": {
+        "attacker": 5759,
+        "defender": 2255,
+        "ammo": 562
+      },
+      "defenderStartsEmpty": true,
+      "spacing": "long",
+      "initialGap": 800,
+      "start": {
+        "attacker": 5759,
+        "defender": 2255,
+        "attackerWidth": 650,
+        "defenderWidth": 433,
+        "ammo": 394,
+        "ammoWidth": 195,
+        "shooterRatio": 1.5011547344110854,
+        "ammoRatio": 0.4503464203233256
+      },
+      "opening": {
+        "gems": 430,
+        "out": false,
+        "size": 433,
+        "x": 2341.5,
+        "y": 2100,
+        "ammoWidth": 195,
+        "shooterWidth": 650,
+        "speed": 1440.9927383553986,
+        "shooterRatio": 1.5011547344110854,
+        "ammoRatio": 0.4503464203233256,
+        "energyFinish": false,
+        "advantageFinish": false
+      },
+      "durationSeconds": 45,
+      "outcome": "unresolved",
+      "end": {
+        "attacker": 7318,
+        "defender": 752
+      },
+      "counts": {
+        "captures": 3,
+        "launches": 2,
+        "pairHits": 1,
+        "counterHits": 0,
+        "theftCredits": 1,
+        "puffs": 4,
+        "parries": 1,
+        "placements": 0,
+        "weaponHits": 0
+      },
+      "defenderStunSeconds": 0.47,
+      "defenderInjurySeconds": 7,
+      "defenderTravel": 8061,
+      "stolen": {
+        "attacker": 1267,
+        "defender": 0
+      }
+    },
+    {
+      "id": 25,
+      "seed": 73565,
+      "nominal": {
+        "attacker": 15402,
+        "defender": 15402,
+        "ammo": 2763
+      },
+      "defenderStartsEmpty": true,
+      "spacing": "medium",
+      "initialGap": 360,
+      "start": {
+        "attacker": 15402,
+        "defender": 15402,
+        "attackerWidth": 900,
+        "defenderWidth": 900,
+        "ammo": 1935,
+        "ammoWidth": 405,
+        "shooterRatio": 1,
+        "ammoRatio": 0.45
+      },
+      "opening": {
+        "gems": 2597,
+        "out": false,
+        "size": 900,
+        "x": 2260,
+        "y": 2100,
+        "ammoWidth": 405,
+        "shooterWidth": 900,
+        "speed": 1464.8573580423138,
+        "shooterRatio": 1,
+        "ammoRatio": 0.45,
+        "energyFinish": false,
+        "advantageFinish": false
+      },
+      "durationSeconds": 5.77,
+      "outcome": "attacker wins",
+      "end": {
+        "attacker": 30744,
+        "defender": 0
+      },
+      "counts": {
+        "captures": 1,
+        "launches": 1,
+        "pairHits": 2,
+        "counterHits": 0,
+        "theftCredits": 1,
+        "puffs": 0,
+        "parries": 0,
+        "placements": 0,
+        "weaponHits": 0
+      },
+      "defenderStunSeconds": 0.47,
+      "defenderInjurySeconds": 5.77,
+      "defenderTravel": 831,
+      "stolen": {
+        "attacker": 9807,
+        "defender": 0
+      }
+    },
+    {
+      "id": 26,
+      "seed": 73662,
+      "nominal": {
+        "attacker": 15402,
+        "defender": 10993,
+        "ammo": 2236
+      },
+      "defenderStartsEmpty": true,
+      "spacing": "long",
+      "initialGap": 800,
+      "start": {
+        "attacker": 15402,
+        "defender": 10993,
+        "attackerWidth": 900,
+        "defenderWidth": 818,
+        "ammo": 1566,
+        "ammoWidth": 368.5,
+        "shooterRatio": 1.1002444987775062,
+        "ammoRatio": 0.4504889975550122
+      },
+      "opening": {
+        "gems": 1804,
+        "out": false,
+        "size": 818,
+        "x": 2659,
+        "y": 2100,
+        "ammoWidth": 368.5,
+        "shooterWidth": 900,
+        "speed": 1371.1263883332801,
+        "shooterRatio": 1.1002444987775062,
+        "ammoRatio": 0.4504889975550122,
+        "energyFinish": false,
+        "advantageFinish": false
+      },
+      "durationSeconds": 22.4,
+      "outcome": "attacker wins",
+      "end": {
+        "attacker": 27360,
+        "defender": 0
+      },
+      "counts": {
+        "captures": 3,
+        "launches": 3,
+        "pairHits": 2,
+        "counterHits": 0,
+        "theftCredits": 2,
+        "puffs": 1,
+        "parries": 0,
+        "placements": 0,
+        "weaponHits": 0
+      },
+      "defenderStunSeconds": 0.93,
+      "defenderInjurySeconds": 7,
+      "defenderTravel": 8160,
+      "stolen": {
+        "attacker": 5809,
+        "defender": 0
+      }
+    },
+    {
+      "id": 27,
+      "seed": 73759,
+      "nominal": {
+        "attacker": 15402,
+        "defender": 9552,
+        "ammo": 2025
+      },
+      "defenderStartsEmpty": true,
+      "spacing": "close",
+      "initialGap": 80,
+      "start": {
+        "attacker": 15402,
+        "defender": 9552,
+        "attackerWidth": 900,
+        "defenderWidth": 782.5,
+        "ammo": 1418,
+        "ammoWidth": 352.5,
+        "shooterRatio": 1.1501597444089458,
+        "ammoRatio": 0.4504792332268371
+      },
+      "opening": {
+        "gems": 1658,
+        "out": false,
+        "size": 782.5,
+        "x": 1921.25,
+        "y": 2100,
+        "ammoWidth": 352.5,
+        "shooterWidth": 900,
+        "speed": 1524.249981485078,
+        "shooterRatio": 1.1501597444089458,
+        "ammoRatio": 0.4504792332268371,
+        "energyFinish": false,
+        "advantageFinish": false
+      },
+      "durationSeconds": 5.8,
+      "outcome": "attacker wins",
+      "end": {
+        "attacker": 25114,
+        "defender": 0
+      },
+      "counts": {
+        "captures": 1,
+        "launches": 1,
+        "pairHits": 2,
+        "counterHits": 0,
+        "theftCredits": 1,
+        "puffs": 0,
+        "parries": 0,
+        "placements": 0,
+        "weaponHits": 0
+      },
+      "defenderStunSeconds": 0.47,
+      "defenderInjurySeconds": 5.8,
+      "defenderTravel": 900,
+      "stolen": {
+        "attacker": 6702,
+        "defender": 0
+      }
+    },
+    {
+      "id": 28,
+      "seed": 73856,
+      "nominal": {
+        "attacker": 15402,
+        "defender": 8420,
+        "ammo": 1839
+      },
+      "defenderStartsEmpty": true,
+      "spacing": "medium",
+      "initialGap": 360,
+      "start": {
+        "attacker": 15402,
+        "defender": 8420,
+        "attackerWidth": 900,
+        "defenderWidth": 750,
+        "ammo": 1288,
+        "ammoWidth": 337.5,
+        "shooterRatio": 1.2,
+        "ammoRatio": 0.45
+      },
+      "opening": {
+        "gems": 1473,
+        "out": false,
+        "size": 750,
+        "x": 2185,
+        "y": 2100,
+        "ammoWidth": 337.5,
+        "shooterWidth": 900,
+        "speed": 1542.8524088341458,
+        "shooterRatio": 1.2,
+        "ammoRatio": 0.45,
+        "energyFinish": false,
+        "advantageFinish": false
+      },
+      "durationSeconds": 28.07,
+      "outcome": "attacker wins",
+      "end": {
+        "attacker": 24427,
+        "defender": 0
+      },
+      "counts": {
+        "captures": 3,
+        "launches": 2,
+        "pairHits": 3,
+        "counterHits": 0,
+        "theftCredits": 1,
+        "puffs": 0,
+        "parries": 0,
+        "placements": 0,
+        "weaponHits": 0
+      },
+      "defenderStunSeconds": 1.4,
+      "defenderInjurySeconds": 10.73,
+      "defenderTravel": 4150,
+      "stolen": {
+        "attacker": 8368,
+        "defender": 0
+      }
+    },
+    {
+      "id": 29,
+      "seed": 73953,
+      "nominal": {
+        "attacker": 15402,
+        "defender": 6752,
+        "ammo": 1540
+      },
+      "defenderStartsEmpty": true,
+      "spacing": "long",
+      "initialGap": 800,
+      "start": {
+        "attacker": 15402,
+        "defender": 6752,
+        "attackerWidth": 900,
+        "defenderWidth": 692,
+        "ammo": 1078,
+        "ammoWidth": 311.5,
+        "shooterRatio": 1.300578034682081,
+        "ammoRatio": 0.45014450867052025
+      },
+      "opening": {
+        "gems": 1189,
+        "out": false,
+        "size": 692,
+        "x": 2596,
+        "y": 2100,
+        "ammoWidth": 311.5,
+        "shooterWidth": 900,
+        "speed": 1419.9437317498266,
+        "shooterRatio": 1.300578034682081,
+        "ammoRatio": 0.45014450867052025,
+        "energyFinish": false,
+        "advantageFinish": false
+      },
+      "durationSeconds": 6.03,
+      "outcome": "attacker wins",
+      "end": {
+        "attacker": 22261,
+        "defender": 0
+      },
+      "counts": {
+        "captures": 1,
+        "launches": 1,
+        "pairHits": 2,
+        "counterHits": 0,
+        "theftCredits": 1,
+        "puffs": 0,
+        "parries": 0,
+        "placements": 0,
+        "weaponHits": 0
+      },
+      "defenderStunSeconds": 0.47,
+      "defenderInjurySeconds": 6.03,
+      "defenderTravel": 747,
+      "stolen": {
+        "attacker": 3922,
+        "defender": 0
+      }
+    },
+    {
+      "id": 30,
+      "seed": 74050,
+      "nominal": {
+        "attacker": 15402,
+        "defender": 4776,
+        "ammo": 1128
+      },
+      "defenderStartsEmpty": true,
+      "spacing": "close",
+      "initialGap": 80,
+      "start": {
+        "attacker": 15402,
+        "defender": 4776,
+        "attackerWidth": 900,
+        "defenderWidth": 600,
+        "ammo": 790,
+        "ammoWidth": 270,
+        "shooterRatio": 1.5,
+        "ammoRatio": 0.45
+      },
+      "opening": {
+        "gems": 882,
+        "out": false,
+        "size": 600,
+        "x": 1830,
+        "y": 2100,
+        "ammoWidth": 270,
+        "shooterWidth": 900,
+        "speed": 1638.310636180736,
+        "shooterRatio": 1.5,
+        "ammoRatio": 0.45,
+        "energyFinish": false,
+        "advantageFinish": false
+      },
+      "durationSeconds": 26.17,
+      "outcome": "attacker wins",
+      "end": {
+        "attacker": 20223,
+        "defender": 0
+      },
+      "counts": {
+        "captures": 3,
+        "launches": 2,
+        "pairHits": 3,
+        "counterHits": 0,
+        "theftCredits": 1,
+        "puffs": 0,
+        "parries": 0,
+        "placements": 0,
+        "weaponHits": 0
+      },
+      "defenderStunSeconds": 1.4,
+      "defenderInjurySeconds": 9.67,
+      "defenderTravel": 3923,
+      "stolen": {
+        "attacker": 5163,
+        "defender": 0
+      }
+    }
+  ],
+  "status": "Historical: superseded three-condition finish; original parameters/results preserved."
+}

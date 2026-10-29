@@ -1,11 +1,13 @@
 import type { MultiplayerMode } from '../core/GameModes'
 import type { SyncedGameState } from '../types/synced'
 import { INJURY_CRACKS } from './injury'
+import { PLAYER_COLORS } from '../../server/constants/gameConstants'
 
 export interface CombatRewardEvent {
     eventId: string; byId: string; targetId: string; how: string
     x: number; y: number; size: number; facing: number; earned: number
     holeX?: number; holeY?: number
+    playerIndex?: number
 }
 export interface CombatRewardEffect extends CombatRewardEvent { at: number }
 
@@ -30,6 +32,18 @@ export function drawCombatRewards(mode: MultiplayerMode, ctx: CanvasRenderingCon
                     const scale = effect.size / 2 * (1 + (reduced ? 0 : shatter * 1.6))
                     if (i) ctx.lineTo(x * scale, y * scale); else ctx.moveTo(x * scale, y * scale)
                 }); ctx.stroke()
+            }
+            if (!reduced && age < 550) {
+                const color = effect.targetId === mode.multiplayerManager?.localSessionId ? '#ffffff' : PLAYER_COLORS[(effect.playerIndex ?? 0) % PLAYER_COLORS.length]
+                const spread = 1 - Math.pow(1 - shatter, 2), r = effect.size / 2
+                for (let i = 0; i < 8; i++) {
+                    const angle = i * Math.PI / 4, travel = r * (.65 + spread * 1.6), piece = r * .27 * (1 - shatter * .35)
+                    ctx.save(); ctx.translate(Math.cos(angle) * travel, Math.sin(angle) * travel)
+                    ctx.rotate(angle + shatter * (i % 2 ? 1 : -1)); ctx.fillStyle = color
+                    ctx.globalAlpha = Math.max(0, 1 - shatter); ctx.lineWidth = Math.max(1, effect.size * .004)
+                    ctx.beginPath(); ctx.moveTo(-piece * .5, -piece * .65); ctx.lineTo(piece * .6, -piece * .35)
+                    ctx.quadraticCurveTo(piece, piece * .2, piece * .35, piece * .7); ctx.lineTo(-piece * .55, piece * .2); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore()
+                }
             }
             ctx.restore()
         }

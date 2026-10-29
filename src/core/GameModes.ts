@@ -1,3 +1,4 @@
+import { drawCannonHits, type CannonHitEffect } from '../render/cannonHits'
 import { drawCombatRewards, type CombatRewardEvent, type CombatRewardEffect } from '../render/combatRewards'
 /**
  * Consolidated game modes implementation using the Strategy Pattern.
@@ -9,7 +10,7 @@ import { GameEvents } from '../constants/client-constants'
 import { ARENA_RULES, BOMBS, CAMERA, EXHALE, GEMS, INHALE, LATCH, SHIFT, WORLD, WEAPON_RECIPES } from '../../server/constants/gameConstants'
 import { allWeapons } from '../../server/game/weaponKit'
 import { sound } from './Sound'
-import { FirstSessionGuide } from '../ui/FirstSessionGuide'
+import type { OnlineSession } from '../managers/MultiplayerManager'
 import { WeaponPlacement } from '../ui/WeaponPlacement'
 import { drawSurge, drawSurgeHud } from '../render/surge'
 import { breathRate } from '../../server/game/airflow'
@@ -43,6 +44,8 @@ import { weaponRecipe } from '../render/weaponStyle'
 
 // Forward reference for the Game type to avoid circular dependencies
 interface Game {
+    practiceUI?: import('../practice/PracticeUI').PracticeUI | null
+    inputManager?: { reset(): void } | null
     responsiveManager: { safeArea: { top: number; right: number; bottom: number; left: number } }
     gameState: string
     isMultiplayerMode: boolean
@@ -488,7 +491,7 @@ const PREDICTION_SNAP = 150
 const SHAKE_MS = 300
 /** Traffic is drawn at most this far ahead (seconds), in case updates stall */
 const MAX_TRAFFIC_LEAD = 0.4
-type ConnectionStatus = 'connecting' | 'connected' | 'reconnecting'
+type ConnectionStatus = 'connecting' | 'connected' | 'reconnecting' | 'closed'
 
 /** It plays once per page load */
 let introPlayed = false
@@ -500,7 +503,13 @@ let introPlayed = false
  * bursts when someone is hit or shoved, a leaderboard and a minimap.
  */
 export class MultiplayerMode extends GameMode {
-    private firstGuide: FirstSessionGuide | null = null
+    constructor(game: Game, readonly session: OnlineSession = { kind: 'play' }) { super(game) }
+    get isPractice(): boolean { return this.session.kind === 'practice' }
+    private practiceReset = -1
+    cancelInput(): void { this.game.inputManager?.reset(); this.releaseControls() }
+    private publishActivity(text: string): void {
+        if (!this.isPractice) window.dispatchEvent(new CustomEvent('ascend:activity', { detail: text }))
+    }
     surgeNotice: { key: string; at: number } | null = null
     private wasLoaded = false
     private wasCaptured = false
@@ -602,6 +611,7 @@ export class MultiplayerMode extends GameMode {
     private drawnGems = new Map<string, { x: number; y: number }>()
     /** Each player as of the last frame, to spot hits and pickups */
     private lastSeen = new Map<string, { alive: boolean; recovering: boolean; sliding: boolean; gems: number; cx: number; cy: number }>()
+    cannonHits: CannonHitEffect[] = []
     rewardEffects: CombatRewardEffect[] = []
     private rewardSeen = new Set<string>()
     bursts: { x: number; y: number; size: number; color: string; at: number }[] = []
@@ -620,13 +630,14 @@ export class MultiplayerMode extends GameMode {
 
     async initialize(): Promise<void> {
         await super.initialize()
+        if (this.disposed) return
         this.game.isMultiplayerMode = true
+        if (this.isPractice) document.body.classList.remove('intro-playing')
         // Coming from solo: put its game-over screen away; the online world never pauses
         this.game.uiManager?.hideGameOver()
         this.game.gameState = this.game.config.STATE.PLAYING
         // Touch and mouse controls drawn on the canvas; the D-pad and swipes are for solo
         if (this.game.canvas) this.controls = new OnlineControls(this.game.canvas)
-        this.firstGuide = new FirstSessionGuide()
         this.weaponPlacement = new WeaponPlacement(() => this.multiplayerManager?.sendMessage('placeWeapon', {}))
         window.addEventListener('blur', this.releaseControls)
         document.addEventListener('visibilitychange', this.visibilityChanged)
@@ -636,26 +647,31 @@ export class MultiplayerMode extends GameMode {
         if (inputManager) inputManager.swipesEnabled = false
         // Online, the header shows your gems and the most you've held this visit
         this.game.uiManager?.updateScore(0)
-        this.game.uiManager?.updateHighScore(0)
+        if (!this.isPractice) this.game.uiManager?.updateHighScore(0)
 
         const [{ MultiplayerManager }, { EventBus }] = await Promise.all([
             import('../managers/MultiplayerManager'),
             import('./EventBus'),
         ])
+        if (this.disposed) return
         const eventBus = new EventBus()
-        this.multiplayerManager = new MultiplayerManager(eventBus)
+        this.multiplayerManager = new MultiplayerManager(eventBus, this.session)
         eventBus.on(GameEvents.PLAYER_JOINED, (data: any) => {
             if (data?.id && data.id !== this.multiplayerManager?.localSessionId) {
                 this.addNotice(`${String(data.name ?? 'Someone')} joined`)
             }
         })
-        eventBus.on(GameEvents.MULTIPLAYER_DISCONNECTED, () => this.reconnectSoon())
+        eventBus.on(GameEvents.MULTIPLAYER_DISCONNECTED, (data: { code?: number }) => {
+            if (this.isPractice && (data.code === 4000 || data.code === 1000)) {
+                this.status = 'closed'; this.game.practiceUI?.connectionClosed()
+            } else this.reconnectSoon()
+        })
         eventBus.on(GameEvents.MULTIPLAYER_STATE_UPDATE, (state: SyncedGameState) => {
             if (typeof state?.time !== 'number') return
             const me = this.multiplayerManager?.getLocalPlayer() as SyncedPlayer | undefined
             const damage = me?.weaponDamage ?? 0, knockouts = me?.weaponKnockouts ?? 0
             const record = `${damage}/${knockouts}`
-            if (record !== this.weaponRecord) {
+            if (!this.isPractice && record !== this.weaponRecord) {
                 this.weaponRecord = record
                 window.dispatchEvent(new CustomEvent('ascend:weapon-record', { detail: { damage, knockouts } }))
             }
@@ -674,7 +690,6 @@ export class MultiplayerMode extends GameMode {
         eventBus.on('multiplayer:launch', (data: { byId?: string; id?: string }) => {
             const id = this.multiplayerManager?.localSessionId
             if (data?.byId === id || data?.id === id) sound.play('launch')
-            if (data?.byId === id) this.firstGuide?.launched()
         })
         eventBus.on('multiplayer:parry', (data: { id?: string }) => {
             if (data?.id === this.multiplayerManager?.localSessionId) { sound.play('parry'); this.addNotice('Suction broken! Move clear.') }
@@ -731,6 +746,16 @@ export class MultiplayerMode extends GameMode {
     }
 
     update(inputState: InputState, _deltaTime: number, _timestamp: number): void {
+        const practice = this.multiplayerManager?.getState()?.practice
+        if (this.isPractice && practice?.enabled) {
+            const session = this.multiplayerManager?.session
+            if (session?.kind === 'practice' && ['basics', 'weapon', 'blackhole', 'defense'].includes(practice.lesson)) { session.lesson = practice.lesson; session.sequence = practice.sequence }
+            if (practice.resetSerial !== this.practiceReset) { this.cancelInput(); this.predicted = null; this.practiceReset = practice.resetSerial
+                const me = this.multiplayerManager?.getLocalPlayer()
+                if (me) { this.facing = { x: Math.cos(me.facing), y: Math.sin(me.facing) }; this.aim = { ...this.facing }; this.localFacing = me.facing; this.sentAim = { x: 0, y: 0 } }
+            }
+            this.game.practiceUI?.update(practice)
+        }
         this.moveLocalPlayer(inputState)
         this.showGems()
     }
@@ -778,7 +803,7 @@ export class MultiplayerMode extends GameMode {
         this.shownGems = me.gems
         this.bestGems = Math.max(this.bestGems, me.gems)
         this.game.uiManager?.updateScore(me.gems)
-        this.game.uiManager?.updateHighScore(this.bestGems)
+        if (!this.isPractice) this.game.uiManager?.updateHighScore(this.bestGems)
     }
 
     /**
@@ -790,7 +815,7 @@ export class MultiplayerMode extends GameMode {
         const now = performance.now()
         // The button: hold to inhale (taken every frame, so nothing waits for later)
         const events = this.controls?.takeEvents() ?? []
-        const editing = !!document.activeElement?.matches('input, textarea, [contenteditable="true"]') || !!document.querySelector('.drawer.active')
+        const editing = !!document.activeElement?.matches('input, textarea, [contenteditable="true"]') || !!document.querySelector('.drawer.active') || !!this.game.practiceUI?.modalOpen
         if (editing) events.length = 0
         if (this.introPlaying) events.length = 0
         const deltaTime = this.lastMoveAt ? Math.min(0.1, (now - this.lastMoveAt) / 1000) : 0
@@ -820,6 +845,16 @@ export class MultiplayerMode extends GameMode {
             return
         }
         if (!this.predicted) this.predicted = { x: me.x, y: me.y }
+        // A prepared shot remains usable during post-impact knockback, once the brief stun ends.
+        // Movement prediction still follows the server; firing/aiming is independent of walking.
+        if (me.gulping && !me.stunned && !me.flying && !me.capturedBy && (me.sliding || me.recovering)) {
+            const length = Math.hypot(steer.x, steer.y)
+            const aim = this.controls?.aimVector() ?? (length > .2 ? { x: steer.x / length, y: steer.y / length } : this.facing)
+            if (Math.hypot(aim.x - this.sentAim.x, aim.y - this.sentAim.y) > .1) {
+                this.sentAim = { ...aim }; this.multiplayerManager?.sendMessage('aim', aim)
+            }
+            for (const event of events) if (event === 'tap' || event === 'inhale') this.multiplayerManager?.sendMessage(event, {})
+        }
         // (caught in a mouth or flying, the server moves you too)
         if (me.sliding || me.recovering || me.flying || me.capturedBy || me.stunned) {
             // Shoved or knocked into a skid: go where the server says, no steering until you've recovered
@@ -979,7 +1014,7 @@ export class MultiplayerMode extends GameMode {
         if (!ctx || !canvas) return
         const state = this.worldState()
         if (!state || !state.worldWidth) {
-            drawMessage(this, ctx, canvas, this.status === 'reconnecting' ? 'Reconnecting…' : 'Connecting…', 'Joining the arena')
+            drawMessage(this, ctx, canvas, this.status === 'closed' ? 'Practice paused' : this.status === 'reconnecting' ? 'Reconnecting…' : 'Connecting…', this.isPractice ? 'Your private lesson' : 'Joining the arena')
             return
         }
         const localId = this.multiplayerManager?.localSessionId ?? null
@@ -1016,6 +1051,15 @@ export class MultiplayerMode extends GameMode {
         const top = view.y - view.height / 2 - margin
         const bottom = view.y + view.height / 2 + margin
         drawBlackHoles(this, ctx, state, timestamp)
+        if (this.isPractice && state.practice?.objectiveKind && state.practice.objectiveKind !== 'placement') {
+            const objective = state.practice
+            const target = state.players.get(objective.targetId)
+            const x = target ? target.x + target.width / 2 : objective.objectiveX
+            const y = target ? target.y + target.height / 2 : objective.objectiveY
+            const radius = target ? target.width / 2 + 14 : objective.objectiveKind === 'hole' ? 80 : 24
+            ctx.save(); ctx.strokeStyle = '#c0fff0'; ctx.lineWidth = 2 / view.scale
+            ctx.setLineDash([8 / view.scale, 5 / view.scale]); ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.stroke(); ctx.restore()
+        }
         drawCombatRewards(this, ctx, state, timestamp)
         drawTurbines(this, ctx, state, timestamp)
         drawCannon(this, ctx, state, timestamp)
@@ -1086,6 +1130,7 @@ export class MultiplayerMode extends GameMode {
         drawTurbineFlights(this, ctx, state, timestamp)
         drawBlasts(this, ctx, timestamp)
         drawPuffs(this, ctx, timestamp)
+        drawCannonHits(this, ctx, state, timestamp)
         drawBursts(this, ctx, timestamp)
         drawPickups(this, ctx, me, timestamp)
         ctx.restore()
@@ -1100,11 +1145,12 @@ export class MultiplayerMode extends GameMode {
         const canvasBox = canvas.getBoundingClientRect()
         this.chromeBottom = chrome && chrome.width > 0 ? Math.max(this.hudInsets.top, (chrome.bottom - canvasBox.top) * this.cssScale) : this.hudInsets.top
         this.chromeLeft = chrome && chrome.width > 0 ? (chrome.left - canvasBox.left) * this.cssScale : canvas.width
-        const hud = this.runIntro(ctx, canvas, timestamp)
+        const hud = this.isPractice ? 1 : this.runIntro(ctx, canvas, timestamp)
         this.weaponPlacement?.update(state, localId, hud <= 0)
         this.trackWeapon(state, localId)
         if (hud > 0) {
             ctx.globalAlpha = hud
+            if (!this.isPractice) {
             if (COMPACT.matches) drawTopBar(this, ctx, canvas, state, me)
             drawMinimap(this, ctx, canvas, state, view, localId, leaderId)
             drawLeaderboard(this, ctx, canvas, state, localId, leaderId)
@@ -1114,6 +1160,7 @@ export class MultiplayerMode extends GameMode {
             drawBanner(this, ctx, canvas)
             drawCapturePrompt(this, ctx, canvas, state, me, timestamp)
             drawSurgeHud(this, ctx, canvas, state, view, timestamp)
+            }
             const loaded = Boolean(me?.gulping)
             if (loaded && !this.wasLoaded) sound.play('ready')
             this.wasLoaded = loaded
@@ -1125,7 +1172,7 @@ export class MultiplayerMode extends GameMode {
                 this.controls.puffCooldown = Math.max(0, ((me?.puffReadyAt ?? 0) - this.worldNow(state, timestamp)) / 1000)
                 this.controls.puffNeedsBreath = this.stamina < EXHALE.BREATH_COST
             }
-            this.firstGuide?.update(me, this.introPlaying)
+            if (!this.isPractice && !this.introPlaying) this.game.practiceUI?.offerIfReady()
             this.controls?.draw(ctx, timestamp, this.breath)
             drawIncoming(this, ctx, canvas, state, me, timestamp)
             if (me && me.state !== 'alive') drawKnockedOut(this, ctx, canvas)
@@ -1158,10 +1205,18 @@ export class MultiplayerMode extends GameMode {
         }
         this.cameraRig.update(subject, dt)
         const short = this.cameraRig.short || 600
-        const scale = Math.max(canvas.width / (canvas.width >= canvas.height ? short * aspect : short), canvas.height / (canvas.width >= canvas.height ? short : short / aspect))
+        let scale = Math.max(canvas.width / (canvas.width >= canvas.height ? short * aspect : short), canvas.height / (canvas.width >= canvas.height ? short : short / aspect))
+        this.camera = this.cameraRig.short ? { x: this.cameraRig.x, y: this.cameraRig.y } : (this.camera ?? { x: state.worldWidth / 2, y: state.worldHeight / 2 })
+        if (this.isPractice && state.practice?.objectiveKind && state.practice.objectiveKind !== 'placement') {
+            const objective = state.practice, target = state.players.get(objective.targetId)
+            const x = target ? target.x + target.width / 2 : objective.objectiveX
+            const y = target ? target.y + target.height / 2 : objective.objectiveY
+            const radius = target ? target.width / 2 + 30 : objective.objectiveKind === 'hole' ? 96 : 44
+            // Keep the ordinary camera subject, but fit the nearby teaching objective on narrow screens.
+            scale = Math.min(scale, canvas.width / (2 * (Math.abs(x - this.camera.x) + radius)), canvas.height / (2 * (Math.abs(y - this.camera.y) + radius)))
+        }
         const width = canvas.width / scale
         const height = canvas.height / scale
-        this.camera = this.cameraRig.short ? { x: this.cameraRig.x, y: this.cameraRig.y } : (this.camera ?? { x: state.worldWidth / 2, y: state.worldHeight / 2 })
         this.lastRenderAt = timestamp
 
         // Every viewport stays filled with playable map, including held death views and ultrawide screens.
@@ -1187,7 +1242,7 @@ export class MultiplayerMode extends GameMode {
     }
 
     private addNotice(text: string, strong = false, category?: 'weapon'): void {
-        window.dispatchEvent(new CustomEvent('ascend:activity', { detail: text }))
+        this.publishActivity(text)
         if (category) this.notices = this.notices.filter(notice => notice.category !== category)
         this.notices.push({ text, at: performance.now(), strong, category })
         if (this.notices.length > 3) this.notices.shift()
@@ -1233,7 +1288,7 @@ export class MultiplayerMode extends GameMode {
         const how = String(data?.how ?? '')
         if (how === 'mouth') {
             if (targetIsYou) this.knockoutCause = { how, by: String(data?.by ?? 'Someone'), at: performance.now() }
-            window.dispatchEvent(new CustomEvent('ascend:activity', { detail: `${this.nameOf(data?.byId, data?.by)} finished ${target} at the mouth` }))
+            this.publishActivity(`${this.nameOf(data?.byId, data?.by)} finished ${target} at the mouth`)
             return
         }
         if (how === 'drain') {
@@ -1256,6 +1311,11 @@ export class MultiplayerMode extends GameMode {
             return
         }
         if (how === 'cannon') {
+            // Spending the ammunition is not another target hit or a second knockout.
+            if (!data?.projectileId) {
+                if (targetIsYou && data?.out) this.knockoutCause = { how: 'burnup', by: String(data?.by ?? 'Someone'), at: performance.now() }
+                return
+            }
             if (targetIsYou && data?.out) this.knockoutCause = { how: 'cannon', by: String(data?.by ?? 'Someone'), at: performance.now() }
             const shotByYou = data?.byId === localId
             const flownByYou = data?.projectileId === localId
@@ -1266,14 +1326,14 @@ export class MultiplayerMode extends GameMode {
         if (how in WEAPON_RECIPES) {
             this.noteImpact(data)
             if (data?.glancing && !data?.out) {
-                if (data?.byId === localId) window.dispatchEvent(new CustomEvent('ascend:activity', { detail: `${weaponRecipe(how).name}: +${Number(data?.earned) || 0} gems · graze` }))
+                if (data?.byId === localId) this.publishActivity(`${weaponRecipe(how).name}: +${Number(data?.earned) || 0} gems · graze`)
                 return
             }
             const weapon = weaponRecipe(how).name
             if (targetIsYou && data?.out) this.knockoutCause = { how, by: String(data?.by ?? 'Someone'), at: performance.now() }
             if (data?.byId === localId) {
                 this.banner = { title: `${weapon} ${data?.out ? 'knockout!' : 'hit!'}`, sub: `+${Number(data?.earned) || 0} GEMS EARNED`, at: performance.now() }
-                window.dispatchEvent(new CustomEvent('ascend:activity', { detail: `${weapon}: +${Number(data?.earned) || 0} gems${data?.out ? ' · knockout' : ''}` }))
+                this.publishActivity(`${weapon}: +${Number(data?.earned) || 0} gems${data?.out ? ' · knockout' : ''}`)
             }
             else this.addNotice(`${this.nameOf(data?.byId, data?.by)} blasted ${target} with ${weapon}!`, data?.out === true)
             return
@@ -1315,17 +1375,23 @@ export class MultiplayerMode extends GameMode {
         const y = Number(data?.y)
         const size = Number(data?.size) || 20
         if (!Number.isFinite(x) || !Number.isFinite(y)) return
-        this.impacts.push({ x, y, size: data?.glancing ? Math.min(32, size) : size, at: performance.now() })
+        const cannon = data?.kind === 'cannon'
+        const localId = this.multiplayerManager?.localSessionId
+        const involved = data?.byId === localId || data?.targetId === localId || data?.projectileId === localId
+        if (cannon) {
+            this.cannonHits.push({ x, y, size, angle: Number(data.angle) || 0, lost: Number(data.gems) || 0, out: data.out === true, targetId: String(data.targetId), local: involved, at: performance.now() })
+            if (this.cannonHits.length > 16) this.cannonHits.shift()
+        } else this.impacts.push({ x, y, size: data?.glancing ? Math.min(32, size) : size, at: performance.now() })
         if (this.impacts.length > 12) this.impacts.shift()
         if (data?.glancing) return
-        const localId = this.multiplayerManager?.localSessionId
-        if (data?.byId === localId || data?.targetId === localId || data?.projectileId === localId) {
-            this.addShake(Math.min(12, 3 + size * 0.08))
-            sound.play('impact')
+        if (involved) {
+            this.addShake(Math.min(9, 3 + size * 0.04))
+            sound.play(cannon && Number(data.gems) > 0 ? data.out ? 'shatter' : 'cannon' : 'impact')
         }
     }
 
     private addShake(strength: number): void {
+        if (matchMedia('(prefers-reduced-motion: reduce)').matches) return
         const now = performance.now()
         const current = now < this.hitShake.until ? this.hitShake.strength : 0
         this.hitShake = { until: now + 280, strength: Math.max(strength, current) }
@@ -1333,6 +1399,7 @@ export class MultiplayerMode extends GameMode {
 
     /** This frame's extra screen shake from bursts and hits */
     private extraShake(): { x: number; y: number } {
+        if (matchMedia('(prefers-reduced-motion: reduce)').matches) return { x: 0, y: 0 }
         const now = performance.now()
         const left = this.hitShake.until - now
         if (left <= 0) return { x: 0, y: 0 }
@@ -1518,6 +1585,7 @@ export class MultiplayerMode extends GameMode {
 
     /** Whether the opening is still playing (the controls are off until it's done) */
     private get introPlaying(): boolean {
+        if (this.isPractice) return false
         return this.introStart !== null && this.introSparks.length > 0
     }
 
@@ -1547,10 +1615,11 @@ export class MultiplayerMode extends GameMode {
     }
 
     dispose(): void {
+        if (this.disposed) return
+        this.cancelInput()
         window.removeEventListener('blur', this.releaseControls)
         document.removeEventListener('visibilitychange', this.visibilityChanged)
         document.removeEventListener('focusin', this.textFocused)
-        this.firstGuide?.dispose()
         this.weaponPlacement?.dispose()
         this.disposed = true
         if (this.reconnectTimer) clearTimeout(this.reconnectTimer)

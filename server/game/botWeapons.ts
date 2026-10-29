@@ -26,9 +26,10 @@ export class BotWeaponPlan {
           if (d > 0 && d < nearest) { nearest = d; aim = { x: dx / d, y: dy / d }; }
         });
         const margin = bot.width / 2 + 16;
+        const defending = bot.breathingBlocked;
         this.placement = {
-          x: Math.max(margin, Math.min(world.worldWidth - margin, cx + aim.x * 150)),
-          y: Math.max(margin, Math.min(world.worldHeight - margin, cy + aim.y * 150)),
+          x: Math.max(margin, Math.min(world.worldWidth - margin, cx + aim.x * (defending ? 0 : 150))),
+          y: Math.max(margin, Math.min(world.worldHeight - margin, cy + aim.y * (defending ? 0 : 150))),
           ready: now + BOTS.WEAPON_PLACE_READ_MS, timeout: now + BOTS.WEAPON_PLACE_WAIT_MS,
           buildAt: w.at, kind: w.kind, weapon: w,
         };
@@ -51,7 +52,7 @@ export class BotWeaponPlan {
     if (!this.placement || !w || !allWeapons(world).includes(w) || w.phase !== 'carried' || w.owner !== bot.sessionId) return false;
     if (this.placement.buildAt !== w.at || this.placement.kind !== w.kind) return false;
     const d = Math.hypot(bot.x + bot.width / 2 - this.placement.x, bot.y + bot.height / 2 - this.placement.y);
-    return now >= this.placement.ready && (d <= 65 || now >= this.placement.timeout);
+    return now >= this.placement.ready && (d <= 65 || bot.breathingBlocked || now >= this.placement.timeout);
   }
 
   placed(): void { this.placement = null; }

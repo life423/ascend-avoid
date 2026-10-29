@@ -38,36 +38,16 @@ export function sanitizeName(raw: unknown): string | null {
  * the last player leaves.
  */
 export class GameRoom extends Room<GameState> {
-  maxClients = GAME_CONSTANTS.GAME.MAX_PLAYERS;
+  maxClients: number = GAME_CONSTANTS.GAME.MAX_PLAYERS;
 
   async onCreate(options: any = {}): Promise<void> {
-    // The automated test can start a world with no loose gems, so its gem counts stay exact
-    const fieldGems = !IS_PRODUCTION && Number.isInteger(options.testFieldGems) ? options.testFieldGems : undefined;
-    this.setState(new GameState(fieldGems));
-    initializeWeaponSets(this.state, !IS_PRODUCTION && Number.isInteger(options.testBots) ? Number(options.testWeaponSets) || 1 : undefined);
-    // ...and a world where traffic can't hit anyone (the test hits players itself)
-    if (!IS_PRODUCTION && options.testCalm === true) this.state.trafficHits = false;
-    // ...and one where traffic never goes calm
-    if (!IS_PRODUCTION && options.testTraffic === "always") this.state.forceTraffic("always");
-    // ...and one with bombs (switched off in live worlds)
-    if (!IS_PRODUCTION && options.testBombs === true) this.state.enableBombs();
-    // Arena shifts are off in normal play (SHIFT.ENABLED); a test world can switch them on
-    if (!IS_PRODUCTION && options.testShifts === true) this.state.enableShifts();
-    // ...and one with no bots
-    if (!IS_PRODUCTION && Number.isInteger(options.testBots)) this.state.botFill = options.testBots;
-    // Test worlds have no turbines unless they ask: testTurbines true runs them as usual, "manual" places them by hand
-    if (!IS_PRODUCTION && Object.keys(options).some((key) => key.startsWith("test"))) {
-      await this.setPrivate(true);
-      this.state.surgesOn = options.testSurges === true;
-      this.state.weaponsOn = options.testWeapons === true;
-      this.state.setTurbines(options.testTurbines === true ? "auto" : options.testTurbines === "manual" ? "manual" : "off");
-    }
+    await this.configureArena(options);
     // Moments worth telling everyone about (who shoved whom off the edge, who took the jackpot)
-    this.state.onEvent = (type, data) => this.broadcast(type, data);
+    this.state.onEvent = (type, data) => { this.observeEvent(type, data); this.broadcast(type, data); };
 
     // Runs on the room's clock, so it stops by itself when the room is disposed
     this.setSimulationInterval(
-      (deltaMs) => this.state.update(deltaMs / 1000),
+      (deltaMs) => this.stepArena(deltaMs),
       GAME_CONSTANTS.GAME.STATE_UPDATE_RATE
     );
 
@@ -143,7 +123,7 @@ export class GameRoom extends Room<GameState> {
     });
 
     // Hooks for the automated test; never available in production
-    if (!IS_PRODUCTION) {
+    if (!IS_PRODUCTION && this.testHooksEnabled) {
       this.onMessage("test:pinwheel", (_client, data: { x?: number; y?: number; kind?: string; slot?: number }) => {
         this.state.weaponsOn = true;
         const kind = weaponKinds.find(kind => kind === data?.kind) ?? 'pinwheel';
@@ -270,11 +250,38 @@ export class GameRoom extends Room<GameState> {
     logger.info(`Room ${this.roomId} created (world ${this.state.worldWidth}×${this.state.worldHeight})`);
   }
 
+  protected get testHooksEnabled(): boolean { return true; }
+  protected async configureArena(options: any): Promise<void> {
+    // The automated test can start a world with no loose gems, so its gem counts stay exact
+    const fieldGems = !IS_PRODUCTION && Number.isInteger(options.testFieldGems) ? options.testFieldGems : undefined;
+    this.setState(new GameState(fieldGems));
+    initializeWeaponSets(this.state, !IS_PRODUCTION && Number.isInteger(options.testBots) ? Number(options.testWeaponSets) || 1 : undefined);
+    // ...and a world where traffic can't hit anyone (the test hits players itself)
+    if (!IS_PRODUCTION && options.testCalm === true) this.state.trafficHits = false;
+    // ...and one where traffic never goes calm
+    if (!IS_PRODUCTION && options.testTraffic === "always") this.state.forceTraffic("always");
+    // ...and one with bombs (switched off in live worlds)
+    if (!IS_PRODUCTION && options.testBombs === true) this.state.enableBombs();
+    // Arena shifts are off in normal play (SHIFT.ENABLED); a test world can switch them on
+    if (!IS_PRODUCTION && options.testShifts === true) this.state.enableShifts();
+    // ...and one with no bots
+    if (!IS_PRODUCTION && Number.isInteger(options.testBots)) this.state.botFill = options.testBots;
+    // Test worlds have no turbines unless they ask: testTurbines true runs them as usual, "manual" places them by hand
+    if (!IS_PRODUCTION && Object.keys(options).some((key) => key.startsWith("test"))) {
+      await this.setPrivate(true);
+      this.state.surgesOn = options.testSurges === true;
+      this.state.weaponsOn = options.testWeapons === true;
+      this.state.setTurbines(options.testTurbines === true ? "auto" : options.testTurbines === "manual" ? "manual" : "off");
+    }
+  }
+  protected stepArena(deltaMs: number): void { this.state.update(deltaMs / 1000); }
+  protected observeEvent(_type: string, _data: Record<string, unknown>): void {}
+
   /** Each player's message budget (see MESSAGE_BUDGET) */
   private messageBudgets = new Map<string, { tokens: number; at: number; dropped: number; since: number; kicked: boolean }>();
 
   /** Spend one message from this player's budget; false (and the message is ignored) once it's empty */
-  private allowMessage(client: Client): boolean {
+  protected allowMessage(client: Client): boolean {
     const now = Date.now();
     let budget = this.messageBudgets.get(client.sessionId);
     if (!budget) {
@@ -308,7 +315,7 @@ export class GameRoom extends Room<GameState> {
     logger.info(`${player.name} joined room ${this.roomId} (${this.state.players.size} players)`);
   }
 
-  onLeave(client: Client): void {
+  onLeave(client: Client, _consented?: boolean): void | Promise<void> {
     this.messageBudgets.delete(client.sessionId);
     const name = this.state.players.get(client.sessionId)?.name ?? client.sessionId;
     this.state.removePlayer(client.sessionId);

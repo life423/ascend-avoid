@@ -253,10 +253,10 @@ scenario('capture transfers exactly once and holds on a pre-transfer deadline', 
   a.send('test:moveTo',{x:1000,y:1000}); a.send('test:face',{angle:0});
   kid.send('test:moveTo',{x:1000+me(a).width,y:1000+(me(a).height-captive().height)/2});kid.send('test:protect',{ms:0});
   await sleep(100);a.send('inhale');await until(()=>captive()?.capturedBy===a.sessionId,'captured');
-  assert.equal(captive().gems,70);assert.equal(me(a).gems,280);
+  assert.equal(captive().gems,32);assert.equal(me(a).gems,318);
   const end=me(a).gulpEndsAt; a.send('cancel');await sleep(500);
-  assert.equal(captive().gems,70);assert.equal(me(a).gulpEndsAt,end);
-  await until(()=>!captive().capturedBy,'timeout',13000);assert.equal(captive().gems,70);assert.equal(me(a).gems,280);
+  assert.equal(captive().gems,32);assert.equal(me(a).gulpEndsAt,end);
+  await until(()=>!captive().capturedBy,'timeout',13000);assert.equal(captive().gems,32);assert.equal(me(a).gems,318);
 });
 scenario('a captor disconnecting releases the captive', async (a, join) => {
   const kid = await capture(a, join);

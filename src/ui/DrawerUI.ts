@@ -106,7 +106,7 @@ export class DrawerUI {
                     <h3>Settings</h3>
                     <button type="button" role="switch" class="mouse-preference" data-action="mouse" aria-label="Mouse control" aria-checked="${mouseControlEnabled()}">Mouse <span>${mouseControlEnabled() ? 'On' : 'Off'}</span></button>
                     <button type="button" class="sound-toggle" aria-label="Mute sound" aria-pressed="${sound.muted}">Sound ${sound.muted ? 'off' : 'on'}</button>
-                    <button type="button" class="replay-guide">Show starter tips</button>
+                    <button type="button" class="practice-open">Practice / Tutorials</button>
                 </div>
             </div>
         `;
@@ -125,9 +125,9 @@ export class DrawerUI {
             soundButton.textContent = `Sound ${sound.muted ? 'off' : 'on'}`;
             soundButton.setAttribute('aria-pressed', String(sound.muted));
         });
-        this.drawer.querySelector('.replay-guide')?.addEventListener('click', () => {
-            window.dispatchEvent(new Event('ascend:replay-guide'));
+        this.drawer.querySelector('.practice-open')?.addEventListener('click', () => {
             this.close();
+            window.dispatchEvent(new Event('ascend:practice-open'));
         });
         // Toggle drawer on hamburger click
         this.hamburgerBtn.addEventListener('click', () => this.toggle());

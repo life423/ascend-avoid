@@ -1,7 +1,20 @@
-import { ARENA_RULES, CANNON, GEMS, INHALE } from "../constants/gameConstants.js";
+import { CANNON, GEMS, INHALE } from "../constants/gameConstants.js";
 import { bodyMass, creatureSize, gemsForGrowthMass } from './creatureSize.js';
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+
+/** Conserved capture reward, selected by physical body width rather than a percentage of the score. */
+export function captureGrowthTransfer(gems: number, worldWidth?: number, worldHeight?: number): number {
+  if (!Number.isFinite(gems) || gems <= 0) return 0;
+  if (creatureSize(gems, worldWidth, worldHeight) <= CANNON.BULLET_SIZE) return 0;
+  let lo = 0, hi = gems;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (creatureSize(mid, worldWidth, worldHeight) <= CANNON.BULLET_SIZE) lo = mid;
+    else hi = mid - 1;
+  }
+  return gems - lo;
+}
 
 /** Smooth, monotone interpolation through the provisional 5s / 8s / 12s anchors. */
 export function captureHoldMs(captorWidth: number, captiveWidth: number): number {
@@ -25,7 +38,7 @@ export function canCatch(captorWidth: number, preyWidth: number): boolean {
  * captive, up to LAUNCH_SPEED_MAX. Doubling the size advantage adds a fixed amount, so giants hit hard
  * without the speed ever running away.
  */
-export function launchSpeed(captorWidth: number, captiveWidth: number = ARENA_RULES.PLAYER_SIZE): number {
+export function launchSpeed(captorWidth: number, captiveWidth: number = CANNON.BULLET_SIZE): number {
   const ratio = clamp(captorWidth / Math.max(1, captiveWidth), INHALE.EAT_RATIO, CANNON.LAUNCH_RATIO_CAP);
   const doublings = Math.log2(ratio / INHALE.EAT_RATIO);
   return clamp(CANNON.LAUNCH_SPEED_MIN + CANNON.LAUNCH_SPEED_PER_DOUBLING * doublings, CANNON.LAUNCH_SPEED_MIN, CANNON.LAUNCH_SPEED_MAX);
@@ -44,7 +57,7 @@ export function shooterMassContribution(shooterWidth: number, ammoWidth: number)
 }
 
 /** Pre-impact projectile mass sets the threat; a tiny shot chips a giant instead of erasing its growth. */
-export function impactGems(targetGems: number, speed: number, flierWidth: number, targetWidth: number = creatureSize(targetGems), storedShooterMass = 0): number {
+export function impactGems(targetGems: number, speed: number, flierWidth: number, targetWidth: number = creatureSize(targetGems), storedShooterMass = 0, kind: 'missile' | 'turbine' = 'missile'): number {
   if (targetGems <= 0) return 0;
   const ammo = bodyMass(flierWidth);
   // Keep the existing CURRENT pre-impact ammunition mass rule. If ammunition changes,
@@ -52,17 +65,21 @@ export function impactGems(targetGems: number, speed: number, flierWidth: number
   const bonus = Math.max(0, Math.min(ammo * CANNON.SHOOTER_MASS_CAP, Number.isFinite(storedShooterMass) ? storedShooterMass : 0));
   const relativeMass = (ammo + bonus) / Math.max(GEMS.BASE_MASS, bodyMass(targetWidth));
   const pace = clamp(speed / CANNON.IMPACT_SPEED_REF, 0.65, 1.15);
-  const share = CANNON.IMPACT_MAX_SHARE * relativeMass / (relativeMass + CANNON.IMPACT_MASS_PIVOT);
-  const energy = CANNON.IMPACT_BASE_GEMS * relativeMass / (relativeMass + 1);
+  const pivot = kind === 'turbine' ? CANNON.TURBINE_IMPACT_MASS_PIVOT : CANNON.IMPACT_MASS_PIVOT;
+  const base = kind === 'turbine' ? CANNON.TURBINE_IMPACT_BASE_GEMS : CANNON.IMPACT_BASE_GEMS;
+  const share = CANNON.IMPACT_MAX_SHARE * relativeMass / (relativeMass + pivot);
+  const energy = base * relativeMass / (relativeMass + 1);
   return Math.min(targetGems, Math.max(1, Math.round(Math.min(targetGems * CANNON.IMPACT_MAX_SHARE, (targetGems * share + energy) * pace))));
 }
 
-/** A substantial player-fired round can shatter a target: bounded relative kinetic energy. */
-export function lethalPlayerImpact(speed: number, ammoWidth: number, targetWidth: number, storedBonus = 0): boolean {
+/** A launcher at least 20% wider shatters on any missile hit; other shots retain relative-energy lethality. */
+export function lethalPlayerImpact(speed: number, ammoWidth: number, targetWidth: number, storedBonus = 0, shooterWidth = 0): boolean {
   if (!Number.isFinite(speed + ammoWidth + targetWidth + storedBonus) || speed <= 0 || ammoWidth <= 0 || targetWidth <= 0) return false;
   const ammo = bodyMass(ammoWidth), bonus = Math.max(0, Math.min(ammo * CANNON.SHOOTER_MASS_CAP, storedBonus));
   const pace = clamp(speed / CANNON.IMPACT_SPEED_REF, 0, 1.15);
-  return (ammo + bonus) / bodyMass(targetWidth) * pace * pace >= CANNON.LETHAL_ENERGY_RATIO;
+  const force = (ammo + bonus) / bodyMass(targetWidth) * pace * pace >= CANNON.LETHAL_ENERGY_RATIO;
+  const advantage = Number.isFinite(shooterWidth) && shooterWidth >= targetWidth * CANNON.SHATTER_SHOOTER_RATIO;
+  return force || advantage;
 }
 
 /** One flight step. Player-fired missiles supply zero steering; turbine throws allow lateral input. */

@@ -29,6 +29,7 @@ function inlineScriptHashes(indexFile: string): string[] {
     return [];
   }
 }
+import { TutorialRoom } from "./rooms/TutorialRoom";
 import { GameRoom } from "./rooms/GameRoom";
 import { GAME_CONSTANTS } from "./constants/serverConstants";
 import config from "./config";
@@ -104,6 +105,7 @@ const gameServer = new Server({
 
 // Register your game room
 gameServer.define(GAME_CONSTANTS.GAME.ROOM_NAME, GameRoom);
+gameServer.define("tutorial_room", TutorialRoom);
 
 // Colyseus monitor: a dashboard that can inspect and shut down rooms, so development only
 if (process.env.NODE_ENV !== "production") {

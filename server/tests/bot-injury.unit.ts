@@ -4,6 +4,7 @@ import { BotBrain } from '../game/bots.js';
 import { BotGustDefense } from '../game/botDefense.js';
 import { botPreyAvailable } from '../game/botTargets.js';
 import { botMouth } from '../systems/bots.js';
+import { creatureSize } from '../game/creatureSize.js';
 
 const NOW = 100000;
 function setup(gems = 40, rivalGems = 40) {
@@ -51,7 +52,7 @@ function withRandom<T>(value: number, work: () => T): T {
   const brain = withRandom(.5, () => new BotBrain()); s.brains.set(a.sessionId, brain);
   const move = withRandom(.5, () => brain.think(a, s, NOW));
   assert.equal(brain.victim, null, 'an injured bot does not chase a smaller healthy robber to trade breath');
-  assert(move === 'up' || move === 'down', 'it slips sideways out of the incoming cone while preparing defense');
+  assert(move === 'up' || move === 'down' || move === 'left', 'it escapes across or away from the cone instead of moving toward the attacker while preparing defense');
 }
 {
   const defense = new BotGustDefense(() => .5);
@@ -92,5 +93,23 @@ function withRandom<T>(value: number, work: () => T): T {
   for (let tick = 1; tick <= 25; tick++) withRandom(0, () => s.update(.033, NOW + tick * 33));
   assert(!puffs.some(p => p.id === a.sessionId), 'the world loop enforces injured breathing limits');
   assert.equal(a.exhaleReadyAt, 0, 'blocked puffs spend no cooldown');
+}
+{
+  // A 30%-wider body can already capture this bot. The former 50% flee threshold ignored it.
+  const {s,a,b}=setup();
+  function stockForWidth(width: number): number {
+    let lo=0,hi=10000;
+    while(lo<hi){const mid=Math.floor((lo+hi)/2);if(creatureSize(mid)<width)lo=mid+1;else hi=mid;}
+    return lo;
+  }
+  a.setGems(stockForWidth(100),4200,4200);b.setGems(stockForWidth(130),4200,4200);
+  a.placeAt(2400-a.width/2,2100-a.height/2);b.placeAt(2000-b.width/2,2100-b.height/2);
+  a.facing=Math.PI;b.facing=0;
+  const brain=withRandom(.5,()=>new BotBrain());s.brains.set(a.sessionId,brain);
+  assert.equal(withRandom(.5,()=>brain.think(a,s,NOW)),'right','retreat from a healthy rival at the actual capture-size boundary');
+  b.injure(s.time);
+  withRandom(.5,()=>brain.think(a,s,NOW+1000));assert.equal(brain.victim,b,'injury creates a real attack opportunity against the same larger body');
+  s.time=b.injuredUntil;
+  assert.equal(withRandom(.5,()=>brain.think(a,s,NOW+s.time+1000)),'right','recognize the larger rival as dangerous again after ordinary healing');
 }
 console.log('Bot injury regressions passed: eligible targets, healing, reachable windows, fallible gust defense and normal action limits.');

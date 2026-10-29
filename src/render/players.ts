@@ -39,6 +39,7 @@ export function drawPlayer(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
     if (player.state !== 'alive') {
         return // knocked out: gone until they're back
     }
+    const justLaunched = player.flying && player.flightKind === 'missile' && mode.captures.has(sessionId)
 
     // Back out of a mouth (let go, slipped free, fired or expelled): it swells back up to size as it comes out
     if (!held && mode.captures.has(sessionId)) {
@@ -64,7 +65,7 @@ export function drawPlayer(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
     } else if (isLocal && mode.predicted) {
         drawn = { x: mode.predicted.x, y: mode.predicted.y }
         mode.drawnPositions.set(sessionId, drawn)
-    } else if (!drawn || Math.hypot(player.x - drawn.x, player.y - drawn.y) > SNAP_DISTANCE) {
+    } else if (justLaunched || !drawn || Math.hypot(player.x - drawn.x, player.y - drawn.y) > SNAP_DISTANCE) {
         drawn = { x: player.x, y: player.y }
         mode.drawnPositions.set(sessionId, drawn)
     } else {
@@ -92,12 +93,16 @@ export function drawPlayer(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
         grow = { size: player.width, speed: 0 }
         mode.drawnSizes.set(sessionId, grow)
     }
-    grow.speed = (grow.speed + (player.width - grow.size) * 0.3) * 0.6
-    grow.size += grow.speed
+    const standardMissile = player.flying && player.flightKind === 'missile'
+    if (standardMissile) { grow.size = player.width; grow.speed = 0 }
+    else {
+        grow.speed = (grow.speed + (player.width - grow.size) * 0.3) * 0.6
+        grow.size += grow.speed
+    }
     // ...plus a little pop for every gem it gains (settling over 130ms), however big it already is
     const gemPop = mode.gemPops.get(sessionId)
     const pop = gemPop ? 1 + gemPop.amount * Math.max(0, 1 - (timestamp - gemPop.at) / 130) : 1
-    const size = Math.max(4, grow.size) * pop * (held?.scale ?? 1) * emerge
+    const size = standardMissile ? player.width : Math.max(4, grow.size) * pop * (held?.scale ?? 1) * emerge
     const left = drawn.x + (player.width - size) / 2
     const top = drawn.y + (player.height - size) / 2
     const centerX = drawn.x + player.width / 2
@@ -212,7 +217,7 @@ export function drawPlayer(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
     const cheeks = 1 - Math.pow(1 - cheekProgress, 3)
     if (player.flying) drawProjectile(ctx, left + size / 2, top + size / 2, size, color, heading, timestamp)
     else drawCreature(ctx, left + size / 2, top + size / 2, size, color, facing, timestamp, player.mouth ?? '', Boolean(player.inhaling), cheeks, Boolean(player.stunned))
-    if (!held && !player.flying && player.injuredUntil > 0) drawInjury(ctx, centerX, centerY, size, facing, injuryAge, injuryRemaining, REDUCED_MOTION.matches)
+    if (!held && !player.flying && player.injuredUntil > 0) drawInjury(ctx, centerX, centerY, size, facing, injuryAge, injuryRemaining, REDUCED_MOTION.matches, mode.cssScale)
     ctx.restore()
     const weaponProtection = world ? Math.max(0, player.weaponSafeUntil - mode.worldNow(world, timestamp)) : 0
     if (!held && !player.flying && weaponProtection > 0) {

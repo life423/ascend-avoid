@@ -45,7 +45,7 @@ for (const hole of [false, true]) test(`${hole ? 'black-hole spiral' : 'mouth sh
     await page.waitForFunction(how => window.game.currentGameMode.rewardEffects.some(e => e.how === how), hole ? 'blackhole' : 'mouth');
     await expect.poll(()=>page.evaluate(()=>window.game.currentGameMode.multiplayerManager.getLocalPlayer().gems)).toBe(350);
     const reward = await page.evaluate(() => { const m = window.game.currentGameMode; return { earned: m.rewardEffects.at(-1).earned, gems: m.multiplayerManager.getLocalPlayer().gems, drops: m.multiplayerManager.room.state.gems.size }; });
-    expect(reward.earned).toBe(hole ? 70 : 100); expect(reward.gems).toBe(350); expect(reward.drops).toBe(0);
+    expect(reward.earned).toBe(hole ? 32 : 100); expect(reward.gems).toBe(350); expect(reward.drops).toBe(0);
     await page.screenshot({ path: test.info().outputPath(hole ? 'black-hole-reward-spiral.png' : 'mouth-finish-shatter.png') });
     if (hole) await page.evaluate(() => {
       // Inspect a deterministic phase of the real received effect; server credit is already verified.

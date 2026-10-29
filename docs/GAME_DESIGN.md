@@ -1,5 +1,19 @@
 # Ascend Avoid
 
+## Standard living bullets — October 29 release batch
+
+The user approved a fixed **60-unit player-missile diameter**. Capturing a healthy player wider than that immediately transfers all growth above a 60-unit body to the captor. Bullet-sized or smaller captives give no instant growth and receive no free growth. Every fired captive has the same physical/visible flight body; survivors return to the natural size supported by their remaining growth. This supersedes the old percentage capture transfer and variable projectile bodies. [STANDARD_BULLETS.md](STANDARD_BULLETS.md) records accounting, shared bot/human behavior, lifecycle and verification. The 20%-wider shooter finish remains. The user authorized merge/deployment after review; GitHub's release workflow identifies the published revision.
+
+## Physical-size combat rule — October 29 release batch
+
+The user's latest explicit rule is simple: **a landed player-fired missile shatters its target when the shooter was at least 20% wider at launch.** There is no ammunition-width or impact-speed requirement for this finish. The comparison uses visible body width, never gemstone-count ratios. Existing protection applies, and separate ordinary damage/relative-energy lethality remains for other hits. [The combat study](COMBAT_STUDY.md) records the current rule, real launches and varied-distance fights; the older three-condition candidate is superseded. Stronger ordinary missile damage and brief nonlethal-hit suction recovery are included in this release batch. Simulation outcomes do not settle human fun or dodge fairness.
+
+Smaller-bot decisions now recognize the shared 1.3× healthy capture threshold and escape incoming suction across and away from the mouth. They can still pursue an injured larger opponent. [The bot size study](BOT_SIZE_STUDY.md) records 630 encounters before and after those decision fixes, existing turning rates and remaining close-contact danger. All actors retain shared movement, turning and combat rules.
+
+## Optional practice — October 29 release batch
+
+The user subsequently requested an optional, selectable tutorial, superseding the earlier no-tutorial direction. [Practice tutorial](PRACTICE_TUTORIAL.md) documents the implementation, shared mechanics, success-gated steps, unlocked lessons, full sequence, retries, progress and verification. The user authorized including it in the release after local review.
+
 ## Latest agreed combat direction — October 29, 2026
 
 The [combat follow-up](COMBAT_FOLLOW_UP.md) is implemented and verified; the user authorized merge/deployment on October 29 (GitHub PR/workflow records identify the release): injured smaller prey finish only at the mouth; injury blocks inhale/puff while movement and already-held firing remain available; lethal player-cannonball and existing black-hole eliminations directly reward the shooter; shared branching cracks, a cached warm pulse, shatter and spatial reward returns communicate the outcome. Shot-follow and the captive minigame are removed. Healthy captures remain ammunition with the existing one-time share, hold deadline and deliberate firing. Nonlethal cannonball spills remain. The follow-up document records the provisional size/speed threshold, accounting, escape limitations and bot-visibility measurements. Its October 29 rules supersede conflicting historical descriptions below.
@@ -236,7 +250,7 @@ For every assembled-weapon hit, actual lost gems transfer once to its assembler 
 
 Capture eligibility still uses the existing 1.3× physical width rule. Before any transfer, snapshot injury eligibility and the width ratio. `captureHoldMs` interpolates smoothly through provisional 5,000ms at 1.3×, 8,000ms at 2× and 12,000ms at 4×, capped there. The server fixes the deadline once. Transferred growth never extends a hold or invalidates an already-captured state.
 
-The proposed initial `CANNON.CAPTIVE_GEM_SHARE` is **30%**, rounded down. Capture immediately subtracts and credits the identical actual amount, applying normal growth and theft totals once. There is no later captive drain. The share was proposed for playtesting, not selected as final balance by the user.
+The latest approved [standard bullet](STANDARD_BULLETS.md) rule replaces the earlier percentage-share experiment: transfer all captured growth above a 60-unit body immediately, and transfer nothing for bullet-sized or smaller captives. Identical value is subtracted and credited once. There is no later captive drain.
 
 Arrow escape, capture daze, gun loading and queued fire are removed. The action that initiated capture cannot fire the captive: release first, then make a fresh tap/hold through the existing Space/right control. This release guard is independent of firing readiness; no timer delays a deliberate shot. Captor input alone sets aim; captive input cannot turn the captor or a player-fired projectile. Bots release and make a fallible firing decision through the same mechanical rule.
 

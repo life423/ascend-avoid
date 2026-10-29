@@ -1,10 +1,15 @@
 import { BOTS, CANNON } from '../constants/gameConstants.js';
-import { impactGems, shooterMassContribution } from './cannon.js';
+import { impactGems, shooterMassContribution, lethalPlayerImpact } from './cannon.js';
 
 /** Opportunity selection changes the target, never the bot's observation delay, aim error or firing rules. */
 export function cannonTargetAppeal(gems: number, width: number, ammoWidth: number, speed: number, distance: number, shooterWidth?: number): number {
-  const lost = impactGems(gems, speed, ammoWidth, width, shooterWidth === undefined ? 0 : shooterMassContribution(shooterWidth, ammoWidth));
-  return (gems - lost < CANNON.IMPACT_KO_GEMS ? 1000 : 0) + 100 * lost / Math.max(1, gems) + Math.sqrt(lost) - distance * .05;
+  const bonus = shooterWidth === undefined ? 0 : shooterMassContribution(shooterWidth, ammoWidth);
+  const lost = impactGems(gems, speed, ammoWidth, width, bonus);
+  const lethal = gems - lost < CANNON.IMPACT_KO_GEMS || lethalPlayerImpact(speed, ammoWidth, width, bonus, shooterWidth);
+  // A substantial opening against a peer is worth choosing over another tiny easy knockout.
+  // Tiny ammunition still seeks vulnerable small targets; this changes decisions, never damage.
+  const rivalry = shooterWidth !== undefined && width >= shooterWidth * .85 && width <= shooterWidth * 1.4 && lost >= gems * .06;
+  return (lethal ? 1000 : 0) + (rivalry ? 1200 : 0) + 100 * lost / Math.max(1, gems) + Math.sqrt(lethal ? gems : lost) - distance * .05;
 }
 
 export interface BotShotTarget { id: string; angle: number }
@@ -20,6 +25,7 @@ export class BotCannonAim {
   private alignedSince: number | null = null;
 
   constructor(private readonly random: () => number = Math.random) {}
+  get targetId(): string | null { return this.target?.id ?? null; }
 
   reset(): void { this.capture = ''; this.target = null; this.alignedSince = null; this.fireAt = Infinity; }
 

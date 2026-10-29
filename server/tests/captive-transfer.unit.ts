@@ -21,11 +21,12 @@ function capture(gems = 100, captorGems = 250, bot = false, injured = false) {
 assert.equal(captureHoldMs(INHALE.EAT_RATIO*20,20),5000);
 assert.equal(captureHoldMs(40,20),8000);assert.equal(captureHoldMs(80,20),12000);assert.equal(captureHoldMs(800,20),12000);
 let last=0;for(let r=INHALE.EAT_RATIO;r<=5;r+=.01){const ms=captureHoldMs(r*20,20);assert(ms>=last&&ms<=12000);last=ms;}
-for(const bot of [false,true]) for(const gems of [0,1,4,5,9,12,101,1000]){
+for(const bot of [false,true]) for(const gems of [0,1,4,5,9,12,31,32,33,101,1000]){
  const {captor,captive,at,ratio,hold}=capture(gems,4000,bot);
- const amount=Math.floor(gems*CANNON.CAPTIVE_GEM_SHARE);
+ const amount=Math.max(0,gems-32); // In the normal arena, 32 gems supports exactly the chosen 60-unit body.
  assert.equal(captor.gems,4000+amount);assert.equal(captive.gems,gems-amount);
  assert.equal(captor.stolenTotal,amount);assert.equal(captive.robbedTotal,amount);
+ assert(captive.width<=CANNON.BULLET_SIZE);if(gems<=32)assert.equal(amount,0,'bullet-sized or smaller captives grant no immediate growth');
  assert.equal(captive.captureRatio,ratio);assert.equal(captive.captureHoldMs,hold);assert.equal(captor.gulpEndsAt,hold);
  at(hold-1);assert(captive.capturedBy);assert.equal(captive.gems,gems-amount,'no continuing drain');
  at(hold);assert.equal(captive.capturedBy,'');assert(!captive.flying&&captive.state==='alive');

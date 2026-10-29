@@ -96,6 +96,8 @@ class PlayerSchema extends Schema {
   lockOn = new Map<string, number>();
   /** Stunned by a gust or impact: can't steer or inhale until it wears off (synced, for drawing) */
   stunned: boolean;
+  /** A brief missile daze preserves already-held ammunition; gusts and other hard stuns still eject it. */
+  holdThroughStun = false;
   /** Server-only: when the stun wears off, and when another can land */
   stunEndsAt = 0;
   stunImmuneUntil = 0;
@@ -167,6 +169,10 @@ class PlayerSchema extends Schema {
   flightKind: 'missile' | 'turbine' = 'missile';
   /** Server-only firing snapshot, independent of the launcher after release. */
   shotMassBonus = 0;
+  private bodyWorldWidth: number = WORLD.WIDTH;
+  private bodyWorldHeight: number = WORLD.HEIGHT;
+  /** Physical launcher width at firing; later growth, death or disconnect cannot strengthen a shot. */
+  shotShooterWidth = 0;
   flightStartedAt = 0;
   flightEndsAt = 0;
   launchedBy = "";
@@ -202,12 +208,13 @@ class PlayerSchema extends Schema {
     this.gulpEndsAt = 0;
     this.stolenTotal = 0;
     this.stunned = false;
+    this.holdThroughStun = false;
     this.latchTarget = "";
     this.beamFocus = 0;
     this.beamQuality = 0;
     this.latchPull = 0;
     this.latchQuality = 0;
-    this.shotMassBonus = 0; this.shotOwner = "";
+    this.shotMassBonus = 0; this.shotShooterWidth = 0; this.shotOwner = "";
     this.flying = false;
     this.capturedBy = "";
     this.struggle = 0;
@@ -230,7 +237,8 @@ class PlayerSchema extends Schema {
 
   /** Put the player at a spot, in play and protected for a moment */
   spawnAt(x: number, y: number, now: number): void {
-    this.shotMassBonus = 0; this.shotOwner = "";
+    this.land();
+    this.shotMassBonus = 0; this.shotShooterWidth = 0; this.shotOwner = "";
     this.capturedBy = this.gulping = ""; this.captureNeedsRelease = false;
     this.theftContinuations.clear(); this.continuedTheft = false;
     this.x = x;
@@ -240,6 +248,7 @@ class PlayerSchema extends Schema {
     this.stopSliding();
     this.protectFor(WORLD.SPAWN_PROTECTION_MS, now);
     this.stunned = false;
+    this.holdThroughStun = false;
     this.stunEndsAt = this.stunImmuneUntil = 0;
     this.launchSafeUntil = this.suctionSafeUntil = this.recaptureAfter = 0;
     this.weaponSafeUntil = 0;
@@ -280,10 +289,11 @@ class PlayerSchema extends Schema {
 
   /** Hit with no gems left: out of play until respawnAt */
   knockOut(now: number): void {
-    this.shotMassBonus = 0; this.shotOwner = "";
+    this.shotMassBonus = 0; this.shotShooterWidth = 0; this.shotOwner = "";
     this.capturedBy = this.gulping = ""; this.captureNeedsRelease = false;
     this.theftContinuations.clear(); this.continuedTheft = false;
     this.state = PLAYER_STATE.DEAD;
+    this.holdThroughStun = false;
     this.weaponSafeUntil = 0;
     this.injuredUntil = 0;
     this.breathingBlocked = false;
@@ -367,15 +377,20 @@ class PlayerSchema extends Schema {
   /** Change the gem count; the player grows or shrinks around their center, staying inside the world */
   setGems(count: number, worldWidth: number, worldHeight: number): void {
     this.gems = Math.max(0, Math.round(count));
-    const size = creatureSize(this.gems, worldWidth, worldHeight);
+    this.bodyWorldWidth = worldWidth; this.bodyWorldHeight = worldHeight;
+    this.resizeBody(this.flying && this.flightKind === 'missile' ? CANNON.BULLET_SIZE : creatureSize(this.gems, worldWidth, worldHeight));
+  }
+
+  /** Flight's fixed shell changes geometry, never banked growth. Keep the same center at every transition. */
+  private resizeBody(size: number): void {
     if (size === this.width) return;
     const centerX = this.x + this.width / 2;
     const centerY = this.y + this.height / 2;
     const margin = ARENA_RULES.EDGE_MARGIN;
     this.width = size;
     this.height = size;
-    this.x = Math.max(margin, Math.min(centerX - size / 2, worldWidth - size - margin));
-    this.y = Math.max(margin, Math.min(centerY - size / 2, worldHeight - size - margin));
+    this.x = Math.max(margin, Math.min(centerX - size / 2, this.bodyWorldWidth - size - margin));
+    this.y = Math.max(margin, Math.min(centerY - size / 2, this.bodyWorldHeight - size - margin));
   }
 
   /** The box traffic hits: what you see, a little inside the edges so grazing doesn't count */
@@ -454,12 +469,13 @@ class PlayerSchema extends Schema {
 
   /** Launched at this velocity until it slows or `maxMs` passes. Only turbine throws opt into steering. */
   launch(now: number, vx: number, vy: number, by: string, maxMs: number, drag: number = CANNON.DRAG, kind: 'missile' | 'turbine' = 'missile'): void {
-    this.shotMassBonus = 0;
+    this.shotMassBonus = 0; this.shotShooterWidth = 0;
     this.flying = true;
     this.flightVx = vx;
     this.flightVy = vy;
     this.flightDrag = drag;
     this.flightKind = kind;
+    this.resizeBody(kind === 'missile' ? CANNON.BULLET_SIZE : creatureSize(this.gems, this.bodyWorldWidth, this.bodyWorldHeight));
     this.flightStartedAt = now;
     this.flightEndsAt = now + maxMs;
     this.launchedBy = by;
@@ -476,8 +492,9 @@ class PlayerSchema extends Schema {
 
   /** The flight is over */
   land(): void {
-    this.shotMassBonus = 0; this.shotOwner = "";
+    this.shotMassBonus = 0; this.shotShooterWidth = 0; this.shotOwner = "";
     this.flying = false;
+    this.resizeBody(creatureSize(this.gems, this.bodyWorldWidth, this.bodyWorldHeight));
     this.flightKind = 'missile';
     this.flightVx = 0;
     this.flightVy = 0;
@@ -490,8 +507,9 @@ class PlayerSchema extends Schema {
   }
 
   /** Stunned for `ms` (no steering or inhaling), then briefly immune to another stun. */
-  stun(now: number, ms: number): void {
+  stun(now: number, ms: number, preserveCaptive = false): void {
     this.stunned = true;
+    this.holdThroughStun = preserveCaptive;
     this.stunEndsAt = now + ms;
     this.stunImmuneUntil = now + ms + PUSH.STUN_IMMUNE_MS;
     this.stopInhale(now);

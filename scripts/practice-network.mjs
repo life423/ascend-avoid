@@ -1,0 +1,41 @@
+import assert from 'node:assert/strict';
+import { Client } from 'colyseus.js';
+import { randomBytes } from 'node:crypto';
+
+const url = process.env.PRACTICE_URL ?? 'ws://127.0.0.1:3004';
+const client = new Client(url), token = randomBytes(32).toString('hex');
+const wait = async (test, label) => { const end = Date.now() + 6000; while (!test() && Date.now() < end) await new Promise(r => setTimeout(r, 25)); assert(test(), label); };
+const rooms = [];
+try {
+  const room = await client.create('tutorial_room', { token, lesson: 'weapon', testBots: 20, testFieldGems: 1000, testWeapons: true }); rooms.push(room);
+  room.onMessage('*', () => {});
+  await wait(() => room.state?.practice?.stage === 'collect', 'private lesson state arrives');
+  const id = room.id, session = room.sessionId;
+  assert.equal(room.state.players.size, 1); assert.equal(room.state.gems.size, 0);
+  assert.equal(room.state.pinwheel.parts.length, 3); assert.equal(room.state.worldWidth, 1600);
+  assert(!(await client.getAvailableRooms('tutorial_room')).some(r => r.roomId === id));
+  await assert.rejects(client.joinById(id, { token: '0'.repeat(64) }));
+  await assert.rejects(client.joinById(id, { token }));
+  await assert.rejects(client.create('tutorial_room', { token: 'not-a-capability' }));
+  const p = room.state.players.get(session), gems = p.gems;
+  room.send('test:setGems', { count: 999999 }); room.send('test:moveTo', { x: 10, y: 10 });
+  room.send('practice:complete', { lesson: 'weapon' });
+  await new Promise(r => setTimeout(r, 150)); assert.equal(p.gems, gems); assert(p.x > 400); assert.equal(room.state.practice.phase, 'waiting');
+  const live = await client.joinOrCreate('game_room'); rooms.push(live); live.onMessage('*', () => {});
+  await wait(() => live.state?.players?.has(live.sessionId), 'live player arrives');
+  assert.notEqual(live.id, id); assert.equal(live.state.practice.enabled, false); assert.equal(live.state.players.get(live.sessionId).gems, 0);
+  const reconnect = room.reconnectionToken;
+  room.connection.close();
+  await new Promise(r => setTimeout(r, 120));
+  const resumed = await client.reconnect(reconnect); rooms.push(resumed); resumed.onMessage('*', () => {});
+  await wait(() => resumed.state?.practice?.enabled, 'reconnected practice state');
+  assert.equal(resumed.id, id); assert.equal(resumed.sessionId, session); assert.equal(resumed.state.practice.lesson, 'weapon');
+  const attempt = resumed.state.practice.attempt;
+  resumed.send('practice:skip', { attempt: attempt - 1 }); await new Promise(r => setTimeout(r, 100)); assert.equal(resumed.state.practice.phase, 'waiting');
+  resumed.send('practice:skip', { attempt }); await wait(() => resumed.state.practice.phase === 'choosing', 'skip remains unfinished');
+  assert.equal(resumed.state.practice.completed, '');
+  resumed.send('practice:lesson', { lesson: 'defense' }); await wait(() => resumed.state.practice.lesson === 'defense', 'other lessons unlocked');
+  await resumed.leave();
+  await new Promise(r => setTimeout(r, 200)); await assert.rejects(client.joinById(id, { token }));
+  console.log('Practice network: private/authenticated single learner, explicit create, public isolation, no production test hooks/client completion, reconnect, stale skip, unlocked selection and disposal passed.');
+} finally { await Promise.allSettled(rooms.filter(r => r.connection.isOpen).map(r => r.leave())); }

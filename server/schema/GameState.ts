@@ -1,6 +1,7 @@
 import * as schema from "@colyseus/schema";
 const { Schema, MapSchema, ArraySchema, type } = schema;
 import { BlackHoleSchema } from "./BlackHoleSchema.js";
+import { PracticeSchema } from "./PracticeSchema.js";
 import { BLACK_HOLE } from "../constants/gameConstants.js";
 import { PlayerSchema } from "./PlayerSchema.js";
 import { ObstacleSchema } from "./ObstacleSchema.js";
@@ -96,6 +97,7 @@ class GameState extends Schema {
   pinwheel = new PinwheelSchema();
   weaponSets = new ArraySchema<PinwheelSchema>();
   blackHoles = new ArraySchema<BlackHoleSchema>();
+  practice = new PracticeSchema();
   weaponsOn: boolean = PINWHEEL.ENABLED;
 
   /** Server-only: whether traffic hits players (the automated test turns this off) */
@@ -632,6 +634,8 @@ class GameState extends Schema {
    */
   spawn(player: PlayerSchema, now: number): void {
     clearCapture(this, player.sessionId, now);
+    player.land();
+    player.setGems(player.gems, this.worldWidth, this.worldHeight);
     this.clearTheftFor(player.sessionId);
     const pending = player.pendingWeaponGems + player.pendingCombatGems;
     player.pendingWeaponGems = player.pendingCombatGems = 0;
@@ -702,5 +706,6 @@ type(PinwheelSchema)(GameState.prototype, "pinwheel");
 type([PinwheelSchema])(GameState.prototype, "weaponSets");
 
 type([BlackHoleSchema])(GameState.prototype, "blackHoles");
+type(PracticeSchema)(GameState.prototype, "practice");
 
 export { GameState };

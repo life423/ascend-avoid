@@ -1,13 +1,14 @@
 # Ascend Avoid
 
-A real-time multiplayer browser arena: collect gems, grow your creature, steal from rivals, and fire captured players as steerable living cannonballs.
+A real-time multiplayer browser arena: collect gems, grow your creature, steal from injured rivals, and fire captured players as living cannonballs.
 
-- WASD, arrow keys, a touch joystick, or hold the mouse button to move.
+- WASD, arrow keys, a touch joystick, or mouse-follow to move.
 - Hold Space/the action button to inhale; tap to puff, or fire a captive.
-- Follow the directional prompts to escape a capture. Larger captors require more inputs.
-- Steer sideways in flight to hit another creature and collect spilled gems.
+- Capture a smaller healthy rival, release, aim, then tap to fire. Captives automatically eject when the hold expires; there is no escape minigame.
+- Player-fired bullets have one 60-unit size. Capture immediately absorbs growth above that size; bullet-sized or smaller captives give no instant growth. See the local [standard-bullet rules](docs/STANDARD_BULLETS.md).
+- Player-fired shots follow their launch direction. Injured smaller rivals finish only at an eligible mouth; lethal shots and black-hole eliminations directly reward the shooter.
 - Follow gold markers to gem surges and contested jackpots.
-- Use Help & settings for the full rules, starter tips and sound controls.
+- Use Help & settings for concise rules, sound controls and **Practice / Tutorials**. Start the full tutorial or choose any unlocked lesson.
 
 ## Local development
 
@@ -35,7 +36,7 @@ node scripts/gen-synced-types.mjs --check
 npm test
 ```
 
-Browser checks target production by default. To test a local build, set `E2E_URL` to its URL. The capture regression also requires `E2E_TEST_HOOKS=1` and a server started with `NODE_ENV=test`. Production disables placement and test hooks.
+Browser checks target production by default. To test a local build, set `E2E_URL` to its URL. Tests needing world fixtures also require `E2E_TEST_HOOKS=1` and a server started with `NODE_ENV=test`. Production disables test commands; ordinary weapon placement remains available. [Practice verification](docs/PRACTICE_TUTORIAL.md) uses real private production rooms without test hooks.
 
 ```sh
 npm run test:browsers
