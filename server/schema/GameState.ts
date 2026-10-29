@@ -22,7 +22,6 @@ import { updateTraffic, reshuffleLanes, launchObstacle } from "../systems/traffi
 import { updateInhales, knockOutWithGems, clearCapture, syncContinuedTheft } from "../systems/inhale.js";
 import { slideBlackHoleRims } from "../game/blackHole.js";
 import { updateFlights } from "../systems/flights.js";
-import { updateShotFollow } from '../systems/shotFollow.js';
 import { botMouth, bombDanger, balanceBots } from "../systems/bots.js";
 import { updateBombs } from "../systems/bombs.js";
 import { updateShift, startGrace, startShift, endShift, fall } from "../systems/shift.js";
@@ -271,6 +270,8 @@ class GameState extends Schema {
       this.gemSpreadAt = this.time + 250;
     }
 
+    syncContinuedTheft(this, now);
+
     // Bots decide on their hops, which then go through the same rules as everyone's
     this.brains.forEach((brain, id) => {
       const bot = this.players.get(id);
@@ -306,7 +307,6 @@ class GameState extends Schema {
       const fromX = player.x;
       const fromY = player.y;
       player.updateMovement(this.worldWidth, this.worldHeight, now, deltaTime);
-      updateShotFollow(this, player, deltaTime);
       keepApart(this, player);
       if (!player.flying && !player.capturedBy) {
         const routed = slideBlackHoleRims(player, player.tickX - player.width / 2, player.tickY - player.height / 2,
@@ -492,6 +492,8 @@ class GameState extends Schema {
   }
 
   /** If someone shoved this player just before they were hit or fell, tell everyone who did it */
+  nextCombatRewardId = 0;
+
   credit(target: PlayerSchema, how: string, now: number, byId?: string, extra: Record<string, unknown> = {}): void {
     const who = byId ?? target.shovedBy(now, SHIFT.CREDIT_MS);
     const by = who ? this.players.get(who) : undefined;
@@ -631,10 +633,9 @@ class GameState extends Schema {
   spawn(player: PlayerSchema, now: number): void {
     clearCapture(this, player.sessionId, now);
     this.clearTheftFor(player.sessionId);
-    if (player.pendingWeaponGems > 0) {
-      player.setGems(player.gems + player.pendingWeaponGems, this.worldWidth, this.worldHeight);
-      player.pendingWeaponGems = 0;
-    }
+    const pending = player.pendingWeaponGems + player.pendingCombatGems;
+    player.pendingWeaponGems = player.pendingCombatGems = 0;
+    if (pending > 0) player.setGems(player.gems + pending, this.worldWidth, this.worldHeight);
     const size = player.width;
     // Keep a centered newborn view wholly on the map, including wide desktops.
     const halfView = viewShort(ARENA_RULES.PLAYER_SIZE) * WORLD.MAX_VIEW_ASPECT / 2 + 120;

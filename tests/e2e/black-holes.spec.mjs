@@ -66,6 +66,8 @@ test('an actual capture and fresh fire into a core ends a healthy run, credits t
     shooter.send('exhale'); shooter.send('tap');
     await page.waitForFunction(() => { const m = window.game.currentGameMode; return m.knockoutCause?.how === 'blackhole' && m.multiplayerManager.getLocalPlayer().state === 'dead'; });
     expect((await local(page)).state).toBe('dead');
+    await expect.poll(()=>shooter.state.players.get(shooter.sessionId)?.gems).toBe(350);
+    expect(await page.evaluate(()=>window.game.currentGameMode.rewardEffects.some(e=>e.how==='blackhole'&&e.earned===70))).toBe(true);
     await page.screenshot({ path: test.info().outputPath('black-hole-knockout.png') });
     await page.waitForFunction(() => { const p = window.game.currentGameMode.multiplayerManager.getLocalPlayer(); return p.state === 'alive' && p.spawnProtected && !p.flying; });
     expect((await local(page)).gems).toBe(0);

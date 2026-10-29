@@ -2,7 +2,7 @@ import type { GameState } from "../schema/GameState.js";
 import { PlayerSchema } from "../schema/PlayerSchema.js";
 import { BotBrain } from "../game/bots.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
-import { BELLY_GEMS, launchSpeed } from "../game/cannon.js";
+import { launchSpeed } from "../game/cannon.js";
 import { cannonTargetAppeal } from '../game/botAim.js';
 import { exhale, fireCaptive, stealWeight } from "./inhale.js";
 import { botPreyAvailable, botRobber } from '../game/botTargets.js';
@@ -18,9 +18,7 @@ export function botMouth(state: GameState, bot: PlayerSchema, now: number) : voi
   if (bot.state !== PLAYER_STATE.ALIVE || bot.flying) { state.brains.get(bot.sessionId)?.cannonAim.reset(); return; }
   if (bot.capturedBy) {
     state.brains.get(bot.sessionId)?.cannonAim.reset();
-    const gem = BELLY_GEMS.find((_, i) => !(bot.bellyCollected & (1 << i)));
-    if (gem) { const x = gem.x - bot.bellyX, y = gem.y - bot.bellyY; const d = Math.max(.01, Math.hypot(x, y)); bot.steer(x / d, y / d); }
-    else bot.steer(0, 0);
+    bot.steer(0, 0);
     return;
   }
   if (bot.sliding || bot.recovering || bot.stunned) { state.brains.get(bot.sessionId)?.cannonAim.reset(); return; }
@@ -30,6 +28,7 @@ export function botMouth(state: GameState, bot: PlayerSchema, now: number) : voi
     botFire(state, bot, cx, cy, now);
     return;
   }
+  if (bot.breathingBlocked) { bot.stopInhale(now); return; }
   if (bot.mouth) {
     let target: PlayerSchema | null = null;
     let best = -Infinity;

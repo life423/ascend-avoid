@@ -1,8 +1,7 @@
 /** Brief controls shared by Help surfaces. */
 export const GAME_RULES = `
-<p>Grow with gems. Capture smaller rivals; fire them. Bigger ammunition hits harder.</p>
-<h4>Move & aim</h4><p>Mouse, WASD/arrows; touch: left stick moves, right control aims.</p>
-<h4>Inhale & fire</h4><p>Hold Space or INHALE to pull rivals. Capture transfers gems once. Release, aim, then tap FIRE. Empty tap: puff (35% breath).</p>
-<h4>Belly salvage</h4><p>Caught? Move inside to collect pending bonus gems. Get paid on a living return. Larger captors hold longer. Injured when captured? Being fired ends your run at impact or flight end. Ejection grants four seconds of suction protection.</p>
-<h4>Build & battle</h4><p>Claim matching parts; follow radar. Inhale carried parts to steal; amber rings show progress. E or Place weapon deploys. Satellites orbit. Aim through large rivals’ centers; outer grazes are weaker. Shoot captives into violet black-hole cores for a knockout; the soft rim guides ordinary players around safely. After a shot hits: release, then hold inhale to follow.</p>
-<p>Hits expose gems for seven seconds. Uninterrupted theft can continue afterward. Injured? Weak inhale; no captures.</p>`;
+<p>Gather gems, grow and fire captured rivals. Bigger ammunition hits harder.</p>
+<h4>Move & aim</h4><p>Mouse or WASD/arrows; touch: left stick moves, right control aims.</p>
+<h4>Capture & fire</h4><p>Hold Space or INHALE. Healthy smaller rivals become ammunition. Release, aim, tap FIRE. Captives return automatically if held too long. Empty tap: puff, costing 35% breath.</p>
+<h4>Injury & rewards</h4><p>Cracked? Move to escape: breathing is blocked. Reaching a captor’s mouth shatters injured prey. Lethal shots and violet black holes pay the shooter directly; ordinary players pass safely around holes.</p>
+<h4>Build</h4><p>Collect matching parts; follow radar. Inhale carried parts to steal. E or Place weapon deploys. Satellites orbit. Central hits beat outer grazes.</p>`;

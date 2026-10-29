@@ -32,7 +32,7 @@ for(const loss of ['range','aim','stop','protection','flight','death'] as const)
 }
 for(const clear of ['capture','respawn','disconnect'] as const){
  const{s,a,b}=established();steal(s,a,NOW+200,.1);
- if(clear==='capture'){a.setGems(100000,4200,4200);a.placeAt(1200,1600);b.placeAt(a.x+a.width*.8-b.width/2+10,a.y+(a.height-b.height)/2);updateInhales(s,NOW+300,.01);assert(b.capturedBy);}
+ if(clear==='capture'){a.setGems(100000,4200,4200);a.placeAt(1200,1600);b.placeAt(a.x+a.width*.8-b.width/2+10,a.y+(a.height-b.height)/2);updateInhales(s,NOW+300,.01);assert.equal(b.state,'dead','continued injury finishes at the mouth instead of capture');}
  if(clear==='respawn')s.spawn(b,NOW+300);if(clear==='disconnect')s.removePlayer(a.sessionId);
  assert.equal(a.theftContinuations.size,0);assert(!b.continuedTheft,`${clear} clears the truthful vulnerability flag`);
 }

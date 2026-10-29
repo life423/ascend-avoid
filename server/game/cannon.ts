@@ -13,11 +13,6 @@ export function captureHoldMs(captorWidth: number, captiveWidth: number): number
     : CANNON.HOLD_DOUBLE_MS + smooth * (CANNON.HOLD_MAX_MS - CANNON.HOLD_DOUBLE_MS);
 }
 
-/** Fixed interior collectibles; bits in bellyCollected prevent duplicate collection. */
-export const BELLY_GEMS = Array.from({ length: CANNON.BELLY_BONUS_CAP }, (_, i) => ({
-  x: Math.cos(i * Math.PI * 2 / CANNON.BELLY_BONUS_CAP) * .60,
-  y: Math.sin(i * Math.PI * 2 / CANNON.BELLY_BONUS_CAP) * .60,
-}));
 
 /** Whether a mouth this wide can catch (hold at its mouth) a creature this wide: INHALE.EAT_RATIO times as wide, whatever the creature holds (an empty one is no exception) */
 export function canCatch(captorWidth: number, preyWidth: number): boolean {
@@ -60,6 +55,14 @@ export function impactGems(targetGems: number, speed: number, flierWidth: number
   const share = CANNON.IMPACT_MAX_SHARE * relativeMass / (relativeMass + CANNON.IMPACT_MASS_PIVOT);
   const energy = CANNON.IMPACT_BASE_GEMS * relativeMass / (relativeMass + 1);
   return Math.min(targetGems, Math.max(1, Math.round(Math.min(targetGems * CANNON.IMPACT_MAX_SHARE, (targetGems * share + energy) * pace))));
+}
+
+/** A substantial player-fired round can shatter a target: bounded relative kinetic energy. */
+export function lethalPlayerImpact(speed: number, ammoWidth: number, targetWidth: number, storedBonus = 0): boolean {
+  if (!Number.isFinite(speed + ammoWidth + targetWidth + storedBonus) || speed <= 0 || ammoWidth <= 0 || targetWidth <= 0) return false;
+  const ammo = bodyMass(ammoWidth), bonus = Math.max(0, Math.min(ammo * CANNON.SHOOTER_MASS_CAP, storedBonus));
+  const pace = clamp(speed / CANNON.IMPACT_SPEED_REF, 0, 1.15);
+  return (ammo + bonus) / bodyMass(targetWidth) * pace * pace >= CANNON.LETHAL_ENERGY_RATIO;
 }
 
 /** One flight step. Player-fired missiles supply zero steering; turbine throws allow lateral input. */

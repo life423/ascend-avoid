@@ -37,7 +37,7 @@ function isTyping(e: KeyboardEvent): boolean {
  * arrow keys and WASD stay with the InputManager.
  */
 export class OnlineControls {
-    action: 'INHALE' | 'SALVAGE' | 'FIRE' | 'SPIT' = 'INHALE'
+    action: 'INHALE' | 'CAPTURED' | 'INJURED' | 'FIRE' | 'SPIT' = 'INHALE'
     puffCooldown = 0
     puffNeedsBreath = false
 
@@ -165,7 +165,7 @@ export class OnlineControls {
             ctx.textAlign = 'left'
             ctx.font = `700 12px ${FONT}`
             ctx.fillStyle = inhaling ? breathColor : `rgba(255, 255, 255, ${recovering ? 0.35 : 0.65})`
-            const hint = this.action === 'SALVAGE' ? 'Move to collect bonus gems · paid on safe return' : this.action === 'FIRE' ? 'SPACE  tap to FIRE' : this.action === 'SPIT' ? 'SPACE  tap to SPIT' : inhaling ? 'SPACE  inhaling' : `SPACE  hold to inhale · ${this.puffCooldown > 0 ? `puff in ${this.puffCooldown.toFixed(1)}s` : this.puffNeedsBreath ? 'puff needs 35% breath' : 'puff costs 35% breath'}`
+            const hint = this.action === 'CAPTURED' ? 'Captured' : this.action === 'INJURED' ? 'Injured · move to escape' : this.action === 'FIRE' ? 'SPACE  tap to FIRE' : this.action === 'SPIT' ? 'SPACE  tap to SPIT' : inhaling ? 'SPACE  inhaling' : `SPACE  hold to inhale · ${this.puffCooldown > 0 ? `puff in ${this.puffCooldown.toFixed(1)}s` : this.puffNeedsBreath ? 'puff needs 35% breath' : 'puff costs 35% breath'}`
             ctx.fillText(hint, 14 + this.insets.left, height - this.insets.bottom - 16)
             if (inhaling || recovering) {
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.12)'
@@ -208,7 +208,7 @@ export class OnlineControls {
         // Center the complete label block, including its helper, rather than centering only INHALE.
         ctx.fillStyle = recovering ? 'rgba(255, 255, 255, 0.4)' : low ? breathColor : '#ffffff'
         ctx.textBaseline = 'alphabetic'
-        const helper = this.action === 'INHALE' ? this.puffCooldown > 0 ? `PUFF ${this.puffCooldown.toFixed(1)}s` : this.puffNeedsBreath ? 'NEED 35% BREATH' : 'PUFF −35%' : ''
+        const helper = this.action === 'INJURED' ? 'MOVE TO ESCAPE' : this.action === 'CAPTURED' ? '' : this.action === 'INHALE' ? this.puffCooldown > 0 ? `PUFF ${this.puffCooldown.toFixed(1)}s` : this.puffNeedsBreath ? 'NEED 35% BREATH' : 'PUFF −35%' : ''
         const lines = [{ text: this.action, weight: 800, size: 17 }, ...(helper ? [{ text: helper, weight: 600, size: 10 }] : [])]
         const measured = lines.map(line => {
             ctx.font = `${line.weight} ${line.size}px ${FONT}`

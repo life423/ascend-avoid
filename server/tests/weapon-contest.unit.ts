@@ -29,14 +29,13 @@ for(const interruption of ['drop','puff','capture','death','disconnect'] as cons
  assert.equal(p.theftMs,0,`${interruption} must discard interrupted cargo-theft progress`);
  assert.equal(p.theftBy,'',`${interruption} must clear the progress owner`);
 }
-for(const interruption of ['aim','range','release','protection','stun','follow','other-build','different-thief'] as const) {
+for(const interruption of ['aim','range','release','protection','stun','other-build','different-thief'] as const) {
  const {s,w,p,carrier,thief}=setup();
  if(interruption==='aim')thief.facing=Math.PI;
  if(interruption==='range')thief.placeAt(100,100);
  if(interruption==='release')thief.stopInhale(NOW+300);
  if(interruption==='protection')carrier.protectFor(1000,NOW+300);
  if(interruption==='stun')thief.stunned=true;
- if(interruption==='follow')thief.followActive=true;
  if(interruption==='other-build') { const other = new PinwheelSchema(); other.owner=thief.sessionId;other.phase='carried';s.weaponSets.push(other); }
  if(interruption==='different-thief') {
   const rival=s.addPlayer('rival','Rival',NOW);rival.placeAt(thief.x+10,thief.y);rival.facing=0;rival.startInhale(NOW);thief.stopInhale(NOW);

@@ -198,17 +198,10 @@ export interface SyncedPlayer {
     flightKind: string
     flightRemainingMs: number
     continuedTheft: boolean
-    followX: number
-    followY: number
-    followUntil: number
-    followActive: boolean
-    bellyX: number
-    bellyY: number
-    bellyCollected: number
-    bellyPending: number
     captureRatio: number
     captureHoldMs: number
     weaponSafeUntil: number
+    breathingBlocked: boolean
 }
 
 /** TurbineSchema, as synced to the browser */

@@ -16,9 +16,8 @@ for(const jitter of [-.001,0,.001])assert.equal(firstImpact(target,[{...shot,x:5
 assert.equal(firstImpact(target,[{...shot,vx:0}]),null,'zero relative velocity cannot create a distant collision');
 console.log('Incoming prediction passed: approach, near misses, both velocities, horizon, visibility, lifetime, closest impact and disappearing threats.');
 
-// Actual server telemetry includes positional suction/follow forces as well as walking/skids.
+// Actual server telemetry includes positional suction forces as well as walking/skids.
 import { GameState } from '../schema/GameState.js';
-import { offerShotFollow } from '../systems/shotFollow.js';
 {
  const s=new GameState(0);s.botFill=0;s.fieldGemTarget=0;s.weaponsOn=false;s.surgesOn=false;s.trafficHits=false;s.setTurbines('off');s.update(0,100000);
  const a=s.addPlayer('puller','Puller',100000),b=s.addPlayer('target','Target',100000);
@@ -26,6 +25,4 @@ import { offerShotFollow } from '../systems/shotFollow.js';
  a.spawnProtected=b.spawnProtected=false;a.facing=0;a.startInhale(100000);s.update(.03,100030);
  assert(b.movementVx<0,'incoming prediction sees body suction velocity on a stationary target');
  assert(Math.abs(b.movementVx-b.velocity().x-b.tickNudgeX/.03)<1e-6);
- a.stopInhale(100030);b.placeAt(2800,2800);a.placeAt(1800,1800);offerShotFollow(s,a.sessionId,2200,1800+a.height/2);a.startInhale(100031);s.update(.03,100060);
- assert(a.movementVx>0,'shot-follow velocity is included without changing its movement effect');
 }

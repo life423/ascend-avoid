@@ -39,6 +39,8 @@ class PlayerSchema extends Schema {
   weaponKnockouts = 0;
   /** Earned during the two-second respawn wait; awarded on the next safe spawn. */
   pendingWeaponGems = 0;
+  pendingCombatGems = 0;
+  breathingBlocked = false;
   /** Positional forces contribute to warning telemetry, never to movement integration. */
   tickNudgeX = 0;
   tickNudgeY = 0;
@@ -47,14 +49,6 @@ class PlayerSchema extends Schema {
   flightRemainingMs = 0;
   continuedTheft = false;
   theftContinuations = new Map<string, number>();
-  inhalePressId = 0;
-  followX = 0;
-  followY = 0;
-  followUntil = 0;
-  followActive = false;
-  followPressId = 0;
-  followSpeed = 0;
-  followTravel = 0;
 
   /** Server-only: when a knocked-out player comes back */
   respawnAt = 0;
@@ -145,10 +139,6 @@ class PlayerSchema extends Schema {
   readonly escapeStep = 0;
   readonly dazedUntil = 0;
   readonly escapeMissAt = 0;
-  bellyX = 0;
-  bellyY = 0;
-  bellyCollected = 0;
-  bellyPending = 0;
   captureRatio = 0;
   captureHoldMs = 0;
   /** Server-only: smoothed airflow quality on each creature, when the latch began and when it last slipped, its score, whether it owns the focused connection, and the aim it adds */
@@ -175,8 +165,6 @@ class PlayerSchema extends Schema {
   flightDrag: number = CANNON.DRAG;
   /** Server-only: turbine throws retain steering and their existing survival rules. */
   flightKind: 'missile' | 'turbine' = 'missile';
-  capturedInjured = false;
-  fatalMissile = false;
   /** Server-only firing snapshot, independent of the launcher after release. */
   shotMassBonus = 0;
   flightStartedAt = 0;
@@ -219,6 +207,7 @@ class PlayerSchema extends Schema {
     this.beamQuality = 0;
     this.latchPull = 0;
     this.latchQuality = 0;
+    this.shotMassBonus = 0; this.shotOwner = "";
     this.flying = false;
     this.capturedBy = "";
     this.struggle = 0;
@@ -241,12 +230,9 @@ class PlayerSchema extends Schema {
 
   /** Put the player at a spot, in play and protected for a moment */
   spawnAt(x: number, y: number, now: number): void {
-    this.bellyPending = this.bellyCollected = this.bellyX = this.bellyY = 0;
+    this.shotMassBonus = 0; this.shotOwner = "";
     this.capturedBy = this.gulping = ""; this.captureNeedsRelease = false;
-    this.capturedInjured = false;
     this.theftContinuations.clear(); this.continuedTheft = false;
-    this.followUntil = 0; this.followActive = false; this.followSpeed = this.followTravel = 0;
-    this.capturedInjured = this.fatalMissile = false; this.shotMassBonus = 0; this.shotOwner = "";
     this.x = x;
     this.y = y;
     this.state = PLAYER_STATE.ALIVE;
@@ -258,6 +244,7 @@ class PlayerSchema extends Schema {
     this.launchSafeUntil = this.suctionSafeUntil = this.recaptureAfter = 0;
     this.weaponSafeUntil = 0;
     this.injuredUntil = 0;
+    this.breathingBlocked = false;
     this.injuryGems = 0;
     this.inhaling = false;
     this.steerX = this.steerY = this.walkX = this.walkY = 0;
@@ -273,6 +260,10 @@ class PlayerSchema extends Schema {
   injure(worldTime: number): void {
     if (this.state !== PLAYER_STATE.ALIVE || this.spawnProtected || worldTime < this.injuredUntil) return;
     this.injuredUntil = worldTime + INHALE.INJURY_MS;
+    this.breathingBlocked = true;
+    this.inhaling = false;
+    this.theftContinuations.clear();
+    this.dropLatch();
     this.injuryGems = this.gems;
   }
 
@@ -290,14 +281,12 @@ class PlayerSchema extends Schema {
   /** Hit with no gems left: out of play until respawnAt */
   knockOut(now: number): void {
     this.shotMassBonus = 0; this.shotOwner = "";
-    this.bellyPending = this.bellyCollected = this.bellyX = this.bellyY = 0;
     this.capturedBy = this.gulping = ""; this.captureNeedsRelease = false;
-    this.capturedInjured = false;
     this.theftContinuations.clear(); this.continuedTheft = false;
-    this.followUntil = 0; this.followActive = false; this.followSpeed = 0;
     this.state = PLAYER_STATE.DEAD;
     this.weaponSafeUntil = 0;
     this.injuredUntil = 0;
+    this.breathingBlocked = false;
     this.injuryGems = 0;
     this.spawnProtected = false;
     this.recovering = false;
@@ -465,7 +454,7 @@ class PlayerSchema extends Schema {
 
   /** Launched at this velocity until it slows or `maxMs` passes. Only turbine throws opt into steering. */
   launch(now: number, vx: number, vy: number, by: string, maxMs: number, drag: number = CANNON.DRAG, kind: 'missile' | 'turbine' = 'missile'): void {
-    this.fatalMissile = false; this.shotMassBonus = 0; this.shotOwner = "";
+    this.shotMassBonus = 0;
     this.flying = true;
     this.flightVx = vx;
     this.flightVy = vy;
@@ -487,7 +476,7 @@ class PlayerSchema extends Schema {
 
   /** The flight is over */
   land(): void {
-    this.fatalMissile = false; this.shotMassBonus = 0; this.shotOwner = "";
+    this.shotMassBonus = 0; this.shotOwner = "";
     this.flying = false;
     this.flightKind = 'missile';
     this.flightVx = 0;
@@ -495,7 +484,7 @@ class PlayerSchema extends Schema {
     this.launchedBy = "";
   }
 
-  /** The stick's direction: interior movement while caught, steering for turbine throws, walking after landing. */
+  /** The stick's direction: turbine steering or ordinary walking; a captive cannot move its captor. */
   steerInput(): { x: number; y: number } {
     return { x: this.steerX, y: this.steerY };
   }
@@ -527,10 +516,9 @@ class PlayerSchema extends Schema {
   /** Start inhaling (for up to `forMs`, INHALE.MAX_MS for players): you move as usual, and your mouth turns toward your aim */
   startInhale(now: number, forMs: number = Infinity): void {
     // Holding a captive blocks inhale; a fresh action after release fires it (GameRoom).
-    if (this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering || this.stunned || this.flying || this.capturedBy || this.gulping || now < this.inhaleBlockedUntil) return;
+    if (this.breathingBlocked || this.state !== PLAYER_STATE.ALIVE || this.sliding || this.recovering || this.stunned || this.flying || this.capturedBy || this.gulping || now < this.inhaleBlockedUntil) return;
     this.breathe(now);
     if (this.stamina < INHALE.MIN_BREATH) return;
-    if (!this.inhaling) this.inhalePressId++;
     this.dropProtection();
     this.inhaling = true;
     // Until you let go, or the breath you have left runs out
@@ -542,7 +530,6 @@ class PlayerSchema extends Schema {
 
   /** Stop inhaling: your breath starts refilling from what's left */
   stopInhale(now = Date.now()): void {
-    if (this.followActive) { this.followActive = false; this.followUntil = 0; this.followSpeed = 0; }
     this.theftContinuations.clear();
     if (!this.inhaling) return;
     this.breathe(now);
@@ -705,19 +692,13 @@ type("number")(PlayerSchema.prototype, "flightVy");
 type("string")(PlayerSchema.prototype, "flightKind");
 type("number")(PlayerSchema.prototype, "flightRemainingMs");
 type("boolean")(PlayerSchema.prototype, "continuedTheft");
-type("number")(PlayerSchema.prototype, "followX");
-type("number")(PlayerSchema.prototype, "followY");
-type("number")(PlayerSchema.prototype, "followUntil");
-type("boolean")(PlayerSchema.prototype, "followActive");
 
 export { PlayerSchema };
 
 // Capture interior state is separate from physical position, growth and projectile mass.
-type("number")(PlayerSchema.prototype, "bellyX");
-type("number")(PlayerSchema.prototype, "bellyY");
-type("number")(PlayerSchema.prototype, "bellyCollected");
-type("number")(PlayerSchema.prototype, "bellyPending");
 type("number")(PlayerSchema.prototype, "captureRatio");
 type("number")(PlayerSchema.prototype, "captureHoldMs");
 
 type("number")(PlayerSchema.prototype, "weaponSafeUntil");
+
+type("boolean")(PlayerSchema.prototype, "breathingBlocked");

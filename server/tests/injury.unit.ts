@@ -48,7 +48,8 @@ function setup() {
   const { s, a, b } = setup(); b.injure(0); const until = b.injuredUntil;
   steal(s, a, NOW, .2); const before = b.gems;
   exhale(s, b, NOW);
-  assert(a.stunned && !a.inhaling, 'the injured defender can gust an incoming thief');
+  assert(!a.stunned && a.inhaling, 'injury blocks the defender puff');
+  b.suctionSafeUntil = NOW + EXHALE.STUN_MS + 1000; // independently verify existing suction protection
   assert.equal(a.injuredUntil, 0, 'a defensive gust causes stun, not injury');
   a.placeAt(1000, 1000); b.placeAt(1120, 1000);
   a.updateMovement(s.worldWidth, s.worldHeight, NOW + EXHALE.STUN_MS, .001);

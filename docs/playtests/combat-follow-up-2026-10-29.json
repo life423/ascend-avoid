@@ -1,0 +1,705 @@
+{
+  "methodology": "Actual 30Hz server; deterministic seeds for bots; controlled impacts and 2.5s movement trials. Visibility uses an approximate 1.6-aspect observer viewport, not rendered human observation. No human feel/performance claim.",
+  "impacts": [
+    {
+      "targetGems": 40,
+      "ammoGems": 4,
+      "speed": 600,
+      "expectedDamage": 15,
+      "energyLethal": false,
+      "out": false,
+      "earned": 0,
+      "remaining": 25
+    },
+    {
+      "targetGems": 40,
+      "ammoGems": 4,
+      "speed": 1250,
+      "expectedDamage": 23,
+      "energyLethal": false,
+      "out": false,
+      "earned": 0,
+      "remaining": 17
+    },
+    {
+      "targetGems": 40,
+      "ammoGems": 4,
+      "speed": 1800,
+      "expectedDamage": 27,
+      "energyLethal": false,
+      "out": false,
+      "earned": 0,
+      "remaining": 13
+    },
+    {
+      "targetGems": 40,
+      "ammoGems": 40,
+      "speed": 600,
+      "expectedDamage": 34,
+      "energyLethal": false,
+      "out": true,
+      "earned": 40,
+      "remaining": 0
+    },
+    {
+      "targetGems": 40,
+      "ammoGems": 40,
+      "speed": 1250,
+      "expectedDamage": 34,
+      "energyLethal": true,
+      "out": true,
+      "earned": 40,
+      "remaining": 0
+    },
+    {
+      "targetGems": 40,
+      "ammoGems": 40,
+      "speed": 1800,
+      "expectedDamage": 34,
+      "energyLethal": true,
+      "out": true,
+      "earned": 40,
+      "remaining": 0
+    },
+    {
+      "targetGems": 40,
+      "ammoGems": 100,
+      "speed": 600,
+      "expectedDamage": 34,
+      "energyLethal": false,
+      "out": true,
+      "earned": 40,
+      "remaining": 0
+    },
+    {
+      "targetGems": 40,
+      "ammoGems": 100,
+      "speed": 1250,
+      "expectedDamage": 34,
+      "energyLethal": true,
+      "out": true,
+      "earned": 40,
+      "remaining": 0
+    },
+    {
+      "targetGems": 40,
+      "ammoGems": 100,
+      "speed": 1800,
+      "expectedDamage": 34,
+      "energyLethal": true,
+      "out": true,
+      "earned": 40,
+      "remaining": 0
+    },
+    {
+      "targetGems": 40,
+      "ammoGems": 300,
+      "speed": 600,
+      "expectedDamage": 34,
+      "energyLethal": true,
+      "out": true,
+      "earned": 40,
+      "remaining": 0
+    },
+    {
+      "targetGems": 40,
+      "ammoGems": 300,
+      "speed": 1250,
+      "expectedDamage": 34,
+      "energyLethal": true,
+      "out": true,
+      "earned": 40,
+      "remaining": 0
+    },
+    {
+      "targetGems": 40,
+      "ammoGems": 300,
+      "speed": 1800,
+      "expectedDamage": 34,
+      "energyLethal": true,
+      "out": true,
+      "earned": 40,
+      "remaining": 0
+    },
+    {
+      "targetGems": 40,
+      "ammoGems": 1000,
+      "speed": 600,
+      "expectedDamage": 34,
+      "energyLethal": true,
+      "out": true,
+      "earned": 40,
+      "remaining": 0
+    },
+    {
+      "targetGems": 40,
+      "ammoGems": 1000,
+      "speed": 1250,
+      "expectedDamage": 34,
+      "energyLethal": true,
+      "out": true,
+      "earned": 40,
+      "remaining": 0
+    },
+    {
+      "targetGems": 40,
+      "ammoGems": 1000,
+      "speed": 1800,
+      "expectedDamage": 34,
+      "energyLethal": true,
+      "out": true,
+      "earned": 40,
+      "remaining": 0
+    },
+    {
+      "targetGems": 100,
+      "ammoGems": 4,
+      "speed": 600,
+      "expectedDamage": 9,
+      "energyLethal": false,
+      "out": false,
+      "earned": 0,
+      "remaining": 91
+    },
+    {
+      "targetGems": 100,
+      "ammoGems": 4,
+      "speed": 1250,
+      "expectedDamage": 14,
+      "energyLethal": false,
+      "out": false,
+      "earned": 0,
+      "remaining": 86
+    },
+    {
+      "targetGems": 100,
+      "ammoGems": 4,
+      "speed": 1800,
+      "expectedDamage": 16,
+      "energyLethal": false,
+      "out": false,
+      "earned": 0,
+      "remaining": 84
+    },
+    {
+      "targetGems": 100,
+      "ammoGems": 40,
+      "speed": 600,
+      "expectedDamage": 35,
+      "energyLethal": false,
+      "out": false,
+      "earned": 0,
+      "remaining": 65
+    },
+    {
+      "targetGems": 100,
+      "ammoGems": 40,
+      "speed": 1250,
+      "expectedDamage": 55,
+      "energyLethal": false,
+      "out": false,
+      "earned": 0,
+      "remaining": 45
+    },
+    {
+      "targetGems": 100,
+      "ammoGems": 40,
+      "speed": 1800,
+      "expectedDamage": 63,
+      "energyLethal": false,
+      "out": false,
+      "earned": 0,
+      "remaining": 37
+    },
+    {
+      "targetGems": 100,
+      "ammoGems": 100,
+      "speed": 600,
+      "expectedDamage": 53,
+      "energyLethal": false,
+      "out": false,
+      "earned": 0,
+      "remaining": 47
+    },
+    {
+      "targetGems": 100,
+      "ammoGems": 100,
+      "speed": 1250,
+      "expectedDamage": 82,
+      "energyLethal": true,
+      "out": true,
+      "earned": 100,
+      "remaining": 0
+    },
+    {
+      "targetGems": 100,
+      "ammoGems": 100,
+      "speed": 1800,
+      "expectedDamage": 85,
+      "energyLethal": true,
+      "out": true,
+      "earned": 100,
+      "remaining": 0
+    },
+    {
+      "targetGems": 100,
+      "ammoGems": 300,
+      "speed": 600,
+      "expectedDamage": 75,
+      "energyLethal": false,
+      "out": false,
+      "earned": 0,
+      "remaining": 25
+    },
+    {
+      "targetGems": 100,
+      "ammoGems": 300,
+      "speed": 1250,
+      "expectedDamage": 85,
+      "energyLethal": true,
+      "out": true,
+      "earned": 100,
+      "remaining": 0
+    },
+    {
+      "targetGems": 100,
+      "ammoGems": 300,
+      "speed": 1800,
+      "expectedDamage": 85,
+      "energyLethal": true,
+      "out": true,
+      "earned": 100,
+      "remaining": 0
+    },
+    {
+      "targetGems": 100,
+      "ammoGems": 1000,
+      "speed": 600,
+      "expectedDamage": 85,
+      "energyLethal": true,
+      "out": true,
+      "earned": 100,
+      "remaining": 0
+    },
+    {
+      "targetGems": 100,
+      "ammoGems": 1000,
+      "speed": 1250,
+      "expectedDamage": 85,
+      "energyLethal": true,
+      "out": true,
+      "earned": 100,
+      "remaining": 0
+    },
+    {
+      "targetGems": 100,
+      "ammoGems": 1000,
+      "speed": 1800,
+      "expectedDamage": 85,
+      "energyLethal": true,
+      "out": true,
+      "earned": 100,
+      "remaining": 0
+    },
+    {
+      "targetGems": 300,
+      "ammoGems": 4,
+      "speed": 600,
+      "expectedDamage": 6,
+      "energyLethal": false,
+      "out": false,
+      "earned": 0,
+      "remaining": 294
+    },
+    {
+      "targetGems": 300,
+      "ammoGems": 4,
+      "speed": 1250,
+      "expectedDamage": 9,
+      "energyLethal": false,
+      "out": false,
+      "earned": 0,
+      "remaining": 291
+    },
+    {
+      "targetGems": 300,
+      "ammoGems": 4,
+      "speed": 1800,
+      "expectedDamage": 10,
+      "energyLethal": false,
+      "out": false,
+      "earned": 0,
+      "remaining": 290
+    },
+    {
+      "targetGems": 300,
+      "ammoGems": 40,
+      "speed": 600,
+      "expectedDamage": 27,
+      "energyLethal": false,
+      "out": false,
+      "earned": 0,
+      "remaining": 273
+    },
+    {
+      "targetGems": 300,
+      "ammoGems": 40,
+      "speed": 1250,
+      "expectedDamage": 42,
+      "energyLethal": false,
+      "out": false,
+      "earned": 0,
+      "remaining": 258
+    },
+    {
+      "targetGems": 300,
+      "ammoGems": 40,
+      "speed": 1800,
+      "expectedDamage": 48,
+      "energyLethal": false,
+      "out": false,
+      "earned": 0,
+      "remaining": 252
+    },
+    {
+      "targetGems": 300,
+      "ammoGems": 100,
+      "speed": 600,
+      "expectedDamage": 49,
+      "energyLethal": false,
+      "out": false,
+      "earned": 0,
+      "remaining": 251
+    },
+    {
+      "targetGems": 300,
+      "ammoGems": 100,
+      "speed": 1250,
+      "expectedDamage": 75,
+      "energyLethal": false,
+      "out": false,
+      "earned": 0,
+      "remaining": 225
+    },
+    {
+      "targetGems": 300,
+      "ammoGems": 100,
+      "speed": 1800,
+      "expectedDamage": 86,
+      "energyLethal": false,
+      "out": false,
+      "earned": 0,
+      "remaining": 214
+    },
+    {
+      "targetGems": 300,
+      "ammoGems": 300,
+      "speed": 600,
+      "expectedDamage": 89,
+      "energyLethal": false,
+      "out": false,
+      "earned": 0,
+      "remaining": 211
+    },
+    {
+      "targetGems": 300,
+      "ammoGems": 300,
+      "speed": 1250,
+      "expectedDamage": 136,
+      "energyLethal": false,
+      "out": false,
+      "earned": 0,
+      "remaining": 164
+    },
+    {
+      "targetGems": 300,
+      "ammoGems": 300,
+      "speed": 1800,
+      "expectedDamage": 157,
+      "energyLethal": true,
+      "out": true,
+      "earned": 300,
+      "remaining": 0
+    },
+    {
+      "targetGems": 300,
+      "ammoGems": 1000,
+      "speed": 600,
+      "expectedDamage": 141,
+      "energyLethal": false,
+      "out": false,
+      "earned": 0,
+      "remaining": 159
+    },
+    {
+      "targetGems": 300,
+      "ammoGems": 1000,
+      "speed": 1250,
+      "expectedDamage": 217,
+      "energyLethal": true,
+      "out": true,
+      "earned": 300,
+      "remaining": 0
+    },
+    {
+      "targetGems": 300,
+      "ammoGems": 1000,
+      "speed": 1800,
+      "expectedDamage": 249,
+      "energyLethal": true,
+      "out": true,
+      "earned": 300,
+      "remaining": 0
+    },
+    {
+      "targetGems": 1000,
+      "ammoGems": 4,
+      "speed": 600,
+      "expectedDamage": 4,
+      "energyLethal": false,
+      "out": false,
+      "earned": 0,
+      "remaining": 996
+    },
+    {
+      "targetGems": 1000,
+      "ammoGems": 4,
+      "speed": 1250,
+      "expectedDamage": 7,
+      "energyLethal": false,
+      "out": false,
+      "earned": 0,
+      "remaining": 993
+    },
+    {
+      "targetGems": 1000,
+      "ammoGems": 4,
+      "speed": 1800,
+      "expectedDamage": 8,
+      "energyLethal": false,
+      "out": false,
+      "earned": 0,
+      "remaining": 992
+    },
+    {
+      "targetGems": 1000,
+      "ammoGems": 40,
+      "speed": 600,
+      "expectedDamage": 23,
+      "energyLethal": false,
+      "out": false,
+      "earned": 0,
+      "remaining": 977
+    },
+    {
+      "targetGems": 1000,
+      "ammoGems": 40,
+      "speed": 1250,
+      "expectedDamage": 36,
+      "energyLethal": false,
+      "out": false,
+      "earned": 0,
+      "remaining": 964
+    },
+    {
+      "targetGems": 1000,
+      "ammoGems": 40,
+      "speed": 1800,
+      "expectedDamage": 41,
+      "energyLethal": false,
+      "out": false,
+      "earned": 0,
+      "remaining": 959
+    },
+    {
+      "targetGems": 1000,
+      "ammoGems": 100,
+      "speed": 600,
+      "expectedDamage": 46,
+      "energyLethal": false,
+      "out": false,
+      "earned": 0,
+      "remaining": 954
+    },
+    {
+      "targetGems": 1000,
+      "ammoGems": 100,
+      "speed": 1250,
+      "expectedDamage": 70,
+      "energyLethal": false,
+      "out": false,
+      "earned": 0,
+      "remaining": 930
+    },
+    {
+      "targetGems": 1000,
+      "ammoGems": 100,
+      "speed": 1800,
+      "expectedDamage": 81,
+      "energyLethal": false,
+      "out": false,
+      "earned": 0,
+      "remaining": 919
+    },
+    {
+      "targetGems": 1000,
+      "ammoGems": 300,
+      "speed": 600,
+      "expectedDamage": 100,
+      "energyLethal": false,
+      "out": false,
+      "earned": 0,
+      "remaining": 900
+    },
+    {
+      "targetGems": 1000,
+      "ammoGems": 300,
+      "speed": 1250,
+      "expectedDamage": 153,
+      "energyLethal": false,
+      "out": false,
+      "earned": 0,
+      "remaining": 847
+    },
+    {
+      "targetGems": 1000,
+      "ammoGems": 300,
+      "speed": 1800,
+      "expectedDamage": 176,
+      "energyLethal": false,
+      "out": false,
+      "earned": 0,
+      "remaining": 824
+    },
+    {
+      "targetGems": 1000,
+      "ammoGems": 1000,
+      "speed": 600,
+      "expectedDamage": 211,
+      "energyLethal": false,
+      "out": false,
+      "earned": 0,
+      "remaining": 789
+    },
+    {
+      "targetGems": 1000,
+      "ammoGems": 1000,
+      "speed": 1250,
+      "expectedDamage": 324,
+      "energyLethal": false,
+      "out": false,
+      "earned": 0,
+      "remaining": 676
+    },
+    {
+      "targetGems": 1000,
+      "ammoGems": 1000,
+      "speed": 1800,
+      "expectedDamage": 373,
+      "energyLethal": true,
+      "out": true,
+      "earned": 1000,
+      "remaining": 0
+    }
+  ],
+  "escapes": [
+    {
+      "gap": 20,
+      "direction": "idle",
+      "out": true,
+      "seconds": 0.133,
+      "travel": 23.3
+    },
+    {
+      "gap": 20,
+      "direction": "away",
+      "out": false,
+      "seconds": 2.5,
+      "travel": 173.8
+    },
+    {
+      "gap": 20,
+      "direction": "sideways",
+      "out": true,
+      "seconds": 0.167,
+      "travel": 35.9
+    },
+    {
+      "gap": 100,
+      "direction": "idle",
+      "out": true,
+      "seconds": 0.667,
+      "travel": 86.7
+    },
+    {
+      "gap": 100,
+      "direction": "away",
+      "out": false,
+      "seconds": 2.5,
+      "travel": 356.5
+    },
+    {
+      "gap": 100,
+      "direction": "sideways",
+      "out": false,
+      "seconds": 2.5,
+      "travel": 377.1
+    },
+    {
+      "gap": 220,
+      "direction": "idle",
+      "out": true,
+      "seconds": 2.067,
+      "travel": 206
+    },
+    {
+      "gap": 220,
+      "direction": "away",
+      "out": false,
+      "seconds": 2.5,
+      "travel": 406.4
+    },
+    {
+      "gap": 220,
+      "direction": "sideways",
+      "out": false,
+      "seconds": 2.5,
+      "travel": 411.7
+    }
+  ],
+  "botRuns": [
+    {
+      "seed": 11,
+      "seconds": 180,
+      "captures": 6,
+      "launches": 5,
+      "visibleCaptures": 0,
+      "visibleLaunches": 1,
+      "holeKnockouts": 0,
+      "mouthFinishes": 0,
+      "eligiblePairSeconds": 74
+    },
+    {
+      "seed": 29,
+      "seconds": 180,
+      "captures": 9,
+      "launches": 9,
+      "visibleCaptures": 2,
+      "visibleLaunches": 2,
+      "holeKnockouts": 2,
+      "mouthFinishes": 0,
+      "eligiblePairSeconds": 60
+    },
+    {
+      "seed": 73,
+      "seconds": 180,
+      "captures": 13,
+      "launches": 13,
+      "visibleCaptures": 3,
+      "visibleLaunches": 3,
+      "holeKnockouts": 2,
+      "mouthFinishes": 0,
+      "eligiblePairSeconds": 69
+    }
+  ]
+}

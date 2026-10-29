@@ -1,3 +1,4 @@
+import { drawCombatRewards, type CombatRewardEvent, type CombatRewardEffect } from '../render/combatRewards'
 /**
  * Consolidated game modes implementation using the Strategy Pattern.
  * This file contains the base GameMode class and all its implementations.
@@ -38,7 +39,6 @@ import type { SyncedBlackHole, SyncedGameState, SyncedGem, SyncedObstacle, Synce
 import { drawCannon } from '../render/cannon'
 import { drawWeapons } from '../render/weapons'
 import { drawIncoming } from '../render/incoming'
-import { drawShotFollow } from '../render/shotFollow'
 import { weaponRecipe } from '../render/weaponStyle'
 
 // Forward reference for the Game type to avoid circular dependencies
@@ -602,6 +602,8 @@ export class MultiplayerMode extends GameMode {
     private drawnGems = new Map<string, { x: number; y: number }>()
     /** Each player as of the last frame, to spot hits and pickups */
     private lastSeen = new Map<string, { alive: boolean; recovering: boolean; sliding: boolean; gems: number; cx: number; cy: number }>()
+    rewardEffects: CombatRewardEffect[] = []
+    private rewardSeen = new Set<string>()
     bursts: { x: number; y: number; size: number; color: string; at: number }[] = []
     /** Bomb blasts going off: a flash and a ring racing out to the blast's edge */
     blasts: { x: number; y: number; radius: number; at: number }[] = []
@@ -661,6 +663,7 @@ export class MultiplayerMode extends GameMode {
             // Keep the quickest arrival, drifting up slowly in case the clocks wander
             this.clockGap = gap < this.clockGap ? gap : this.clockGap + (gap - this.clockGap) * 0.005
         })
+        eventBus.on('multiplayer:combatReward', (data: CombatRewardEvent) => this.noteCombatReward(data))
         eventBus.on('multiplayer:credit', (data: any) => this.noteCredit(data))
         eventBus.on('multiplayer:weaponTheft', (data: { by: string; byId: string; from: string; fromId: string; kind: string }) => {
             this.addNotice(`${this.nameOf(data.byId, data.by)} stole a ${weaponRecipe(data.kind).name} part from ${this.nameOf(data.fromId, data.from)}!`)
@@ -1013,6 +1016,7 @@ export class MultiplayerMode extends GameMode {
         const top = view.y - view.height / 2 - margin
         const bottom = view.y + view.height / 2 + margin
         drawBlackHoles(this, ctx, state, timestamp)
+        drawCombatRewards(this, ctx, state, timestamp)
         drawTurbines(this, ctx, state, timestamp)
         drawCannon(this, ctx, state, timestamp)
         this.drawGems(ctx, state, left, right, top, bottom, timestamp)
@@ -1084,7 +1088,6 @@ export class MultiplayerMode extends GameMode {
         drawPuffs(this, ctx, timestamp)
         drawBursts(this, ctx, timestamp)
         drawPickups(this, ctx, me, timestamp)
-        drawShotFollow(this, ctx, state, me, timestamp)
         ctx.restore()
 
         // Screen-space overlays: hidden while the opening plays, then fading in
@@ -1118,7 +1121,7 @@ export class MultiplayerMode extends GameMode {
             if (captured && !this.wasCaptured) sound.play('capture')
             this.wasCaptured = captured
             if (this.controls) {
-                this.controls.action = me?.capturedBy ? 'SALVAGE' : me?.gulping ? 'FIRE' : me?.mouth ? 'SPIT' : 'INHALE'
+                this.controls.action = me?.capturedBy ? 'CAPTURED' : me?.gulping ? 'FIRE' : me?.breathingBlocked ? 'INJURED' : me?.mouth ? 'SPIT' : 'INHALE'
                 this.controls.puffCooldown = Math.max(0, ((me?.puffReadyAt ?? 0) - this.worldNow(state, timestamp)) / 1000)
                 this.controls.puffNeedsBreath = this.stamina < EXHALE.BREATH_COST
             }
@@ -1215,11 +1218,24 @@ export class MultiplayerMode extends GameMode {
     }
 
     /** Someone knocked someone else into trouble: say who did it, with a big banner if it was you */
+    private noteCombatReward(data: CombatRewardEvent): void {
+        if (!data || !Number.isFinite(data.x + data.y + data.size) || !data.eventId || this.rewardSeen.has(data.eventId)) return
+        this.rewardSeen.add(data.eventId)
+        if (this.rewardSeen.size > 256) this.rewardSeen.delete(this.rewardSeen.values().next().value!)
+        this.rewardEffects.push({ ...data, at: performance.now() })
+        if (this.rewardEffects.length > 24) this.rewardEffects.shift()
+    }
+
     private noteCredit(data: any): void {
         const localId = this.multiplayerManager?.localSessionId
         const targetIsYou = data?.targetId === localId
         const target = targetIsYou ? 'you' : String(data?.target ?? 'someone')
         const how = String(data?.how ?? '')
+        if (how === 'mouth') {
+            if (targetIsYou) this.knockoutCause = { how, by: String(data?.by ?? 'Someone'), at: performance.now() }
+            window.dispatchEvent(new CustomEvent('ascend:activity', { detail: `${this.nameOf(data?.byId, data?.by)} finished ${target} at the mouth` }))
+            return
+        }
         if (how === 'drain') {
             if (targetIsYou) this.knockoutCause = { how, by: String(data?.by ?? 'Someone'), at: performance.now() }
             this.addNotice(`${this.nameOf(data?.byId, data?.by)} drained ${target} dry!`, true)
@@ -1243,7 +1259,7 @@ export class MultiplayerMode extends GameMode {
             if (targetIsYou && data?.out) this.knockoutCause = { how: 'cannon', by: String(data?.by ?? 'Someone'), at: performance.now() }
             const shotByYou = data?.byId === localId
             const flownByYou = data?.projectileId === localId
-            if (shotByYou || flownByYou) this.banner = { title: data?.out ? 'Cannonball knockout!' : 'Cannonball hit!', sub: `${Number(data?.gems) || 0} GEMS SPILLED`, at: performance.now() }
+            if (shotByYou || flownByYou) this.banner = { title: data?.out ? 'Cannonball knockout!' : 'Cannonball hit!', sub: data?.out ? `+${Number(data?.earned) || 0} GEMS EARNED` : `${Number(data?.gems) || 0} GEMS SPILLED`, at: performance.now() }
             else this.addNotice(`${String(data?.by ?? 'Someone')} landed a cannonball hit on ${target}!`)
             return
         }

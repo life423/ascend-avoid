@@ -8,7 +8,7 @@ const { GameState } = require('../server/dist/schema/GameState.js');
 const { PlayerSchema } = require('../server/dist/schema/PlayerSchema.js');
 const { BotBrain } = require('../server/dist/game/bots.js');
 const { spawnWeapon, initializeWeaponSets } = require('../server/dist/systems/weapons.js');
-const { CANNON, GEMS, PINWHEEL, SHOCKWAVE, INHALE, SHOT_FOLLOW, EXHALE } = require('../server/dist/constants/gameConstants.js');
+const { CANNON, GEMS, PINWHEEL, SHOCKWAVE, INHALE, EXHALE } = require('../server/dist/constants/gameConstants.js');
 
 const options = Object.fromEntries(process.argv.slice(2).map(arg => { const at = arg.indexOf('='); return [arg.slice(2, at), arg.slice(at + 1)]; }));
 const seconds = Number(options.seconds || 600), seeds = (options.seeds || '11,29,73').split(',').map(Number);
@@ -107,7 +107,7 @@ function arena(seed, scenario) {
     const deaths = {}, damage = {}, last = new Map(), milestones = {}, activeSeconds = {}, deployments = {}, samples = [];
     const lives = [], living = new Map(), deathsByWidth = { below150: 0, from150To500: 0, atLeast500: 0 };
     const previousWeaponPhase = new Map();
-    const captureOutcomes = { timedEjections: 0, fires: 0, injuredFires: 0, capturedPostTransferGems: 0, bellyBonusPaid: 0, bellyBonusDiscarded: 0, continuedTheftSeconds: 0, followActiveSeconds: 0 };
+    const captureOutcomes = { timedEjections: 0, fires: 0, capturedPostTransferGems: 0, continuedTheftSeconds: 0 };
     const holds = [];
     const leaders = []; let currentLeader = '', tenure = 0, maxTenure = 0, decay = 0, giantSeconds = 0, mostGiants = 0;
     let captures = 0, launches = 0, probeLeaderSeconds = 0, above750 = 0, max = initial, firstBelow750 = null;
@@ -147,17 +147,12 @@ function arena(seed, scenario) {
           captureOutcomes.capturedPostTransferGems += p.gems;
         }
         if (was.captured && !p.capturedBy) {
-          if (p.flying) { captureOutcomes.fires++; if (p.fatalMissile) captureOutcomes.injuredFires++; }
+          if (p.flying) { captureOutcomes.fires++; }
           else if (p.state === 'alive') captureOutcomes.timedEjections++;
         }
-        if (was.bellyPending > 0 && !p.bellyPending) {
-          if (p.state === 'alive') captureOutcomes.bellyBonusPaid += was.bellyPending;
-          else captureOutcomes.bellyBonusDiscarded += was.bellyPending;
-        }
         if (p.continuedTheft) captureOutcomes.continuedTheftSeconds += DT;
-        if (p.followActive) captureOutcomes.followActiveSeconds += DT;
         if (p.flying && !was.flying) launches++;
-        last.set(id, { state: p.state, captured: Boolean(p.capturedBy), flying: p.flying, width: p.width, gems: p.gems, bellyPending: p.bellyPending });
+        last.set(id, { state: p.state, captured: Boolean(p.capturedBy), flying: p.flying, width: p.width, gems: p.gems });
       });
       max = Math.max(max, probe.gems);
       elapsedSeconds = tick / 30; maxWidth = Math.max(maxWidth, probe.width);
@@ -188,7 +183,7 @@ function arena(seed, scenario) {
   });
 }
 
-const report = { generatedAt: new Date().toISOString(), mechanics: options.label || 'working tree', methodology: { tickHz: 30, seededRandomAndClock: true, blackHoles: holesOn, weaponSets: 9, captureShare: CANNON.CAPTIVE_GEM_SHARE, bellyBonusCap: CANNON.BELLY_BONUS_CAP, vulnerableOutgoing: INHALE.VULNERABLE_OUTGOING, shotFollowMaxTravel: SHOT_FOLLOW.MAX_TRAVEL, puffRecoilCap: EXHALE.IMPULSE_RECOIL_CAP, arenaSecondsPerRun: seconds, stopAtWidthShare: Number.isFinite(stopWidthShare) ? stopWidthShare : null, initialFieldCrystals: GEMS.FIELD_COUNT, fieldReplenishPerSecond: GEMS.FIELD_REPLENISH_PER_S, growthMassPerGem: GEMS.GROWTH_MASS_PER_GEM, missileBaseGems: CANNON.IMPACT_BASE_GEMS, ownerPickupDelayMs: GEMS.OWNER_PICKUP_DELAY_MS, missileOwnerPickupDelayMs: GEMS.MISSILE_OWNER_PICKUP_DELAY_MS, growthScale: GEMS.GROWTH_SCALE, growthExponent: GEMS.GROWTH_EXPONENT, decayStart: GEMS.DECAY_START, decayRate: GEMS.DECAY_RATE, seeds, scenarios, probeController: 'existing fallible BotBrain; roles retain their current shared gameplay rules; no human skill or subjective fun is inferred', weaponsInArena: 'all nine production sets across six recipes; ordinary pickup/placement by current AI; every set activation is counted', decay: 'actual PlayerSchema.decay, no combat or collecting', weaponExposure: 'actual full world update; idle/radial/sideways/warning escape, open arena/wall, with/without spilled gem recovery; contested cases add an unopposed builder following/inhaling', creditedKnockouts: 'missile-target versus spent-missile distinguished; state-transition death count is separate; missing milestones mean not reached' } };
+const report = { generatedAt: new Date().toISOString(), mechanics: options.label || 'working tree', methodology: { tickHz: 30, seededRandomAndClock: true, blackHoles: holesOn, weaponSets: 9, captureShare: CANNON.CAPTIVE_GEM_SHARE,  puffRecoilCap: EXHALE.IMPULSE_RECOIL_CAP, arenaSecondsPerRun: seconds, stopAtWidthShare: Number.isFinite(stopWidthShare) ? stopWidthShare : null, initialFieldCrystals: GEMS.FIELD_COUNT, fieldReplenishPerSecond: GEMS.FIELD_REPLENISH_PER_S, growthMassPerGem: GEMS.GROWTH_MASS_PER_GEM, missileBaseGems: CANNON.IMPACT_BASE_GEMS, ownerPickupDelayMs: GEMS.OWNER_PICKUP_DELAY_MS, missileOwnerPickupDelayMs: GEMS.MISSILE_OWNER_PICKUP_DELAY_MS, growthScale: GEMS.GROWTH_SCALE, growthExponent: GEMS.GROWTH_EXPONENT, decayStart: GEMS.DECAY_START, decayRate: GEMS.DECAY_RATE, seeds, scenarios, probeController: 'existing fallible BotBrain; roles retain their current shared gameplay rules; no human skill or subjective fun is inferred', weaponsInArena: 'all nine production sets across six recipes; ordinary pickup/placement by current AI; every set activation is counted', decay: 'actual PlayerSchema.decay, no combat or collecting', weaponExposure: 'actual full world update; idle/radial/sideways/warning escape, open arena/wall, with/without spilled gem recovery; contested cases add an unopposed builder following/inhaling', creditedKnockouts: 'missile-target versus spent-missile distinguished; state-transition death count is separate; missing milestones mean not reached' } };
 if (section !== 'arena') {
   report.decay = decayControls(); report.weaponExposure = [];
   for (const gems of [12, 100, 1000, 5000]) for (const location of ['open', 'wall']) for (const response of ['idle', 'radial-escape', 'sideways-escape', 'warning-escape']) {
