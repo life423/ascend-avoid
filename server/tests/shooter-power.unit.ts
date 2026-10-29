@@ -23,16 +23,18 @@ function fired(){
  const a=s.addPlayer('shooter','Shooter',NOW),b=s.addPlayer('ammo','Ammo',NOW);
  a.setGems(250,4200,4200);b.setGems(100,4200,4200);a.placeAt(1000,1000);a.facing=0;a.spawnProtected=b.spawnProtected=false;
  b.placeAt(a.x+a.width*.8-b.width/2+1,a.y+(a.height-b.height)/2);a.startInhale(NOW);updateInhales(s,NOW,.01);
- assert.equal(b.gems,70);assert.equal(a.gems,280,'capture still transfers exactly once before firing');
+ assert.equal(b.gems,32);assert.equal(a.gems,318,'capture transfers only excess above the standard bullet body, once before firing');
  assert(!fireCaptive(s,a,NOW));a.captureNeedsRelease=false;
- const expected=shooterMassContribution(a.width,b.width),speed=launchSpeed(a.width,b.width);
+ const expected=shooterMassContribution(a.width,b.width),speed=launchSpeed(a.width,b.width), shooterWidth=a.width;
  assert(fireCaptive(s,a,NOW));assert.equal(b.shotMassBonus,expected);assert.equal(Math.hypot(b.flightVx,b.flightVy),speed,'new power adds no launch speed');
- return {s,a,b,expected};
+ assert.equal(b.shotShooterWidth,shooterWidth,'launch snapshots the real visible shooter width');
+ return {s,a,b,expected,shooterWidth};
 }
 for(const change of ['grow','shrink','death','disconnect'] as const){
- const {s,a,b,expected}=fired();
+ const {s,a,b,expected,shooterWidth}=fired();
  if(change==='grow')a.setGems(100000,4200,4200);if(change==='shrink')a.setGems(0,4200,4200);if(change==='death')a.knockOut(NOW+1);if(change==='disconnect')s.removePlayer(a.sessionId);
  assert.equal(b.shotMassBonus,expected,'launcher changes cannot change an airborne snapshot');
+ assert.equal(b.shotShooterWidth,shooterWidth,'size-based lethality uses launch width even after growth, damage, death or disconnect');
  const target=s.addPlayer('target','Target',NOW);target.setGems(1000,4200,4200);target.spawnProtected=false;
  const cx=b.x+b.width/2+180,cy=b.y+b.height/2;target.placeAt(cx-target.width/2,cy-target.height/2);
  const speed=Math.hypot(b.flightVx,b.flightVy)*Math.exp(-CANNON.DRAG*.1),expectedLost=impactGems(1000,speed,b.width,target.width,expected);
@@ -46,8 +48,8 @@ for(const immunity of ['spawn','impact'] as const){
  updateFlights(s,NOW+100,.1);assert.equal(target.gems,1000);
 }
 {
- const{s,b}=fired();b.land();assert.equal(b.shotMassBonus,0);
- b.shotMassBonus=100;b.launch(NOW,900,0,'',1000,.35,'turbine');assert.equal(b.shotMassBonus,0,'turbines cannot inherit an old cannon bonus');
+ const{s,b}=fired();b.land();assert.equal(b.shotMassBonus,0);assert.equal(b.shotShooterWidth,0);
+ b.shotMassBonus=100;b.shotShooterWidth=1000;b.launch(NOW,900,0,'',1000,.35,'turbine');assert.equal(b.shotMassBonus,0,'turbines cannot inherit an old cannon bonus');assert.equal(b.shotShooterWidth,0);
  b.shotMassBonus=100;b.knockOut(NOW);assert.equal(b.shotMassBonus,0);s.spawn(b,NOW+2000);assert.equal(b.shotMassBonus,0);
  b.shotMassBonus=100;s.removePlayer(b.sessionId);assert.equal(b.shotMassBonus,0);
 }

@@ -94,6 +94,7 @@ export interface SyncedGameState {
     pinwheel: SyncedPinwheel
     weaponSets: SyncedArray<SyncedPinwheel>
     blackHoles: SyncedArray<SyncedBlackHole>
+    practice: SyncedPractice
 }
 
 /** GemSchema, as synced to the browser */
@@ -202,6 +203,26 @@ export interface SyncedPlayer {
     captureHoldMs: number
     weaponSafeUntil: number
     breathingBlocked: boolean
+}
+
+/** PracticeSchema, as synced to the browser */
+export interface SyncedPractice {
+    enabled: boolean
+    lesson: string
+    stage: string
+    phase: string
+    attempt: number
+    failures: number
+    passed: number
+    total: number
+    targetId: string
+    objectiveKind: string
+    objectiveX: number
+    objectiveY: number
+    cue: string
+    completed: string
+    resetSerial: number
+    sequence: boolean
 }
 
 /** TurbineSchema, as synced to the browser */

@@ -1,7 +1,7 @@
 import type { MultiplayerMode } from '../core/GameModes'
 import { GEMS, PLAYER_COLORS, SHIFT, WORLD } from '../../server/constants/gameConstants'
 import { drawCreature } from './creatures'
-import { COMPACT, FONT, GOLD, drawCrown, drawRobot, drawPeople, hudPanel, roundedRect } from './style'
+import { COMPACT, FONT, GOLD, drawCrown, drawPeople, hudPanel, roundedRect } from './style'
 import { JOIN_NOTICE_MS, View } from './shared'
 import type { SyncedGameState, SyncedPlayer, SyncedTurbine } from '../types/synced'
 import { weaponRecipe } from './weaponStyle'
@@ -257,9 +257,9 @@ export function drawTrafficChip(mode: MultiplayerMode, ctx: CanvasRenderingConte
 
 /** The top five by gems, top left, with you added below if you're further down */
 export function drawLeaderboard(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, _canvas: HTMLCanvasElement, state: SyncedGameState, localId: string | null, leaderId: string | null) : void {
-    const ranked: { id: string; name: string; gems: number; isBot: boolean }[] = []
+    const ranked: { id: string; name: string; gems: number }[] = []
     state.players.forEach((player: SyncedPlayer, id: string) => {
-        ranked.push({ id, name: String(player.name), gems: player.gems, isBot: player.isBot === true })
+        ranked.push({ id, name: String(player.name), gems: player.gems })
     })
     ranked.sort((a, b) => b.gems - a.gems)
     const compact = COMPACT.matches
@@ -301,10 +301,7 @@ export function drawLeaderboard(mode: MultiplayerMode, ctx: CanvasRenderingConte
             ctx.fillText(String(row.rank), x + 14 * u, rowY)
         }
         let nameX = x + 27 * u
-        if (row.isBot) {
-            drawRobot(ctx, x + 33 * u, rowY, 9 * u)
-            nameX += 13 * u
-        } else if (isLocal) {
+        if (isLocal) {
             drawCreature(ctx, x + 33 * u, rowY, 14 * u, '#ffffff', -0.7)
             nameX += 13 * u
         }

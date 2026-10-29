@@ -109,14 +109,14 @@ for (const gems of [0, 4, 11, 12, 80]) for (const kind of ['missile', 'turbine']
   b.placeAt(1300, 1000); pruneBodyContacts(s);
   assert.equal(s.bodyContacts.size, 0, 'separation rearms the pair');
 }
-for (const targetGems of [12, 40]) for (const protectedTarget of [false, true]) {
+for (const targetGems of [12, 40, 100]) for (const protectedTarget of [false, true]) {
   const s = world(), flier = player(s, 'missile', 4), target = player(s, 'small-target', targetGems, 1100, 1000);
   target.spawnProtected = protectedTarget;
   flier.placeAt(1000, target.y + target.height / 2 - flier.height / 2);
   flier.launch(NOW, 1400, 0, 'shooter', CANNON.FLIGHT_MS);
   updateFlights(s, NOW + 100, 0.1);
-  const out = !protectedTarget && targetGems === 12;
-  assert.equal(target.state, out ? 'dead' : 'alive', 'a tiny shot finishes a weakened target but no longer erases a larger one');
+  const out = !protectedTarget && targetGems <= 40;
+  assert.equal(target.state, out ? 'dead' : 'alive', 'standard bullets finish small/weak targets while larger targets survive ordinary damage');
   assert.equal(flier.state, 'dead', 'a spent missile player is knocked out rather than kept alive at minimum size');
   assert(!flier.flying);
   assert.equal(flier.respawnAt, NOW + 100 + 2000);
@@ -134,13 +134,12 @@ for (const targetGems of [12, 40]) for (const protectedTarget of [false, true]) 
   flier.launch(NOW, 1400, 0, 'shooter', CANNON.FLIGHT_MS);
   for (let step = 1; step <= 12 && !flier.flightHit; step++) updateFlights(s, NOW + step * 50, .05);
   assert(flier.flightHit && flier.width <= width * 0.11, 'the missile loses about 90% of its width on impact');
-  assert.equal(flier.state, 'alive');
-  assert(target.width > width * 0.8 && target.width < width * 0.97, 'a comparable shot hurts a giant while preserving most earned size');
-  const gems = flier.gems;
+  assert.equal(flier.state, 'dead');
+  assert(target.width > width * 0.95 && target.width < width, 'a standard-size projectile chips a much wider target when no shooter-size finish applies');
+  const spilled = [...s.gems.values()].reduce((sum,g) => sum+g.value,0);
   flier.placeAt(s.worldWidth - flier.width - 10, 1000); flier.flightVx = 1400; flier.flightVy = 0;
   updateFlights(s, NOW + 1000, 0.1);
-  assert.equal(flier.gems, gems, 'a later wall bounce does not consume missile growth twice');
-  assert(flier.suctionSafeUntil > NOW + 1000, 'the spent missile still gets a recovery shield');
+  assert.equal([...s.gems.values()].reduce((sum,g) => sum+g.value,0), spilled, 'a spent bullet cannot consume or spill its growth twice');
 }
 
 {
@@ -253,6 +252,11 @@ for (const ending of ['impact', 'wall', 'timeout']) {
   if (ending === 'impact') player(state, 'impact-target', 100, 1190, 950);
   if (ending === 'wall') flier.placeAt(state.worldWidth - flier.width - 10, 1000);
   flier.launch(NOW, 1400, 0, 'old-captor', ending === 'timeout' ? 50 : CANNON.FLIGHT_MS);
+  if (ending === 'wall') flier.placeAt(state.worldWidth - CANNON.BULLET_SIZE - 1, 1000);
+  if (ending === 'impact') {
+    const target = state.players.get('impact-target')!;
+    flier.placeAt(target.x + target.width / 2 - 300 - CANNON.BULLET_SIZE / 2, target.y + (target.height - CANNON.BULLET_SIZE) / 2);
+  }
   let elapsed = 0;
   while (flier.flying && elapsed < 3000) {
     elapsed += 50;
@@ -262,6 +266,11 @@ for (const ending of ['impact', 'wall', 'timeout']) {
   }
   assert(!flier.flying, `${ending}: flight ends`);
   if (ending === 'impact') assert(flier.flightHit, 'the regression actually hits another player');
+  if (ending !== 'timeout') {
+    assert.equal(flier.state, 'dead', 'a standard bullet spends its remaining body on impact or a wall');
+    state.update(0, flier.respawnAt); assert(flier.spawnProtected); assert.equal(flier.state, 'alive');
+    continue;
+  }
   const landedAt = NOW + elapsed;
   assert.equal(flier.suctionSafeUntil, landedAt + CANNON.LAND_SAFE_MS);
   assert.equal(flier.recaptureAfter, landedAt + CANNON.LAND_SAFE_MS);
@@ -291,8 +300,9 @@ for (const gems of [0, 300, 500, 1000]) {
   const state = world(), flier = player(state, 'wall-missile', gems);
   flier.placeAt(state.worldWidth - flier.width - 1, 1000);
   flier.launch(NOW, 1400, 0, 'captor', CANNON.FLIGHT_MS);
+  flier.placeAt(state.worldWidth - CANNON.BULLET_SIZE - 1, 1000);
   updateFlights(state, NOW + 100, 0.1);
-  assert.equal(flier.state, gems <= 500 ? 'dead' : 'alive', 'wall impacts knock out missiles whose spent physical growth leaves no gems');
+  assert.equal(flier.state, 'dead', 'a standard bullet spends its remaining body on a wall regardless of source growth');
   assert(!flier.flying);
   if (flier.state === 'dead') {
     state.update(0, flier.respawnAt);

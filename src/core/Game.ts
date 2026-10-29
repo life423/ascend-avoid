@@ -54,6 +54,8 @@ import UIManager from '../managers/UIManager'
 import GameConfig from './GameConfig'
 
 // Import game modes from consolidated file
+import { PracticeUI } from '../practice/PracticeUI'
+import type { PracticeLesson } from '../../server/practice/definitions'
 import { GameMode, MultiplayerMode, SinglePlayerMode } from './GameModes'
 
 // Removed unused interfaces
@@ -81,6 +83,8 @@ export default class Game {
     player: Player
     background: Background
     touchControls: TouchControls
+    practiceUI: PracticeUI | null = null
+    private modeGeneration = 0
     currentGameMode: GameMode | null
 
     // Manager components
@@ -270,6 +274,18 @@ export default class Game {
         // Set up touch controls if needed
         this.setupTouchControls()
 
+        this.practiceUI = new PracticeUI(
+            (lesson, sequence = false) => {
+                const mode = this.currentGameMode
+                if (mode instanceof MultiplayerMode && mode.isPractice && mode.multiplayerManager?.isConnected()) {
+                    mode.cancelInput(); mode.multiplayerManager.sendMessage(sequence ? 'practice:start' : 'practice:lesson', { lesson })
+                } else void this.initializeGameMode('practice', lesson, sequence)
+            },
+            () => { void this.initializeGameMode('multiplayer') },
+            (type, data) => { if (this.currentGameMode instanceof MultiplayerMode) this.currentGameMode.multiplayerManager?.sendMessage(type, data) },
+            () => { if (this.currentGameMode instanceof MultiplayerMode) this.currentGameMode.cancelInput() }
+        )
+
         // Everyone who opens the site joins the shared multiplayer game
         // (initializeGameMode falls back to single player if multiplayer can't load)
         await this.initializeGameMode('multiplayer')
@@ -292,8 +308,9 @@ export default class Game {
      * @returns A promise that resolves when the mode is initialized
      */
     async initializeGameMode(
-        mode: 'singlePlayer' | 'multiplayer'
+        mode: 'singlePlayer' | 'multiplayer' | 'practice', lesson: PracticeLesson = 'basics', sequence = false
     ): Promise<void> {
+        const generation = ++this.modeGeneration
         // Clean up any existing game mode
         if (this.currentGameMode) {
             this.currentGameMode.dispose()
@@ -303,6 +320,9 @@ export default class Game {
         try {
             // Create the appropriate game mode directly
             switch (mode) {
+                case 'practice':
+                    this.currentGameMode = new MultiplayerMode(this, { kind: 'practice', lesson, sequence, token: Array.from(crypto.getRandomValues(new Uint8Array(32)), n => n.toString(16).padStart(2, '0')).join('') })
+                    break
                 case 'multiplayer':
                     this.currentGameMode = new MultiplayerMode(this)
                     break
@@ -314,13 +334,16 @@ export default class Game {
             }
 
             // Initialize the game mode
-            await this.currentGameMode.initialize()
+            const initializing = this.currentGameMode
+            await initializing.initialize()
+            if (generation !== this.modeGeneration) { initializing.dispose(); return }
             // The online world fills the page; solo keeps its shape
             this.responsiveManager?.handleResize()
 
             console.log(`Game mode initialized: ${mode}`)
             return Promise.resolve()
         } catch (error) {
+            if (generation !== this.modeGeneration) return
             console.error(`Failed to initialize game mode ${mode}:`, error)
             // Fallback to single player mode if multiplayer fails
             if (mode === 'multiplayer') {

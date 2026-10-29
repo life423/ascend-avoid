@@ -89,11 +89,12 @@ function struck(everyone: PlayerSchema[], flier: PlayerSchema, now: number, from
 
 /** A flier hits a creature: gems knocked loose, the target stunned and shoved, the flier bouncing back off it */
 function impact(state: GameState, flier: PlayerSchema, target: PlayerSchema, speed: number, now: number): void {
+  const hitSize = target.width, hitX = target.x + target.width / 2, hitY = target.y + target.height / 2;
   const ux = flier.flightVx / speed;
   const uy = flier.flightVy / speed;
-  let spill = target.spawnProtected ? 0 : impactGems(target.gems, speed, flier.width, target.width, flier.flightKind === 'missile' ? flier.shotMassBonus : 0);
+  let spill = target.spawnProtected ? 0 : impactGems(target.gems, speed, flier.width, target.width, flier.flightKind === 'missile' ? flier.shotMassBonus : 0, flier.flightKind);
   const deliberate = flier.flightKind === 'missile' && !!flier.shotOwner;
-  const out = !target.spawnProtected && (target.gems - spill < CANNON.IMPACT_KO_GEMS || deliberate && lethalPlayerImpact(speed, flier.width, target.width, flier.shotMassBonus));
+  const out = !target.spawnProtected && (target.gems - spill < CANNON.IMPACT_KO_GEMS || deliberate && lethalPlayerImpact(speed, flier.width, target.width, flier.shotMassBonus, flier.shotShooterWidth));
   const launcher = deliberate ? flier.shotOwner : flier.launchedBy;
   let earned = 0;
   if (out) {
@@ -108,14 +109,18 @@ function impact(state: GameState, flier: PlayerSchema, target: PlayerSchema, spe
   // The heavier the target than the flier, the less it's knocked back
   if (!out) target.skid(ux, uy, CANNON.TARGET_SHOVE * Math.max(0.15, Math.min(1, flier.weight() / Math.max(1, target.weight()))));
   target.impactImmuneUntil = now + CANNON.IMPACT_IMMUNE_MS;
+  if (!out && deliberate && spill > 0) {
+    target.suctionSafeUntil = Math.max(target.suctionSafeUntil, now + CANNON.IMPACT_SUCTION_SAFE_MS);
+    target.launchSafeUntil = Math.max(target.launchSafeUntil, state.time + CANNON.IMPACT_SUCTION_SAFE_MS);
+  }
   state.onEvent?.("impact", {
     byId: launcher, projectileId: flier.sessionId, targetId: target.sessionId,
-    x: target.x + target.width / 2, y: target.y + target.height / 2,
-    size: target.width, gems: spill, out,
+    x: hitX, y: hitY, size: hitSize, gems: spill, out,
+    kind: deliberate ? 'cannon' : 'turbine', angle: Math.atan2(uy, ux) + Math.PI,
   });
   state.credit(target, "cannon", now, launcher, { gems: spill, earned, projectileId: flier.sessionId, out });
   spendMissileMass(state, flier, now);
-  if (!out && !target.spawnProtected && now >= target.stunImmuneUntil) target.stun(now, CANNON.IMPACT_STUN_MS);
+  if (!out && !target.spawnProtected && now >= target.stunImmuneUntil) target.stun(now, CANNON.IMPACT_STUN_MS, deliberate);
   if (flier.state !== PLAYER_STATE.ALIVE) return;
   flier.flightVx = -ux * speed * CANNON.BOUNCE;
   flier.flightVy = -uy * speed * CANNON.BOUNCE;

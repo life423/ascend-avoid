@@ -4,8 +4,8 @@ import { BotBrain } from "../game/bots.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 import { launchSpeed } from "../game/cannon.js";
 import { cannonTargetAppeal } from '../game/botAim.js';
-import { exhale, fireCaptive, stealWeight } from "./inhale.js";
-import { botPreyAvailable, botRobber } from '../game/botTargets.js';
+import { exhale, fireCaptive, stealWeight, injuryVulnerable } from "./inhale.js";
+import { botPreyAvailable, botSuctionThreat } from '../game/botTargets.js';
 import { CANNON, EXHALE } from '../constants/gameConstants.js';
 
 const { PLAYER_STATE, BOTS, INHALE, BOMBS } = GAME_CONSTANTS;
@@ -21,13 +21,13 @@ export function botMouth(state: GameState, bot: PlayerSchema, now: number) : voi
     bot.steer(0, 0);
     return;
   }
-  if (bot.sliding || bot.recovering || bot.stunned) { state.brains.get(bot.sessionId)?.cannonAim.reset(); return; }
   const cx = bot.x + bot.width / 2;
   const cy = bot.y + bot.height / 2;
   if (bot.gulping) {
-    botFire(state, bot, cx, cy, now);
+    if (!bot.stunned) botFire(state, bot, cx, cy, now);
     return;
   }
+  if (bot.sliding || bot.recovering || bot.stunned) { state.brains.get(bot.sessionId)?.cannonAim.reset(); return; }
   if (bot.breathingBlocked) { bot.stopInhale(now); return; }
   if (bot.mouth) {
     let target: PlayerSchema | null = null;
@@ -51,7 +51,7 @@ export function botMouth(state: GameState, bot: PlayerSchema, now: number) : voi
     return;
   }
   const brain = state.brains.get(bot.sessionId);
-  const robber = botRobber(state, bot, now);
+  const robber = botSuctionThreat(state, bot, now);
   if (brain?.gustDefense.ready(robber?.sessionId ?? '', now) && robber && now >= bot.exhaleReadyAt) {
     const dx = robber.x + robber.width / 2 - cx, dy = robber.y + robber.height / 2 - cy;
     // A human can hold/aim and release into a puff. Use that same turn rate and breath cost.
@@ -91,7 +91,17 @@ export function botMouth(state: GameState, bot: PlayerSchema, now: number) : voi
   let want: { x: number; y: number } | null = null;
   let nearest = reach;
   let captureAppeal = 0;
+  // An injured rival cannot counter-inhale. Exploit that finite real opening before collecting ammo.
+  state.players.forEach(other => {
+    if (!botPreyAvailable(state, bot, other, now) || !injuryVulnerable(state, other, now) || other.gems < 1 || robbersOf(state, other.sessionId) >= BOTS.MAX_ROBBERS) return;
+    const ox = other.x + other.width / 2, oy = other.y + other.height / 2, d = Math.hypot(ox - cx, oy - cy);
+    if (d - other.width / 2 > reach + bot.width * .3) return;
+    const appeal = (other.gems + 2) / (d + 60);
+    if (appeal > captureAppeal) { captureAppeal = appeal; want = { x: ox, y: oy }; }
+  });
+  const injuredOpening = want !== null;
   state.players.forEach((other) => {
+    if (injuredOpening) return;
     if (!botPreyAvailable(state, bot, other, now) || other.width * INHALE.EAT_RATIO > bot.width) return;
     if (robbersOf(state, other.sessionId) >= BOTS.MAX_ROBBERS) return;
     const d = Math.hypot(other.x + other.width / 2 - cx, other.y + other.height / 2 - cy);
@@ -101,20 +111,6 @@ export function botMouth(state: GameState, bot: PlayerSchema, now: number) : voi
       nearest = d;
       want = { x: other.x + other.width / 2, y: other.y + other.height / 2 };
     }
-  });
-  // Nothing to catch: rob an injured rival in reach. Not into a clash it would lose, though: a
-  // creature it isn't clearly bigger than is robbed only from behind (outside its front cone), and never
-  // one that MAX_ROBBERS are already on
-  state.players.forEach((other) => {
-    if (want || !botPreyAvailable(state, bot, other, now) || state.time >= other.injuredUntil && !bot.theftContinuations.has(other.sessionId) || other.gems < 1) return;
-    const ox = other.x + other.width / 2;
-    const oy = other.y + other.height / 2;
-    const d = Math.hypot(ox - cx, oy - cy);
-    if (d - other.width / 2 > reach + bot.width * 0.3) return;
-    const behind = ((cx - ox) * Math.cos(other.facing) + (cy - oy) * Math.sin(other.facing)) / (d || 1) < 0.2;
-    if (bot.width < other.width * BOTS.FIGHT_BACK_RATIO && !behind) return;
-    if (robbersOf(state, other.sessionId) >= BOTS.MAX_ROBBERS) return;
-    want = { x: ox, y: oy };
   });
   state.bombs.forEach((bomb) => {
     if (bomb.heldBy || bomb.respawnAt || bomb.lit()) return;
@@ -190,12 +186,12 @@ function botFire(state: GameState, bot: PlayerSchema, cx: number, cy: number, no
       const hole = state.blackHoles[Number(id.slice(5))];
       if (!hole || state.time < hole.activeAt || state.shiftPhase === 'grace' || !state.isFloorAt(hole.x, hole.y)) return false;
       const d = Math.hypot(hole.x - cx, hole.y - cy);
-      return d <= BOTS.FIRE_RANGE && d > (bot.width + captive.width) / 2 + CANNON.LAUNCH_CLEARANCE + hole.radius;
+      return d <= BOTS.FIRE_RANGE && d > (bot.width + CANNON.BULLET_SIZE) / 2 + CANNON.LAUNCH_CLEARANCE + hole.radius;
     }
     const other = state.players.get(id);
     return !!other && other !== bot && other !== captive && other.state === PLAYER_STATE.ALIVE
       && !other.spawnProtected && !other.capturedBy && !other.flying && now >= other.impactImmuneUntil
-      && Math.hypot(other.x + other.width / 2 - cx, other.y + other.height / 2 - cy) <= BOTS.FIRE_RANGE;
+      && Math.hypot(other.x + other.width / 2 - cx, other.y + other.height / 2 - cy) - (bot.width + other.width) / 2 <= BOTS.FIRE_RANGE;
   };
   const shot = brain.cannonAim.update(`${bot.gulping}:${bot.captureStartedAt}`, bot.captureStartedAt, now, bot.facing, () => {
     let target: { id: string; angle: number } | null = null;
@@ -203,7 +199,7 @@ function botFire(state: GameState, bot: PlayerSchema, cx: number, cy: number, no
     state.players.forEach((other, id) => {
       if (!valid(id)) return;
       const dx = other.x + other.width / 2 - cx, dy = other.y + other.height / 2 - cy, d = Math.hypot(dx, dy);
-      const score = cannonTargetAppeal(other.gems, other.width, captive.width, launchSpeed(bot.width, captive.width), d, bot.width);
+      const score = cannonTargetAppeal(other.gems, other.width, CANNON.BULLET_SIZE, launchSpeed(bot.width), d, bot.width);
       if (score > best) { best = score; target = { id, angle: Math.atan2(dy, dx) }; }
     });
     state.blackHoles.forEach((hole, index) => {

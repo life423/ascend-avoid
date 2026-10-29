@@ -1,21 +1,25 @@
+import type { PracticeLesson } from '../../server/practice/definitions';
 import { Client, Room } from 'colyseus.js';
 import { EventBus } from '../core/EventBus';
 import { GameEvents } from '../constants/client-constants';
 import { GAME } from '../../server/constants/gameConstants';
 import { NAME_EVENT, playerName, setPlayerName } from '../core/PlayerName';
 
+export type OnlineSession = { kind: 'play' } | { kind: 'practice'; lesson: PracticeLesson; token: string; sequence?: boolean };
+
 export class MultiplayerManager {
+    private generation = 0;
+    private disposed = false;
+    private reconnectionToken = '';
     private client: Client | null = null;
     private room: Room | null = null;
     private eventBus: EventBus;
     private isConnecting: boolean = false;
-    private reconnectAttempts: number = 0;
-    private maxReconnectAttempts: number = 0; // MultiplayerMode handles reconnecting
     /** Round trip to the server in ms, measured every couple of seconds (0 until the first reply) */
     roundTripMs: number = 0;
     private pingTimer: ReturnType<typeof setInterval> | null = null;
 
-    constructor(eventBus: EventBus) {
+    constructor(eventBus: EventBus, readonly session: OnlineSession = { kind: 'play' }) {
         this.eventBus = eventBus;
     }
 
@@ -41,106 +45,42 @@ export class MultiplayerManager {
         }
     }
 
-    /**
-     * Create a promise that rejects after a timeout
-     */
-    private createTimeoutPromise(timeoutMs: number): Promise<never> {
-        return new Promise((_, reject) => {
-            setTimeout(() => reject(new Error(`Connection timeout after ${timeoutMs}ms`)), timeoutMs);
-        });
-    }
-
-    /**
-     * Attempt connection to the server
-     */
-    private async attemptConnection(wsUrl: string): Promise<void> {
-        // Create Colyseus client
-        this.client = new Client(wsUrl);
-        
-        // Everyone joins the same room; the server decides the arena size
-        this.room = await this.client.joinOrCreate(GAME.ROOM_NAME, {
-            name: this.getPlayerName(),
-        });
-        
-        console.log('✅ Successfully joined room:', this.room.id);
-    }
-
-    /**
-     * Connect to the game server with timeout
-     */
+    /** A late connection is left immediately, even after an exit or a timeout. */
     async connect(): Promise<boolean> {
-        if (this.isConnecting || this.room) {
-            console.warn('Already connected or connecting');
-            return false;
-        }
-
+        if (this.disposed || this.isConnecting) return false;
+        if (this.room) return this.isConnected();
         this.isConnecting = true;
-        const CONNECTION_TIMEOUT = 10000; // 10 seconds timeout
-        
+        const generation = ++this.generation;
+        let timeout: ReturnType<typeof setTimeout> | undefined;
         try {
-            const wsUrl = this.getWebSocketUrl();
-            console.log('🔌 Connecting to server:', wsUrl);
-            
-            // Create connection promise with timeout
-            const connectionPromise = this.attemptConnection(wsUrl);
-            const timeoutPromise = this.createTimeoutPromise(CONNECTION_TIMEOUT);
-            
-            // Race connection against timeout
-            await Promise.race([connectionPromise, timeoutPromise]);
-            
-            // Verify room was created successfully
-            if (!this.room) {
-                throw new Error('Room connection failed - no room instance created');
-            }
-            
-            // Set up room event handlers
+            const client = new Client(this.getWebSocketUrl());
+            this.client = client;
+            const join = this.session.kind === 'practice'
+                ? (this.reconnectionToken ? client.reconnect(this.reconnectionToken) : client.create('tutorial_room', { name: this.getPlayerName(), token: this.session.token, lesson: this.session.lesson, sequence: this.session.sequence }))
+                : client.joinOrCreate(GAME.ROOM_NAME, { name: this.getPlayerName() });
+            const accepted = join.then(room => {
+                if (generation !== this.generation || this.disposed) { void room.leave(); throw new Error('Obsolete connection'); }
+                return room;
+            });
+            const room = await Promise.race([accepted, new Promise<never>((_, reject) => {
+                timeout = setTimeout(() => reject(new Error('Connection timed out')), 10000);
+            })]);
+            if (generation !== this.generation || this.disposed) { void room.leave(); return false; }
+            this.room = room;
+            this.reconnectionToken = room.reconnectionToken;
             this.setupRoomHandlers();
-            
-            // Emit connection success
-            const room = this.room as any; // Type assertion for Colyseus room
-            this.eventBus.emit(GameEvents.MULTIPLAYER_CONNECTED, {
-                roomId: room.id,
-                sessionId: room.sessionId
-            });
-            
-            this.isConnecting = false;
-            this.reconnectAttempts = 0;
+            this.eventBus.emit(GameEvents.MULTIPLAYER_CONNECTED, { roomId: room.id, sessionId: room.sessionId });
             return true;
-            
         } catch (error) {
-            console.error('🚨 Connection failed:', error);
-            this.isConnecting = false;
-            
-            // Determine error type and message
-            let errorMessage = 'Connection failed';
-            let errorType = 'connection';
-            
-            if (error instanceof Error) {
-                if (error.message.includes('timeout')) {
-                    errorType = 'timeout';
-                    errorMessage = 'Connection timed out. Make sure the game server is running.';
-                } else if (error.message.includes('ECONNREFUSED')) {
-                    errorType = 'refused';
-                    errorMessage = 'Could not connect to game server. Please check if server is running on port 3000.';
-                } else {
-                    errorMessage = error.message;
-                }
-            }
-            
-            // Emit connection error with detailed info
-            this.eventBus.emit(GameEvents.MULTIPLAYER_ERROR, {
-                type: errorType,
-                message: errorMessage
-            });
-            
-            // Try to reconnect if not at max attempts
-            if (this.reconnectAttempts < this.maxReconnectAttempts) {
-                this.reconnectAttempts++;
-                console.log(`Reconnect attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
-                setTimeout(() => this.connect(), 2000 * this.reconnectAttempts);
-            }
-            
+            if (generation !== this.generation || this.disposed) return false;
+            this.generation++; // Invalidates a successful response arriving after the timeout.
+            // An expired private reconnection may create a new private lesson, never a live room.
+            this.reconnectionToken = '';
+            this.eventBus.emit(GameEvents.MULTIPLAYER_ERROR, { type: 'connection', message: error instanceof Error ? error.message : 'Connection failed' });
             return false;
+        } finally {
+            if (timeout) clearTimeout(timeout);
+            if (!this.disposed && (generation === this.generation || generation + 1 === this.generation)) this.isConnecting = false;
         }
     }
 
@@ -155,47 +95,53 @@ export class MultiplayerManager {
             return;
         }
 
-        console.log('🔧 Setting up room event handlers...');
+        const room = this.room;
+        const current = () => this.room === room && !this.disposed;
+        const onMessage = (type: string, handler: (data: any) => void) => room.onMessage(type, data => { if (current()) handler(data); });
 
         // Handle state changes
         this.room.onStateChange((state) => {
+            if (!current()) return;
             this.eventBus.emit(GameEvents.MULTIPLAYER_STATE_UPDATE, state);
         });
 
         // Handle messages from server
-        this.room.onMessage('playerJoined', (data) => {
+        onMessage('playerJoined', (data) => {
             console.log('Player joined:', data);
             this.eventBus.emit(GameEvents.PLAYER_JOINED, data);
         });
 
-        this.room.onMessage('playerLeft', (data) => {
+        onMessage('playerLeft', (data) => {
             console.log('Player left:', data);
             this.eventBus.emit(GameEvents.PLAYER_LEFT, data);
         });
 
-        this.room.onMessage('pong', (data: any) => {
+        onMessage('pong', (data: any) => {
             const sample = performance.now() - Number(data?.t);
             if (!(sample >= 0 && sample < 5000)) return;
             this.roundTripMs = this.roundTripMs === 0 ? sample : this.roundTripMs * 0.7 + sample * 0.3;
         });
         this.startPinging();
 
+        for (const type of ['capture', 'partCollected', 'weaponAssembled', 'weaponPlaced']) onMessage(type, () => {});
+
         // Moments worth showing everyone: who shoved whom off the edge, who took the jackpot
-        this.room.onMessage('combatReward', (data) => this.eventBus.emit('multiplayer:combatReward', data));
-        this.room.onMessage('credit', (data) => this.eventBus.emit('multiplayer:credit', data));
-        this.room.onMessage('weaponTheft', (data) => this.eventBus.emit('multiplayer:weaponTheft', data));
-        this.room.onMessage('jackpot', (data) => this.eventBus.emit('multiplayer:jackpot', data));
-        this.room.onMessage('burst', (data) => this.eventBus.emit('multiplayer:burst', data));
-        this.room.onMessage('impact', (data) => this.eventBus.emit('multiplayer:impact', data));
-        this.room.onMessage('launch', (data) => this.eventBus.emit('multiplayer:launch', data));
-        this.room.onMessage('parry', (data) => this.eventBus.emit('multiplayer:parry', data));
-        this.room.onMessage('surge', (data) => this.eventBus.emit('multiplayer:surge', data));
-        this.room.onMessage('blast', (data) => this.eventBus.emit('multiplayer:blast', data));
-        this.room.onMessage('exhale', (data) => this.eventBus.emit('multiplayer:exhale', data));
+        onMessage('combatReward', (data) => this.eventBus.emit('multiplayer:combatReward', data));
+        onMessage('credit', (data) => this.eventBus.emit('multiplayer:credit', data));
+        onMessage('weaponTheft', (data) => this.eventBus.emit('multiplayer:weaponTheft', data));
+        onMessage('jackpot', (data) => this.eventBus.emit('multiplayer:jackpot', data));
+        onMessage('burst', (data) => this.eventBus.emit('multiplayer:burst', data));
+        onMessage('impact', (data) => this.eventBus.emit('multiplayer:impact', data));
+        onMessage('launch', (data) => this.eventBus.emit('multiplayer:launch', data));
+        onMessage('parry', (data) => this.eventBus.emit('multiplayer:parry', data));
+        onMessage('surge', (data) => this.eventBus.emit('multiplayer:surge', data));
+        onMessage('blast', (data) => this.eventBus.emit('multiplayer:blast', data));
+        onMessage('exhale', (data) => this.eventBus.emit('multiplayer:exhale', data));
 
 
         // Handle errors
         this.room.onError((code, message) => {
+            if (!current()) return;
             console.error('Room error:', code, message);
             this.eventBus.emit(GameEvents.MULTIPLAYER_ERROR, {
                 type: 'room',
@@ -206,7 +152,9 @@ export class MultiplayerManager {
 
         // Handle disconnect
         this.room.onLeave((code) => {
+            if (!current()) return;
             this.stopPinging();
+            this.room = null;
             console.log('Left room:', code);
             this.eventBus.emit(GameEvents.MULTIPLAYER_DISCONNECTED, { code });
             this.room = null;
@@ -235,6 +183,10 @@ export class MultiplayerManager {
             return;
         }
 
+        if (this.session.kind === 'practice') {
+            if (type === 'practice:lesson' && data?.lesson) { this.session.lesson = data.lesson; this.session.sequence = false; }
+            if (type === 'practice:start') { this.session.lesson = 'basics'; this.session.sequence = true; }
+        }
         this.room.send(type, data);
     }
 
@@ -295,11 +247,12 @@ export class MultiplayerManager {
     }
 
     disconnect(): void {
+        this.disposed = true; this.generation++;
         window.removeEventListener(NAME_EVENT, this.onNameChange);
         this.stopPinging();
         if (this.room) {
-            this.room.leave();
-            this.room = null;
+            const old = this.room; this.room = null;
+            void old.leave();
         }
         
         if (this.client) {
@@ -307,7 +260,7 @@ export class MultiplayerManager {
         }
         
         this.isConnecting = false;
-        this.reconnectAttempts = 0;
+        this.reconnectionToken = '';
     }
 
     /**

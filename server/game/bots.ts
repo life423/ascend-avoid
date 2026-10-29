@@ -3,7 +3,9 @@ import { hop, moveSpeed } from "./movement.js";
 import { BotCannonAim } from './botAim.js';
 import { BotGustDefense } from './botDefense.js';
 import { BotWeaponPlan } from './botWeapons.js';
-import { botPreyAvailable, botRobber } from './botTargets.js';
+import { botPreyAvailable, botSuctionThreat } from './botTargets.js';
+import { injuryVulnerable } from '../systems/inhale.js';
+import { canCatch } from './cannon.js';
 import type { Box, Direction } from "./movement.js";
 import type { GameState } from "../schema/GameState.js";
 import type { PlayerSchema } from "../schema/PlayerSchema.js";
@@ -104,8 +106,13 @@ export class BotBrain {
   think(bot: PlayerSchema, world: GameState, now: number): Direction | null {
     if (now < this.nextThinkAt) return null;
     this.nextThinkAt = now + this.thinkMs * (0.8 + Math.random() * 0.4);
-    if (bot.state !== PLAYER_STATE.ALIVE || bot.sliding || bot.recovering) return null;
-    this.spreadOut(bot, world, now);
+    if (bot.state !== PLAYER_STATE.ALIVE) return null;
+    if (bot.sliding || bot.recovering) {
+      if (bot.breathingBlocked) this.weaponPlan.goal(world, bot, now);
+      return null;
+    }
+    if (botSuctionThreat(world, bot, now)) this.disperseUntil = 0;
+    else this.spreadOut(bot, world, now);
     if (!this.isDisengaging(now) && Math.random() < this.mistakeChance) {
       // A careless hop (misjudging traffic), though never straight over the edge
       const careless = MOVES[Math.floor(Math.random() * MOVES.length)];
@@ -154,10 +161,23 @@ export class BotBrain {
     if (this.isDisengaging(now)) return this.disperseGoal;
     // A new floor is coming: get onto it
     if (world.shiftsOn && world.shiftPhase !== "normal" && !world.isFloorAt(cx, cy)) return world.nearestFloorPoint(cx, cy);
+    // Escape an actual suction cone sideways before generic size-based retreat can lock us in it.
+    const robber = botSuctionThreat(world, bot, now);
+    if (robber) {
+      const rx = robber.x + robber.width / 2;
+      const ry = robber.y + robber.height / 2;
+      const fx = Math.cos(robber.facing);
+      const fy = Math.sin(robber.facing);
+      const side = Math.sign((cx - rx) * -fy + (cy - ry) * fx) || 1;
+      // Cross the cone while gaining clearance, rather than steering back toward the mouth.
+      const distance = Math.hypot(cx - rx, cy - ry) || 1;
+      return { x: cx - fy * side * 220 + (cx - rx) / distance * 220,
+        y: cy + fx * side * 220 + (cy - ry) / distance * 220 };
+    }
     // Something big enough to capture it close by: get away (smaller, it's faster).
     const threat = { x: 0, y: 0, distance: BOTS.FLEE_RANGE };
     world.players.forEach((other) => {
-      if (other === bot || other.state !== PLAYER_STATE.ALIVE || other.width < bot.width * BOTS.FLEE_RATIO) return;
+      if (other === bot || other.state !== PLAYER_STATE.ALIVE || !canCatch(other.width, bot.width) || injuryVulnerable(world, other, now)) return;
       const ox = other.x + other.width / 2;
       const oy = other.y + other.height / 2;
       const distance = Math.hypot(ox - cx, oy - cy) - other.width / 2;
@@ -172,23 +192,23 @@ export class BotBrain {
       if (distance < TURBINE.DANGER_REACH + 160 && distance < threat.distance) Object.assign(threat, { x: mx, y: my, distance });
     });
     if (threat.distance < BOTS.FLEE_RANGE) return { x: cx + (cx - threat.x) * 3, y: cy + (cy - threat.y) * 3 };
-    // Injury makes even a smaller healthy attacker dangerous. Leave the cone rather than trade breath.
-    const robber = botRobber(world, bot, now);
-    if (robber) {
-      const rx = robber.x + robber.width / 2;
-      const ry = robber.y + robber.height / 2;
-      const fx = Math.cos(robber.facing);
-      const fy = Math.sin(robber.facing);
-      const side = Math.sign((cx - rx) * -fy + (cy - ry) * fx) || 1;
-      return { x: cx - fy * side * 220 - fx * 60, y: cy + fx * side * 220 - fy * 60 };
-    }
     // Low on gems (or just reckless): go for the jackpot
     if (world.jackpotOn && (bot.gems < 20 || this.reckless)) return { x: world.jackpotX, y: world.jackpotY };
+    if (bot.gulping) {
+      const target = world.players.get(this.cannonAim.targetId ?? '');
+      if (target && target.state === PLAYER_STATE.ALIVE && !target.capturedBy && !target.flying && !target.spawnProtected) {
+        const dx = target.x + target.width / 2 - cx, dy = target.y + target.height / 2 - cy, d = Math.hypot(dx, dy);
+        const standOff = Math.max((bot.width + target.width) / 2 + 80, BOTS.FIRE_RANGE * .55);
+        // Hold a usable firing distance instead of chasing unrelated ammunition with a full mouth.
+        return d <= standOff ? { x: cx, y: cy } : { x: cx + dx * (d - standOff) / d, y: cy + dy * (d - standOff) / d };
+      }
+      return { x: cx, y: cy };
+    }
     const weapon = this.weaponPlan.goal(world, bot, now);
-    if (weapon) return weapon;
     // Someone to rob or catch: go after them (the bot inhales once they are in reach). One it can't catch that
     // is facing it could inhale back, so it goes round to its side and back first
-    const victim = this.huntTarget(bot, world, now);
+    const victim = this.huntTarget(bot, world, now, Boolean(weapon));
+    if (weapon && !victim) return weapon;
     this.victim = victim;
     if (victim) {
       const vx = victim.x + victim.width / 2;
@@ -198,7 +218,7 @@ export class BotBrain {
       const fy = Math.sin(victim.facing);
       const d = Math.hypot(cx - vx, cy - vy) || 1;
       const facingMe = ((cx - vx) * fx + (cy - vy) * fy) / d > 0.5;
-      if (facingMe && !catchable) {
+      if (facingMe && !catchable && !injuryVulnerable(world, victim, now)) {
         const side = Math.sign((cx - vx) * -fy + (cy - vy) * fx) || 1;
         return { x: vx - fy * side * (victim.width + 90) - fx * victim.width * 0.6, y: vy + fx * side * (victim.width + 90) - fy * victim.width * 0.6 };
       }
@@ -252,7 +272,7 @@ export class BotBrain {
    * one. Never one big enough to capture the bot. Bolder bots hunt farther. A chase that hasn't closed
    * in HUNT_GIVE_UP_MS is dropped and that creature left alone for SHUN_MS (it was faster).
    */
-  private huntTarget(bot: PlayerSchema, world: GameState, now: number): PlayerSchema | null {
+  private huntTarget(bot: PlayerSchema, world: GameState, now: number, injuredOnly = false): PlayerSchema | null {
     const cx = bot.x + bot.width / 2;
     const cy = bot.y + bot.height / 2;
     const leader = world.leader();
@@ -265,7 +285,7 @@ export class BotBrain {
     let bestAppeal = 0;
     world.players.forEach((other) => {
       if (!botPreyAvailable(world, bot, other, now)) return;
-      if (other.width >= bot.width * INHALE.EAT_RATIO) return;
+      if (injuredOnly && !injuryVulnerable(world, other, now)) return;
       if ((this.shunned.get(other.sessionId) ?? 0) > now) return;
       const distance = Math.hypot(other.x + other.width / 2 - cx, other.y + other.height / 2 - cy) - other.width / 2;
       if (distance > range) return;

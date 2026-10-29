@@ -9,6 +9,14 @@ import { dirname, resolve } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = dirname(__filename);
 
+// Browser-only boundaries for the installed client's Node transport/storage probes.
+// Server and Node test clients retain the unmodified Colyseus package.
+function browserColyseus(source, importer = '') {
+  if (!importer.replace(/\\/g, '/').includes('/node_modules/colyseus.js/lib/')) return;
+  if (/(?:^|\/)WebSocketTransport(?:\.js)?$/.test(source)) return resolve(__dirname, 'src/network/BrowserWebSocketTransport.ts');
+  if (/(?:^|\/)Storage(?:\.js)?$/.test(source)) return resolve(__dirname, 'src/network/BrowserStorage.ts');
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
 
@@ -16,6 +24,7 @@ export default defineConfig(({ mode }) => {
     root: 'src',
     publicDir: '../public',
     plugins: [
+      { name: 'colyseus-browser-boundaries', enforce: 'pre', resolveId(source, importer) { return browserColyseus(source, importer); } },
       legacy({ targets: ['defaults', 'not IE 11'] }),
       checker({ typescript: true }),
       nodePolyfills({
@@ -34,7 +43,15 @@ export default defineConfig(({ mode }) => {
       ),
     },
     optimizeDeps: {
-      esbuildOptions: { define: { global: 'globalThis' } },
+      esbuildOptions: {
+        define: { global: 'globalThis' },
+        plugins: [{ name: 'colyseus-browser-boundaries', setup(build) {
+          build.onResolve({ filter: /(?:Storage|WebSocketTransport)(?:\.js)?$/ }, args => {
+            const path = browserColyseus(args.path, args.importer);
+            return path ? { path } : undefined;
+          });
+        } }],
+      },
       include: ['buffer', 'process'],
     },
     resolve: {

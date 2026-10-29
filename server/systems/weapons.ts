@@ -54,6 +54,7 @@ function claimPart(state: GameState, w: PinwheelSchema, part: WeaponPartSchema, 
   const bit = 1 << part.kind;
   if (w.owner === player.sessionId && !(w.progress & bit)) {
     w.progress |= bit;
+    state.onEvent?.("partCollected", { byId: player.sessionId, kind: part.kind });
     w.claimUntil = state.time + PINWHEEL.CLAIM_MS;
   }
 }
@@ -81,6 +82,7 @@ export function deployWeapon(state: GameState, player: PlayerSchema): boolean {
   w.y = Math.max(56, Math.min(state.worldHeight - 56, player.y + player.height / 2 + Math.sin(player.facing) * radius));
   w.phase = 'charging'; w.at = state.time + (w.kind === 'pulsar' ? SHOCKWAVE.CHARGE_MS : PINWHEEL.CHARGE_MS); w.angle = player.facing;
   w.originX = w.x; w.originY = w.y;
+  state.onEvent?.("weaponPlaced", { byId: player.sessionId, kind: w.kind });
   return true;
 }
 
@@ -182,6 +184,7 @@ function updateWeapon(state: GameState, w: PinwheelSchema, dt: number, now: numb
         w.progress = 7; w.parts.clear(); w.phase = 'carried';
         w.at = 0; w.claimUntil = state.time + PINWHEEL.CLAIM_MS;
         w.angle = state.players.get(w.owner)?.facing ?? 0;
+        state.onEvent?.("weaponAssembled", { byId: w.owner, kind: w.kind });
       }
     }
     if (w.phase === 'parts' && state.time >= w.at) retireWeapon(state, w);

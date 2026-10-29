@@ -5,7 +5,7 @@ import { moveSpeed } from "../game/movement.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 
 import { CANNON, EXHALE } from "../constants/gameConstants.js";
-import { canCatch, launchSpeed, captureHoldMs, shooterMassContribution } from "../game/cannon.js";
+import { canCatch, launchSpeed, captureHoldMs, shooterMassContribution, captureGrowthTransfer } from "../game/cannon.js";
 
 const { PLAYER_STATE, INHALE, LATCH } = GAME_CONSTANTS;
 import { sprayGems } from "./gems.js";
@@ -32,7 +32,7 @@ export function finishWithReward(state: GameState, target: PlayerSchema, byId: s
     if (how === 'mouth') { recipient.stolenTotal += earned; target.robbedTotal += earned; }
   } else if (gems > 0) sprayGems(state, x, y, gems, now, target.sessionId);
   state.onEvent?.('combatReward', { eventId: `${target.sessionId}:${state.nextCombatRewardId++}`, byId, targetId: target.sessionId,
-    how, gems, earned, x, y, size, facing, ...(core ? { holeX: core.x, holeY: core.y } : {}) });
+    how, gems, earned, x, y, size, facing, playerIndex: target.playerIndex, ...(core ? { holeX: core.x, holeY: core.y } : {}) });
   return earned;
 }
 
@@ -186,7 +186,7 @@ export function updateInhales(state: GameState, now: number, deltaTime: number) 
       eater.captureNeedsRelease = true;
       caught.capturedBy = eater.sessionId;
       state.clearTheftFor(caught.sessionId); state.clearTheftFor(eater.sessionId);
-      const amount = Math.min(caught.gems, Math.floor(caught.gems * CANNON.CAPTIVE_GEM_SHARE));
+      const amount = captureGrowthTransfer(caught.gems, state.worldWidth, state.worldHeight);
       caught.setGems(caught.gems - amount, state.worldWidth, state.worldHeight);
       eater.setGems(eater.gems + amount, state.worldWidth, state.worldHeight);
       eater.stolenTotal += amount; caught.robbedTotal += amount;
@@ -197,6 +197,7 @@ export function updateInhales(state: GameState, now: number, deltaTime: number) 
       eater.stealShares.delete(caught.sessionId);
       if (eater.stealingFrom === caught.sessionId) endTheft(state, eater, now);
       eater.stopInhale(now);
+      state.onEvent?.("capture", { byId: eater.sessionId, targetId: caught.sessionId });
     }
     // A mouth holding a captive drains nobody (the capture decides what happens to it); an empty one robs
     if (eater.gulping) {
@@ -540,17 +541,22 @@ export function fireCaptive(state: GameState, eater: PlayerSchema, now: number):
     return false;
   }
   if (eater.captureNeedsRelease) return false;
+  if (eater.stunned && eater.holdThroughStun) return false;
   eater.dropProtection();
   eater.gulping = "";
   if (eater.state === PLAYER_STATE.ALIVE && !eater.stunned && !eater.capturedBy && !eater.flying && captive.state === PLAYER_STATE.ALIVE) {
     const angle = eater.facing;
-    const power = shooterMassContribution(eater.width, captive.width);
-    const speed = launchSpeed(eater.width, captive.width);
+    const power = shooterMassContribution(eater.width, CANNON.BULLET_SIZE);
+    const speed = launchSpeed(eater.width);
     // Set clear of the captor's body first, along the shot, so the flight never starts with the two overlapping
-    const clearance = eater.width / 2 + captive.width / 2 + CANNON.LAUNCH_CLEARANCE;
-    captive.placeAt(eater.x + eater.width / 2 + Math.cos(angle) * clearance - captive.width / 2, eater.y + eater.height / 2 + Math.sin(angle) * clearance - captive.height / 2);
     captive.launch(now, Math.cos(angle) * speed, Math.sin(angle) * speed, eater.sessionId, CANNON.FLIGHT_MS);
-    captive.shotMassBonus = power;
+    const clearance = eater.width / 2 + CANNON.BULLET_SIZE / 2 + CANNON.LAUNCH_CLEARANCE;
+    const margin = GAME_CONSTANTS.ARENA_RULES.EDGE_MARGIN;
+    const x = eater.x + eater.width / 2 + Math.cos(angle) * clearance - CANNON.BULLET_SIZE / 2;
+    const y = eater.y + eater.height / 2 + Math.sin(angle) * clearance - CANNON.BULLET_SIZE / 2;
+    captive.placeAt(Math.max(margin, Math.min(state.worldWidth - CANNON.BULLET_SIZE - margin, x)),
+      Math.max(margin, Math.min(state.worldHeight - CANNON.BULLET_SIZE - margin, y)));
+    captive.shotMassBonus = power; captive.shotShooterWidth = eater.width;
     state.onEvent?.("launch", { byId: eater.sessionId, id: captive.sessionId, x: captive.x, y: captive.y });
   } else {
     free(state, captive, Math.cos(eater.facing), Math.sin(eater.facing), now);
@@ -567,7 +573,7 @@ export function updateHolds(state: GameState, now: number, _deltaTime = 0): void
       captor.gulping = ""; captor.captureNeedsRelease = false; return;
     }
     const fx = Math.cos(captor.facing), fy = Math.sin(captor.facing);
-    if (captor.state !== PLAYER_STATE.ALIVE || captor.stunned || captor.capturedBy || captor.flying || state.time >= captor.gulpEndsAt) {
+    if (captor.state !== PLAYER_STATE.ALIVE || (captor.stunned && !captor.holdThroughStun) || captor.capturedBy || captor.flying || state.time >= captor.gulpEndsAt) {
       captor.gulping = ""; captor.captureNeedsRelease = false;
       free(state, captive, fx, fy, now); return;
     }
@@ -584,7 +590,7 @@ export function updateHolds(state: GameState, now: number, _deltaTime = 0): void
 export function clearCapture(state: GameState, id: string, now: number): void {
   const player = state.players.get(id);
   if (!player) return;
-  player.shotMassBonus = 0;
+  player.shotMassBonus = 0; player.shotShooterWidth = 0;
   const captive = state.players.get(player.gulping);
   if (captive) free(state, captive, Math.cos(player.facing), Math.sin(player.facing), now);
   const captor = state.players.get(player.capturedBy);

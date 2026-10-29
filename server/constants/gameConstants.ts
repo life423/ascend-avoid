@@ -160,7 +160,6 @@ export const BOTS = {
   MAX_AGGRESSION: 0.35, // how keen the keenest bot is to shove whoever is next to it
   HUNT_RANGE: 700, // bots go after creatures they can rob or capture within about this far (more for bolder bots)...
   GEM_SIGHT: 1000, // bots go for gems within this distance...
-  FLEE_RATIO: 1.5, // bots run from anyone this many times their size who comes within FLEE_RANGE
   FLEE_RANGE: 420, // (a giant's inhale reaches about 400)
   CROWD_SPACE: 220,
   CROWD_PENALTY: 110,
@@ -172,7 +171,6 @@ export const BOTS = {
   SPILL_CROWD_RANGE: 260,
   HUNT_GIVE_UP_MS: 6000, // a chase that hasn't closed to inhale reach in this long is dropped...
   SHUN_MS: 5000, // ...and that creature left alone for this long
-  FIGHT_BACK_RATIO: 1.1, // theft targets less than this much smaller are approached from behind, avoiding a frontal clash
   MAX_ROBBERS: 2, // including this bot: at most two attackers per victim
   FIRE_RANGE: 1100, // holding someone, a bot looks for another creature within this far to fire them at...
   FIRE_MIN_CAPTURE_MS: 1400, // AI planning only: never immediately fire a newly caught captive
@@ -414,7 +412,7 @@ export const CANNON = {
   HOLD_MIN_MS: 5000,
   HOLD_DOUBLE_MS: 8000,
   HOLD_MAX_MS: 12000,
-  CAPTIVE_GEM_SHARE: 0.30, // proposed initial playtest share; one transfer on capture
+  BULLET_SIZE: 60, // fixed player-missile diameter; capture transfers only growth above this body size
   BREAK_PUSH: 70, // ...pushed this far clear
   ESCAPE_SAFE_MS: 4000, // a full four seconds to move clear after escape/release; damage still applies
   LAND_SAFE_MS: 4000, // same four-second suction/capture recovery after a surviving flight
@@ -432,15 +430,19 @@ export const CANNON = {
   IMPACT_SPEED_REF: 1250,
   SHOOTER_MASS_WEIGHT: 0.10, // provisional geometric-mean contribution, snapshotted at firing
   SHOOTER_MASS_CAP: 0.75, // never add more than this fraction of ammunition physical mass
-  IMPACT_MASS_PIVOT: 2.4, // the percentage component costs 25% at equal physical mass, before bounded impact energy
-  IMPACT_BASE_GEMS: 80, // bounded impact energy matters to small/midgame targets; tiny-to-giant hits remain chips
+  IMPACT_MASS_PIVOT: 1.2, // stronger substantial player missiles; tiny relative mass still has strong resistance
+  IMPACT_BASE_GEMS: 100, // bounded contact energy makes small/midgame hits more decisive
+  TURBINE_IMPACT_MASS_PIVOT: 2.4, // turbine transport retains its existing damage profile
+  TURBINE_IMPACT_BASE_GEMS: 80,
   IMPACT_MAX_SHARE: 0.85, // ceiling, never a floor; tiny shots cannot erase most of a giant's progress
-  LETHAL_ENERGY_RATIO: 1.5, // provisional: effective ammo/target mass × bounded squared speed
+  LETHAL_ENERGY_RATIO: 1.2, // effective ammo/target mass × bounded squared speed; substantial hits finish more often
+  SHATTER_SHOOTER_RATIO: 1.2, // any landed player-fired missile shatters when its launcher was at least 20% wider than the target
   IMPACT_KO_GEMS: 12, // heavily damaged targets below this mass are knocked out and return at a fresh spawn
   BURNUP_GEMS: 12, // a smaller player-fired missile also burns up at flight end if it misses
   MISSILE_WIDTH_KEEP: 0.1, // the missile player keeps one tenth of their width after impact, floored at newborn size
   IMPACT_IMMUNE_MS: 1200, // a creature just hit can't be hit by another flier for this long
   IMPACT_STUN_MS: 450, // the target is stunned this long...
+  IMPACT_SUCTION_SAFE_MS: 1500, // shared nonlethal-hit recovery: about a second of movement after the 450ms daze
   TARGET_SHOVE: 120, // ...and knocked up to this far along the hit (less the heavier it is than the flier)
   BOUNCE: 0.35, // the flier bounces back keeping this share of its speed; one damaging hit per launch
 } as const;
