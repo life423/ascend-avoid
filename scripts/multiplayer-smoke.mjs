@@ -170,7 +170,7 @@ scenario('healthy players are visibly pulled without injury or gem theft', async
   b.send('test:moveTo', { x, y: 1500 }); b.send('test:protect', { ms: 0 });
   await until(() => Math.abs(target().x - x) < 1 && !target().spawnProtected, 'target is ready');
   a.send('inhale');
-  await until(() => target().x < x - 90, 'healthy body is drawn toward the mouth within one second', 1400);
+  await until(() => target().x < x - 15, 'a resistant healthy peer still receives a visible replicated tug', 1400);
   assert.equal(target().gems, 100); assert.equal(target().robbedTotal, 0);
   assert.equal(target().injuredUntil, 0); assert.equal(target().capturedBy, '');
   a.send('cancel'); await sleep(150); const stopped = target().x;

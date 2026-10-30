@@ -284,12 +284,14 @@ export const INHALE = {
   ARC: 35, // degrees either side of where you face
   PULL_GEMS: 520, // units a second
   PULL_BOMBS: 420,
-  BODY_PULL: 360, // strong immediate body pull, before size, range, alignment and lock modifiers
+  BODY_PULL: 360, // base pull before size resistance, range, alignment and lock modifiers
   BODY_PULL_MAX: 3, // ...times your width over its (mass, with pull and resistance each growing as the square root of mass), up to this...
+  PEER_BODY_PULL: 0.25, // near-sized bodies strongly resist being dragged; does not change gem theft
+  BODY_PULL_FULL_RATIO: 2, // full bodily pull when the hunter is twice the prey's width
   BODY_STRAFE_ESCAPE: 0.5, // purposeful movement across the airflow can halve body pull; straight retreat remains harder
   PREY_PULL_CAP: 0.9, // ...but never more than this share of its own top speed: react early, or slip out of the cone sideways, and it can get away...
-  PREY_PULL_CLOSE: 1.6, // ...except in the close range of a mouth big enough to catch it, where the suction rises past its top speed, to this share at the mouth: running straight away from right in front of a bigger mouth, you're pulled in (sideways out of the cone still escapes)
-  EAT_RATIO: 1.3, // you can catch a creature 1.3 times narrower (about 1.7 times lighter)...
+  PREY_PULL_CLOSE: 1.6, // maximum inner pull for much smaller prey; reaching capture size alone grants no boost
+  EAT_RATIO: 1.3, // healthy capture needs a hunter at least 30% wider; pull strength ramps separately
   FINISH_MOUTH_REACH: 0.20, // front-shell contact for an injured finish
   CAPTURE_REACH: 0.35, // ...held this close to your mouth (times your width, plus its radius)...
   LOCK_MS: 650, // base time to full pull; larger inhalers still take longer to establish their airflow
@@ -298,7 +300,7 @@ export const INHALE = {
   DRAIN_START: 0.8, // injury theft starts at 80% pressure, then smoothly reaches full; no second long windup
   HOLD_DECAY: 6, // ...and out of the airflow, the time held drains away this many times faster than it built (2s is gone in a third of a second)
   CLOSE_RANGE: 0.25, // the share of the reach nearest the mouth where the pull gets much stronger...
-  CLOSE_BOOST: 1.5, // ...up to this much more on top: caught close to the mouth of someone bigger, you're probably done
+  CLOSE_BOOST: 1.5, // raw strength rises near the mouth; relative-size resistance still applies
   MAX_MS: 5000, // a full breath lasts this long while you inhale (time to build a lock and drag someone in)...
   REFILL_MS: 3000, // ...and refills from empty in this long, starting from wherever it is (a short puff costs a short wait)
   MIN_BREATH: 0.1, // you can start inhaling with at least this share of a breath

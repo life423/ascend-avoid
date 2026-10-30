@@ -7,7 +7,7 @@ const { execFileSync } = require('node:child_process');
 const { GameState } = require('../server/dist/schema/GameState.js');
 const { BotBrain } = require('../server/dist/game/bots.js');
 const { initializeWeaponSets } = require('../server/dist/systems/weapons.js');
-const { ARENA_RULES } = require('../server/dist/constants/gameConstants.js');
+const { ARENA_RULES, FACING, INHALE } = require('../server/dist/constants/gameConstants.js');
 const { moveSpeed } = require('../server/dist/game/movement.js');
 const seed = Number(process.argv[2] || 11);
 const seconds = Number(process.argv[3] || 600);
@@ -72,7 +72,7 @@ for (let tick = 1; tick <= seconds * 30; tick++) {
   if (nextLeader && nextLeader !== previousLeader) { leaderChanges++; previousLeader = nextLeader; }
   if (tick % 1800 === 0) samples.push({ seconds: tick / 30, topThree: ranked().slice(0, 3).map(p => ({ id: p.sessionId, gems: p.gems, width: p.width })), knockouts: counts.knockouts });
 }
-const report = { revision, movement: { exponent: ARENA_RULES.SPEED_FALLOFF, floor: ARENA_RULES.MIN_SPEED ?? null, speeds: [20, 100, 200, 400, 600, 900, 1200].map(width => ({ width, speed: moveSpeed(width) })) }, seed, seconds, scenario, counts, leaderChanges, rows: [...rows.values()].map(row => ({ ...row, leaderSeconds: Math.round(row.leaderSeconds), endGems: s.players.get(row.id).gems, endWidth: s.players.get(row.id).width })), samples, shots, impacts };
+const report = { revision, movement: { exponent: ARENA_RULES.SPEED_FALLOFF, floor: ARENA_RULES.MIN_SPEED ?? null, speeds: [20, 100, 200, 400, 600, 900, 1200].map(width => ({ width, speed: moveSpeed(width) })) }, rotation: { rate: FACING.TURN_RATE, falloff: FACING.TURN_FALLOFF, accelerationFalloff: FACING.ACCEL_FALLOFF, inhaleMultiplier: FACING.INHALE_TURN }, bodyPull: { peer: INHALE.PEER_BODY_PULL ?? 1, fullRatio: INHALE.BODY_PULL_FULL_RATIO ?? null }, seed, seconds, scenario, counts, leaderChanges, rows: [...rows.values()].map(row => ({ ...row, leaderSeconds: Math.round(row.leaderSeconds), endGems: s.players.get(row.id).gems, endWidth: s.players.get(row.id).width })), samples, shots, impacts };
 fs.mkdirSync(path.join('reports', 'movement'), { recursive: true });
 fs.writeFileSync(path.join('reports', 'movement', `${label}-${scenario}-${seed}.json`), JSON.stringify(report, null, 2));
 console.log(JSON.stringify({ seed, scenario, seconds, counts, leaderChanges, originalTopThree: report.rows.slice(0, 3), finalTopThree: samples.at(-1)?.topThree }, null, 2));

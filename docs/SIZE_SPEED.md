@@ -1,6 +1,6 @@
 # Size-based walking — October 30 local trial
 
-The user requested distinct maximum walking speeds for distinct physical sizes, with a real escape benefit after shrinking. They also want strong missile damage between similarly sized players, based on the shooter's and victim's visible widths, without making ammunition collection and repeated rival knockouts too easy. This trial implements movement only. The discussed 30–33% peer-hit damage remains a proposal; the fixed 60-unit bullets, capture transfer, injury, theft, shot speed and 20%-wider explosive finish retain their existing rules.
+The user requested distinct maximum walking speeds for distinct physical sizes, with a real escape benefit after shrinking. They also want strong missile damage between similarly sized players, based on the shooter's and victim's visible widths, without making ammunition collection and repeated rival knockouts too easy. This page records the walking-only trial at `5da6964`. The later [rotation and suction follow-up](SIZE_SUCTION.md) adds immediate rotation-limit enforcement and smoother size-dependent body resistance; its measurements are separate. The discussed 30–33% peer-hit damage remains a proposal; the fixed 60-unit bullets, capture transfer, injury, theft, shot speed and 20%-wider explosive finish retain their existing rules.
 
 This work is on `codex/smooth-size-movement`, based on released main `1873710`. It is a local trial, not a deployment or a claim of settled human balance.
 
@@ -26,7 +26,7 @@ Simply removing the floor while retaining the old square-root exponent would slo
 
 For an illustrative shrink from 600 to about 505 wide, maximum speed rises from 136.7 to 142.8. Actual unobstructed walking opens over 40 extra units in seven seconds, compared with no advantage on the previous plateau. This is a movement measurement; no new missile damage was applied, and it does not guarantee escape from suction, a boundary or a prepared shot.
 
-The browser's prediction and authoritative server both call `server/game/movement.ts::walk`. Humans and bots share that function. Suction speed caps and escape normalization, turbine intake, bot arrival estimates and camera threat framing already use the same `moveSpeed` helper. They follow the new curve together. Turning, acceleration, breath costs and bot reaction/aim errors are unchanged.
+The browser's prediction and authoritative server both call `server/game/movement.ts::walk`. Humans and bots share that function. Suction speed caps and escape normalization, turbine intake, bot arrival estimates and camera threat framing already use the same `moveSpeed` helper. They follow the new curve together. Turning, acceleration, breath costs and bot reaction/aim errors were unchanged in these walking-only measurements. The later rotation/suction follow-up is documented separately.
 
 ## Before/after observations
 

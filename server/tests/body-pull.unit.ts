@@ -23,7 +23,7 @@ function world(attackerGems = 100, targetGems = 100, reachShare = .5) {
   const early = x - b.x;
   for (let i = 9; i <= 30; i++) tick(i * 1000 / 30);
   const moved = x - b.x;
-  assert(early > 12 && moved > 50, 'a stationary healthy peer still visibly moves at the requested slower movement curve');
+  assert(early > 2 && moved > 10, 'a stationary healthy peer still feels a tug while retaining substantial body resistance');
   assert.equal(a.gems, 100); assert.equal(b.gems, 100);
   assert.equal(b.injuredUntil, 0); assert.equal(b.robbedTotal, 0, 'healthy bodily pull never grants gem theft');
   assert.equal(b.capturedBy, '', 'equal-size creatures cannot capture each other');

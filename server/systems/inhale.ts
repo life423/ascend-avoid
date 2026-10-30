@@ -1,6 +1,6 @@
 import type { GameState } from "../schema/GameState.js";
 import { PlayerSchema } from "../schema/PlayerSchema.js";
-import { airflowQuality, cleanAir, drainRamp, lethalShare, pressureBuildSeconds, scaleDrain } from "../game/airflow.js";
+import { airflowQuality, bodyPullScale, cleanAir, drainRamp, innerBodyPullBoost, lethalShare, pressureBuildSeconds, scaleDrain } from "../game/airflow.js";
 import { moveSpeed } from "../game/movement.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 
@@ -144,17 +144,18 @@ export function updateInhales(state: GameState, now: number, deltaTime: number) 
       const close = Math.max(0, 1 - gap / (reach * INHALE.CLOSE_RANGE));
       const lockPull = INHALE.LOCK_START + (1 - INHALE.LOCK_START) * lock * lock;
       const strength = INHALE.BODY_PULL * mass * near * (1 + INHALE.CLOSE_BOOST * close) * alignment * lockPull;
-      // It never outpaces the creature's own top speed (react early, or slip out of the cone, and you get
-      // away)... except close to a mouth big enough to catch it: there the suction rises past its top speed
-      // (PREY_PULL_CLOSE at the mouth), so running straight away doesn't save it; still only for what's in
-      // front, so slipping sideways out of the airflow does
+      // Early retreat can beat outer suction. The inner-zone boost grows smoothly with size advantage;
+      // crossing healthy capture eligibility alone grants no abrupt extra force.
       const speed = moveSpeed(prey.width);
       let pullSpeed = Math.min(strength, INHALE.PREY_PULL_CAP * near * speed);
-      if (close > 0 && canCatch(eater.width, prey.width)) {
+      if (close > 0) {
         const farCap = INHALE.PREY_PULL_CAP * near;
         const overpower = speed * (farCap + (INHALE.PREY_PULL_CLOSE - farCap) * Math.sqrt(close)) * alignment;
-        pullSpeed = Math.max(pullSpeed, overpower);
+        pullSpeed += Math.max(0, overpower - pullSpeed) * innerBodyPullBoost(eater.width, prey.width);
       }
+      // Apply after both caps: the inner zone must not erase a near-sized creature's resistance.
+      // Much smaller prey retain the full inner pull, even though they walk faster.
+      pullSpeed *= bodyPullScale(eater.width, prey.width);
       const velocity = prey.velocity();
       const intent = prey.stunned ? { x: 0, y: 0 } : prey.steerInput();
       const away = Math.min(1, Math.max(0, (velocity.x * (px - mouthX) + velocity.y * (py - mouthY)) / (d * speed), (intent.x * (px - mouthX) + intent.y * (py - mouthY)) / d));

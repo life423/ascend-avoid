@@ -1,5 +1,9 @@
 # Ascend Avoid
 
+## Size-dependent rotation and suction — October 30 local follow-up
+
+The user clarified that larger creatures should rotate more slowly, near-sized opponents should resist suction, and smaller players should use speed to avoid the strong zone while remaining vulnerable once caught there. Existing size-dependent turn rates are retained, with a fix preventing old faster spin from bypassing the current limit after growth or starting an inhale. The old full inner-pull jump at 1.3× width is removed: body resistance and the inner boost now rise smoothly with relative physical size, reaching full strength at 2× width. Healthy capture eligibility remains 1.3×. [SIZE_SUCTION.md](SIZE_SUCTION.md) records parameters, speed/position interactions, shared actor rules and before/after tests. This is a local trial; the proposed 33% peer damage is not implemented and nothing in this follow-up is deployed.
+
 ## Smooth size-based movement — October 30 local trial
 
 The user requested a smooth walking curve with distinct maximum speeds for distinct physical widths, so shrinking can help escape. The local trial replaces the old 130-unit/s plateau with a quarter-power curve: newborns retain 320 units/s, half-width prey gain about 19% speed, and the largest normal-world bodies retain about 114 units/s. Client prediction, server walking, bots and humans share the rule. [SIZE_SPEED.md](SIZE_SPEED.md) records exact values, before/after encounters, population results and limitations. It supersedes the older square-root/floor movement instruction. The user's stronger size-based peer-hit damage discussion remains separate; this trial does not implement the proposed 33% loss or claim that capture/reload balance is finished. It is not deployed.
