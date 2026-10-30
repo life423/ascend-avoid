@@ -2,6 +2,8 @@
 
 Approved and saved at the user's explicit request on October 25, 2026. This is the intended experience, not a claim that current balance achieves it. The user values becoming enormous, feeling almost untouchable and retaining that size for hours through good play. Frequent knockouts across the arena must coexist with rare, durable giants. Later explicit decisions take precedence.
 
+October 30 clarification: **“we want total knockouts. those are fun.”** Knockout frequency is a positive outcome when testing stronger peer damage and capture-to-fire timing. Do not optimize for universal survival or treat every quick finish as a failure. Keep the action rewarding while evaluating readable setup, shared rules and human/touch feel. [CAPTURE_FIRE_DELAY_STUDY.md](CAPTURE_FIRE_DELAY_STUDY.md) records the current default-off one-second playtest candidate and separate body/flight KO totals; it does not certify human fun or change the published game.
+
 October 26 clarification: injury must be a serious knockout threat even for a large player. The current local pass uses a fixed seven-second window without extensions and much faster theft; a giant that fails to escape sustained suction can die and respawn. This supersedes the older five-second/slow-theft recommendations below. Keep the joystick and make mobile escape directions forgiving; do not replace it with buttons. See GAME_DESIGN.md and BALANCE_VALIDATION.md for implemented rules and controlled measurements.
 
 1. **Start small and gather.** Crystals provide steady progress. You’re quick, vulnerable and watching for danger. Fans give you an escape route and a chance to make a risky attack.

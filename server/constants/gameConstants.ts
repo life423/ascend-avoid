@@ -438,6 +438,7 @@ export const CANNON = {
   TURBINE_IMPACT_BASE_GEMS: 80,
   IMPACT_MAX_SHARE: 0.85, // ceiling, never a floor; tiny shots cannot erase most of a giant's progress
   PEER_HIT_SHARE: 0, // headless trial only: 0 keeps current damage; studies compare 0.33 at equal widths
+  CAPTURE_FIRE_DELAY_MS: 0, // headless trial: shared minimum from capture to firing; normal games unchanged
   LETHAL_ENERGY_RATIO: 1.2, // effective ammo/target mass × bounded squared speed; substantial hits finish more often
   SHATTER_SHOOTER_RATIO: 1.2, // any landed player-fired missile shatters when its launcher was at least 20% wider than the target
   IMPACT_KO_GEMS: 12, // heavily damaged targets below this mass are knocked out and return at a fresh spawn

@@ -14,11 +14,14 @@ const seconds = Number(process.argv[3] || 600);
 const scenario = process.argv[4] || 'mature';
 const label = process.argv[5] || 'size-speed';
 const peerShare = Number(process.argv[6]?.replace(/^--peer-share=/, '') || 0);
+const loadMs = Number(process.argv[7]?.replace(/^--load-ms=/, '') || 0);
 assert(Number.isInteger(seed) && Number.isInteger(seconds) && seconds > 0 && seconds <= 3600);
 assert(['mature', 'fresh'].includes(scenario));
 assert(/^[a-zA-Z0-9_-]+$/.test(label));
 assert([0, .33].includes(peerShare));
+assert(Number.isInteger(loadMs) && loadMs >= 0 && loadMs <= 2000);
 CANNON.PEER_HIT_SHARE = peerShare;
+CANNON.CAPTURE_FIRE_DELAY_MS = loadMs;
 const revision = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
 let rng = seed >>> 0, clock = 1000000000;
 Math.random = () => { rng = (Math.imul(rng, 1664525) + 1013904223) >>> 0; return rng / 4294967296; };
@@ -35,12 +38,15 @@ for (let i = 0; i < 20; i++) {
 const rows = new Map([...s.players].map(([id, p]) => [id, { id, startGems: p.gems, startWidth: p.width, minGems: p.gems, maxGems: p.gems, maxWidth: p.width, knockouts: 0, leaderSeconds: 0, missileHits: 0, missileDamage: 0, shotsAtLeader: 0, hitsOnLeader: 0, theftEvents: 0, theftGems: 0 }]));
 const counts = { captures: 0, launches: 0, impacts: 0, leaderImpacts: 0, runnerHitsLeader: 0, leaderKnockouts: 0, knockouts: 0, knockoutsAt500Width: 0, leaderShots: 0 };
 const ranked = () => [...s.players.values()].filter(p => p.state === 'alive' && !p.capturedBy).sort((a, b) => b.gems - a.gems);
+counts.bodyKnockouts=0;counts.flightKnockouts=0;
+const launchedThisTick=new Set();
 let ranking = ranked(), leaderId = ranking[0]?.sessionId, previousLeader = leaderId, leaderChanges = 0;
-const prev = new Map([...s.players].map(([id, p]) => [id, { state: p.state, width: p.width }]));
+const prev = new Map([...s.players].map(([id, p]) => [id, { state: p.state, width: p.width, flying:p.flying }]));
 const impacts = [], shots = [];
 s.onEvent = (type, d) => {
   if (type === 'capture') counts.captures++;
   if (type === 'launch') {
+    launchedThisTick.add(d.id);
     counts.launches++;
     const targetId = s.brains.get(d.byId)?.cannonAim.targetId;
     if (targetId === leaderId) { counts.leaderShots++; rows.get(d.byId).shotsAtLeader++; }
@@ -58,6 +64,7 @@ const samples = [];
 for (let tick = 1; tick <= seconds * 30; tick++) {
   clock = 1000000000 + tick * 1000 / 30;
   ranking = ranked(); leaderId = ranking[0]?.sessionId;
+  launchedThisTick.clear();
   s.update(1 / 30, clock);
   for (const [id, p] of s.players) {
     const row = rows.get(id), old = prev.get(id);
@@ -66,10 +73,12 @@ for (let tick = 1; tick <= seconds * 30; tick++) {
     if (id === leaderId) row.leaderSeconds += 1 / 30;
     if (old.state === 'alive' && p.state === 'dead') {
       row.knockouts++; counts.knockouts++;
+      if(old.flying||launchedThisTick.has(id))counts.flightKnockouts++;
+      else counts.bodyKnockouts++;
       if (old.width >= 500) counts.knockoutsAt500Width++;
       if (id === leaderId) counts.leaderKnockouts++;
     }
-    prev.set(id, { state: p.state, width: p.width });
+    prev.set(id, { state: p.state, width: p.width, flying:p.flying });
   }
   const nextLeader = ranked()[0]?.sessionId;
   if (nextLeader && nextLeader !== previousLeader) { leaderChanges++; previousLeader = nextLeader; }
@@ -78,5 +87,6 @@ for (let tick = 1; tick <= seconds * 30; tick++) {
 const report = { revision, movement: { exponent: ARENA_RULES.SPEED_FALLOFF, floor: ARENA_RULES.MIN_SPEED ?? null, speeds: [20, 100, 200, 400, 600, 900, 1200].map(width => ({ width, speed: moveSpeed(width) })) }, rotation: { rate: FACING.TURN_RATE, falloff: FACING.TURN_FALLOFF, accelerationFalloff: FACING.ACCEL_FALLOFF, inhaleMultiplier: FACING.INHALE_TURN }, bodyPull: { peer: INHALE.PEER_BODY_PULL ?? 1, fullRatio: INHALE.BODY_PULL_FULL_RATIO ?? null }, seed, seconds, scenario, counts, leaderChanges, rows: [...rows.values()].map(row => ({ ...row, leaderSeconds: Math.round(row.leaderSeconds), endGems: s.players.get(row.id).gems, endWidth: s.players.get(row.id).width })), samples, shots, impacts };
 fs.mkdirSync(path.join('reports', 'movement'), { recursive: true });
 report.damage={peerHitShare:peerShare, formula:peerShare?'round(targetGems * min(.85, peerHitShare * (shooterLaunchWidth / targetWidth)^2))':'unchanged mass/speed damage'};
+report.captureFireDelayMs=loadMs;
 fs.writeFileSync(path.join('reports', 'movement', `${label}-${scenario}-${seed}.json`), JSON.stringify(report, null, 2));
 console.log(JSON.stringify({ seed, scenario, seconds, counts, leaderChanges, originalTopThree: report.rows.slice(0, 3), finalTopThree: samples.at(-1)?.topThree }, null, 2));

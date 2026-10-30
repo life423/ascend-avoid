@@ -2,7 +2,7 @@
 
 The user requested testing roughly 33% damage between similarly sized players together with smooth walking, slower large-body rotation and gradual suction resistance. They specifically asked for different sizes/distances and for ammunition acquisition not to make defeating a peer too easy.
 
-**Decision: keep this candidate disabled.** A meaningful first hit works, but the current capture/reload loop can turn that opening into a very fast finish. This pass measures the problem; it does not declare the balance fun, enable new live damage, merge or deploy.
+**Original study decision: keep the candidate disabled pending the timing experiment.** The user subsequently clarified that total knockouts are fun; a fast finish is not automatically a failure. The [capture-to-fire follow-up](CAPTURE_FIRE_DELAY_STUDY.md) now recommends a default-off one-second playtest candidate while preserving measured knockout volume. The measurements below remain historical evidence and do not certify human fun or deploy new damage.
 
 ## Candidate and unchanged rules
 
@@ -14,7 +14,7 @@ damage = round(currentTargetGems * min(0.85, 0.33 * (shooterLaunchWidth / curren
 
 The ratio uses **physical widths**, including the shooter's immutable launch snapshot. At equal width the target loses about 33% of current gems, not 33% of diameter. Half-width shooters remove about 8.25%; 0.75× shooters 18.56%; 0.9× shooters 26.73%; 1.1× shooters 39.93%. The existing lethal checks are separate, including the user-approved **20%-wider-at-launch finish**. That finish overrides nonlethal percentage damage. Existing relative-energy lethality also remains; this experiment does not silently remove it.
 
-Fixed 60-unit living bullets, immediate excess-growth transfer on capture, nonlethal spills, five-second injury, blocked injured breathing, theft, existing impact/suction recovery, hold deadlines, decay and respawn protection remain. Fan transport keeps its existing damage. Both humans and bots use the same collision formula; bot opportunity evaluation uses the candidate too. The normal constant `CANNON.PEER_HIT_SHARE` is **0**, preserving old damage. Only isolated headless processes set it to 0.33; there is no client or running-server switch.
+Fixed 60-unit living bullets, immediate excess-growth transfer on capture, nonlethal spills, seven-second injury, blocked injured breathing, theft, existing impact/suction recovery, hold deadlines, decay and respawn protection remain. Fan transport keeps its existing damage. Both humans and bots use the same collision formula; bot opportunity evaluation uses the candidate too. The normal constant `CANNON.PEER_HIT_SHARE` is **0**, preserving old damage. Only isolated headless processes set it to 0.33; there is no client or running-server switch. The original prose said five-second injury; the simulations used the actual seven-second rule throughout.
 
 The movement/resistance baseline is the local work in `5da6964` / `cf774a7`, documented in [SIZE_SPEED.md](SIZE_SPEED.md) and [SIZE_SUCTION.md](SIZE_SUCTION.md). These balance changes remain separate from published main `1873710`.
 
@@ -53,13 +53,13 @@ For active ammo only 40 units away, prompt fire kills **64/135** retreaters and 
 
 ## Why the combination compounds
 
-The first hit reduces the defender's body, increasing both its escape speed and the attacker's relative size. At the tested widths, a 33% gem loss changes 100→83, 200→165, 400→334, 650→547.5 and 900→802.5 before recovery or further growth. Escape speed improves only about 3–5%; the injured player still cannot breathe during the five-second window. The 100/200 cases already put an unchanged shooter over the 20% finish threshold. A small pickup or a capture reward can do the same at other scales.
+The first hit reduces the defender's body, increasing both its escape speed and the attacker's relative size. At the tested widths, a 33% gem loss changes 100→83, 200→165, 400→334, 650→547.5 and 900→802.5 before recovery or further growth. Escape speed improves only about 3–5%; the injured player still cannot breathe during the seven-second window. The 100/200 cases already put an unchanged shooter over the 20% finish threshold. A small pickup or a capture reward can do the same at other scales.
 
 Loading also creates advantage **before any hit**: capturing the largest legal healthy prey grows a 200-wide hunter to 241.5 and a 400-wide hunter to 484. Those shooters can instantly finish their former equal on the next landed shot even with current damage. Largest prey are not always easy to catch, but excluding this growth from a damage test would hide a real interaction. All 15 pre/post capture cases are saved in [peer-loading-growth.json](../reports/combat/peer-loading-growth.json).
 
 Thus 33% cannot be judged as an isolated percentage. It combines with immediate loading growth, collected spills, injury theft, disabled defensive breath and the existing 20% rule. A second missile is often a finish rather than another 33% chip. Landing two shots is still required; this experiment does not say the opener always wins or that every fast kill is unavoidable.
 
-The next balance experiment should keep 33% as the damage candidate and measure a **shared capture-to-fire commitment** before choosing a release. Its duration and presentation are undecided, and no such rule is implemented here. Preserve immediate capture growth, the approved 20% finish and identical actor capabilities while evaluating that trade-off. Human playtests should specifically check close reloads, deliberate sidesteps, visual warning and injured escape on touch controls. This study is evidence to address the reload problem, not justification to ship it unchanged.
+The subsequent [shared capture-to-fire study](CAPTURE_FIRE_DELAY_STUDY.md) implements a default-off server gate and tests several timings with the same 33% candidate. Its one-second next-playtest recommendation preserves immediate capture growth, the approved 20% finish and identical actor capabilities, and treats knockout volume as a positive result following the user's clarification. Human playtests still need to assess readable setup, satisfying finishes, contextual readiness and touch response before enabling the candidate.
 
 ## Verification and reproduction
 

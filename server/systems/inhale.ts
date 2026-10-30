@@ -534,7 +534,7 @@ function free(state: GameState, captive: PlayerSchema, ax: number, ay: number, n
   captive.skid(ax, ay, push);
 }
 
-/** Immediate firing requires a new action after releasing the capture-causing input. */
+/** A new action after release fires once the shared capture-to-fire minimum has elapsed. */
 export function fireCaptive(state: GameState, eater: PlayerSchema, now: number): boolean {
   const captive = state.players.get(eater.gulping);
   if (!captive || captive.capturedBy !== eater.sessionId) {
@@ -543,9 +543,11 @@ export function fireCaptive(state: GameState, eater: PlayerSchema, now: number):
   }
   if (eater.captureNeedsRelease) return false;
   if (eater.stunned && eater.holdThroughStun) return false;
+  const canFire = eater.state === PLAYER_STATE.ALIVE && !eater.stunned && !eater.capturedBy && !eater.flying && captive.state === PLAYER_STATE.ALIVE;
+  if (canFire && now < eater.captureStartedAt + CANNON.CAPTURE_FIRE_DELAY_MS) return false;
   eater.dropProtection();
   eater.gulping = "";
-  if (eater.state === PLAYER_STATE.ALIVE && !eater.stunned && !eater.capturedBy && !eater.flying && captive.state === PLAYER_STATE.ALIVE) {
+  if (canFire) {
     const angle = eater.facing;
     const power = shooterMassContribution(eater.width, CANNON.BULLET_SIZE);
     const speed = launchSpeed(eater.width);

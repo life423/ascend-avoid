@@ -14,11 +14,17 @@ const options = Object.fromEntries(process.argv.slice(2).map(v => v.replace(/^--
 const share = Number(options.share || 0), mode = options.mode || 'duel', repeats = Number(options.repeats || 3);
 const defense = options.defense || 'bot';
 const firing = options.firing || 'bot';
+const loadMs = Number(options['load-ms'] || 0);
+const preparationMs = options['load-ms'] === undefined ? 0 : 3000;
+const ammoAngle = Number(options['ammo-angle'] || 90);
 assert([0, .33].includes(share)); assert(['duel', 'reload', 'acquire', 'loading'].includes(mode));
 assert(['bot','retreat','weave'].includes(defense));
 assert(['bot','prompt'].includes(firing));
+assert(Number.isInteger(loadMs) && loadMs >= 0 && loadMs <= 2000);
+assert([45,90,135].includes(ammoAngle));
 assert(Number.isInteger(repeats) && repeats > 0 && repeats <= 10);
 CANNON.PEER_HIT_SHARE = share;
+CANNON.CAPTURE_FIRE_DELAY_MS = loadMs;
 const label = options.label || `peer-${Math.round(share * 100)}-${mode}`;
 assert(/^[a-zA-Z0-9_-]+$/.test(label));
 const traceDir = path.join('.tmp','peer-damage-study',label); fs.mkdirSync(traceDir,{recursive:true});
@@ -66,6 +72,17 @@ function caseRun(spec, index) {
       return { ...spec,seed,sourceType:spec.source,before:beforeLoad,source:originalSource,after:{width:a.width,gems:a.gems},transferred:captureGrowthTransfer(originalSource.gems),instantFinishAgainstFormerPeer:a.width>=beforeLoad.width*CANNON.SHATTER_SHOOTER_RATIO };
     }
     if (openingAmmo) capture(openingAmmo);
+    if(openingAmmo && preparationMs){
+      // Preload the opening shot using a real hold. All candidates get the same preparation,
+      // so a longer firing delay cannot change ammo-source flight time or initial fighter size.
+      const initialStocks=[a,d,source].filter(Boolean).map(p=>[p,p.gems]);
+      const beganPreparation=clock;
+      for(let tick=1;tick<=90;tick++){
+        clock=beganPreparation+tick*1000/30;s.update(1/30,clock);
+      }
+      for(const [p,gems] of initialStocks)p.setGems(gems,4200,4200);
+      assert.equal(a.gulping,openingAmmo.sessionId);
+    }
     a.placeAt(900-a.width/2,2100-a.height/2); a.facing=0;
     if (d) { d.placeAt(900+(a.width+d.width)/2+spec.gap-d.width/2,2100-d.height/2);d.facing=Math.PI; }
     const start = { attackerWidth:a.width,attackerGems:a.gems,defenderWidth:d?.width,defenderGems:d?.gems,sourceWidth:source?.width,sourceGems:source?.gems };
@@ -79,8 +96,13 @@ function caseRun(spec, index) {
     let firstReload = null, firstFollowup = null, secondHit = null, outcome = 'survived';
     let releasedCapture = '', releasedAt = Infinity;
     let nextDecision = 0, nextBreath = clock+180, lastInhaling = false, nextAim = new BotCannonAim();
-    const events = [], counts={captures:0,launches:0,pairHits:0,counterHits:0,puffs:0};
+    const events = [], launchAgesMs=[], counts={captures:0,launches:0,pairHits:0,counterHits:0,puffs:0,earlyFireRejections:0};
     s.onEvent=(type,e)=>{
+      if(type==='launch'){
+        const owner=s.players.get(e.byId),age=clock-owner.captureStartedAt;
+        assert(age+1e-5>=loadMs,'all actors must obey the server capture-to-fire minimum');
+        if(e.byId===a.sessionId && began!==null)launchAgesMs.push(+age.toFixed(3));
+      }
       if(type==='impact'&&e.byId===a.sessionId&&e.targetId===d?.sessionId){
         if(began===null){began=clock;opening={...e,shooterWidth:openingAmmo.shotShooterWidth,targetGemsBefore:start.defenderGems,actualFraction:e.gems/start.defenderGems};}
         else secondHit??=(clock-began)/1000;
@@ -95,8 +117,9 @@ function caseRun(spec, index) {
     };
     if(openingAmmo)assert(fireCaptive(s,a,clock));
     let elapsed=0, minimumDefender=d?.gems, boundaryFrames=0;
+    const startedAt=clock;
     for(let tick=1;tick<=1050;tick++){
-      clock=1000000000+tick*1000/30;
+      clock=startedAt+tick*1000/30;
       if(began!==null&&mode!=='duel'&&clock>=nextDecision){
         nextDecision=clock+250;
         if(lastInhaling&&!a.inhaling)nextBreath=clock+500;
@@ -113,7 +136,7 @@ function caseRun(spec, index) {
           a.aimAt(Math.cos(shot.angle),Math.sin(shot.angle));
           const standOff=Math.max((a.width+d.width)/2+80,BOTS.FIRE_RANGE*.55);
           a.steer(distance>standOff?dx/distance:0,distance>standOff?dy/distance:0);
-          if(shot.ready)fireCaptive(s,a,clock);
+          if(shot.ready && !fireCaptive(s,a,clock) && clock<a.captureStartedAt+loadMs)counts.earlyFireRejections++;
         }else if(source&&source.state==='alive'&&!source.spawnProtected&&!source.capturedBy&&!source.flying){
           const ac=centre(a),bc=centre(source),dx=bc.x-ac.x,dy=bc.y-ac.y,distance=Math.hypot(dx,dy)||1;
           a.steer(dx/distance,dy/distance);
@@ -150,7 +173,7 @@ function caseRun(spec, index) {
     }
     if(mode!=='acquire')assert(opening,'each fight begins with an actual missile hit');
     const finish=events.filter(e=>e.targetId===d?.sessionId&&(e.type==='combatReward'||e.type==='credit'&&e.out)).at(-1);
-    const result={...spec,seed,share,defense,firing,start,opening,outcome,elapsed:+elapsed.toFixed(3),firstReload,firstFollowup,secondHit,counts,finish,
+    const result={...spec,seed,share,defense,firing,loadMs,start,opening,outcome,elapsed:+elapsed.toFixed(3),firstReload,firstFollowup,secondHit,counts,finish,launchAgesMs,
       end:{attackerGems:a.gems,attackerWidth:a.width,defenderGems:d?.gems,defenderWidth:d?.width,defenderInjured:d?.breathingBlocked},minimumDefender,boundarySeconds:+(boundaryFrames/30).toFixed(2),events};
     fs.writeFileSync(path.join(traceDir,`case-${index+1}.json`),JSON.stringify(result,null,2));
     delete result.events; return result;
@@ -161,7 +184,7 @@ if(mode==='duel')for(const width of widths)for(const ratio of [.5,.75,.9,1,1.1,1
   if(width/ratio>1200)continue;
   for(const gap of gaps)for(let r=0;r<repeats;r++)specs.push({width,ratio,gap,repeat:r});
 }
-if(mode==='reload')for(const width of widths)for(const gap of gaps)for(const ammoGap of [40,240,600])for(const source of ['tiny','half','largest'])for(const sourceBehavior of ['active','idle'])for(let r=0;r<repeats;r++)specs.push({width,ratio:1,gap,ammoGap,source,sourceBehavior,repeat:r});
+if(mode==='reload')for(const width of widths)for(const gap of gaps)for(const ammoGap of [40,240,600])for(const source of ['tiny','half','largest'])for(const sourceBehavior of ['active','idle'])for(let r=0;r<repeats;r++)specs.push({width,ratio:1,gap,ammoGap,source,sourceBehavior,repeat:r,...(options['ammo-angle']?{angle:ammoAngle*Math.PI/180}:{})});
 if(mode==='acquire')for(const width of widths)for(const ammoGap of [40,240,600])for(const angle of [0,Math.PI/2,Math.PI])for(const source of ['tiny','half','largest'])for(let r=0;r<repeats;r++)specs.push({width,ammoGap,angle,source,sourceBehavior:'active',repeat:r});
 if(mode==='loading')for(const width of widths)for(const source of ['tiny','half','largest'])specs.push({width,source});
 const results=specs.map(caseRun);
@@ -173,6 +196,9 @@ const summary={cases:results.length,openingHits:results.filter(r=>r.opening).len
 const report={mode,share,repeats,defense,method:'Normal 4200x4200 world, fixed 60-unit missiles, current walking/rotation/suction. No assembled weapons, hazards or ambient gems. All opening ammunition is actually captured and fired; defender starts empty. Opening hit is guaranteed to isolate follow-up risk, not estimate hit accuracy. Spent opening ammunition is removed only after its knockout, so it cannot become an idle reload dispenser. Additional ammo sources exist before launch and use ordinary bot brains, except explicitly labelled idle stress controls. Reload hunter decisions run at 250ms and shots use the ordinary fallible BotCannonAim. Retreat controls start 250ms after impact, use ordinary movement and avoid map edges; bot defense uses unchanged ordinary brains. Population, collision, shield, spill, theft and size rules are not bypassed.',summary,results};
 fs.mkdirSync(path.join('reports','combat'),{recursive:true});
 report.firing=firing;
+report.loadMs=loadMs;report.preparationMs=preparationMs;
+report.ammoAngleDegrees=ammoAngle;
+if(preparationMs)report.method+=' The opening bullet is held for three simulated seconds before all fighters are staged at the recorded starting sizes/positions; every delay, including zero, uses that same preparation. The shared server delay runs concurrently with movement and aiming. Early attempts are rejected without losing ammo; this study retries at its normal input cadence and does not implement queued fire.';
 if(defense==='weave')report.method+=' Weave defense alternates a diagonal outward/sideways input every 1.25s at the same 250ms decision cadence; it is an evasive input control, not a human playtest.';
 if(firing==='prompt')report.method=report.method.replace('and shots use the ordinary fallible BotCannonAim.', 'and prompt firing releases then waits for a fresh action and normal bounded rotation, without bot planning delays. Aim is exact at each decision; this stress control is not a claim about human skill.');
 if(mode==='loading')fs.writeFileSync(path.join('reports','combat',`${label}.json`),JSON.stringify(report,null,2));

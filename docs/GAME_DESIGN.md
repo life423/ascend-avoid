@@ -1,8 +1,12 @@
 # Ascend Avoid
 
+## Shared capture-to-fire timing — October 30 local study
+
+The user requested short delays with 33% damage and identical rules for bots/players, then clarified that **total knockouts are fun and should be preserved**. The default-off server gate now enforces the same minimum for both. [CAPTURE_FIRE_DELAY_STUDY.md](CAPTURE_FIRE_DELAY_STUDY.md) records 21,870 conditional fight runs, twelve staged population runs and six human-message network cases. One second is the next playtest candidate: population total KOs remain 260 and non-flight KOs 157, matching no delay. A lower death count is not the balance objective. The candidate still needs understandable contextual readiness feedback and human/touch feel testing before enabling it. Both experimental defaults remain zero; this study is not deployed. Actual injury remains seven seconds; the prior damage-study prose describing five seconds was incorrect.
+
 ## Peer missile damage — October 30 headless study
 
-The user requested testing about 33% equal-width missile damage with the new walking, rotation and suction, across sizes/distances and actual ammo acquisition. [PEER_DAMAGE_STUDY.md](PEER_DAMAGE_STUDY.md) records 7,668 fight executions, 405 ammo attempts, capture-growth cases and three staged population comparisons. The candidate uses physical shooter/target width to scale loss and preserves the 20%-wider finish. Close earned reloads can still finish a retreating peer in 1.83 seconds; sideways evasion helps without resolving this risk. The candidate is implemented **only as a disabled headless experiment** (`PEER_HIT_SHARE=0` in normal games), not enabled or deployed. Shared capture-to-fire commitment is a proposed next test, not a completed balance fix.
+The user requested testing about 33% equal-width missile damage with the new walking, rotation and suction, across sizes/distances and actual ammo acquisition. [PEER_DAMAGE_STUDY.md](PEER_DAMAGE_STUDY.md) records 7,668 fight executions, 405 ammo attempts, capture-growth cases and three staged population comparisons. The candidate uses physical shooter/target width to scale loss and preserves the 20%-wider finish. Close earned reloads can finish a retreating peer in 1.83 seconds. The later timing study above interprets that observation alongside the user's positive knockout objective; it is not automatically a failure. The damage candidate remains disabled in normal games (`PEER_HIT_SHARE=0`) and is not deployed.
 
 ## Size-dependent rotation and suction — October 30 local follow-up
 
