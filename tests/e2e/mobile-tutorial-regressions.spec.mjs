@@ -48,9 +48,13 @@ async function start(page, lesson) {
   await page.goto('/');
   await page.getByRole('button', { name: 'Play tutorial', exact: true }).tap();
   await page.waitForFunction(() => window.game?.currentGameMode?.multiplayerManager?.getState()?.practice?.sequence === true);
+  const previousAttempt = (await state(page)).attempt;
   await page.getByRole('button', { name: 'Choose any lesson', exact: true }).tap();
   await page.locator(`[data-lesson="${lesson}"]`).tap();
-  await page.waitForFunction(id => window.game?.currentGameMode?.multiplayerManager?.getState()?.practice?.lesson === id, lesson);
+  await page.waitForFunction(({ id, previousAttempt }) => {
+    const v = window.game?.currentGameMode?.multiplayerManager?.getState()?.practice;
+    return v?.lesson === id && !v.sequence && v.attempt > previousAttempt;
+  }, { id: lesson, previousAttempt });
   await expect(page.locator('.practice-instruction')).toBeVisible();
   await ready(page);
 }
