@@ -1,6 +1,12 @@
 # Ascend Avoid — ordered work and idea inventory
 
-Updated October 29, 2026. This is the durable list of the user's requests and decisions. Current code and later feedback override historical tuning. The approved injury-only theft change supersedes ordinary healthy-player stealing and the earlier theft-allowance suggestion. The fifteen archived balance options remain proposals unless separately accepted.
+Updated October 30, 2026. This is the durable list of the user's requests and decisions. Current code and later feedback override historical tuning. The approved injury-only theft change supersedes ordinary healthy-player stealing and the earlier theft-allowance suggestion. The fifteen archived balance options remain proposals unless separately accepted.
+
+## Size-based movement and credible rival damage — local trial
+
+The user requested distinct walking speeds for distinct physical sizes and meaningful escape advantages after shrinking. The local quarter-power movement trial removes the 130-unit/s plateau; [SIZE_SPEED.md](SIZE_SPEED.md) records the shared implementation, tests and measured trade-offs. It is not deployed. Healthy capture success stayed 169/315 in the controlled encounter sample, but three mature population runs produced more captures and launches, and no first-place knockout. Movement alone has not solved easy ammunition supply or leader survival.
+
+The user also wants substantial damage between similarly sized shooters and victims, based on physical widths, and suggested about 33% loss. They explicitly cautioned against making it easy for large players to collect ammunition and repeatedly eliminate similar-sized rivals. That damage remains a proposal. Evaluate actual escape, spill/reward snowballing, injury theft, capture/reload opportunities and the existing 20%-wider finish before combining the changes. Bots and humans keep identical rules.
 
 ## October 29 combat follow-up — verified and authorized for release
 
@@ -77,7 +83,7 @@ The user then reported that even a same-sized inhaler prevents escape. Implement
 15. **Weapon-piece theft from healthy carriers too.** The user explicitly clarified that injury is not required to pull a piece off another player. Use sustained close inhale, keep loose rival-reserved pieces protected, transfer ownership/guidance on successful theft, and preserve the one unfinished set per player rule. Healthy gem theft remains disabled.
 16. **Clean up the upper-right HUD stack.** Put the menu button, player count and minimap in one aligned dock, with a single frame and consistent spacing. Keep score/leaderboard in a separate aligned left column so narrow screens do not overlap.
 
-17. **Exact movement tuning.** The latest instruction sets SPEED_FALLOFF to 0.5 and retains MIN_SPEED at 130. Do not change any other balance values as part of this adjustment.
+17. **Historical movement tuning — superseded October 30.** The earlier exponent 0.5 and 130-unit/s floor are replaced in the local size-speed trial at the user's request. See [SIZE_SPEED.md](SIZE_SPEED.md) for current trial values and validation; production remains on its verified release until a later rollout.
 
 18. **Quiet incoming-cannonball warning.** Predict relative-velocity circle intersection within 0.5s for offscreen player-fired projectiles; show one stable edge arrow for the earliest impact, remove it for visible/invalid/passed threats. No sound, banners or balance changes. Test approaching shots, near misses, moving targets and disappearing threats.
 19. **Per-attacker sustained injury theft.** Base injury stays seven seconds without refresh. Only a valid authoritative stealing connection established before expiry may continue afterward, and only uninterrupted for that attacker. Range/aim/airflow/protection/state failure immediately revokes it; no late joining or reconnecting without a new injury. Preserve rates and truthful injury art; clear on capture, death, respawn and disconnect. This explicitly supersedes the earlier rule that all theft stops at base expiry.

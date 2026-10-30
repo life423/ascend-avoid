@@ -1,5 +1,9 @@
 # Ascend Avoid
 
+## Smooth size-based movement — October 30 local trial
+
+The user requested a smooth walking curve with distinct maximum speeds for distinct physical widths, so shrinking can help escape. The local trial replaces the old 130-unit/s plateau with a quarter-power curve: newborns retain 320 units/s, half-width prey gain about 19% speed, and the largest normal-world bodies retain about 114 units/s. Client prediction, server walking, bots and humans share the rule. [SIZE_SPEED.md](SIZE_SPEED.md) records exact values, before/after encounters, population results and limitations. It supersedes the older square-root/floor movement instruction. The user's stronger size-based peer-hit damage discussion remains separate; this trial does not implement the proposed 33% loss or claim that capture/reload balance is finished. It is not deployed.
+
 ## Mobile aim and finishing camera — October 30 release batch
 
 Following the live mobile tutorial review, a loaded player-fired captive now retains its deliberately chosen right-thumb aim between lifting and tapping FIRE, including while walking. A new aim gesture replaces it; a different captive, knockout, lesson reset or control reset clears it. Movement-only aiming remains available before a right-thumb aim is chosen. The finishing step now fits the learner and injured rival together, as the black-hole shot already does, while keeping the view inside the map. The user requested these two fixes and mobile tutorial retesting. The user approved committing, merging and deploying this batch after reviewing the local preview. It starts from deployed `9ebec92`; GitHub’s PR and production workflow identify the published revision. See [PRACTICE_TUTORIAL.md](PRACTICE_TUTORIAL.md#local-aim-and-camera-fixes-after-mobile-review) for verification. Other teaching/feedback proposals from the review remain pending.

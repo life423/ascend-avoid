@@ -292,9 +292,17 @@ test('trusted touch stick, inhale/release/fire, placement and parry complete all
   for (let i = 0; i < 60; i++) {
     const v = await read(page); if (v.phase === 'complete') break;
     if (v.phase === 'waiting' && !v.me.inhaling) { await release(2); await page.waitForTimeout(220); await action(); }
+    // Follow the lesson's instruction to move to the mouth, including after a real retry.
+    // Stopping once at a fixed 90-unit gap can leave the learner inhaling out of finish range.
+    if (v.phase === 'waiting' && v.target) {
+      const dx = v.target.x - v.me.x, dy = v.target.y - v.me.y, distance = Math.hypot(dx, dy);
+      if (distance > (v.me.width + v.target.width) / 2) await stick(dx / distance, dy / distance);
+      else if (points.has(1)) await release(1);
+    } else if (points.has(1)) await release(1);
     await page.waitForTimeout(150);
   }
   await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.phase === 'complete', {}, { timeout: 5000 }); await release(2);
+  if (points.has(1)) await release(1);
   await screenshot(page, 'touch-basics-complete.png');
   await pick('weapon');
   for (let i = 0; i < 3; i++) await approach(() => page.evaluate(() => { const m=window.game.currentGameMode.multiplayerManager,w=m.getState().pinwheel,p=w.parts.find(p=>p.carriedBy!==m.localSessionId);return p?{x:p.x,y:p.y}:null; }), 24);

@@ -625,8 +625,7 @@ export const ARENA_RULES = {
   HOP: 60, // one tap = one hop, while you're small...
   HOP_BEYOND_SIZE: 12, // ...and once you're big, your size plus this, so a hop always clears you
   MOVE_SPEED: 320, // top speed (units a second) for a newborn...
-  SPEED_FALLOFF: 0.5, // requested square-root speed falloff; retain the 130-unit floor
-  MIN_SPEED: 130,
+  SPEED_FALLOFF: 0.25, // half the width gives about 19% more walking speed; no flat minimum
   // Contact grip: creatures are soft bodies, not billiard balls
   CONTACT_SQUISH: 0.15, // touching creatures squish up to this share of the smaller one's width into each other before pushing back hard...
   SCALE_SHOVE_RATIO: 4, // something this many times wider moving into a creature pushes it aside instead of being stopped by it
