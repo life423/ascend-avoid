@@ -31,7 +31,7 @@ test('short Help fits, has reachable actions and keeps keyboard focus inside', a
   await expect(close).toBeFocused();
   const rect = await close.boundingBox(); expect(rect.width).toBeGreaterThanOrEqual(44); expect(rect.height).toBeGreaterThanOrEqual(44);
   await page.keyboard.press('Shift+Tab');
-  await expect(dialog.getByRole('button', { name: 'Practice / Tutorials', exact: true })).toBeFocused();
+  await expect(dialog.locator('button, input, a[href], [tabindex="0"]').last()).toBeFocused();
   await page.keyboard.press('Tab'); await expect(close).toBeFocused();
   const sound = dialog.getByRole('button', { name: 'Mute sound', exact: true });
   await sound.focus(); await page.keyboard.press('Space');

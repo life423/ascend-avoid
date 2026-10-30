@@ -1,6 +1,6 @@
 import { playerName, setPlayerName } from '../core/PlayerName';
 import { GAME_RULES } from './GameRules';
-import { sound } from '../core/Sound';
+import { sound, SOUND_EVENT } from '../core/Sound';
 import { mouseControlEnabled, setMouseControl } from '../core/MouseControl';
 
 /** Large screens: the drawer sizes itself to its content (see fitToScreen) */
@@ -8,8 +8,6 @@ const DESKTOP = '(min-width: 1200px)';
 const COLUMN_WIDTH = 320;
 const COLUMN_GAP = 32;
 const CONTENT_PADDING = 25;
-/** Text sizes to try, largest first */
-const TEXT_STEPS = [1, 0.94, 0.88, 0.82, 0.76, 0.7, 0.66, 0.62];
 const PLAY_URL = 'https://ascend.drewclark.io/';
 // Static QR: qrcode@1.5.4, error correction M, four-module quiet zone; encodes PLAY_URL.
 const PLAY_QR = new URL('../assets/play-qr.svg', import.meta.url).href;
@@ -20,6 +18,12 @@ export class DrawerUI {
     private overlay!: HTMLDivElement;
     private isOpen: boolean = false;
     private returnFocus: HTMLElement | null = null;
+    private syncSound = (): void => {
+        document.querySelectorAll<HTMLButtonElement>('[data-action="sound"]').forEach(button => {
+            button.textContent = `Sound ${sound.muted ? 'off' : 'on'}`;
+            button.setAttribute('aria-pressed', String(sound.muted));
+        });
+    };
     private activity = (event: Event): void => {
         const text = (event as CustomEvent<string>).detail;
         const list = this.drawer.querySelector('.activity-history');
@@ -41,6 +45,7 @@ export class DrawerUI {
         this.injectStyles();
         window.addEventListener('ascend:weapon-record', this.weaponRecord);
         window.addEventListener('ascend:activity', this.activity);
+        window.addEventListener(SOUND_EVENT, this.syncSound);
     }
 
     private createElements(): void {
@@ -49,9 +54,11 @@ export class DrawerUI {
         this.hamburgerBtn.className = 'hamburger-button';
         this.hamburgerBtn.setAttribute('aria-label', 'Toggle menu');
         this.hamburgerBtn.innerHTML = `
+            <span class="hamburger-glyph" aria-hidden="true">
             <span class="hamburger-line"></span>
             <span class="hamburger-line"></span>
             <span class="hamburger-line"></span>
+            </span><span class="hamburger-label">Menu</span>
         `;
 
         // Create overlay
@@ -72,6 +79,14 @@ export class DrawerUI {
                 <button type="button" class="drawer-close" aria-label="Close">&times;</button>
             </div>
             <div class="drawer-content">
+                <div class="menu-section menu-quick-actions">
+                    <button type="button" class="practice-open">Practice / Tutorials</button>
+                    <h3>Settings</h3>
+                    <div class="settings-controls">
+                        <button type="button" role="switch" class="mouse-preference" data-action="mouse" aria-label="Mouse control" aria-checked="${mouseControlEnabled()}">Mouse <span>${mouseControlEnabled() ? 'On' : 'Off'}</span></button>
+                        <button type="button" class="sound-toggle" data-action="sound" aria-label="Mute sound" aria-pressed="${sound.muted}">Sound ${sound.muted ? 'off' : 'on'}</button>
+                    </div>
+                </div>
                 <div class="menu-section name-section">
                     <h3>Your name</h3>
                     <form class="name-form" autocomplete="off">
@@ -102,12 +117,6 @@ export class DrawerUI {
                     <h3>Recent activity</h3>
                     <ol class="activity-history"></ol>
                 </div>
-                <div class="menu-section">
-                    <h3>Settings</h3>
-                    <button type="button" role="switch" class="mouse-preference" data-action="mouse" aria-label="Mouse control" aria-checked="${mouseControlEnabled()}">Mouse <span>${mouseControlEnabled() ? 'On' : 'Off'}</span></button>
-                    <button type="button" class="sound-toggle" aria-label="Mute sound" aria-pressed="${sound.muted}">Sound ${sound.muted ? 'off' : 'on'}</button>
-                    <button type="button" class="practice-open">Practice / Tutorials</button>
-                </div>
             </div>
         `;
 
@@ -120,11 +129,7 @@ export class DrawerUI {
     private attachEventListeners(): void {
         this.drawer.querySelector('.mouse-preference')?.addEventListener('click', () => setMouseControl(!mouseControlEnabled()));
         const soundButton = this.drawer.querySelector<HTMLButtonElement>('.sound-toggle');
-        soundButton?.addEventListener('click', () => {
-            sound.toggle();
-            soundButton.textContent = `Sound ${sound.muted ? 'off' : 'on'}`;
-            soundButton.setAttribute('aria-pressed', String(sound.muted));
-        });
+        soundButton?.addEventListener('click', () => sound.toggle());
         this.drawer.querySelector('.practice-open')?.addEventListener('click', () => {
             this.close();
             window.dispatchEvent(new Event('ascend:practice-open'));
@@ -495,39 +500,24 @@ export class DrawerUI {
         document.head.appendChild(style);
     }
 
-    /**
-     * On large screens the drawer opens just wide enough to show everything without scrolling:
-     * How to Play flows into columns, one more at a time, and the text only shrinks (a step at a
-     * time) if even nearly the screen's whole width isn't enough. Phones keep the narrow drawer.
-     */
+    /** Use columns on desktop, then scroll rather than shrinking text and interactive targets. */
     private fitToScreen(): void {
         const content = this.drawer.querySelector<HTMLElement>('.drawer-content');
         if (!content) return;
+        content.style.zoom = '';
         if (!window.matchMedia(DESKTOP).matches) {
             this.drawer.style.width = '';
             content.style.columnCount = '';
-            content.style.zoom = '';
             return;
         }
         // Leaves a sliver of the game showing
         const maxWidth = window.innerWidth - 48;
-        const layOut = (zoom: number, columns: number, width: number): boolean => {
-            this.drawer.style.width = `${width}px`;
-            content.style.zoom = String(zoom);
-            content.style.columnCount = String(columns);
-            return this.drawer.scrollHeight <= this.drawer.clientHeight + 1;
-        };
-        for (const zoom of TEXT_STEPS) {
-            for (let columns = 1; ; columns++) {
-                const width = Math.ceil(zoom * (columns * COLUMN_WIDTH + (columns - 1) * COLUMN_GAP + 2 * CONTENT_PADDING));
-                if (width > maxWidth) break;
-                if (layOut(zoom, columns, width)) return;
-            }
+        const maxColumns = Math.max(1, Math.floor((maxWidth - 2 * CONTENT_PADDING + COLUMN_GAP) / (COLUMN_WIDTH + COLUMN_GAP)));
+        for (let columns = 1; columns <= maxColumns; columns++) {
+            const width = columns * COLUMN_WIDTH + (columns - 1) * COLUMN_GAP + 2 * CONTENT_PADDING;
+            this.drawer.style.width = `${width}px`; content.style.columnCount = String(columns);
+            if (this.drawer.scrollHeight <= this.drawer.clientHeight + 1) return;
         }
-        // A very short screen: as wide as allowed with the smallest text, and it scrolls after all
-        const zoom = TEXT_STEPS[TEXT_STEPS.length - 1] ?? 1;
-        const columns = Math.max(1, Math.floor((maxWidth / zoom - 2 * CONTENT_PADDING + COLUMN_GAP) / (COLUMN_WIDTH + COLUMN_GAP)));
-        layOut(zoom, columns, maxWidth);
     }
 
     public toggle(): void {
@@ -542,6 +532,7 @@ export class DrawerUI {
         this.drawer.setAttribute('aria-hidden', 'false');
         this.hamburgerBtn.classList.add('active');
         this.drawer.classList.add('active');
+        this.drawer.scrollTop = 0;
         this.overlay.classList.add('active');
         this.showName();
         this.fitToScreen();
@@ -565,6 +556,7 @@ export class DrawerUI {
     public destroy(): void {
         window.removeEventListener('ascend:weapon-record', this.weaponRecord);
         window.removeEventListener('ascend:activity', this.activity);
+        window.removeEventListener(SOUND_EVENT, this.syncSound);
         this.hamburgerBtn.remove();
         this.drawer.remove();
         this.overlay.remove();

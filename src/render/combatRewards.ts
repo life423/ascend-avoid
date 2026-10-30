@@ -10,17 +10,19 @@ export interface CombatRewardEvent {
     playerIndex?: number
 }
 export interface CombatRewardEffect extends CombatRewardEvent { at: number }
+const duration = (effect: CombatRewardEffect, reduced: boolean): number => effect.how === 'blackhole' ? 2200 : reduced ? 650 : 1550;
 
 /** Visual only: the server has already settled the reward. */
 export function drawCombatRewards(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state: SyncedGameState, now: number): void {
     const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
-    mode.rewardEffects = mode.rewardEffects.filter(e => now - e.at < (reduced ? 650 : 1550))
+    mode.rewardEffects = mode.rewardEffects.filter(e => now - e.at < duration(e, reduced))
     for (const effect of mode.rewardEffects) {
-        const age = now - effect.at, t = Math.min(1, age / 1550)
+        const age = now - effect.at, t = Math.min(1, age / duration(effect, reduced))
         const owner = state.players.get(effect.byId)
         const end = owner ? mode.centerOf(effect.byId, owner) : { x: effect.x, y: effect.y }
         ctx.save()
-        const gemRadius = 5 * mode.cssScale / Math.max(.001, Math.abs(ctx.getTransform().a))
+        const screenUnit = mode.cssScale / Math.max(.001, Math.abs(ctx.getTransform().a))
+        const gemRadius = (effect.how === 'blackhole' ? 7 : 5) * screenUnit
         if (effect.how === 'mouth' || effect.how === 'cannon') {
             const shatter = Math.min(1, age / 550)
             ctx.save(); ctx.translate(effect.x, effect.y); ctx.rotate(effect.facing + Math.PI)
@@ -49,9 +51,9 @@ export function drawCombatRewards(mode: MultiplayerMode, ctx: CanvasRenderingCon
         }
         if (effect.earned > 0) {
             if (reduced) {
-                ctx.globalAlpha = Math.max(0, 1 - age / 650)
+                ctx.globalAlpha = Math.max(0, 1 - age / duration(effect, reduced))
                 ctx.strokeStyle = '#ffd166'; ctx.lineWidth = 2
-                ctx.beginPath(); ctx.arc(end.x, end.y, 14, 0, Math.PI * 2); ctx.stroke()
+                ctx.beginPath(); ctx.arc(end.x, end.y, (owner?.width ?? 8) / 2 + 10 * screenUnit, 0, Math.PI * 2); ctx.stroke()
             } else for (let i = 0; i < 8; i++) {
                 const p = Math.max(0, Math.min(1, (t - i * .015) / .86))
                 let x: number, y: number
@@ -70,8 +72,9 @@ export function drawCombatRewards(mode: MultiplayerMode, ctx: CanvasRenderingCon
                     y = sy + dy * ease + dx / d * arc
                 }
                 ctx.globalAlpha = Math.min(1, (1 - p) * 8)
-                ctx.fillStyle = '#ffd166'; ctx.beginPath()
-                ctx.moveTo(x, y - gemRadius); ctx.lineTo(x + gemRadius * .7, y); ctx.lineTo(x, y + gemRadius); ctx.lineTo(x - gemRadius * .7, y); ctx.closePath(); ctx.fill()
+                ctx.fillStyle = '#ffd166'; ctx.strokeStyle = '#fff2bc'; ctx.lineWidth = screenUnit; ctx.beginPath()
+                ctx.moveTo(x, y - gemRadius); ctx.lineTo(x + gemRadius * .7, y); ctx.lineTo(x, y + gemRadius); ctx.lineTo(x - gemRadius * .7, y); ctx.closePath(); ctx.fill(); ctx.stroke()
+                ctx.fillStyle = '#fff2bc'; ctx.beginPath(); ctx.moveTo(x, y - gemRadius); ctx.lineTo(x, y); ctx.lineTo(x - gemRadius * .7, y); ctx.closePath(); ctx.fill()
             }
         }
         ctx.restore()

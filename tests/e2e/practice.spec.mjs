@@ -38,6 +38,13 @@ async function walk(page, x, y, stop = 8) {
   for (const k of held) await page.keyboard.up(k);
 }
 async function shot(page) { await page.keyboard.press('Space'); }
+async function captureForBlackHole(page) {
+  const initial = await read(page); expect(initial.stage).toBe('capture'); expect(initial.me.gulping).toBeFalsy();
+  await page.keyboard.down('Space');
+  await page.waitForFunction(() => !!window.game.currentGameMode.multiplayerManager.getLocalPlayer().gulping);
+  await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.stage === 'shoot');
+  await page.keyboard.up('Space');
+}
 async function screenshot(page, file) { await page.screenshot({ path: test.info().outputPath(file), scale: 'css' }); }
 async function objectiveVisible(page) {
   await expect.poll(() => page.evaluate(() => {
@@ -95,24 +102,32 @@ test('weapon lesson: real collection, automatic assembly, E/touch placement and 
   expect((await read(page)).me.injured).toBe(false);
 });
 
-test('black-hole lesson: ready captive, real shot and once-only spatial reward', async ({ page }) => {
+test('black-hole lesson: actual capture, distant shot and visible once-only spatial reward', async ({ page }) => {
   await start(page, 'blackhole');
-  const v = await read(page); expect(v.me.gulping).toBeTruthy();
+  await screenshot(page, 'blackhole-capture.png');
+  await captureForBlackHole(page);
+  const v = await read(page); expect(v.me.gulping).toBeTruthy(); expect(v.passed).toBe(1); expect(v.total).toBe(2);
+  expect(v.objectiveX - v.me.x).toBeGreaterThanOrEqual(500);
+  expect(v.me.gems).toBe(318);
   await objectiveVisible(page); await screenshot(page, 'blackhole-ready.png'); await shot(page);
   await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.phase === 'success');
+  await expect(page.locator('.practice-instruction')).toContainText('gems return');
+  await page.waitForTimeout(1000);
+  expect((await read(page)).phase).toBe('success');
+  await objectiveVisible(page);
   await screenshot(page, 'blackhole-reward.png');
-  expect(await page.evaluate(() => window.game.currentGameMode.rewardEffects.length)).toBeGreaterThan(0);
+  expect(await page.evaluate(() => window.game.currentGameMode.rewardEffects.some(e => e.how === 'blackhole' && e.earned === 32))).toBe(true);
   await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.phase === 'complete');
   expect((await read(page)).me.gems).toBe(350);
 });
 
 test('a missed shot restores that attempt and cancels held movement/action input', async ({ page }) => {
-  await start(page, 'blackhole'); const attempt = (await read(page)).attempt;
+  await start(page, 'blackhole'); await captureForBlackHole(page); const attempt = (await read(page)).attempt;
   await page.keyboard.down('ArrowUp'); await page.waitForTimeout(400); await page.keyboard.up('ArrowUp');
   await shot(page); await page.keyboard.down('Space'); await page.keyboard.down('ArrowDown');
   await page.waitForFunction(previous => window.game.currentGameMode.multiplayerManager.getState().practice.attempt > previous, attempt);
   await page.waitForTimeout(100); const v = await read(page);
-  expect(v.lesson).toBe('blackhole'); expect(v.passed).toBe(0); expect(v.failures).toBe(1); expect(v.me.gulping).toBeTruthy(); expect(v.me.inhaling).toBe(false);
+  expect(v.lesson).toBe('blackhole'); expect(v.stage).toBe('shoot'); expect(v.passed).toBe(1); expect(v.failures).toBe(1); expect(v.me.gulping).toBeTruthy(); expect(v.me.inhaling).toBe(false);
   expect(await page.evaluate(() => Object.values(window.game.inputManager.getInputState()).some(Boolean))).toBe(false);
   await page.keyboard.up('Space'); await page.keyboard.up('ArrowDown');
 });
@@ -141,7 +156,12 @@ test('skip leaves unfinished, every lesson is unlocked, replay and exit start a 
   await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.lesson === 'blackhole');
   await page.getByRole('button', { name: 'Exit tutorial', exact: true }).click();
   await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager?.getState()?.practice?.enabled === false);
-  const live = await read(page); expect(live.room).not.toBe(privateId); expect(live.me.gems).toBe(0);
+  const live = await read(page); expect(live.room).not.toBe(privateId); expect(live.me.gulping).toBeFalsy();
+  // A live spawn may already collect a real field gem before the browser sees its first tick.
+  expect(await page.evaluate(() => {
+    const s = window.game.currentGameMode.multiplayerManager.getState();
+    return s.worldWidth === 4200 && !s.practice.enabled && [...s.players.keys()].every(id => !id.startsWith('practice-'));
+  })).toBe(true);
   await page.reload(); await page.waitForFunction(() => !!window.game?.currentGameMode?.multiplayerManager?.getLocalPlayer());
   await expect(page.locator('.practice-offer')).toBeHidden();
 });
@@ -282,7 +302,10 @@ test('trusted touch stick, inhale/release/fire, placement and parry complete all
   await page.getByRole('button', { name: /Place weapon/ }).tap();
   await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.phase === 'complete');
   await screenshot(page, 'touch-weapon-complete.png');
-  await pick('blackhole'); await screenshot(page, 'touch-blackhole-ready.png'); await tap();
+  await pick('blackhole'); await screenshot(page, 'touch-blackhole-capture.png');
+  await action(); await page.waitForFunction(() => !!window.game.currentGameMode.multiplayerManager.getLocalPlayer().gulping);
+  await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.stage === 'shoot');
+  await release(2); await screenshot(page, 'touch-blackhole-ready.png'); await tap();
   await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.phase === 'complete');
   await pick('defense'); await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.cue === 'attacking');
   await screenshot(page, 'touch-defense-suction.png'); await tap();
