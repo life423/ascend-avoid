@@ -1,0 +1,308 @@
+{
+  "mode": "loading",
+  "share": 0,
+  "repeats": 3,
+  "defense": "bot",
+  "method": "Normal 4200x4200 world, fixed 60-unit missiles, current walking/rotation/suction. No assembled weapons, hazards or ambient gems. All opening ammunition is actually captured and fired; defender starts empty. Opening hit is guaranteed to isolate follow-up risk, not estimate hit accuracy. Spent opening ammunition is removed only after its knockout, so it cannot become an idle reload dispenser. Additional ammo sources exist before launch and use ordinary bot brains, except explicitly labelled idle stress controls. Reload hunter decisions run at 250ms and shots use the ordinary fallible BotCannonAim. Retreat controls start 250ms after impact, use ordinary movement and avoid map edges; bot defense uses unchanged ordinary brains. Population, collision, shield, spill, theft and size rules are not bypassed.",
+  "summary": {
+    "cases": 15,
+    "openingHits": 0,
+    "openingKnockouts": 0,
+    "defenderKnockouts": 0,
+    "defenderCaptures": 0,
+    "attackerKnockouts": 0,
+    "attackerCaptures": 0,
+    "survivors": 0,
+    "reloads": 0,
+    "followups": 0,
+    "secondHits": 0,
+    "underFiveSecondKills": 0
+  },
+  "results": [
+    {
+      "width": 100,
+      "source": {
+        "width": 20,
+        "gems": 0
+      },
+      "seed": 8837,
+      "sourceType": "tiny",
+      "before": {
+        "width": 100,
+        "gems": 97
+      },
+      "after": {
+        "width": 100,
+        "gems": 97
+      },
+      "transferred": 0,
+      "instantFinishAgainstFormerPeer": false
+    },
+    {
+      "width": 100,
+      "source": {
+        "width": 50,
+        "gems": 21
+      },
+      "seed": 8934,
+      "sourceType": "half",
+      "before": {
+        "width": 100,
+        "gems": 97
+      },
+      "after": {
+        "width": 100,
+        "gems": 97
+      },
+      "transferred": 0,
+      "instantFinishAgainstFormerPeer": false
+    },
+    {
+      "width": 100,
+      "source": {
+        "width": 76,
+        "gems": 54
+      },
+      "seed": 9031,
+      "sourceType": "largest",
+      "before": {
+        "width": 100,
+        "gems": 97
+      },
+      "after": {
+        "width": 110.5,
+        "gems": 119
+      },
+      "transferred": 22,
+      "instantFinishAgainstFormerPeer": false
+    },
+    {
+      "width": 200,
+      "source": {
+        "width": 20,
+        "gems": 0
+      },
+      "seed": 9128,
+      "sourceType": "tiny",
+      "before": {
+        "width": 200,
+        "gems": 414
+      },
+      "after": {
+        "width": 200,
+        "gems": 414
+      },
+      "transferred": 0,
+      "instantFinishAgainstFormerPeer": false
+    },
+    {
+      "width": 200,
+      "source": {
+        "width": 100,
+        "gems": 97
+      },
+      "seed": 9225,
+      "sourceType": "half",
+      "before": {
+        "width": 200,
+        "gems": 414
+      },
+      "after": {
+        "width": 214,
+        "gems": 479
+      },
+      "transferred": 65,
+      "instantFinishAgainstFormerPeer": false
+    },
+    {
+      "width": 200,
+      "source": {
+        "width": 153.5,
+        "gems": 238
+      },
+      "seed": 9322,
+      "sourceType": "largest",
+      "before": {
+        "width": 200,
+        "gems": 414
+      },
+      "after": {
+        "width": 241.5,
+        "gems": 620
+      },
+      "transferred": 206,
+      "instantFinishAgainstFormerPeer": true
+    },
+    {
+      "width": 400,
+      "source": {
+        "width": 20,
+        "gems": 0
+      },
+      "seed": 9419,
+      "sourceType": "tiny",
+      "before": {
+        "width": 400,
+        "gems": 1881
+      },
+      "after": {
+        "width": 400,
+        "gems": 1881
+      },
+      "transferred": 0,
+      "instantFinishAgainstFormerPeer": false
+    },
+    {
+      "width": 400,
+      "source": {
+        "width": 200,
+        "gems": 414
+      },
+      "seed": 9516,
+      "sourceType": "half",
+      "before": {
+        "width": 400,
+        "gems": 1881
+      },
+      "after": {
+        "width": 434,
+        "gems": 2263
+      },
+      "transferred": 382,
+      "instantFinishAgainstFormerPeer": false
+    },
+    {
+      "width": 400,
+      "source": {
+        "width": 307.5,
+        "gems": 1051
+      },
+      "seed": 9613,
+      "sourceType": "largest",
+      "before": {
+        "width": 400,
+        "gems": 1881
+      },
+      "after": {
+        "width": 484,
+        "gems": 2900
+      },
+      "transferred": 1019,
+      "instantFinishAgainstFormerPeer": true
+    },
+    {
+      "width": 650,
+      "source": {
+        "width": 20,
+        "gems": 0
+      },
+      "seed": 9710,
+      "sourceType": "tiny",
+      "before": {
+        "width": 650,
+        "gems": 5759
+      },
+      "after": {
+        "width": 650,
+        "gems": 5759
+      },
+      "transferred": 0,
+      "instantFinishAgainstFormerPeer": false
+    },
+    {
+      "width": 650,
+      "source": {
+        "width": 325,
+        "gems": 1184
+      },
+      "seed": 9807,
+      "sourceType": "half",
+      "before": {
+        "width": 650,
+        "gems": 5759
+      },
+      "after": {
+        "width": 698.5,
+        "gems": 6911
+      },
+      "transferred": 1152,
+      "instantFinishAgainstFormerPeer": false
+    },
+    {
+      "width": 650,
+      "source": {
+        "width": 500,
+        "gems": 3131
+      },
+      "seed": 9904,
+      "sourceType": "largest",
+      "before": {
+        "width": 650,
+        "gems": 5759
+      },
+      "after": {
+        "width": 763.5,
+        "gems": 8858
+      },
+      "transferred": 3099,
+      "instantFinishAgainstFormerPeer": false
+    },
+    {
+      "width": 900,
+      "source": {
+        "width": 20,
+        "gems": 0
+      },
+      "seed": 10001,
+      "sourceType": "tiny",
+      "before": {
+        "width": 900,
+        "gems": 15402
+      },
+      "after": {
+        "width": 900,
+        "gems": 15402
+      },
+      "transferred": 0,
+      "instantFinishAgainstFormerPeer": false
+    },
+    {
+      "width": 900,
+      "source": {
+        "width": 450,
+        "gems": 2455
+      },
+      "seed": 10098,
+      "sourceType": "half",
+      "before": {
+        "width": 900,
+        "gems": 15402
+      },
+      "after": {
+        "width": 933,
+        "gems": 17825
+      },
+      "transferred": 2423,
+      "instantFinishAgainstFormerPeer": false
+    },
+    {
+      "width": 900,
+      "source": {
+        "width": 692,
+        "gems": 6752
+      },
+      "seed": 10195,
+      "sourceType": "largest",
+      "before": {
+        "width": 900,
+        "gems": 15402
+      },
+      "after": {
+        "width": 980,
+        "gems": 22122
+      },
+      "transferred": 6720,
+      "instantFinishAgainstFormerPeer": false
+    }
+  ]
+}

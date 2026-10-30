@@ -4,7 +4,7 @@ import { impactGems, shooterMassContribution, lethalPlayerImpact } from './canno
 /** Opportunity selection changes the target, never the bot's observation delay, aim error or firing rules. */
 export function cannonTargetAppeal(gems: number, width: number, ammoWidth: number, speed: number, distance: number, shooterWidth?: number): number {
   const bonus = shooterWidth === undefined ? 0 : shooterMassContribution(shooterWidth, ammoWidth);
-  const lost = impactGems(gems, speed, ammoWidth, width, bonus);
+  const lost = impactGems(gems, speed, ammoWidth, width, bonus, 'missile', shooterWidth ?? 0);
   const lethal = gems - lost < CANNON.IMPACT_KO_GEMS || lethalPlayerImpact(speed, ammoWidth, width, bonus, shooterWidth);
   // A substantial opening against a peer is worth choosing over another tiny easy knockout.
   // Tiny ammunition still seeks vulnerable small targets; this changes decisions, never damage.

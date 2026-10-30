@@ -1,8 +1,12 @@
 # Ascend Avoid
 
+## Peer missile damage — October 30 headless study
+
+The user requested testing about 33% equal-width missile damage with the new walking, rotation and suction, across sizes/distances and actual ammo acquisition. [PEER_DAMAGE_STUDY.md](PEER_DAMAGE_STUDY.md) records 7,668 fight executions, 405 ammo attempts, capture-growth cases and three staged population comparisons. The candidate uses physical shooter/target width to scale loss and preserves the 20%-wider finish. Close earned reloads can still finish a retreating peer in 1.83 seconds; sideways evasion helps without resolving this risk. The candidate is implemented **only as a disabled headless experiment** (`PEER_HIT_SHARE=0` in normal games), not enabled or deployed. Shared capture-to-fire commitment is a proposed next test, not a completed balance fix.
+
 ## Size-dependent rotation and suction — October 30 local follow-up
 
-The user clarified that larger creatures should rotate more slowly, near-sized opponents should resist suction, and smaller players should use speed to avoid the strong zone while remaining vulnerable once caught there. Existing size-dependent turn rates are retained, with a fix preventing old faster spin from bypassing the current limit after growth or starting an inhale. The old full inner-pull jump at 1.3× width is removed: body resistance and the inner boost now rise smoothly with relative physical size, reaching full strength at 2× width. Healthy capture eligibility remains 1.3×. [SIZE_SUCTION.md](SIZE_SUCTION.md) records parameters, speed/position interactions, shared actor rules and before/after tests. This is a local trial; the proposed 33% peer damage is not implemented and nothing in this follow-up is deployed.
+The user clarified that larger creatures should rotate more slowly, near-sized opponents should resist suction, and smaller players should use speed to avoid the strong zone while remaining vulnerable once caught there. Existing size-dependent turn rates are retained, with a fix preventing old faster spin from bypassing the current limit after growth or starting an inhale. The old full inner-pull jump at 1.3× width is removed: body resistance and the inner boost now rise smoothly with relative physical size, reaching full strength at 2× width. Healthy capture eligibility remains 1.3×. [SIZE_SUCTION.md](SIZE_SUCTION.md) records parameters, speed/position interactions, shared actor rules and before/after tests. This is a local trial; the later 33% experiment above remains disabled, and nothing in this follow-up is deployed.
 
 ## Smooth size-based movement — October 30 local trial
 
