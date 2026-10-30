@@ -1032,15 +1032,28 @@ body.online-mode .weapon-place-button { bottom: calc(var(--arena-bottom, 0px) + 
     body.online-mode .app-header, body.online-mode .bar-tab { transition: none; }
 }
 
-/* Phone/tablet HUD: one map dock with a 48px toolbar, not three floating stacks. */
+/* Keep the map separate from the labeled menu. Tutorials and settings lead the drawer. */
+.hamburger-glyph { display: flex; flex-direction: column; gap: 4px; }
+.hamburger-label { font: 600 12px Montserrat, system-ui, sans-serif; }
+.drawer .menu-quick-actions { break-inside: avoid; }
+.drawer .menu-quick-actions .practice-open { width: 100%; margin: 0 0 20px; text-align: left; font: 700 15px Montserrat, system-ui, sans-serif; }
+.drawer .menu-quick-actions h3 { margin-top: 0; margin-bottom: 8px; }
+.drawer .settings-controls { display: flex; flex-wrap: wrap; gap: 8px; }
+.drawer .settings-controls :is(.mouse-preference, .sound-toggle) { margin: 0; }
+.drawer .settings-controls .sound-toggle { font: 600 14px Montserrat, system-ui, sans-serif; }
+.bar-button.bar-sound { min-height: 44px; }
 @media (max-width: 1199px) {
     body.online-mode .hamburger-button {
-        top: calc(14px + var(--arena-top, 0px) + var(--arena-safe-top));
-        right: calc(14px + var(--arena-safe-right));
-        width: 44px; height: 44px; min-width: 44px; min-height: 44px;
-        border: 0; border-radius: 8px; background: transparent;
+        position: fixed;
+        top: calc(10px + var(--arena-top, 0px) + var(--arena-safe-top));
+        right: calc(10px + var(--arena-safe-right));
+        width: 76px; height: 44px; min-width: 44px; min-height: 44px;
+        display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 6px;
+        border: 1px solid rgba(79,209,197,.65); border-radius: 10px; background: rgba(6,16,30,.9);
+        color: #e8f4f8; font: 600 12px Montserrat, system-ui, sans-serif; cursor: pointer;
         box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none;
     }
-    body.online-mode .hamburger-button:hover { background: rgba(79, 209, 197, .12); box-shadow: none; }
+    body.online-mode .hamburger-button:hover { background: #163747; box-shadow: none; }
+    body.online-mode .hamburger-button:active { background: #215266; }
 }
 body.online-mode .game-canvas:focus-visible { outline: 2px solid #4fd1c5; outline-offset: -2px; }

@@ -51,14 +51,37 @@ function setup(lesson: PracticeLesson) {
   c.select('basics', true, now()); assert.equal(s.practice.stage, 'grow'); assert.equal(s.practice.passed, 0);
 }
 {
-  const { s, p, c, until, now } = setup('blackhole');
+  const { s, p, c, until, now, step, events } = setup('blackhole');
+  assert.equal(s.practice.stage, 'capture'); assert.equal(s.practice.total, 2);
+  assert.equal(s.worldHeight, 2000, 'portrait framing has enough arena for both ends of the shot');
+  assert(!p.gulping, 'black-hole lesson starts empty-mouthed');
+  assert(!fireCaptive(s, p, now()), 'a shot cannot bypass capture');
+  const originalAmmo = s.practice.targetId;
+  assert.equal(s.players.get(originalAmmo)?.gems, 100);
+  p.startInhale(now()); until(() => s.practice.phase === 'success');
+  assert.equal(p.gulping, originalAmmo, 'the learner performs the real capture');
+  until(() => s.practice.stage === 'shoot');
+  assert.equal(p.gulping, originalAmmo, 'successful capture is carried into the shot');
+  assert.equal(p.gems, 318); assert.equal(s.players.get(p.gulping)?.gems, 32);
+  assert(s.practice.objectiveX - p.x - p.width / 2 >= 500, 'shot starts substantially farther from the hole');
+  assert(!fireCaptive(s, p, now()), 'capture still requires release before firing');
+  p.stopInhale(now()); p.captureNeedsRelease = false;
   const attempt = s.practice.attempt;
   p.facing = Math.PI / 2; assert(fireCaptive(s, p, now()));
   until(() => s.practice.attempt > attempt); assert.equal(s.practice.failures, 1); assert(p.gulping);
+  assert.equal(s.practice.stage, 'shoot'); assert.equal(s.practice.passed, 1);
+  assert.equal(p.gems, 318, 'retry restores the shot without farming capture growth');
   c.observe('combatReward', { byId: p.sessionId, targetId: 'old-ammo', how: 'blackhole' }, now(), attempt);
   assert.equal(s.practice.phase, 'waiting');
   p.facing = 0; assert(fireCaptive(s, p, now()));
+  until(() => s.practice.phase === 'success');
+  assert.equal(p.gems, 350);
+  step(1000);
+  assert.equal(s.practice.phase, 'success'); assert.equal(s.blackHoles.length, 1, 'the scene remains for the gem-return animation');
   until(() => s.practice.phase === 'complete');
+  assert.equal(events.filter(e => e.type === 'combatReward' && e.data.how === 'blackhole').length, 1);
+  assert.equal(p.gems, 350, 'visible gems never pay a second reward');
+  c.select('defense', false, now()); assert.equal(s.worldHeight, 1600, 'other lessons retain their original arena');
 }
 {
   const { s, p, until } = setup('weapon');
@@ -127,7 +150,10 @@ console.log('Practice: actual capture/release/hit/theft/mouth finish, assembly/p
       } else if (v.lesson === 'weapon') {
         if (v.stage === 'collect') { const part = s.pinwheel.parts.find(part => part.carriedBy !== p.sessionId); if (part) p.placeAt(part.x - p.width / 2, part.y - p.height / 2); }
         else if (v.stage === 'place') deployWeapon(s, p);
-      } else if (v.lesson === 'blackhole' && p.gulping) fireCaptive(s, p, now());
+      } else if (v.lesson === 'blackhole') {
+        if (v.stage === 'capture') { if (!p.inhaling) p.startInhale(now()); }
+        else { p.stopInhale(now()); p.captureNeedsRelease = false; if (p.gulping) fireCaptive(s, p, now()); }
+      }
       else if (v.lesson === 'defense' && v.cue === 'attacking') exhale(s, p, now());
     }
     step();

@@ -1060,7 +1060,6 @@ export class MultiplayerMode extends GameMode {
             ctx.save(); ctx.strokeStyle = '#c0fff0'; ctx.lineWidth = 2 / view.scale
             ctx.setLineDash([8 / view.scale, 5 / view.scale]); ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.stroke(); ctx.restore()
         }
-        drawCombatRewards(this, ctx, state, timestamp)
         drawTurbines(this, ctx, state, timestamp)
         drawCannon(this, ctx, state, timestamp)
         this.drawGems(ctx, state, left, right, top, bottom, timestamp)
@@ -1133,6 +1132,8 @@ export class MultiplayerMode extends GameMode {
         drawCannonHits(this, ctx, state, timestamp)
         drawBursts(this, ctx, timestamp)
         drawPickups(this, ctx, me, timestamp)
+        // Return gems and shatter fragments stay visible above bodies and other world effects.
+        drawCombatRewards(this, ctx, state, timestamp)
         ctx.restore()
 
         // Screen-space overlays: hidden while the opening plays, then fading in
@@ -1207,20 +1208,31 @@ export class MultiplayerMode extends GameMode {
         const short = this.cameraRig.short || 600
         let scale = Math.max(canvas.width / (canvas.width >= canvas.height ? short * aspect : short), canvas.height / (canvas.width >= canvas.height ? short : short / aspect))
         this.camera = this.cameraRig.short ? { x: this.cameraRig.x, y: this.cameraRig.y } : (this.camera ?? { x: state.worldWidth / 2, y: state.worldHeight / 2 })
+        let framing = this.camera
         if (this.isPractice && state.practice?.objectiveKind && state.practice.objectiveKind !== 'placement') {
             const objective = state.practice, target = state.players.get(objective.targetId)
             const x = target ? target.x + target.width / 2 : objective.objectiveX
             const y = target ? target.y + target.height / 2 : objective.objectiveY
             const radius = target ? target.width / 2 + 30 : objective.objectiveKind === 'hole' ? 96 : 44
-            // Keep the ordinary camera subject, but fit the nearby teaching objective on narrow screens.
-            scale = Math.min(scale, canvas.width / (2 * (Math.abs(x - this.camera.x) + radius)), canvas.height / (2 * (Math.abs(y - this.camera.y) + radius)))
+            if (objective.objectiveKind === 'hole') {
+                // Fit a long shot and its return path together on narrow screens.
+                const playerX = me.x + me.width / 2, playerY = me.y + me.height / 2, playerRadius = me.width / 2 + 24
+                const left = Math.min(playerX - playerRadius, x - radius), right = Math.max(playerX + playerRadius, x + radius)
+                const top = Math.min(playerY - playerRadius, y - radius), bottom = Math.max(playerY + playerRadius, y + radius)
+                if (left < framing.x - canvas.width / scale / 2 || right > framing.x + canvas.width / scale / 2 || top < framing.y - canvas.height / scale / 2 || bottom > framing.y + canvas.height / scale / 2) {
+                    framing = { x: (left + right) / 2, y: (top + bottom) / 2 }
+                    scale = Math.min(scale, canvas.width / (right - left), canvas.height / (bottom - top))
+                }
+            } else {
+                scale = Math.min(scale, canvas.width / (2 * (Math.abs(x - this.camera.x) + radius)), canvas.height / (2 * (Math.abs(y - this.camera.y) + radius)))
+            }
         }
         const width = canvas.width / scale
         const height = canvas.height / scale
         this.lastRenderAt = timestamp
 
         // Every viewport stays filled with playable map, including held death views and ultrawide screens.
-        return constrainArenaView({ ...this.camera, width, height, scale }, state.worldWidth, state.worldHeight)
+        return constrainArenaView({ ...framing, width, height, scale }, state.worldWidth, state.worldHeight)
     }
 
     /**

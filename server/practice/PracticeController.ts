@@ -4,7 +4,7 @@ import { GemSchema } from '../schema/GemSchema.js';
 import { BlackHoleSchema } from '../schema/BlackHoleSchema.js';
 import { clearCapture, updateInhales, injuryVulnerable, stealWeight } from '../systems/inhale.js';
 import { spawnWeapon, updateWeapons, deployWeapon } from '../systems/weapons.js';
-import { PRACTICE_ARENA, PRACTICE_STAGES, PRACTICE_LESSONS, type PracticeLesson } from './definitions.js';
+import { PRACTICE_ARENA, PRACTICE_STAGES, PRACTICE_LESSONS, BLACK_HOLE_LESSON, type PracticeLesson } from './definitions.js';
 
 /** One learner, explicit targets, real gameplay events. Failed attempts never rewind passed steps. */
 export class PracticeController {
@@ -35,6 +35,8 @@ export class PracticeController {
   activity(now: number): void { this.lastActivity = now; }
   select(lesson: PracticeLesson, replay = false, now = this.state.now, sequence = false): void {
     this.view.sequence = sequence;
+    // Extra vertical room lets narrow portrait cameras show a long shot without exposing exterior.
+    this.state.worldHeight = lesson === 'blackhole' ? BLACK_HOLE_LESSON.height : PRACTICE_ARENA.height;
     if (replay || this.completed.has(lesson)) { this.progress.set(lesson, 0); this.completed.delete(lesson); }
     this.view.completed = [...this.completed].join(',');
     this.clearScene(now); this.view.lesson = lesson; this.view.total = PRACTICE_STAGES[lesson].length;
@@ -126,9 +128,16 @@ export class PracticeController {
         this.objective('player', this.targetId);
       }
     } else if (lesson === 'blackhole') {
-      p = this.resetLearner(250, now); this.preload(p, 100, now);
-      this.state.blackHoles.push(new BlackHoleSchema(820, PRACTICE_ARENA.y, 64, 0));
-      this.objective('hole', '', 820, PRACTICE_ARENA.y);
+      if (stage === 'capture') {
+        p = this.resetLearner(250, now);
+        const ammo = this.npc('ammo', 100, p.x + p.width + 65, p.y + p.height / 2);
+        this.ammoId = ammo.sessionId; this.objective('player', this.ammoId);
+      } else {
+        // Restore only a failed shot. A first attempt carries the learner's actual capture forward.
+        if (!carry || !p.gulping) { p = this.resetLearner(250, now); this.preload(p, 100, now); }
+        this.state.blackHoles.push(new BlackHoleSchema(BLACK_HOLE_LESSON.x, BLACK_HOLE_LESSON.y, 64, 0));
+        this.objective('hole', '', BLACK_HOLE_LESSON.x, BLACK_HOLE_LESSON.y);
+      }
     } else if (lesson === 'weapon') {
       if (stage === 'collect' || !carry) {
         p = this.resetLearner(40, now); this.state.weaponsOn = true;
@@ -180,8 +189,11 @@ export class PracticeController {
       }
       if (this.view.stage === 'finish' && type === 'combatReward' && own && data.targetId === this.targetId && data.how === 'mouth') this.success(now);
     } else if (this.view.lesson === 'blackhole') {
-      if (type === 'launch' && own && data.id === this.ammoId) this.shotStarted = true;
-      if (type === 'combatReward' && own && data.targetId === this.ammoId && data.how === 'blackhole') this.success(now);
+      if (this.view.stage === 'capture' && type === 'capture' && own && data.targetId === this.ammoId) this.success(now);
+      if (this.view.stage === 'shoot') {
+        if (type === 'launch' && own && data.id === this.ammoId) this.shotStarted = true;
+        if (type === 'combatReward' && own && data.targetId === this.ammoId && data.how === 'blackhole') this.success(now);
+      }
     } else if (this.view.lesson === 'weapon') {
       if (this.view.stage === 'collect' && type === 'weaponAssembled' && own && this.state.pinwheel.owner === this.learnerId && this.state.pinwheel.phase === 'carried') this.success(now);
       if (this.view.stage === 'place' && type === 'weaponPlaced' && own && this.state.pinwheel.owner === this.learnerId && this.state.pinwheel.phase === 'charging') this.success(now);
@@ -208,7 +220,8 @@ export class PracticeController {
       if (spent) { clearCapture(this.state, spent.sessionId, now); this.state.players.delete(spent.sessionId); }
     }
     if (this.view.phase === 'reset' && now - this.resetAt >= 100) { this.setup(now); return; }
-    if (this.view.phase === 'success' && now - this.successAt >= 650) {
+    const successMs = this.view.lesson === 'blackhole' && this.view.stage === 'shoot' ? BLACK_HOLE_LESSON.rewardMs : 650;
+    if (this.view.phase === 'success' && now - this.successAt >= successMs) {
       const lesson = this.view.lesson as PracticeLesson, next = this.progress.get(lesson) ?? 0;
       if (next >= PRACTICE_STAGES[lesson].length) {
         this.completed.add(lesson); this.view.completed = [...this.completed].join(','); this.view.phase = 'complete';
@@ -225,9 +238,9 @@ export class PracticeController {
       const first = this.state.gems.values().next().value;
       if (first) this.objective('gem', '', first.x, first.y);
       if (p.gems >= 40 && !this.state.gems.size) this.success(now);
-    } else if (this.view.lesson === 'basics' && this.view.stage === 'capture') {
+    } else if (this.view.stage === 'capture') {
       if (!ammo || ammo.state !== 'alive') this.fail(now);
-    } else if ((this.view.lesson === 'basics' && this.view.stage === 'shoot') || this.view.lesson === 'blackhole') {
+    } else if (this.view.stage === 'shoot') {
       if (!ammo || ammo.state !== 'alive' || (!ammo.capturedBy && !ammo.flying) || (this.shotStarted && !ammo.flying)) this.fail(now);
     } else if (this.view.lesson === 'basics' && this.view.stage === 'finish') {
       if (target && now < target.suctionSafeUntil) this.view.cue = 'recovering';

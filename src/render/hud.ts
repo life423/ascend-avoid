@@ -1,7 +1,7 @@
 import type { MultiplayerMode } from '../core/GameModes'
 import { GEMS, PLAYER_COLORS, SHIFT, WORLD } from '../../server/constants/gameConstants'
 import { drawCreature } from './creatures'
-import { COMPACT, FONT, GOLD, drawCrown, drawPeople, hudPanel, roundedRect } from './style'
+import { COMPACT, FONT, GOLD, drawCrown, hudPanel, roundedRect } from './style'
 import { JOIN_NOTICE_MS, View } from './shared'
 import type { SyncedGameState, SyncedPlayer, SyncedTurbine } from '../types/synced'
 import { weaponRecipe } from './weaponStyle'
@@ -37,10 +37,10 @@ export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
     const dockX = canvas.width - width - mode.hudInsets.right - 26 * u
     const dockY = mode.hudInsets.top + 10 * u
     const x = compact ? dockX + 8 * u : canvas.width - width - mode.hudInsets.right - 12
-    const y = compact ? dockY + 52 * u : mode.controls?.touchDevice ? Math.max(mode.hudInsets.top + 76, mode.chromeBottom + 24) : canvas.height - height - mode.hudInsets.bottom - 12
+    const y = compact ? dockY + 62 * u : mode.controls?.touchDevice ? Math.max(mode.hudInsets.top + 76, mode.chromeBottom + 24) : canvas.height - height - mode.hudInsets.bottom - 12
     mode.minimapBottom = y + height
     ctx.save()
-    if (compact) hudPanel(ctx, dockX, dockY, width + 16 * u, height + 60 * u, 12 * u)
+    if (compact) hudPanel(ctx, x - 8 * u, y - 8 * u, width + 16 * u, height + 16 * u, 12 * u)
     else hudPanel(ctx, x - 4, y - 4, width + 8, height + 8, 10)
     ctx.lineWidth = 1
     ctx.strokeStyle = 'rgba(79, 209, 197, 0.25)'
@@ -60,9 +60,7 @@ export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
         view.width * scale,
         view.height * scale
     )
-    let playing = 0
     state.players.forEach((player: SyncedPlayer, sessionId: string) => {
-        playing++
         if (player.state !== 'alive') return
         const isLocal = sessionId === localId
         const position = isLocal && mode.predicted ? mode.predicted : player
@@ -154,14 +152,6 @@ export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
     }
     ctx.globalAlpha = 1;
     ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-    if (compact) {
-        ctx.strokeStyle = '#d1e5ef'; drawPeople(ctx, dockX + 15 * u, dockY + 22 * u, 12 * u, '#d1e5ef')
-        ctx.font = `700 ${12 * u}px ${FONT}`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#d1e5ef'
-        ctx.fillText(String(playing), dockX + 30 * u, dockY + 27 * u)
-    } else {
-        ctx.font = `600 11px ${FONT}`; ctx.textAlign = 'right'; ctx.textBaseline = 'bottom'
-        ctx.fillText(`${playing} playing`, x + width, y - 8)
-    }
     ctx.restore()
 }
 
@@ -276,8 +266,9 @@ export function drawLeaderboard(mode: MultiplayerMode, ctx: CanvasRenderingConte
     const y = compact ? mode.hudInsets.top + 52 * u : Math.max(mode.hudInsets.top + 12, mode.chromeLeft < x + width + 12 ? mode.chromeBottom + 12 : 0)
     const rowHeight = (compact ? 21 : 24) * u
     const gapForYou = apart ? 7 * u : 0
+    const rowsHeight = rows.length * rowHeight + 10 * u + gapForYou
     ctx.save()
-    hudPanel(ctx, x, y, width, rows.length * rowHeight + 10 * u + gapForYou, 10 * u)
+    hudPanel(ctx, x, y, width, rowsHeight, 10 * u)
     ctx.font = `600 ${(compact ? 11.5 : 13) * u}px ${FONT}`
     ctx.textBaseline = 'middle'
     let rowY = y + 5 * u + rowHeight / 2
@@ -324,7 +315,7 @@ export function drawLeaderboard(mode: MultiplayerMode, ctx: CanvasRenderingConte
     ctx.restore()
 }
 
-/** Phones and tablets: score between the leaderboard and menu; player count belongs to the minimap. */
+/** Phones and tablets: score above the leaderboard, opposite the labeled menu. */
 export function drawTopBar(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, _state: SyncedGameState, me: SyncedPlayer) : void {
     const u = mode.cssScale
     if (canvas.clientWidth < 300 || (canvas.clientHeight < 500 && me.capturedBy)) return

@@ -1,5 +1,9 @@
 # Ascend Avoid
 
+## Tutorial and menu follow-up — October 30 release batch
+
+The user requested an actual capture before the black-hole tutorial shot, a longer firing distance, and clearly visible gems returning to the shooter. The lesson now has capture and shoot checkpoints, a 520-unit shot instead of 260, and holds the scene while the visual reward returns. Retries preserve the completed capture; growth and final reward use the shared rules and are credited once. Tutorials lead the menu, settings follow immediately, and mobile sound stays in the drawer per the user's correction. The labeled Menu button is separated from the minimap, and the player count is removed from the arena HUD following the user’s preview feedback. Desktop also exposes sound beside its existing controls. See [PRACTICE_TUTORIAL.md](PRACTICE_TUTORIAL.md). The user approved committing, merging and deploying this batch on October 30. It starts from deployed main `ae6c935` (PR #56); GitHub’s pull request and production workflow record the published revision.
+
 ## Standard living bullets — October 29 release batch
 
 The user approved a fixed **60-unit player-missile diameter**. Capturing a healthy player wider than that immediately transfers all growth above a 60-unit body to the captor. Bullet-sized or smaller captives give no instant growth and receive no free growth. Every fired captive has the same physical/visible flight body; survivors return to the natural size supported by their remaining growth. This supersedes the old percentage capture transfer and variable projectile bodies. [STANDARD_BULLETS.md](STANDARD_BULLETS.md) records accounting, shared bot/human behavior, lifecycle and verification. The 20%-wider shooter finish remains. The user authorized merge/deployment after review; GitHub's release workflow identifies the published revision.

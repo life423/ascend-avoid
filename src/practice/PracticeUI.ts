@@ -1,10 +1,11 @@
 import type { SyncedPractice } from '../types/synced';
 import { PRACTICE_LESSONS, type PracticeLesson, isPracticeLesson } from '../../server/practice/definitions';
 import { browserPracticeStore } from './progress';
+import { sound } from '../core/Sound';
 import './practice.css';
 
 export const LESSON_NAMES: Record<PracticeLesson, string> = { basics: 'Grow, capture & finish', weapon: 'Build a weapon', blackhole: 'Black-hole shot', defense: 'Defensive burst' };
-const descriptions = { basics: 'Gather, capture, aim, then finish a larger rival.', weapon: 'Three matching parts. One automatic weapon.', blackhole: 'Aim a ready captive into the core.', defense: 'Break a warned suction attack with a puff.' };
+const descriptions = { basics: 'Gather, capture, aim, then finish a larger rival.', weapon: 'Three matching parts. One automatic weapon.', blackhole: 'Capture a rival, then aim a long shot into the core.', defense: 'Break a warned suction attack with a puff.' };
 export class PracticeUI {
   private store = browserPracticeStore();
   private root = document.createElement('div');
@@ -67,15 +68,16 @@ export class PracticeUI {
     const lesson = view.lesson as PracticeLesson;
     if (!isPracticeLesson(lesson)) return;
     let instruction = this.instruction(view);
-    if (view.phase === 'success') instruction = 'That worked.';
+    if (view.phase === 'success') instruction = view.lesson === 'blackhole' && view.stage === 'shoot' ? 'Watch their gems return to you.' : 'That worked.';
     if (view.phase === 'reset') instruction = 'Try again — this attempt is being restored.';
     const next = PRACTICE_LESSONS[PRACTICE_LESSONS.indexOf(lesson) + 1];
     if (view.phase === 'complete') instruction = view.sequence && next ? `Lesson complete. Next: ${LESSON_NAMES[next]}.` : 'Lesson complete. Take it into the arena.';
     if ((view.phase === 'complete' && view.sequence && !next) || view.phase === 'finished') instruction = PRACTICE_LESSONS.every(id => view.completed.split(',').includes(id)) ? 'Tutorial complete. You’re ready for the arena.' : 'Practice run finished. Revisit any unfinished lesson whenever you like.';
     const completed = (view.phase === 'complete' && !(view.sequence && next)) || view.phase === 'finished';
-    this.panel.innerHTML = `<div class="practice-heading"><button type="button" data-do="open" aria-label="Choose any lesson">${LESSON_NAMES[lesson]} <span aria-hidden="true">⌄</span></button><span>${completed ? 'Finished' : `${view.passed + 1} / ${view.total}`}</span></div><p class="practice-instruction" role="status">${instruction}</p>${view.failures >= 2 && view.phase === 'waiting' ? `<p class="practice-hint">${this.hint(view)}</p>` : ''}${view.stage === 'finish' ? '<details><summary>About injury</summary><p>Cracks mean gems can be stolen: theft shrinks them and grows you. A mouth finish still needs 1.3× width and close contact. Injury stops inhale and empty-mouth puffs, not movement or an already-held shot after release. The usual seven seconds can continue while valid theft stays unbroken. Impact stun is separate.</p></details>' : ''}<div class="practice-actions">${completed ? '<button type="button" data-do="exit" class="practice-primary">Play now</button><button type="button" data-do="open">Other lessons</button>' : '<button type="button" data-do="skip">Skip lesson</button>'}<button type="button" data-do="exit">Exit tutorial</button></div>`;
+    this.panel.innerHTML = `<div class="practice-heading"><button type="button" data-do="open" aria-label="Choose any lesson">${LESSON_NAMES[lesson]} <span aria-hidden="true">⌄</span></button><span>${completed ? 'Finished' : `${view.passed + 1} / ${view.total}`}</span></div><p class="practice-instruction" role="status">${instruction}</p>${view.failures >= 2 && view.phase === 'waiting' ? `<p class="practice-hint">${this.hint(view)}</p>` : ''}${view.stage === 'finish' ? '<details><summary>About injury</summary><p>Cracks mean gems can be stolen: theft shrinks them and grows you. A mouth finish still needs 1.3× width and close contact. Injury stops inhale and empty-mouth puffs, not movement or an already-held shot after release. The usual seven seconds can continue while valid theft stays unbroken. Impact stun is separate.</p></details>' : ''}<div class="practice-actions">${completed ? '<button type="button" data-do="exit" class="practice-primary">Play now</button><button type="button" data-do="open">Other lessons</button>' : '<button type="button" data-do="skip">Skip lesson</button>'}<button type="button" data-do="exit">Exit tutorial</button>${this.soundButton()}</div>`;
   }
-  private actions(): string { return '<div class="practice-actions"><button type="button" data-do="skip">Skip lesson</button><button type="button" data-do="exit">Exit tutorial</button></div>'; }
+  private soundButton(): string { return `<button type="button" data-do="sound" data-action="sound" aria-label="Mute sound" aria-pressed="${sound.muted}">Sound ${sound.muted ? 'off' : 'on'}</button>`; }
+  private actions(): string { return `<div class="practice-actions"><button type="button" data-do="skip">Skip lesson</button><button type="button" data-do="exit">Exit tutorial</button>${this.soundButton()}</div>`; }
   private instruction(v: SyncedPractice): string {
     const hold = this.touch ? 'Hold INHALE' : 'Hold Space';
     const fire = this.touch ? 'tap FIRE' : 'tap Space';
@@ -85,7 +87,7 @@ export class PracticeUI {
       : v.cue === 'recovering' ? 'The mint ring briefly blocks suction. Aim, then inhale as it fades.'
       : v.cue === 'resume-inhale' ? `A bump stopped your inhale. Release, then ${hold.toLowerCase()} again.`
       : `${hold} toward the cracked rival. Let theft grow you, then move close for a mouth finish.`;
-    if (v.lesson === 'blackhole') return `A captive is ready. Aim at the black core, then ${fire}.`;
+    if (v.lesson === 'blackhole') return v.stage === 'capture' ? `${hold} toward the marked rival to capture it.` : `Release, aim at the distant black core, then ${fire}.`;
     if (v.lesson === 'weapon') return v.stage === 'collect' ? 'Gather the three matching parts. They assemble automatically.'
       : v.stage === 'place' ? (this.touch ? 'Tap Place weapon to deploy your assembled Pulsar.' : 'Press E to place your assembled Pulsar.')
       : 'Your Pulsar charges and fires automatically. Watch it hit the marked rival.';
@@ -110,6 +112,7 @@ export class PracticeUI {
     switch (button.dataset.do) {
       case 'sequence': this.begin('basics'); this.choose('basics', true); (document.activeElement as HTMLElement | null)?.blur(); break;
       case 'open': this.open(); break;
+      case 'sound': sound.toggle(); break;
       case 'dismiss': this.store.skipOffer(); this.offer.hidden = true; break;
       case 'close': this.close(); break;
       case 'exit': this.stop(); this.exit(); break;

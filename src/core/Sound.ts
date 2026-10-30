@@ -1,4 +1,5 @@
 type Cue = 'gem' | 'capture' | 'ready' | 'launch' | 'impact' | 'cannon' | 'shatter' | 'parry' | 'surge';
+export const SOUND_EVENT = 'ascend:sound';
 const NOTES: Record<Cue, [number, number, number]> = {
     gem: [720, 1050, 0.07], capture: [180, 390, 0.18], ready: [600, 1000, 0.16],
     cannon: [110, 38, .22], shatter: [135, 32, .28],
@@ -23,7 +24,9 @@ class Sound {
     toggle(): void {
         this.muted = !this.muted;
         try { localStorage.setItem('ascend.muted', String(this.muted)); } catch { /* optional storage */ }
+        if (this.muted) void this.context?.suspend().catch(() => {});
         if (!this.muted) { this.unlock(); this.play('gem'); }
+        window.dispatchEvent(new Event(SOUND_EVENT));
     }
     private noise: AudioBuffer | null = null;
     private cannonContact(shatter: boolean): void {

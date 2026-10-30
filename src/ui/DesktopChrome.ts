@@ -1,5 +1,6 @@
 import { NAME_EVENT, playerName, setPlayerName } from '../core/PlayerName'
 import { mouseControlEnabled, setMouseControl } from '../core/MouseControl'
+import { sound } from '../core/Sound'
 
 const STORAGE_KEY = 'ascend.barHidden'
 const DESKTOP = '(min-width: 1200px)'
@@ -23,8 +24,10 @@ export class DesktopChrome {
         const actions = header.querySelector<HTMLDivElement>('.bar-actions') ?? document.createElement('div')
         actions.className = 'bar-actions'
         const mouseSwitch = `<button type="button" role="switch" class="bar-button bar-mouse" data-action="mouse" aria-label="Mouse control" aria-checked="${mouseControlEnabled()}" title="Follow the cursor without holding a button">Mouse <span>${mouseControlEnabled() ? 'On' : 'Off'}</span></button>`
+        const soundSwitch = `<button type="button" class="bar-button bar-sound" data-action="sound" aria-label="Mute sound" aria-pressed="${sound.muted}">Sound ${sound.muted ? 'off' : 'on'}</button>`
         actions.innerHTML = `
             ${mouseSwitch}
+            ${soundSwitch}
             <button type="button" class="bar-button bar-help" data-action="help" title="Help & settings (H)">${MENU}<span>Help & settings</span><kbd>H</kbd></button>
             <button type="button" class="bar-button bar-view" data-action="hide" title="Focus view (F)">${CHEVRON_UP}<span>Focus view</span></button>
         `
@@ -40,6 +43,7 @@ export class DesktopChrome {
         tab.className = 'bar-tab'
         tab.innerHTML = `
             ${mouseSwitch}
+            ${soundSwitch}
             <button type="button" class="bar-button bar-help" data-action="help" title="Help & settings (H)">${MENU}<span>Help & settings</span></button>
             <button type="button" class="bar-button bar-view" data-action="show" title="Show controls (F)">${CHEVRON_DOWN}<span>Show controls</span><kbd>F</kbd></button>
         `
@@ -56,7 +60,8 @@ export class DesktopChrome {
                 const action = button.dataset.action
                 if (action === 'mouse') {
                     setMouseControl(!mouseControlEnabled())
-                } else if (action === 'help') this.toggleHelp()
+                } else if (action === 'sound') sound.toggle()
+                else if (action === 'help') this.toggleHelp()
                 else this.setBarHidden(action === 'hide')
                 button.blur() // so space goes back to the game, not the button
             })
