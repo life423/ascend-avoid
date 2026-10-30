@@ -1,5 +1,9 @@
 # Ascend Avoid
 
+## October 30 integration and release authorization
+
+The user approved committing, merging and pushing the completed movement and research work to `main`. This batch starts from `1873710` (PR #59) and includes the shared quarter-power walking curve, current-size rotation limits, gradual body suction resistance, and reproducible damage/loading studies. Both `CANNON.PEER_HIT_SHARE` and `CANNON.CAPTURE_FIRE_DELAY_MS` remain **0** in normal games. The 33% damage plus one-second delay is a future playable-trial candidate requiring contextual readiness feedback; this merge does not activate it. GitHub's pull request and main deployment workflow identify the final published revision. The study sections below record the measurements and provisional human-feel limits, rather than claiming ideal balance.
+
 ## Shared capture-to-fire timing — October 30 local study
 
 The user requested short delays with 33% damage and identical rules for bots/players, then clarified that **total knockouts are fun and should be preserved**. The default-off server gate now enforces the same minimum for both. [CAPTURE_FIRE_DELAY_STUDY.md](CAPTURE_FIRE_DELAY_STUDY.md) records 21,870 conditional fight runs, twelve staged population runs and six human-message network cases. One second is the next playtest candidate: population total KOs remain 260 and non-flight KOs 157, matching no delay. A lower death count is not the balance objective. The candidate still needs understandable contextual readiness feedback and human/touch feel testing before enabling it. Both experimental defaults remain zero; this study is not deployed. Actual injury remains seven seconds; the prior damage-study prose describing five seconds was incorrect.

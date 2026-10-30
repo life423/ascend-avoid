@@ -2,7 +2,7 @@
 
 The user requested distinct maximum walking speeds for distinct physical sizes, with a real escape benefit after shrinking. They also want strong missile damage between similarly sized players, based on the shooter's and victim's visible widths, without making ammunition collection and repeated rival knockouts too easy. This page records the walking-only trial at `5da6964`. The later [rotation and suction follow-up](SIZE_SUCTION.md) adds immediate rotation-limit enforcement and smoother size-dependent body resistance; its measurements are separate. The discussed 30–33% peer-hit damage remains a proposal; the fixed 60-unit bullets, capture transfer, injury, theft, shot speed and 20%-wider explosive finish retain their existing rules.
 
-This work is on `codex/smooth-size-movement`, based on released main `1873710`. It is a local trial, not a deployment or a claim of settled human balance.
+This work originated on `codex/smooth-size-movement`, based on main `1873710`. On October 30 the user authorized merging and pushing it with `codex/capture-fire-delay-study`; GitHub's PR and main deployment workflow identify the published revision. The walking rule is included in that release batch; the later 33% damage and one-second loading settings remain disabled. The walking-only measurements below remain provisional evidence, not a claim of settled human balance.
 
 ## Shared rule
 

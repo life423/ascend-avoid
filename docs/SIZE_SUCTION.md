@@ -2,7 +2,7 @@
 
 The user clarified three interacting rules: larger creatures should rotate more slowly; size advantage should make smaller bodies easier to inhale; and speed should help smaller players avoid the strongest suction, without granting them the body resistance of a larger opponent once caught there. The user explicitly permitted adapting or removing the old inner-zone boost because it predates the new movement rules.
 
-This follows the walking trial at `5da6964` on `codex/smooth-size-movement`. It remains local. The proposed 33% peer-hit damage is not implemented, and this trial is not a release or proof of ideal human balance.
+This follows the walking trial at `5da6964` on `codex/smooth-size-movement`. On October 30 the user authorized merging and pushing the walking/rotation/suction rules with `codex/capture-fire-delay-study`; GitHub's PR and main deployment workflow identify the published revision. The later 33% peer-hit and loading experiments exist with their normal defaults disabled. These measurements do not establish ideal human balance.
 
 ## Rotation follows current physical size
 

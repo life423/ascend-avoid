@@ -4,6 +4,8 @@ October 30, 2026. The user requested several short delays between capturing ammu
 
 **Recommendation: one shared second as the next playable-trial candidate.** It preserves both total and non-flight knockout volume in the sampled populations, while placing a meaningful minimum between acquiring ammo and firing. This is a headless/network study, not a completed human feel test. Normal defaults remain `PEER_HIT_SHARE=0` and `CAPTURE_FIRE_DELAY_MS=0`; nothing is merged or deployed by this study.
 
+Integration follow-up: the user subsequently authorized committing, merging and pushing the code and records to `main`. This publishes the default-off study support alongside the tested walking/rotation/suction changes. It does not enable the proposed damage or loading settings. GitHub's PR and automatic main deployment workflow identify the final release; the measurements below remain the original study record.
+
 ## The shared rule
 
 The authoritative `fireCaptive` function rejects firing before `captureStartedAt + CAPTURE_FIRE_DELAY_MS`. Both human message paths (`tap` and loaded `inhale`) and bot shooting use that function. There is no actor-specific exemption or weaker-bot damage. Bots retain their existing fallible observation, aiming and planning decisions, which can take longer than the shared minimum.
