@@ -1,6 +1,5 @@
 import type { MultiplayerMode } from '../core/GameModes'
 import { GEMS, PLAYER_COLORS, SHIFT, WORLD } from '../../server/constants/gameConstants'
-import { drawCreature } from './creatures'
 import { COMPACT, FONT, GOLD, drawCrown, hudPanel, roundedRect } from './style'
 import { JOIN_NOTICE_MS, View } from './shared'
 import type { SyncedGameState, SyncedPlayer, SyncedTurbine } from '../types/synced'
@@ -291,11 +290,7 @@ export function drawLeaderboard(mode: MultiplayerMode, ctx: CanvasRenderingConte
             ctx.textAlign = 'center'
             ctx.fillText(String(row.rank), x + 14 * u, rowY)
         }
-        let nameX = x + 27 * u
-        if (isLocal) {
-            drawCreature(ctx, x + 33 * u, rowY, 14 * u, '#ffffff', -0.7)
-            nameX += 13 * u
-        }
+        const nameX = x + 27 * u
         ctx.fillStyle = isLocal ? '#4fd1c5' : 'rgba(225, 235, 240, 0.92)'
         ctx.textAlign = 'left'
         const score = formatGems(row.gems)

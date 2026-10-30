@@ -1037,8 +1037,9 @@ body.online-mode .weapon-place-button { bottom: calc(var(--arena-bottom, 0px) + 
 .hamburger-label { font: 600 12px Montserrat, system-ui, sans-serif; }
 .drawer .menu-quick-actions { break-inside: avoid; }
 .drawer .menu-quick-actions .practice-open { width: 100%; margin: 0 0 20px; text-align: left; font: 700 15px Montserrat, system-ui, sans-serif; }
-.drawer .menu-quick-actions h3 { margin-top: 0; margin-bottom: 8px; }
-.drawer .settings-controls { display: flex; flex-wrap: wrap; gap: 8px; }
+.drawer .settings-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.drawer .settings-row h3 { margin: 0; }
+.drawer .settings-controls { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-left: auto; }
 .drawer .settings-controls :is(.mouse-preference, .sound-toggle) { margin: 0; }
 .drawer .settings-controls .sound-toggle { font: 600 14px Montserrat, system-ui, sans-serif; }
 .bar-button.bar-sound { min-height: 44px; }
