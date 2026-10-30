@@ -1,0 +1,64 @@
+{
+  "results": [
+    {
+      "delayMs": 750,
+      "lateAction": "tap",
+      "earlyTapBlocked": true,
+      "earlyInhaleBlocked": true,
+      "noAutomaticShot": true,
+      "lateActionFired": true,
+      "targetBefore": 100,
+      "targetAfter": 67
+    },
+    {
+      "delayMs": 750,
+      "lateAction": "inhale",
+      "earlyTapBlocked": true,
+      "earlyInhaleBlocked": true,
+      "noAutomaticShot": true,
+      "lateActionFired": true,
+      "targetBefore": 100,
+      "targetAfter": 67
+    },
+    {
+      "delayMs": 1000,
+      "lateAction": "tap",
+      "earlyTapBlocked": true,
+      "earlyInhaleBlocked": true,
+      "noAutomaticShot": true,
+      "lateActionFired": true,
+      "targetBefore": 100,
+      "targetAfter": 67
+    },
+    {
+      "delayMs": 1000,
+      "lateAction": "inhale",
+      "earlyTapBlocked": true,
+      "earlyInhaleBlocked": true,
+      "noAutomaticShot": true,
+      "lateActionFired": true,
+      "targetBefore": 100,
+      "targetAfter": 67
+    },
+    {
+      "delayMs": 2000,
+      "lateAction": "tap",
+      "earlyTapBlocked": true,
+      "earlyInhaleBlocked": true,
+      "noAutomaticShot": true,
+      "lateActionFired": true,
+      "targetBefore": 100,
+      "targetAfter": 67
+    },
+    {
+      "delayMs": 2000,
+      "lateAction": "inhale",
+      "earlyTapBlocked": true,
+      "earlyInhaleBlocked": true,
+      "noAutomaticShot": true,
+      "lateActionFired": true,
+      "targetBefore": 100,
+      "targetAfter": 67
+    }
+  ]
+}

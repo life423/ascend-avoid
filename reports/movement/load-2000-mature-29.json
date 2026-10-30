@@ -1,0 +1,1319 @@
+{
+  "revision": "cbf85b05364d623cfa9ada35fc30cfa35f0a059d",
+  "movement": {
+    "exponent": 0.25,
+    "floor": null,
+    "speeds": [
+      {
+        "width": 20,
+        "speed": 320
+      },
+      {
+        "width": 100,
+        "speed": 213.99689759245504
+      },
+      {
+        "width": 200,
+        "speed": 179.94922406091172
+      },
+      {
+        "width": 400,
+        "speed": 151.31865744050813
+      },
+      {
+        "width": 600,
+        "speed": 136.7318420467949
+      },
+      {
+        "width": 900,
+        "speed": 123.55116643074871
+      },
+      {
+        "width": 1200,
+        "speed": 114.97731582818695
+      }
+    ]
+  },
+  "rotation": {
+    "rate": 5.5,
+    "falloff": 0.25,
+    "accelerationFalloff": 0.35,
+    "inhaleMultiplier": 0.55
+  },
+  "bodyPull": {
+    "peer": 0.25,
+    "fullRatio": 2
+  },
+  "seed": 29,
+  "seconds": 600,
+  "scenario": "mature",
+  "counts": {
+    "captures": 53,
+    "launches": 52,
+    "impacts": 40,
+    "leaderImpacts": 2,
+    "runnerHitsLeader": 0,
+    "leaderKnockouts": 0,
+    "knockouts": 96,
+    "knockoutsAt500Width": 5,
+    "leaderShots": 2,
+    "bodyKnockouts": 51,
+    "flightKnockouts": 45
+  },
+  "leaderChanges": 18,
+  "rows": [
+    {
+      "id": "bot0",
+      "startGems": 4398,
+      "startWidth": 579.5,
+      "minGems": 0,
+      "maxGems": 14043,
+      "maxWidth": 878,
+      "knockouts": 3,
+      "leaderSeconds": 332,
+      "missileHits": 1,
+      "missileDamage": 2360,
+      "shotsAtLeader": 2,
+      "hitsOnLeader": 2,
+      "theftEvents": 13,
+      "theftGems": 7721,
+      "endGems": 2,
+      "endWidth": 24.5
+    },
+    {
+      "id": "bot1",
+      "startGems": 4028,
+      "startWidth": 558,
+      "minGems": 0,
+      "maxGems": 8983,
+      "maxWidth": 767,
+      "knockouts": 2,
+      "leaderSeconds": 10,
+      "missileHits": 2,
+      "missileDamage": 1710,
+      "shotsAtLeader": 0,
+      "hitsOnLeader": 0,
+      "theftEvents": 24,
+      "theftGems": 13816,
+      "endGems": 31,
+      "endWidth": 59
+    },
+    {
+      "id": "bot2",
+      "startGems": 2826,
+      "startWidth": 478.5,
+      "minGems": 0,
+      "maxGems": 15209,
+      "maxWidth": 897,
+      "knockouts": 3,
+      "leaderSeconds": 35,
+      "missileHits": 1,
+      "missileDamage": 694,
+      "shotsAtLeader": 0,
+      "hitsOnLeader": 0,
+      "theftEvents": 38,
+      "theftGems": 8681,
+      "endGems": 15160,
+      "endWidth": 896
+    },
+    {
+      "id": "bot3",
+      "startGems": 2000,
+      "startWidth": 411,
+      "minGems": 0,
+      "maxGems": 2682,
+      "maxWidth": 467.5,
+      "knockouts": 5,
+      "leaderSeconds": 0,
+      "missileHits": 3,
+      "missileDamage": 2046,
+      "shotsAtLeader": 0,
+      "hitsOnLeader": 0,
+      "theftEvents": 10,
+      "theftGems": 2984,
+      "endGems": 6,
+      "endWidth": 31.5
+    },
+    {
+      "id": "bot4",
+      "startGems": 1500,
+      "startWidth": 361.5,
+      "minGems": 0,
+      "maxGems": 2025,
+      "maxWidth": 413,
+      "knockouts": 5,
+      "leaderSeconds": 0,
+      "missileHits": 1,
+      "missileDamage": 845,
+      "shotsAtLeader": 0,
+      "hitsOnLeader": 0,
+      "theftEvents": 14,
+      "theftGems": 1282,
+      "endGems": 53,
+      "endWidth": 75.5
+    },
+    {
+      "id": "bot5",
+      "startGems": 1200,
+      "startWidth": 327,
+      "minGems": 0,
+      "maxGems": 7753,
+      "maxWidth": 728.5,
+      "knockouts": 11,
+      "leaderSeconds": 30,
+      "missileHits": 3,
+      "missileDamage": 2704,
+      "shotsAtLeader": 0,
+      "hitsOnLeader": 0,
+      "theftEvents": 8,
+      "theftGems": 3628,
+      "endGems": 20,
+      "endWidth": 49
+    },
+    {
+      "id": "bot6",
+      "startGems": 900,
+      "startWidth": 286.5,
+      "minGems": 0,
+      "maxGems": 2330,
+      "maxWidth": 439.5,
+      "knockouts": 1,
+      "leaderSeconds": 0,
+      "missileHits": 1,
+      "missileDamage": 64,
+      "shotsAtLeader": 0,
+      "hitsOnLeader": 0,
+      "theftEvents": 14,
+      "theftGems": 805,
+      "endGems": 2329,
+      "endWidth": 439.5
+    },
+    {
+      "id": "bot7",
+      "startGems": 700,
+      "startWidth": 255.5,
+      "minGems": 0,
+      "maxGems": 2441,
+      "maxWidth": 448.5,
+      "knockouts": 5,
+      "leaderSeconds": 0,
+      "missileHits": 1,
+      "missileDamage": 358,
+      "shotsAtLeader": 0,
+      "hitsOnLeader": 0,
+      "theftEvents": 13,
+      "theftGems": 704,
+      "endGems": 17,
+      "endWidth": 46
+    },
+    {
+      "id": "bot8",
+      "startGems": 500,
+      "startWidth": 218.5,
+      "minGems": 0,
+      "maxGems": 1747,
+      "maxWidth": 387,
+      "knockouts": 6,
+      "leaderSeconds": 0,
+      "missileHits": 3,
+      "missileDamage": 1387,
+      "shotsAtLeader": 0,
+      "hitsOnLeader": 0,
+      "theftEvents": 17,
+      "theftGems": 2107,
+      "endGems": 570,
+      "endWidth": 232
+    },
+    {
+      "id": "bot9",
+      "startGems": 400,
+      "startWidth": 196.5,
+      "minGems": 0,
+      "maxGems": 2782,
+      "maxWidth": 475,
+      "knockouts": 3,
+      "leaderSeconds": 0,
+      "missileHits": 2,
+      "missileDamage": 346,
+      "shotsAtLeader": 0,
+      "hitsOnLeader": 0,
+      "theftEvents": 9,
+      "theftGems": 1364,
+      "endGems": 71,
+      "endWidth": 86.5
+    },
+    {
+      "id": "bot10",
+      "startGems": 300,
+      "startWidth": 171.5,
+      "minGems": 103,
+      "maxGems": 10898,
+      "maxWidth": 816,
+      "knockouts": 0,
+      "leaderSeconds": 93,
+      "missileHits": 0,
+      "missileDamage": 0,
+      "shotsAtLeader": 0,
+      "hitsOnLeader": 0,
+      "theftEvents": 28,
+      "theftGems": 7954,
+      "endGems": 1858,
+      "endWidth": 397.5
+    },
+    {
+      "id": "bot11",
+      "startGems": 200,
+      "startWidth": 141.5,
+      "minGems": 0,
+      "maxGems": 3461,
+      "maxWidth": 522.5,
+      "knockouts": 5,
+      "leaderSeconds": 0,
+      "missileHits": 2,
+      "missileDamage": 368,
+      "shotsAtLeader": 0,
+      "hitsOnLeader": 0,
+      "theftEvents": 14,
+      "theftGems": 3145,
+      "endGems": 24,
+      "endWidth": 53
+    },
+    {
+      "id": "bot12",
+      "startGems": 150,
+      "startWidth": 123.5,
+      "minGems": 0,
+      "maxGems": 4376,
+      "maxWidth": 578,
+      "knockouts": 7,
+      "leaderSeconds": 0,
+      "missileHits": 1,
+      "missileDamage": 642,
+      "shotsAtLeader": 0,
+      "hitsOnLeader": 0,
+      "theftEvents": 13,
+      "theftGems": 1303,
+      "endGems": 8,
+      "endWidth": 34.5
+    },
+    {
+      "id": "bot13",
+      "startGems": 100,
+      "startWidth": 101.5,
+      "minGems": 0,
+      "maxGems": 5244,
+      "maxWidth": 624.5,
+      "knockouts": 3,
+      "leaderSeconds": 0,
+      "missileHits": 1,
+      "missileDamage": 50,
+      "shotsAtLeader": 0,
+      "hitsOnLeader": 0,
+      "theftEvents": 11,
+      "theftGems": 3075,
+      "endGems": 5048,
+      "endWidth": 614.5
+    },
+    {
+      "id": "bot14",
+      "startGems": 80,
+      "startWidth": 91.5,
+      "minGems": 0,
+      "maxGems": 8546,
+      "maxWidth": 754,
+      "knockouts": 2,
+      "leaderSeconds": 79,
+      "missileHits": 4,
+      "missileDamage": 654,
+      "shotsAtLeader": 0,
+      "hitsOnLeader": 0,
+      "theftEvents": 17,
+      "theftGems": 5988,
+      "endGems": 745,
+      "endWidth": 263
+    },
+    {
+      "id": "bot15",
+      "startGems": 60,
+      "startWidth": 80,
+      "minGems": 0,
+      "maxGems": 6542,
+      "maxWidth": 684,
+      "knockouts": 8,
+      "leaderSeconds": 20,
+      "missileHits": 8,
+      "missileDamage": 5066,
+      "shotsAtLeader": 0,
+      "hitsOnLeader": 0,
+      "theftEvents": 23,
+      "theftGems": 2715,
+      "endGems": 1,
+      "endWidth": 22.5
+    },
+    {
+      "id": "bot16",
+      "startGems": 40,
+      "startWidth": 66.5,
+      "minGems": 0,
+      "maxGems": 716,
+      "maxWidth": 258,
+      "knockouts": 8,
+      "leaderSeconds": 0,
+      "missileHits": 1,
+      "missileDamage": 1,
+      "shotsAtLeader": 0,
+      "hitsOnLeader": 0,
+      "theftEvents": 2,
+      "theftGems": 27,
+      "endGems": 477,
+      "endWidth": 213.5
+    },
+    {
+      "id": "bot17",
+      "startGems": 25,
+      "startWidth": 54,
+      "minGems": 0,
+      "maxGems": 2449,
+      "maxWidth": 449.5,
+      "knockouts": 6,
+      "leaderSeconds": 0,
+      "missileHits": 2,
+      "missileDamage": 190,
+      "shotsAtLeader": 0,
+      "hitsOnLeader": 0,
+      "theftEvents": 15,
+      "theftGems": 2501,
+      "endGems": 0,
+      "endWidth": 20
+    },
+    {
+      "id": "bot18",
+      "startGems": 12,
+      "startWidth": 40,
+      "minGems": 0,
+      "maxGems": 5005,
+      "maxWidth": 612.5,
+      "knockouts": 5,
+      "leaderSeconds": 0,
+      "missileHits": 1,
+      "missileDamage": 61,
+      "shotsAtLeader": 0,
+      "hitsOnLeader": 0,
+      "theftEvents": 7,
+      "theftGems": 3258,
+      "endGems": 1,
+      "endWidth": 22.5
+    },
+    {
+      "id": "bot19",
+      "startGems": 5,
+      "startWidth": 30,
+      "minGems": 0,
+      "maxGems": 1255,
+      "maxWidth": 333.5,
+      "knockouts": 8,
+      "leaderSeconds": 0,
+      "missileHits": 2,
+      "missileDamage": 127,
+      "shotsAtLeader": 0,
+      "hitsOnLeader": 0,
+      "theftEvents": 15,
+      "theftGems": 668,
+      "endGems": 1,
+      "endWidth": 22.5
+    }
+  ],
+  "samples": [
+    {
+      "seconds": 60,
+      "topThree": [
+        {
+          "id": "bot0",
+          "gems": 6535,
+          "width": 683.5
+        },
+        {
+          "id": "bot1",
+          "gems": 4570,
+          "width": 589
+        },
+        {
+          "id": "bot13",
+          "gems": 1884,
+          "width": 400
+        }
+      ],
+      "knockouts": 7
+    },
+    {
+      "seconds": 120,
+      "topThree": [
+        {
+          "id": "bot0",
+          "gems": 6776,
+          "width": 693
+        },
+        {
+          "id": "bot1",
+          "gems": 5302,
+          "width": 627.5
+        },
+        {
+          "id": "bot9",
+          "gems": 2760,
+          "width": 473.5
+        }
+      ],
+      "knockouts": 16
+    },
+    {
+      "seconds": 180,
+      "topThree": [
+        {
+          "id": "bot15",
+          "gems": 5340,
+          "width": 629.5
+        },
+        {
+          "id": "bot1",
+          "gems": 4697,
+          "width": 596
+        },
+        {
+          "id": "bot0",
+          "gems": 3245,
+          "width": 508
+        }
+      ],
+      "knockouts": 26
+    },
+    {
+      "seconds": 240,
+      "topThree": [
+        {
+          "id": "bot14",
+          "gems": 7458,
+          "width": 718.5
+        },
+        {
+          "id": "bot0",
+          "gems": 5063,
+          "width": 615.5
+        },
+        {
+          "id": "bot1",
+          "gems": 4303,
+          "width": 574
+        }
+      ],
+      "knockouts": 45
+    },
+    {
+      "seconds": 300,
+      "topThree": [
+        {
+          "id": "bot0",
+          "gems": 5887,
+          "width": 655.5
+        },
+        {
+          "id": "bot1",
+          "gems": 5296,
+          "width": 627.5
+        },
+        {
+          "id": "bot14",
+          "gems": 3435,
+          "width": 521
+        }
+      ],
+      "knockouts": 50
+    },
+    {
+      "seconds": 360,
+      "topThree": [
+        {
+          "id": "bot10",
+          "gems": 10177,
+          "width": 799
+        },
+        {
+          "id": "bot18",
+          "gems": 4987,
+          "width": 611.5
+        },
+        {
+          "id": "bot0",
+          "gems": 3219,
+          "width": 506.5
+        }
+      ],
+      "knockouts": 58
+    },
+    {
+      "seconds": 420,
+      "topThree": [
+        {
+          "id": "bot10",
+          "gems": 9795,
+          "width": 789
+        },
+        {
+          "id": "bot2",
+          "gems": 6158,
+          "width": 667.5
+        },
+        {
+          "id": "bot0",
+          "gems": 3337,
+          "width": 514.5
+        }
+      ],
+      "knockouts": 65
+    },
+    {
+      "seconds": 480,
+      "topThree": [
+        {
+          "id": "bot0",
+          "gems": 12668,
+          "width": 853
+        },
+        {
+          "id": "bot13",
+          "gems": 3130,
+          "width": 500
+        },
+        {
+          "id": "bot2",
+          "gems": 2595,
+          "width": 461
+        }
+      ],
+      "knockouts": 74
+    },
+    {
+      "seconds": 540,
+      "topThree": [
+        {
+          "id": "bot0",
+          "gems": 12690,
+          "width": 853.5
+        },
+        {
+          "id": "bot13",
+          "gems": 4958,
+          "width": 610
+        },
+        {
+          "id": "bot10",
+          "gems": 1577,
+          "width": 369.5
+        }
+      ],
+      "knockouts": 82
+    },
+    {
+      "seconds": 600,
+      "topThree": [
+        {
+          "id": "bot2",
+          "gems": 15160,
+          "width": 896
+        },
+        {
+          "id": "bot13",
+          "gems": 5048,
+          "width": 614.5
+        },
+        {
+          "id": "bot6",
+          "gems": 2329,
+          "width": 439.5
+        }
+      ],
+      "knockouts": 96
+    }
+  ],
+  "shots": [
+    {
+      "second": 21,
+      "byId": "bot14",
+      "targetId": "bot13",
+      "leaderId": "bot0"
+    },
+    {
+      "second": 30,
+      "byId": "bot4",
+      "targetId": "bot3",
+      "leaderId": "bot0"
+    },
+    {
+      "second": 31,
+      "byId": "bot2",
+      "targetId": "bot3",
+      "leaderId": "bot0"
+    },
+    {
+      "second": 33,
+      "byId": "bot14",
+      "targetId": "bot15",
+      "leaderId": "bot0"
+    },
+    {
+      "second": 62,
+      "byId": "bot15",
+      "targetId": "bot14",
+      "leaderId": "bot0"
+    },
+    {
+      "second": 63,
+      "byId": "bot13",
+      "targetId": "bot8",
+      "leaderId": "bot0"
+    },
+    {
+      "second": 104,
+      "byId": "bot10",
+      "targetId": "bot14",
+      "leaderId": "bot0"
+    },
+    {
+      "second": 109,
+      "byId": "bot9",
+      "targetId": "bot8",
+      "leaderId": "bot0"
+    },
+    {
+      "second": 117,
+      "byId": "bot1",
+      "targetId": "bot5",
+      "leaderId": "bot0"
+    },
+    {
+      "second": 143,
+      "byId": "bot2",
+      "targetId": "bot15",
+      "leaderId": "bot0"
+    },
+    {
+      "second": 145,
+      "byId": "bot8",
+      "targetId": "bot9",
+      "leaderId": "bot0"
+    },
+    {
+      "second": 153,
+      "byId": "bot19",
+      "targetId": "bot6",
+      "leaderId": "bot0"
+    },
+    {
+      "second": 179,
+      "byId": "bot0",
+      "targetId": "bot15",
+      "leaderId": "bot15"
+    },
+    {
+      "second": 183,
+      "byId": "bot16",
+      "targetId": "bot7",
+      "leaderId": "bot0"
+    },
+    {
+      "second": 191,
+      "byId": "bot14",
+      "targetId": "bot11",
+      "leaderId": "bot0"
+    },
+    {
+      "second": 192,
+      "byId": "bot6",
+      "targetId": "bot19",
+      "leaderId": "bot0"
+    },
+    {
+      "second": 193,
+      "byId": "bot19",
+      "targetId": "bot6",
+      "leaderId": "bot0"
+    },
+    {
+      "second": 206,
+      "byId": "bot14",
+      "targetId": "bot15",
+      "leaderId": "bot0"
+    },
+    {
+      "second": 210,
+      "byId": "bot14",
+      "targetId": "bot15",
+      "leaderId": "bot14"
+    },
+    {
+      "second": 222,
+      "byId": "bot12",
+      "targetId": "bot17",
+      "leaderId": "bot14"
+    },
+    {
+      "second": 223,
+      "byId": "bot14",
+      "targetId": "bot2",
+      "leaderId": "bot14"
+    },
+    {
+      "second": 230,
+      "byId": "bot8",
+      "targetId": "bot9",
+      "leaderId": "bot14"
+    },
+    {
+      "second": 251,
+      "byId": "bot0",
+      "targetId": "bot1",
+      "leaderId": "bot14"
+    },
+    {
+      "second": 263,
+      "byId": "bot7",
+      "targetId": "bot9",
+      "leaderId": "bot14"
+    },
+    {
+      "second": 285,
+      "byId": "bot6",
+      "targetId": "bot16",
+      "leaderId": "bot14"
+    },
+    {
+      "second": 298,
+      "byId": "bot2",
+      "targetId": "bot19",
+      "leaderId": "bot0"
+    },
+    {
+      "second": 321,
+      "byId": "bot0",
+      "targetId": "bot15",
+      "leaderId": "bot0"
+    },
+    {
+      "second": 325,
+      "byId": "bot0",
+      "targetId": "bot7",
+      "leaderId": "bot0"
+    },
+    {
+      "second": 327,
+      "byId": "bot6",
+      "targetId": "bot17",
+      "leaderId": "bot0"
+    },
+    {
+      "second": 342,
+      "byId": "bot10",
+      "targetId": "bot0",
+      "leaderId": "bot10"
+    },
+    {
+      "second": 352,
+      "byId": "bot18",
+      "targetId": "bot11",
+      "leaderId": "bot10"
+    },
+    {
+      "second": 394,
+      "byId": "bot0",
+      "targetId": "bot1",
+      "leaderId": "bot10"
+    },
+    {
+      "second": 397,
+      "byId": "bot6",
+      "targetId": "bot11",
+      "leaderId": "bot10"
+    },
+    {
+      "second": 407,
+      "byId": "bot6",
+      "targetId": "bot16",
+      "leaderId": "bot10"
+    },
+    {
+      "second": 429,
+      "byId": "bot0",
+      "targetId": "bot7",
+      "leaderId": "bot10"
+    },
+    {
+      "second": 434,
+      "byId": "bot8",
+      "targetId": "bot15",
+      "leaderId": "bot2"
+    },
+    {
+      "second": 452,
+      "byId": "bot14",
+      "targetId": "bot15",
+      "leaderId": "bot5"
+    },
+    {
+      "second": 454,
+      "byId": "bot0",
+      "targetId": "bot5",
+      "leaderId": "bot5"
+    },
+    {
+      "second": 472,
+      "byId": "bot10",
+      "targetId": "bot6",
+      "leaderId": "bot0"
+    },
+    {
+      "second": 498,
+      "byId": "bot14",
+      "targetId": "bot8",
+      "leaderId": "bot0"
+    },
+    {
+      "second": 509,
+      "byId": "bot13",
+      "targetId": "bot4",
+      "leaderId": "bot0"
+    },
+    {
+      "second": 513,
+      "byId": "bot10",
+      "targetId": "bot18",
+      "leaderId": "bot0"
+    },
+    {
+      "second": 532,
+      "byId": "bot14",
+      "targetId": "bot3",
+      "leaderId": "bot0"
+    },
+    {
+      "second": 545,
+      "byId": "bot12",
+      "targetId": "bot17",
+      "leaderId": "bot0"
+    },
+    {
+      "second": 564,
+      "byId": "bot10",
+      "targetId": "bot16",
+      "leaderId": "bot2"
+    },
+    {
+      "second": 565,
+      "byId": "bot4",
+      "targetId": "bot8",
+      "leaderId": "bot2"
+    },
+    {
+      "second": 572,
+      "byId": "bot4",
+      "targetId": "bot18",
+      "leaderId": "bot2"
+    },
+    {
+      "second": 576,
+      "byId": "bot13",
+      "targetId": "bot15",
+      "leaderId": "bot2"
+    },
+    {
+      "second": 586,
+      "byId": "bot10",
+      "targetId": "bot5",
+      "leaderId": "bot2"
+    },
+    {
+      "second": 590,
+      "byId": "bot2",
+      "targetId": "bot3",
+      "leaderId": "bot2"
+    },
+    {
+      "second": 592,
+      "byId": "bot14",
+      "targetId": "bot8",
+      "leaderId": "bot2"
+    },
+    {
+      "second": 598,
+      "byId": "bot2",
+      "targetId": "bot19",
+      "leaderId": "bot2"
+    }
+  ],
+  "impacts": [
+    {
+      "second": 32,
+      "byId": "bot2",
+      "targetId": "bot3",
+      "targetWidth": 467.5,
+      "damage": 931,
+      "out": false,
+      "leader": false
+    },
+    {
+      "second": 33,
+      "byId": "bot14",
+      "targetId": "bot15",
+      "targetWidth": 117.5,
+      "damage": 42,
+      "out": false,
+      "leader": false
+    },
+    {
+      "second": 63,
+      "byId": "bot15",
+      "targetId": "bot13",
+      "targetWidth": 430,
+      "damage": 50,
+      "out": false,
+      "leader": false
+    },
+    {
+      "second": 64,
+      "byId": "bot13",
+      "targetId": "bot8",
+      "targetWidth": 387,
+      "damage": 712,
+      "out": false,
+      "leader": false
+    },
+    {
+      "second": 105,
+      "byId": "bot10",
+      "targetId": "bot14",
+      "targetWidth": 156,
+      "damage": 83,
+      "out": false,
+      "leader": false
+    },
+    {
+      "second": 110,
+      "byId": "bot9",
+      "targetId": "bot14",
+      "targetWidth": 129.5,
+      "damage": 166,
+      "out": true,
+      "leader": false
+    },
+    {
+      "second": 117,
+      "byId": "bot1",
+      "targetId": "bot5",
+      "targetWidth": 284.5,
+      "damage": 887,
+      "out": true,
+      "leader": false
+    },
+    {
+      "second": 144,
+      "byId": "bot2",
+      "targetId": "bot15",
+      "targetWidth": 281,
+      "damage": 258,
+      "out": false,
+      "leader": false
+    },
+    {
+      "second": 146,
+      "byId": "bot8",
+      "targetId": "bot9",
+      "targetWidth": 384.5,
+      "damage": 334,
+      "out": false,
+      "leader": false
+    },
+    {
+      "second": 179,
+      "byId": "bot0",
+      "targetId": "bot15",
+      "targetWidth": 683.5,
+      "damage": 1192,
+      "out": false,
+      "leader": true
+    },
+    {
+      "second": 185,
+      "byId": "bot16",
+      "targetId": "bot1",
+      "targetWidth": 585,
+      "damage": 21,
+      "out": false,
+      "leader": false
+    },
+    {
+      "second": 191,
+      "byId": "bot14",
+      "targetId": "bot11",
+      "targetWidth": 175,
+      "damage": 313,
+      "out": true,
+      "leader": false
+    },
+    {
+      "second": 192,
+      "byId": "bot6",
+      "targetId": "bot19",
+      "targetWidth": 176.5,
+      "damage": 112,
+      "out": false,
+      "leader": false
+    },
+    {
+      "second": 194,
+      "byId": "bot19",
+      "targetId": "bot6",
+      "targetWidth": 187,
+      "damage": 64,
+      "out": false,
+      "leader": false
+    },
+    {
+      "second": 206,
+      "byId": "bot14",
+      "targetId": "bot15",
+      "targetWidth": 495,
+      "damage": 1316,
+      "out": false,
+      "leader": false
+    },
+    {
+      "second": 210,
+      "byId": "bot14",
+      "targetId": "bot15",
+      "targetWidth": 383.5,
+      "damage": 1712,
+      "out": true,
+      "leader": false
+    },
+    {
+      "second": 223,
+      "byId": "bot12",
+      "targetId": "bot17",
+      "targetWidth": 449.5,
+      "damage": 97,
+      "out": false,
+      "leader": false
+    },
+    {
+      "second": 223,
+      "byId": "bot14",
+      "targetId": "bot2",
+      "targetWidth": 254.5,
+      "damage": 694,
+      "out": true,
+      "leader": false
+    },
+    {
+      "second": 252,
+      "byId": "bot0",
+      "targetId": "bot1",
+      "targetWidth": 621,
+      "damage": 1689,
+      "out": false,
+      "leader": false
+    },
+    {
+      "second": 263,
+      "byId": "bot7",
+      "targetId": "bot9",
+      "targetWidth": 81,
+      "damage": 12,
+      "out": false,
+      "leader": false
+    },
+    {
+      "second": 298,
+      "byId": "bot2",
+      "targetId": "bot19",
+      "targetWidth": 86,
+      "damage": 15,
+      "out": false,
+      "leader": false
+    },
+    {
+      "second": 326,
+      "byId": "bot0",
+      "targetId": "bot8",
+      "targetWidth": 202,
+      "damage": 425,
+      "out": true,
+      "leader": false
+    },
+    {
+      "second": 327,
+      "byId": "bot6",
+      "targetId": "bot11",
+      "targetWidth": 474.5,
+      "damage": 55,
+      "out": false,
+      "leader": false
+    },
+    {
+      "second": 343,
+      "byId": "bot10",
+      "targetId": "bot0",
+      "targetWidth": 704.5,
+      "damage": 2360,
+      "out": false,
+      "leader": false
+    },
+    {
+      "second": 399,
+      "byId": "bot6",
+      "targetId": "bot14",
+      "targetWidth": 357,
+      "damage": 390,
+      "out": false,
+      "leader": false
+    },
+    {
+      "second": 407,
+      "byId": "bot6",
+      "targetId": "bot16",
+      "targetWidth": 22.5,
+      "damage": 1,
+      "out": true,
+      "leader": false
+    },
+    {
+      "second": 429,
+      "byId": "bot0",
+      "targetId": "bot7",
+      "targetWidth": 186.5,
+      "damage": 358,
+      "out": true,
+      "leader": false
+    },
+    {
+      "second": 435,
+      "byId": "bot8",
+      "targetId": "bot15",
+      "targetWidth": 211,
+      "damage": 203,
+      "out": false,
+      "leader": false
+    },
+    {
+      "second": 453,
+      "byId": "bot14",
+      "targetId": "bot15",
+      "targetWidth": 188.5,
+      "damage": 115,
+      "out": false,
+      "leader": false
+    },
+    {
+      "second": 455,
+      "byId": "bot0",
+      "targetId": "bot5",
+      "targetWidth": 727.5,
+      "damage": 1568,
+      "out": false,
+      "leader": true
+    },
+    {
+      "second": 499,
+      "byId": "bot14",
+      "targetId": "bot15",
+      "targetWidth": 219.5,
+      "damage": 228,
+      "out": false,
+      "leader": false
+    },
+    {
+      "second": 509,
+      "byId": "bot13",
+      "targetId": "bot4",
+      "targetWidth": 278.5,
+      "damage": 845,
+      "out": true,
+      "leader": false
+    },
+    {
+      "second": 514,
+      "byId": "bot10",
+      "targetId": "bot18",
+      "targetWidth": 80.5,
+      "damage": 61,
+      "out": true,
+      "leader": false
+    },
+    {
+      "second": 532,
+      "byId": "bot14",
+      "targetId": "bot3",
+      "targetWidth": 274.5,
+      "damage": 279,
+      "out": false,
+      "leader": false
+    },
+    {
+      "second": 545,
+      "byId": "bot12",
+      "targetId": "bot17",
+      "targetWidth": 171.5,
+      "damage": 93,
+      "out": false,
+      "leader": false
+    },
+    {
+      "second": 566,
+      "byId": "bot4",
+      "targetId": "bot14",
+      "targetWidth": 357,
+      "damage": 15,
+      "out": false,
+      "leader": false
+    },
+    {
+      "second": 577,
+      "byId": "bot13",
+      "targetId": "bot12",
+      "targetWidth": 245.5,
+      "damage": 642,
+      "out": true,
+      "leader": false
+    },
+    {
+      "second": 587,
+      "byId": "bot10",
+      "targetId": "bot5",
+      "targetWidth": 157,
+      "damage": 249,
+      "out": true,
+      "leader": false
+    },
+    {
+      "second": 590,
+      "byId": "bot2",
+      "targetId": "bot3",
+      "targetWidth": 277,
+      "damage": 836,
+      "out": true,
+      "leader": false
+    },
+    {
+      "second": 593,
+      "byId": "bot14",
+      "targetId": "bot8",
+      "targetWidth": 302.5,
+      "damage": 250,
+      "out": false,
+      "leader": false
+    }
+  ],
+  "damage": {
+    "peerHitShare": 0.33,
+    "formula": "round(targetGems * min(.85, peerHitShare * (shooterLaunchWidth / targetWidth)^2))"
+  },
+  "captureFireDelayMs": 2000
+}

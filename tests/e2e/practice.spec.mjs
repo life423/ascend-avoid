@@ -255,6 +255,10 @@ test('trusted touch stick, inhale/release/fire, placement and parry complete all
   test.skip(browserName !== 'chromium' || !hasTouch, 'trusted Chromium multi-touch sequence');
   test.setTimeout(90_000);
   const cdp = await page.context().newCDPSession(page), points = new Map();
+  const ready = () => page.waitForFunction(() => {
+    const mode = window.game.currentGameMode;
+    return mode.renderView && mode.practiceReset === mode.multiplayerManager.getState().practice.resetSerial;
+  });
   const touch = async (type, id, x, y) => {
     if (type === 'touchEnd') points.delete(id); else points.set(id, { x, y, id, radiusX: 8, radiusY: 8 });
     await cdp.send('Input.dispatchTouchEvent', { type, touchPoints: [...points.values()] });
@@ -264,13 +268,15 @@ test('trusted touch stick, inhale/release/fire, placement and parry complete all
     if (!points.has(1)) await touch('touchStart', 1, 96, height - 100);
     await touch('touchMove', 1, 96 + dx * 56, height - 100 + dy * 56);
   };
-  const release = id => touch('touchEnd', id);
-  const action = async () => { const { width, height } = page.viewportSize(); await touch('touchStart', 2, width - 74, height - 80); };
+  const release = async id => { if (points.has(id)) await touch('touchEnd', id); };
+  let actionStartedAt = 0;
+  const action = async () => { const { width, height } = page.viewportSize(); await touch('touchStart', 2, width - 74, height - 80); actionStartedAt = Date.now(); };
   const tap = async () => { await action(); await page.waitForTimeout(50); await release(2); };
   const pick = async lesson => {
     // The full tutorial advances itself; no lesson-picker action is used between successes.
     await page.waitForFunction(id => window.game.currentGameMode.multiplayerManager.getState().practice.lesson === id && window.game.currentGameMode.multiplayerManager.getState().practice.phase === 'waiting', lesson);
     await expect(page.locator('.practice-instruction')).toBeVisible();
+    await ready();
   };
   const approach = async (getTarget, tolerance = 24) => {
     for (let i = 0; i < 160; i++) {
@@ -281,20 +287,40 @@ test('trusted touch stick, inhale/release/fire, placement and parry complete all
     }
     if (points.has(1)) await release(1);
   };
-  await start(page, 'basics', true); await stick();
+  await start(page, 'basics', true); await ready(); await stick();
   await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.phase === 'success'); await release(1);
   await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.stage === 'capture');
   await action(); await page.waitForFunction(() => !!window.game.currentGameMode.multiplayerManager.getLocalPlayer().gulping); await release(2);
   await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.stage === 'shoot'); await tap();
   await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.stage === 'finish');
+  await ready();
   await action(); await page.waitForTimeout(220);
-  await approach(v => v.lesson === 'basics' && v.phase === 'waiting' ? v.target : null, 90);
+  await approach(v => v.lesson === 'basics' && v.phase === 'waiting' ? v.target : null, 150);
+  let finishAttempt = (await read(page)).attempt;
   for (let i = 0; i < 60; i++) {
     const v = await read(page); if (v.phase === 'complete') break;
-    if (v.phase === 'waiting' && !v.me.inhaling) { await release(2); await page.waitForTimeout(220); await action(); }
+    if (v.attempt !== finishAttempt) {
+      // A real retry cancels controls; native contacts must be lifted before new gestures.
+      if (points.has(1)) await release(1);
+      if (points.has(2)) await release(2);
+      finishAttempt = v.attempt; await ready();
+    }
+    if (v.phase === 'waiting' && !v.me.inhaling && (!points.has(2) || Date.now() - actionStartedAt > 500)) {
+      await release(2); await page.waitForTimeout(220); await action();
+      await page.waitForTimeout(250); // A hold must outlast the real 180ms tap window.
+    }
+    // Follow the lesson: let theft build the size advantage, then move to the mouth.
+    if (v.phase === 'waiting' && v.target) {
+      const dx = v.target.x - v.me.x, dy = v.target.y - v.me.y, distance = Math.hypot(dx, dy);
+      const bodyContact = (v.me.width + v.target.width) / 2;
+      const desired = v.me.width >= v.target.width * 1.3 ? bodyContact : bodyContact + 90;
+      if (distance > desired) await stick(dx / distance, dy / distance);
+      else if (points.has(1)) await release(1);
+    } else if (points.has(1)) await release(1);
     await page.waitForTimeout(150);
   }
   await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.phase === 'complete', {}, { timeout: 5000 }); await release(2);
+  if (points.has(1)) await release(1);
   await screenshot(page, 'touch-basics-complete.png');
   await pick('weapon');
   for (let i = 0; i < 3; i++) await approach(() => page.evaluate(() => { const m=window.game.currentGameMode.multiplayerManager,w=m.getState().pinwheel,p=w.parts.find(p=>p.carriedBy!==m.localSessionId);return p?{x:p.x,y:p.y}:null; }), 24);

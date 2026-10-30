@@ -20,6 +20,21 @@ export interface Mouthed extends Body {
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 
+/** Relative body size governs resistance; speed and distance still determine whether prey can escape. */
+function sizeAdvantage(attackerWidth: number, targetWidth: number, startsAt: number): number {
+  const advantage = clamp01((attackerWidth / Math.max(1, targetWidth) - startsAt) / (INHALE.BODY_PULL_FULL_RATIO - startsAt));
+  return advantage * advantage * (3 - 2 * advantage);
+}
+
+export function bodyPullScale(attackerWidth: number, targetWidth: number): number {
+  return INHALE.PEER_BODY_PULL + (1 - INHALE.PEER_BODY_PULL) * sizeAdvantage(attackerWidth, targetWidth, 1);
+}
+
+/** Reaching capture size no longer instantly grants the full inner-zone overpower boost. */
+export function innerBodyPullBoost(attackerWidth: number, targetWidth: number): number {
+  return sizeAdvantage(attackerWidth, targetWidth, INHALE.EAT_RATIO);
+}
+
 /** How clear the air between two bodies is: 1 apart, falling to 0 as they overlap deeply (LATCH.OVERLAP_SMOTHER) */
 export function cleanAir(a: Body, b: Body): number {
   const overlap = (a.width + b.width) / 2 - Math.hypot(b.x - a.x, b.y - a.y);

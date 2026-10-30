@@ -9,6 +9,13 @@ const { turnStep, turnRate } = require('../server/dist/game/movement.js');
 const { BOTS } = require('../server/dist/constants/gameConstants.js');
 const { botSuctionThreat } = require('../server/dist/game/botTargets.js');
 
+// Offline comparison only; no client commands or running-server tuning.
+if (process.argv.includes('--baseline-body-pull')) {
+  const { INHALE } = require('../server/dist/constants/gameConstants.js');
+  INHALE.PEER_BODY_PULL = 1;
+  require('../server/dist/game/airflow.js').innerBodyPullBoost = (attacker, target) => attacker >= target * INHALE.EAT_RATIO ? 1 : 0;
+}
+
 const pairs = [[80,100],[100,130],[100,150],[200,300],[400,600],[200,800],[500,1000]];
 const gaps = [20,100,300];
 const angles = [{name:'front',value:0},{name:'side',value:Math.PI/2},{name:'rear',value:Math.PI}];

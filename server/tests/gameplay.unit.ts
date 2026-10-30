@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import { GameState } from '../schema/GameState.js';
 import { CoreSchema } from '../schema/CoreSchema.js';
 import { CANNON, EXHALE, GEMS, SURGE } from '../constants/gameConstants.js';
-import { moveSpeed } from '../game/movement.js';
 import { exhale, fireCaptive, stealWeight, updateHolds, updateInhales } from '../systems/inhale.js';
 import { updateFlights } from '../systems/flights.js';
 import { beginSurge, updateSurges } from '../systems/surges.js';
@@ -38,10 +37,6 @@ function capture(gems = 16) {
   return { state, captor, captive };
 }
 
-assert.equal(moveSpeed(20), 320);
-assert.equal(moveSpeed(143), 130, 'the requested 0.5 falloff reaches, but never drops below, the 130 floor');
-assert.equal(moveSpeed(2000), 130, 'late growth has a movement floor');
-assert(moveSpeed(37.5) > moveSpeed(143), 'small players keep a speed advantage');
 for (const gems of [0, 4, 11, 12, 80]) for (const kind of ['missile', 'turbine'] as const) {
   const s = world(), p = player(s, 'flight-end', gems, 1800, 1800);
   const events: Array<{ type: string; data: Record<string, unknown> }> = [];

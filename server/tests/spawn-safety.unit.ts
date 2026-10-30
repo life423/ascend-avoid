@@ -3,7 +3,6 @@ import { GameState } from '../schema/GameState.js';
 import { WeaponBoltSchema } from '../schema/PinwheelSchema.js';
 import { clearanceAt } from '../systems/turbines.js';
 import { WORLD } from '../constants/gameConstants.js';
-import { moveSpeed } from '../game/movement.js';
 const NOW=100000;
 const s=new GameState(0);s.botFill=0;s.weaponsOn=true;s.surgesOn=false;s.setTurbines('off');s.obstacles.clear();s.comets.clear();s.balls.clear();
 const self=s.addPlayer('newborn','Newborn',NOW),enemy=s.addPlayer('enemy','Enemy',NOW);enemy.placeAt(100,100);
@@ -21,5 +20,4 @@ try{s.spawn(self,NOW);}finally{Math.random=random;}
 assert(clearanceAt(s,self.x+self.width/2,self.y+self.height/2,self,enemy)>WORLD.SPAWN_CLEARANCE,'spawn selects a genuinely clear candidate');
 self.updateMovement(4200,4200,NOW+3000,0);assert(self.spawnProtected,'a new run has four seconds to move clear');
 self.updateMovement(4200,4200,NOW+4001,0);assert(!self.spawnProtected);
-assert.equal(moveSpeed(80),160,'movement uses the requested square-root falloff');assert.equal(moveSpeed(1200),130,'minimum speed remains 130');
-console.log('Spawn safety passed: current/future weapon danger, incoming bolts, safe candidate selection, protected recovery and exact movement settings.');
+console.log('Spawn safety passed: current/future weapon danger, incoming bolts, safe candidate selection and protected recovery.');

@@ -56,9 +56,13 @@ export function shooterMassContribution(shooterWidth: number, ammoWidth: number)
   return Math.min(ammo * CANNON.SHOOTER_MASS_CAP, Math.sqrt(ammo * shooter) * CANNON.SHOOTER_MASS_WEIGHT);
 }
 
-/** Pre-impact projectile mass sets the threat; a tiny shot chips a giant instead of erasing its growth. */
-export function impactGems(targetGems: number, speed: number, flierWidth: number, targetWidth: number = creatureSize(targetGems), storedShooterMass = 0, kind: 'missile' | 'turbine' = 'missile'): number {
+/** Default damage follows pre-impact mass; the headless peer trial uses immutable shooter width. */
+export function impactGems(targetGems: number, speed: number, flierWidth: number, targetWidth: number = creatureSize(targetGems), storedShooterMass = 0, kind: 'missile' | 'turbine' = 'missile', shooterWidth = 0): number {
   if (targetGems <= 0) return 0;
+  if (kind === 'missile' && CANNON.PEER_HIT_SHARE > 0 && Number.isFinite(shooterWidth) && shooterWidth > 0 && targetWidth > 0) {
+    const share = Math.min(CANNON.IMPACT_MAX_SHARE, CANNON.PEER_HIT_SHARE * (shooterWidth / targetWidth) ** 2);
+    return Math.min(targetGems, Math.max(1, Math.round(targetGems * share)));
+  }
   const ammo = bodyMass(flierWidth);
   // Keep the existing CURRENT pre-impact ammunition mass rule. If ammunition changes,
   // its stored shooter bonus still cannot overwhelm that current physical body.

@@ -15,9 +15,9 @@ export interface Box {
   height: number;
 }
 
-/** Top speed for a creature this wide: quick when small, slowing smoothly as it grows (with the shared minimum-speed floor) */
+/** Smaller bodies always walk faster; the legal size range needs no flat speed floor. */
 export function moveSpeed(width: number): number {
-  return Math.max(ARENA_RULES.MIN_SPEED, ARENA_RULES.MOVE_SPEED * Math.pow(ARENA_RULES.PLAYER_SIZE / Math.max(ARENA_RULES.PLAYER_SIZE, width), ARENA_RULES.SPEED_FALLOFF));
+  return ARENA_RULES.MOVE_SPEED * Math.pow(ARENA_RULES.PLAYER_SIZE / Math.max(ARENA_RULES.PLAYER_SIZE, width), ARENA_RULES.SPEED_FALLOFF);
 }
 
 /**
@@ -89,14 +89,17 @@ export function turnAccel(width: number): number {
  */
 export function turnStep(facing: number, spin: number, target: number | null, width: number, inhaling: boolean, deltaTime: number): { facing: number; spin: number } {
   const accel = turnAccel(width);
+  const rate = turnRate(width, inhaling);
+  // Growth or starting an inhale must not carry a smaller body's faster spin into the new state.
+  const currentSpin = Math.max(-rate, Math.min(rate, spin));
   let want = 0;
   let diff = 0;
   if (target !== null) {
     diff = Math.atan2(Math.sin(target - facing), Math.cos(target - facing));
-    want = Math.sign(diff) * Math.min(turnRate(width, inhaling), Math.sqrt(2 * accel * Math.abs(diff)));
+    want = Math.sign(diff) * Math.min(rate, Math.sqrt(2 * accel * Math.abs(diff)));
   }
   const step = accel * deltaTime;
-  const next = Math.abs(want - spin) <= step ? want : spin + Math.sign(want - spin) * step;
+  const next = Math.abs(want - currentSpin) <= step ? want : currentSpin + Math.sign(want - currentSpin) * step;
   // Arriving: stop right on the target instead of wobbling past it
   if (target !== null && Math.sign(next) === Math.sign(diff) && Math.abs(diff) <= Math.abs(next * deltaTime)) return { facing: target, spin: 0 };
   const turned = facing + next * deltaTime;

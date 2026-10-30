@@ -92,8 +92,8 @@ function impact(state: GameState, flier: PlayerSchema, target: PlayerSchema, spe
   const hitSize = target.width, hitX = target.x + target.width / 2, hitY = target.y + target.height / 2;
   const ux = flier.flightVx / speed;
   const uy = flier.flightVy / speed;
-  let spill = target.spawnProtected ? 0 : impactGems(target.gems, speed, flier.width, target.width, flier.flightKind === 'missile' ? flier.shotMassBonus : 0, flier.flightKind);
   const deliberate = flier.flightKind === 'missile' && !!flier.shotOwner;
+  let spill = target.spawnProtected ? 0 : impactGems(target.gems, speed, flier.width, target.width, flier.flightKind === 'missile' ? flier.shotMassBonus : 0, flier.flightKind, deliberate ? flier.shotShooterWidth : 0);
   const out = !target.spawnProtected && (target.gems - spill < CANNON.IMPACT_KO_GEMS || deliberate && lethalPlayerImpact(speed, flier.width, target.width, flier.shotMassBonus, flier.shotShooterWidth));
   const launcher = deliberate ? flier.shotOwner : flier.launchedBy;
   let earned = 0;
