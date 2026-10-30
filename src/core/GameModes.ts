@@ -514,6 +514,8 @@ export class MultiplayerMode extends GameMode {
     private wasLoaded = false
     private wasCaptured = false
     private releaseControls = (): void => {
+        if (this.shotAim) this.facing = { ...this.shotAim }
+        this.shotAim = null
         this.controls?.reset()
         this.sendSteer({ x: 0, y: 0 })
         this.multiplayerManager?.sendMessage('cancel', {})
@@ -576,6 +578,8 @@ export class MultiplayerMode extends GameMode {
     /** The aim last sent (your eyes turn toward it for everyone), and which way you face */
     private sentAim = { x: 0, y: 0 }
     private aimedCaptive = ''
+    /** A loaded touch shot keeps its chosen direction between the aim drag and fire tap. */
+    private shotAim: { x: number; y: number } | null = null
     localFacing = -Math.PI / 2
     /** How fast your creature is turning (radians a second; see turnStep) */
     private localSpin = 0
@@ -840,16 +844,25 @@ export class MultiplayerMode extends GameMode {
         const steer = this.introPlaying || (me.stunned && !me.capturedBy) || editing ? { x: 0, y: 0 } : me.capturedBy && keyLength > 0 ? { x: keyX / keyLength, y: keyY / keyLength } : this.steerVector(input, me)
         this.sendSteer(steer)
         if (me.state !== 'alive') {
+            this.shotAim = null
+            this.aimedCaptive = ''
             this.predicted = { x: me.x, y: me.y }
             this.resetMotion()
             return
         }
+        if (me.gulping !== this.aimedCaptive) {
+            this.aimedCaptive = me.gulping
+            this.shotAim = null
+            this.sentAim = { x: 0, y: 0 } // a different captive cannot inherit the previous shot's aim
+        }
+        const touchAim = this.controls?.aimVector()
+        if (me.gulping && touchAim) this.shotAim = { ...touchAim }
         if (!this.predicted) this.predicted = { x: me.x, y: me.y }
         // A prepared shot remains usable during post-impact knockback, once the brief stun ends.
         // Movement prediction still follows the server; firing/aiming is independent of walking.
         if (me.gulping && !me.stunned && !me.flying && !me.capturedBy && (me.sliding || me.recovering)) {
             const length = Math.hypot(steer.x, steer.y)
-            const aim = this.controls?.aimVector() ?? (length > .2 ? { x: steer.x / length, y: steer.y / length } : this.facing)
+            const aim = touchAim ?? this.shotAim ?? (length > .2 ? { x: steer.x / length, y: steer.y / length } : this.facing)
             if (Math.hypot(aim.x - this.sentAim.x, aim.y - this.sentAim.y) > .1) {
                 this.sentAim = { ...aim }; this.multiplayerManager?.sendMessage('aim', aim)
             }
@@ -868,13 +881,9 @@ export class MultiplayerMode extends GameMode {
         }
 
         const steering = Math.hypot(steer.x, steer.y)
-        if (me.gulping !== this.aimedCaptive) {
-            this.aimedCaptive = me.gulping
-            this.sentAim = { x: 0, y: 0 } // capture stops the server inhale and clears its previous aim
-        }
         if (steering > 0.2) this.facing = { x: steer.x / steering, y: steer.y / steering }
-        // Your mouth points where you're going (the joystick, mouse and keys all aim directly)
-        this.aim = this.controls?.aimVector() ?? (steering > 0.2 ? { x: steer.x / steering, y: steer.y / steering } : { ...this.facing })
+        // Walking aims normally; an explicitly aimed touch shot stays independent until firing.
+        this.aim = touchAim ?? this.shotAim ?? (steering > 0.2 ? { x: steer.x / steering, y: steer.y / steering } : { ...this.facing })
         if ((this.inhaleHeld || me.gulping) && Math.hypot(this.aim.x - this.sentAim.x, this.aim.y - this.sentAim.y) > 0.1) {
             // You turn to face your aim, for everyone to see
             this.sentAim = { ...this.aim }
@@ -1214,8 +1223,8 @@ export class MultiplayerMode extends GameMode {
             const x = target ? target.x + target.width / 2 : objective.objectiveX
             const y = target ? target.y + target.height / 2 : objective.objectiveY
             const radius = target ? target.width / 2 + 30 : objective.objectiveKind === 'hole' ? 96 : 44
-            if (objective.objectiveKind === 'hole') {
-                // Fit a long shot and its return path together on narrow screens.
+            if (objective.objectiveKind === 'hole' || (objective.lesson === 'basics' && objective.stage === 'finish')) {
+                // Keep both ends of the shot, or the learner and injured rival, in the same view.
                 const playerX = me.x + me.width / 2, playerY = me.y + me.height / 2, playerRadius = me.width / 2 + 24
                 const left = Math.min(playerX - playerRadius, x - radius), right = Math.max(playerX + playerRadius, x + radius)
                 const top = Math.min(playerY - playerRadius, y - radius), bottom = Math.max(playerY + playerRadius, y + radius)
