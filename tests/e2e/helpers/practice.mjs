@@ -127,6 +127,10 @@ export async function playPractice(page, input, { until = v => v.phase === 'comp
         const button = page.getByRole('button', { name: /Place weapon/ });
         if (await button.isVisible()) { if (input.touch) await button.tap(); else await button.click(); }
         else await page.keyboard.press('e');
+        await page.waitForFunction(attempt => {
+          const view = window.game.currentGameMode.multiplayerManager.getState().practice;
+          return view.attempt !== attempt || view.stage !== 'place' || view.phase !== 'waiting';
+        }, v.attempt, {timeout:10000});
       } else await input.move();
     }
     await page.waitForTimeout(55);
