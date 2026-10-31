@@ -34,10 +34,30 @@ export class PracticeController {
   private finishBank: FinishCheckpoint = { gems: 40, targetGems: 26 };
   private theftStart = 0;
   private lastActivity = 0;
+  private readingAt = 0;
   constructor(readonly state: GameState) {}
   private get view() { return this.state.practice; }
   private get learner() { return this.state.players.get(this.learnerId); }
   private get acting() { return this.view.phase === 'waiting' || this.view.phase === 'resolving'; }
+  private get immediateStep() {
+    return (this.view.lesson === 'weapon' && ['collect', 'place'].includes(this.view.stage))
+      || (this.view.lesson === 'combat' && ['aim', 'wound', 'approach', 'steal'].includes(this.view.stage));
+  }
+  private waitForReading(now: number): void {
+    for (const actor of this.state.players.values()) {
+      actor.stopInhale(now); actor.steer(0, 0); actor.aimAt(0, 0);
+    }
+    this.view.phase = 'ready'; this.readingAt = this.lastActivity = now;
+  }
+  private preserveReadingTime(now: number): void {
+    if (!this.readingAt) return;
+    const elapsed = Math.max(0, now - this.readingAt);
+    // Private preparation pauses held ammunition, preserving its identity and remaining budget.
+    for (const captor of this.state.players.values()) {
+      if (captor.gulping && this.state.players.get(captor.gulping)?.capturedBy === captor.sessionId) captor.gulpEndsAt += elapsed;
+    }
+    this.readingAt = now;
+  }
 
   attach(id: string, lesson: PracticeLesson, now: number, sequence = false): void {
     this.learnerId = id; this.lastActivity = now;
@@ -74,6 +94,7 @@ export class PracticeController {
   }
   ready(attempt: number, now: number): void {
     if (attempt !== this.view.attempt || this.view.phase !== 'ready') return;
+    this.preserveReadingTime(now); this.readingAt = 0;
     this.readied.add(this.view.lesson + '/' + this.view.stage);
     this.view.phase = 'waiting'; this.stageStartedAt = this.lastActivity = now;
     if (this.view.stage === 'injured-escape' && this.learner) {
@@ -84,6 +105,7 @@ export class PracticeController {
     if (attempt === this.view.attempt && this.acting) this.fail(now, 'This attempt is ready to try again.');
   }
   private clearScene(now: number, keepAmmo = false): void {
+    this.readingAt = 0;
     this.state.gustWaves.clear();
     for (const p of [...this.state.players.values()]) {
       if (p.sessionId === this.learnerId || (keepAmmo && p.sessionId === this.ammoId)) continue;
@@ -129,6 +151,7 @@ export class PracticeController {
     this.view.phase = 'setup'; this.view.attempt++; this.view.stage = stage; this.view.cue = '';
     this.stageStartedAt = now; this.successAt = this.resetAt = this.aimedSince = this.puffAt = 0;
     this.shotStarted = this.rearBroken = this.waitForRespawn = false; this.respawnSeenAt = 0;
+    this.readingAt = 0;
     const fresh = !carry || lesson === 'defense' || (lesson === 'combat' && stage === 'wound');
     if (fresh) { this.view.resetSerial++; this.clearScene(now); }
     let p = this.learner;
@@ -156,6 +179,7 @@ export class PracticeController {
         }
         if (stage === 'shatter' && !carry) { p.facing = -Math.PI / 4; p.spin = 0; p.aimAt(1, -1); }
         this.objective('player', this.targetId);
+        if (stage === 'aim' && !this.readied.has('combat/aim')) { this.waitForReading(now); return; }
       } else if (stage === 'wound') {
         p = this.resetLearner(40, now); this.preload(p, 12, now);
         const target = this.npc('near-rival', 75, p.x + p.width / 2 + 230, p.y + p.height / 2);
@@ -208,7 +232,7 @@ export class PracticeController {
       this.objective('player', this.targetId);
       this.startX = p.x + p.width / 2; this.startY = p.y + p.height / 2;
       this.view.cue = 'warning';
-      if (!this.readied.has(lesson + '/' + stage)) { this.view.phase = 'ready'; this.lastActivity = now; return; }
+      if (!this.readied.has(lesson + '/' + stage)) { this.waitForReading(now); return; }
       if (stage === 'injured-escape') { p.injure(this.state.time); this.injuryEndsAt = p.injuredUntil; this.view.cue = 'injured'; }
     }
     this.view.phase = 'waiting'; this.lastActivity = now;
@@ -230,6 +254,17 @@ export class PracticeController {
     attacker?.stopInhale(now); attacker?.steer(0, 0);
     this.waitForRespawn = p?.state !== 'alive'; this.respawnSeenAt = 0; this.lastActivity = now;
   }
+  private advanceSuccess(now: number): void {
+    const lesson = this.view.lesson as PracticeLesson, stage = this.view.stage, next = this.progress.get(lesson) ?? 0;
+    if (next >= PRACTICE_STAGES[lesson].length) {
+      this.completed.add(lesson); this.view.completed = [...this.completed].join(','); this.view.phase = 'complete';
+      if (!(lesson === 'basics' && this.view.sequence && this.learner?.gulping)) { this.clearScene(now); this.objective(''); }
+      this.lastActivity = now; return;
+    }
+    this.view.passed = next; this.view.failures = 0; this.view.feedback = '';
+    if (lesson === 'combat' && ['wound', 'approach', 'steal'].includes(stage)) this.rememberFinish();
+    this.setup(now, true);
+  }
   observe(type: string, data: Record<string, unknown>, now: number, attempt = this.view.attempt): void {
     if (attempt !== this.view.attempt || !this.acting) return;
     const own = data.byId === this.learnerId, lesson = this.view.lesson, stage = this.view.stage;
@@ -247,6 +282,7 @@ export class PracticeController {
       if (['approach', 'steal', 'finish'].includes(stage) && type === 'combatReward' && own && data.targetId === this.targetId && data.how === 'mouth') {
         // Skilled learners can demonstrate approach, theft and finish in one continuous action.
         this.view.passed = PRACTICE_STAGES.combat.length - 1;
+        this.view.stage = 'finish';
         this.success(now, 'Finished at the mouth. Their remaining gems are yours.');
       }
     } else if (lesson === 'blackhole' && stage === 'shoot' && type === 'combatReward' && own && data.targetId === this.ammoId && data.how === 'blackhole') {
@@ -256,14 +292,15 @@ export class PracticeController {
       if (stage === 'place' && type === 'weaponPlaced' && own && this.state.pinwheel.owner === this.learnerId && this.state.pinwheel.phase === 'charging') this.success(now, 'Placed. It charges and fires automatically.');
       if (stage === 'effect' && type === 'credit' && own && data.targetId === this.targetId && data.how === 'pulsar' && Number(data.gems) > 0) this.success(now, 'Your weapon hit the marked rival.');
     } else if (lesson === 'defense' && stage === 'rear-cover') {
-      if (type === 'exhale' && data.id === this.learnerId) { this.puffAt = now; this.view.phase = 'resolving'; this.view.cue = 'wrapping'; }
+      if (type === 'exhale' && data.id === this.learnerId) { this.puffAt = now; this.view.phase = 'resolving'; this.view.cue = 'wrapping'; this.view.feedback = ''; }
       const wave = this.state.gustWaves.get(this.learnerId);
       if (type === 'parry' && data.id === this.learnerId && data.targetId === this.targetId && wave && waveActive(wave, this.state.time)) {
-        this.rearBroken = true; this.view.cue = 'move-clear'; this.view.feedback = 'Rear cover broke suction. Keep moving!';
+        this.rearBroken = true; this.view.cue = 'move-clear'; this.view.feedback = '';
       }
     }
   }
   beforeTick(now: number): void {
+    if (this.connected && this.view.phase === 'ready') this.preserveReadingTime(now);
     if (!this.connected || !this.learner || !this.acting || this.view.lesson !== 'defense') return;
     const attacker = this.state.players.get(this.targetId), p = this.learner;
     if (!attacker || attacker.state !== 'alive') return;
@@ -299,17 +336,9 @@ export class PracticeController {
     }
     if (this.view.phase === 'success') {
       // Approach/theft are one continuous action; pausing their cues would waste the real injury window.
-      const delay = lesson === 'blackhole' && stage === 'shoot' ? BLACK_HOLE_LESSON.rewardMs : stage === 'shatter' ? 1200 : ['approach', 'steal'].includes(stage) ? 0 : 650;
+      const delay = lesson === 'blackhole' && stage === 'shoot' ? BLACK_HOLE_LESSON.rewardMs : stage === 'shatter' ? 1200 : this.immediateStep ? 0 : 650;
       if (now - this.successAt < delay) return;
-      const next = this.progress.get(lesson) ?? 0;
-      if (next >= PRACTICE_STAGES[lesson].length) {
-        this.completed.add(lesson); this.view.completed = [...this.completed].join(','); this.view.phase = 'complete';
-        if (!(lesson === 'basics' && this.view.sequence && p.gulping)) { this.clearScene(now); this.objective(''); }
-        this.lastActivity = now; return;
-      }
-      this.view.passed = next; this.view.failures = 0; this.view.feedback = '';
-      if (lesson === 'combat' && ['wound', 'approach', 'steal'].includes(stage)) this.rememberFinish();
-      this.setup(now, true); return;
+      this.advanceSuccess(now); return;
     }
     if (!this.acting) return;
     if (p.state !== 'alive') { this.fail(now, 'Caught. You will respawn in clear space, then retry this step.'); return; }
@@ -345,15 +374,18 @@ export class PracticeController {
     } else if (lesson === 'weapon') {
       const w = this.state.pinwheel;
       if (stage === 'collect') { const part = w.parts.find(part => part.carriedBy !== this.learnerId); if (part) this.objective('parts', '', part.x, part.y); }
+      else if (stage === 'place' && w.phase === 'charging' && w.owner === this.learnerId) this.success(now, 'Placed. It charges and fires automatically.');
       else if ((stage === 'place' && w.phase !== 'carried') || (stage === 'effect' && (!target || w.phase === 'waiting'))) this.fail(now, 'Your assembled weapon is being restored for this step.');
     } else if (lesson === 'defense') {
       const moved = Math.hypot(p.x + p.width / 2 - this.startX, p.y + p.height / 2 - this.startY);
       if (stage === 'rear-cover') {
+        if (p.inhaling && !this.puffAt) this.view.feedback = 'That was an inhale. Release, then tap briefly for a puff.';
         if (this.rearBroken && moved >= 145 && target && !target.inhaling) this.success(now, 'Escaped. The fixed wall gave you room to move.');
         else if (this.puffAt && now - this.puffAt > EXHALE.WAVE_WRAP_MS + EXHALE.WAVE_HOLD_MS + 500 && !this.rearBroken) this.fail(now, 'The wave did not break rear suction. Keep facing away and tap while fleeing.');
         else if (now - this.stageStartedAt > 9000) this.fail(now, 'Use a quick tap for a puff, then keep moving clear.');
       } else if (this.state.time >= this.injuryEndsAt && !injuryVulnerable(this.state, p, now) && moved >= 180) this.success(now, 'Recovered. The shell closed and breathing is available again.');
     }
+    if (this.view.phase === 'success' && this.immediateStep) this.advanceSuccess(now);
   }
   shouldClose(now: number): boolean {
     return now - this.lastActivity > (['complete', 'choosing', 'finished'].includes(this.view.phase) ? PRACTICE_ARENA.finishedMs : PRACTICE_ARENA.idleMs);

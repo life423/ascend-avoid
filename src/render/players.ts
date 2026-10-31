@@ -214,7 +214,7 @@ export function drawPlayer(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
     const color = isLocal ? '#ffffff' : PLAYER_COLORS[player.playerIndex % PLAYER_COLORS.length]
     // Cheeks inflate during the gulp, then stay full until firing or release.
     const heldFor = world && holding ? mode.worldNow(world, timestamp) - (player.gulpEndsAt - holding.captureHoldMs) : 0
-    const cheekProgress = holding ? Math.max(0, Math.min(1, heldFor / SUCK_MS)) : 0
+    const cheekProgress = holding ? mode.isPractice && world?.practice.phase === 'ready' ? 1 : Math.max(0, Math.min(1, heldFor / SUCK_MS)) : 0
     const cheeks = 1 - Math.pow(1 - cheekProgress, 3)
     if (player.flying) drawProjectile(ctx, left + size / 2, top + size / 2, size, color, heading, timestamp)
     else drawCreature(ctx, left + size / 2, top + size / 2, size, color, facing, timestamp, player.mouth ?? '', Boolean(player.inhaling), cheeks, Boolean(player.stunned),
@@ -281,6 +281,8 @@ function drawMouthful(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, capt
         // The local captive has its own interior view.
         return
     }
+    // Preparation has no running shot countdown or active aim line.
+    if (mode.isPractice && state.practice?.phase === 'ready') return
     const u = 1 / Math.max(0.001, Math.abs(ctx.getTransform().a))
     const width = (own ? 118 : 76) * u
     const height = (own ? 38 : 28) * u

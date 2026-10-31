@@ -1,5 +1,21 @@
 # Ascend Avoid
 
+## October 31 tutorial reading and feedback release
+
+The user requested the fixes found in the latest hosted mobile review. The local
+follow-up on `codex/tutorial-reading-feedback` starts from deployed `f10fc82`:
+Ready protects the actual captive's remaining time while reading, early valid
+weapon placement counts once, teaching explanations remain in the next cue and
+an overlong puff press gets immediate coaching. Injury help is kept outside the
+active escape. All five lessons and normal bot/human rules remain; damage/loading
+experiments stay off. See [PRACTICE_TUTORIAL.md](PRACTICE_TUTORIAL.md#reading-and-feedback-release).
+All five lessons and the full sequence pass on emulated phones in portrait and
+landscape, a narrow reduced-motion phone, tablet and desktop. Build, types, unit,
+multiplayer and 58 distinct browser checks pass; the verification record explains
+the corrected desktop test-driver race. The user approved committing, merging and
+deploying this batch; GitHub's PR and production workflow record the published
+revision and rollout. The local review preview is <http://127.0.0.1:3180/>.
+
 ## October 31 release authorization
 
 The user approved committing, merging to main and deploying the defense/contact/

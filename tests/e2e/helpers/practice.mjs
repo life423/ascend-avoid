@@ -125,8 +125,11 @@ export async function playPractice(page, input, { until = v => v.phase === 'comp
       } else if (v.stage === 'place') {
         await input.stop();
         const button = page.getByRole('button', { name: /Place weapon/ });
-        if (await button.isVisible()) { if (input.touch) await button.tap(); else await button.click(); }
-        else await page.keyboard.press('e');
+        // A state patch can arrive before the next render exposes the control.
+        // Use an available human action, rather than an ignored pre-render E press.
+        await expect(button).toBeVisible();
+        await expect(button).toBeEnabled();
+        if (input.touch) await button.tap(); else await page.keyboard.press('e');
         await page.waitForFunction(attempt => {
           const view = window.game.currentGameMode.multiplayerManager.getState().practice;
           return view.attempt !== attempt || view.stage !== 'place' || view.phase !== 'waiting';

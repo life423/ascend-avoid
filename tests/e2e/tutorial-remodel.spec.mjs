@@ -122,7 +122,7 @@ test('injury details have a reachable disclosure and preserve the readable Ready
     const ready=page.getByRole('button',{name:'Ready',exact:true});
     if(hasTouch)await ready.tap();else await ready.click();
     await page.waitForFunction(()=>window.game.currentGameMode.multiplayerManager.getState().practice.phase==='waiting');
-    await expect(page.locator('.practice-panel details')).not.toHaveAttribute('open','');
+    await expect(page.locator('.practice-panel details')).toBeHidden();
     const result=await playPractice(page,input);expect(result.completed).toContain('defense');
   }finally{await input.close();}
 });
