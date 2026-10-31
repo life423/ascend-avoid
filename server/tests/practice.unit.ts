@@ -82,6 +82,50 @@ for (const lesson of PRACTICE_LESSONS) {
   c.select(lesson, true, now()); assert.equal(s.practice.passed, 0, 'replay starts cleanly');
 }
 {
+  const { s, p, c, step, until, now } = setup('combat');
+  const ammo = p.gulping, budget = p.gulpEndsAt - s.time, gems = p.gems, attempt = s.practice.attempt;
+  assert.equal(s.practice.phase, 'ready');
+  for (let i = 0; i < 700; i++) step();
+  assert.equal(s.practice.phase, 'ready'); assert.equal(p.gulping, ammo);
+  assert.equal(s.players.get(ammo)?.capturedBy, p.sessionId);
+  assert.equal(p.gems, gems); assert.equal(s.practice.failures, 0);
+  assert(Math.abs(p.gulpEndsAt - s.time - budget) <= 1, 'reading preserves the actual captive and its remaining budget');
+  c.ready(attempt - 1, now()); assert.equal(s.practice.phase, 'ready');
+  c.ready(attempt, now()); assert.equal(s.practice.phase, 'waiting');
+  until(() => s.practice.attempt > attempt);
+  assert.equal(s.practice.stage, 'aim'); assert.equal(s.practice.passed, 0);
+  assert.equal(s.practice.failures, 1, 'the ordinary hold deadline resumes after Ready');
+  assert.equal(s.practice.phase, 'waiting', 'an immediate retry does not require rereading');
+}
+{
+  const { s, p, play, events } = setup('weapon');
+  const observe = s.onEvent;
+  s.onEvent = (type, data) => {
+    observe?.(type, data);
+    if (type === 'weaponAssembled' && data.byId === p.sessionId) {
+      assert.equal(s.practice.phase, 'success');
+      deployWeapon(s, p);
+      assert.equal(s.pinwheel.phase, 'charging', 'place the real weapon in the original transition window');
+    }
+  };
+  play(() => s.practice.phase === 'complete');
+  assert.equal(s.practice.failures, 0);
+  assert.equal(events.filter(event => event.type === 'weaponPlaced').length, 1);
+  assert.equal(s.practice.completed, 'weapon', 'early real placement is credited without another press');
+}
+{
+  const { s, p, c, step, until, now } = setup('defense');
+  c.ready(s.practice.attempt, now()); until(() => s.practice.cue === 'attacking');
+  const attempt = s.practice.attempt;
+  p.startInhale(now()); step();
+  assert(s.practice.feedback.includes('Release, then tap briefly'));
+  assert.equal(s.practice.failures, 0); assert.equal(s.practice.passed, 0);
+  p.stopInhale(now()); p.steer(1, 0); exhale(s, p, now()); step();
+  assert.equal(s.practice.feedback, '', 'a real puff clears the hold coaching');
+  until(() => s.practice.phase === 'success');
+  assert.equal(s.practice.attempt, attempt, 'correcting a hold can succeed in the same attempt');
+}
+{
   const { s, p, play, until, now } = setup('combat');
   play(() => s.practice.stage === 'shatter' && s.practice.phase === 'waiting');
   const attempt = s.practice.attempt;
@@ -151,10 +195,11 @@ for (const holding of [false, true]) {
     if (s.practice.stage === 'capture' && p.gulping) actualCaptive = p.gulping;
     const v = s.practice;
     if (v.phase === 'waiting') { if (v.stage === 'grow') p.steer(1, 0); else p.startInhale(now()); }
-    else p.steer(0, 0);
+    else p.steer(v.phase === 'complete' ? 1 : 0, 0);
     step();
   }
   assert.equal(s.practice.lesson, 'combat'); assert(actualCaptive && p.gulping === actualCaptive, 'the full sequence carries the real captured opponent into aiming');
+  assert.deepEqual(p.steering(), { x: 0, y: 0 }, 'reading clears the walking intent inherited from a moving capture');
   play(() => s.practice.lesson === 'weapon' && s.practice.phase === 'complete');
   assert.deepEqual(s.practice.completed.split(','), [...PRACTICE_LESSONS]);
   c.startSequence(now()); c.skip(s.practice.attempt, now());

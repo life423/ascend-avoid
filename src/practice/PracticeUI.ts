@@ -81,9 +81,12 @@ export class PracticeUI {
     const completed = (view.phase === 'complete' && !(view.sequence && next)) || view.phase === 'finished';
     const detailOpen = this.panel.querySelector('details')?.open ?? false;
     const active = ['waiting', 'resolving'].includes(view.phase);
-    const injury = (lesson === 'combat' && ['wound', 'approach', 'steal', 'finish'].includes(view.stage)) || (lesson === 'defense' && view.stage === 'injured-escape');
+    const injury = (lesson === 'combat' && ['wound', 'approach', 'steal', 'finish'].includes(view.stage)) || (lesson === 'defense' && view.stage === 'injured-escape' && view.phase === 'ready');
+    const injuryText = lesson === 'defense'
+      ? 'Movement still works while injured. Inhale and puff are blocked until your shell heals. A shot already held can still be fired.'
+      : 'A split shell exposes gems. Inhale steals them: you grow and the rival shrinks. Move close for a mouth finish once you are 1.3× wider.';
     this.panel.dataset.phase = view.phase;
-    this.panel.innerHTML = `<div class="practice-heading"><button type="button" data-do="open" aria-label="Choose any lesson">${LESSON_NAMES[lesson]} <span aria-hidden="true">⌄</span></button><span>${completed ? 'Finished' : `${Math.min(view.passed + 1, view.total)} / ${view.total}`}</span></div><p class="practice-instruction" role="status">${instruction}</p>${active && view.failures > 0 && view.feedback ? `<p class="practice-feedback">${view.feedback}</p>` : ''}${view.failures >= 2 && active ? `<p class="practice-hint">${this.hint(view)}</p>` : ''}${injury ? `<details${detailOpen ? ' open' : ''}><summary>About injury</summary><p>A split shell means exposed gems. Inhale steals them, shrinking the rival and growing you. A mouth finish needs 1.3× width and contact. Injured creatures can move, but cannot inhale or puff. An already-held shot remains usable after release. Injury lasts seven seconds; uninterrupted valid theft can prolong it.</p></details>` : ''}<div class="practice-actions">${view.phase === 'ready' ? '<button type="button" data-do="ready" class="practice-primary">Ready</button>' : ''}${completed ? '<button type="button" data-do="exit" class="practice-primary">Play now</button><button type="button" data-do="open">Other lessons</button>' : '<button type="button" data-do="skip">Skip lesson</button>'}<button type="button" data-do="exit">Exit tutorial</button>${this.soundButton()}${this.mouseButton()}</div>`;
+    this.panel.innerHTML = `<div class="practice-heading"><button type="button" data-do="open" aria-label="Choose any lesson">${LESSON_NAMES[lesson]} <span aria-hidden="true">⌄</span></button><span>${completed ? 'Finished' : `${Math.min(view.passed + 1, view.total)} / ${view.total}`}</span></div><p class="practice-instruction" role="status">${instruction}</p>${active && view.feedback ? `<p class="practice-feedback">${view.feedback}</p>` : ''}${view.failures >= 2 && active ? `<p class="practice-hint">${this.hint(view)}</p>` : ''}${injury ? `<details${detailOpen ? ' open' : ''}><summary>About injury</summary><p>${injuryText}</p></details>` : ''}<div class="practice-actions">${view.phase === 'ready' ? '<button type="button" data-do="ready" class="practice-primary">Ready</button>' : ''}${completed ? '<button type="button" data-do="exit" class="practice-primary">Play now</button><button type="button" data-do="open">Other lessons</button>' : '<button type="button" data-do="skip">Skip lesson</button>'}<button type="button" data-do="exit">Exit tutorial</button>${this.soundButton()}${this.mouseButton()}</div>`;
   }
   private soundButton(): string { return `<button type="button" data-do="sound" data-action="sound" aria-label="Mute sound" aria-pressed="${sound.muted}">Sound ${sound.muted ? 'off' : 'on'}</button>`; }
   private mouseButton(): string { return this.touch ? '' : `<button type="button" data-do="mouse" data-action="mouse" role="switch" aria-label="Mouse control" aria-checked="${mouseControlEnabled()}">Mouse <span>${mouseControlEnabled() ? 'On' : 'Off'}</span></button>`; }
@@ -94,18 +97,21 @@ export class PracticeUI {
     if (v.lesson === 'basics') return v.stage === 'grow' ? (this.touch ? 'Use the left stick to gather gems. Soft bodies squish; keep moving.' : 'Move with WASD, arrows or the mouse. Gather gems and slide past the soft body.')
       : `${hold} toward the smaller healthy rival to capture it.`;
     if (v.lesson === 'combat') {
+      if (v.stage === 'aim' && v.phase === 'ready') return this.touch
+        ? 'Read first: drag on the right to aim, then lift before firing. Your captive waits here. Press Ready to begin.'
+        : 'Read first: aim with the mouse or movement, then tap Space to fire. Your captive waits here. Press Ready to begin.';
       if (v.stage === 'aim') return this.touch ? 'Full cheeks: a shot is ready. Drag on the right to aim through the outlined rival. Do not fire yet.' : 'A shot is ready. Aim through the outlined rival with the mouse or movement. Do not fire yet.';
-      if (v.stage === 'shatter') return `You are over 20% wider. Release your aim, then ${fire} to shatter the rival.`;
+      if (v.stage === 'shatter') return `Aim set. You are over 20% wider. ${this.touch ? 'Lift your aiming thumb' : 'Release your aim'}, then ${fire} to shatter the rival.`;
       if (v.stage === 'wound') return `This larger rival will survive. Aim, then ${fire} to expose its gems.`;
-      if (v.cue === 'recovering') return 'Move closer. The mint ring briefly blocks suction as the rival recovers.';
-      if (v.stage === 'approach') return 'Move toward the injured rival. Its split shell shows exposed gems.';
-      if (v.stage === 'steal') return `${hold} toward the injured rival. Theft shrinks it and grows you.`;
-      return `Keep inhaling and move close for a mouth finish.`;
+      if (v.cue === 'recovering') return 'The split shell shows exposed gems. Move closer while the mint recovery ring fades.';
+      if (v.stage === 'approach') return 'The split shell shows exposed gems. Move toward the injured rival.';
+      if (v.stage === 'steal') return `Close enough. ${hold} to steal exposed gems: you grow and the rival shrinks.`;
+      return 'Theft makes you bigger. Keep inhaling and move close for a mouth finish.';
     }
     if (v.lesson === 'blackhole') return v.stage === 'capture' ? `${hold} toward the marked rival to capture it.` : `Release, aim at the distant black core, then ${fire}.`;
     if (v.lesson === 'weapon') return v.stage === 'collect' ? 'Gather the three matching parts. They assemble automatically.'
-      : v.stage === 'place' ? (this.touch ? 'Tap Place weapon to deploy your assembled Pulsar.' : 'Press E to place your assembled Pulsar.')
-      : 'Your Pulsar charges and fires automatically. Watch it hit the marked rival.';
+      : v.stage === 'place' ? (this.touch ? 'Assembled. Tap Place weapon to deploy your Pulsar.' : 'Assembled. Press E to place your Pulsar.')
+      : 'Placed. Your Pulsar charges and fires automatically. Watch it hit the marked rival.';
     if (v.stage === 'injured-escape') return v.phase === 'ready' ? 'Next you will be injured. Keep moving away until the shell closes; breathing will be blocked.' : 'Injured: move away from the pursuer until your shell heals. You cannot inhale or puff.';
     if (v.phase === 'ready') return 'A pursuer starts behind you. Keep facing away, move right and tap a puff to leave rear cover.';
     if (v.cue === 'move-clear') return 'Rear cover broke suction. Keep moving beyond the wall.';

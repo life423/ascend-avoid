@@ -1,5 +1,81 @@
 # Optional practice tutorial
 
+## Reading and feedback release
+
+October 31, on `codex/tutorial-reading-feedback`, based on deployed main
+`f10fc82`. The user requested fixes for early weapon placement, reading before
+aiming, puff feedback and teaching messages, followed by another mobile pass.
+The user subsequently approved committing this batch, merging it into main and
+deploying it. GitHub's pull request and production workflow identify the final
+published revision and rollout result. The checks below record the reviewed
+implementation before release.
+
+- The first aiming attempt waits at Ready. Private preparation preserves the
+  actual captive, its remaining hold budget and all earned growth. Inherited
+  steering/inhale intent stops; input is gated, touch controls dim and the shot
+  countdown stays hidden while reading. Ready resumes the ordinary remaining
+  budget. Retries stay immediate, and the existing room inactivity limit applies.
+- Assembly advances immediately to the placement checkpoint. A real owned weapon
+  already charging certifies placement, including an action made during the old
+  success transition. The controller does not ask for another press or record a
+  false failure. Completion still requires real attributed weapon damage.
+- Aim, injury, approach and theft explanations carry into the next actionable
+  cue. These intermediate checkpoints advance without flashing a 50ms message or
+  spending the real injury window on a presentation delay. A continuous skilled
+  mouth finish retains its final success feedback.
+- Holding instead of tapping during rear-cover practice produces immediate
+  coaching. The learner can release and puff in the same attempt; a real puff
+  clears that coaching. The shared 180ms tap threshold, breath, cooldown, rear
+  wall and success checks are unchanged.
+- Escape injury details are short and available before Ready. Active escape uses
+  the concise instruction and INJURED control state, keeping long text away from
+  the touch controls while the chase runs. Combat details focus on theft/finishing.
+
+All five lessons, unlocked selection, linear progression, skip/exit, version-2
+saved mastery and the actual-captive handoff remain. Normal matches retain their
+existing rules; the separate 33% damage/loading trials stay disabled.
+
+Focused checks cover long reading pauses, genuine hold expiry after Ready, a
+moving capture's handoff, immediate real placement, same-attempt puff correction
+and readable subsequent cues. Browser verification uses an isolated production
+preview; physical-device and uncoached human learnability remain follow-up work.
+
+### Local verification results
+
+The production preview is <http://127.0.0.1:3180/>. All five lessons completed
+individually and as a continuous sequence on Android Chromium, iPhone WebKit
+portrait and landscape, iPad WebKit and desktop Chromium. A separate 320px phone
+completed the sequence with reduced motion. Retained touch aim and injured-target
+framing regressions also pass. Screenshots were inspected at narrow phone,
+ordinary phone, landscape, tablet and desktop sizes; the revised prompts and
+active injury state leave the play controls clear.
+
+There are **58 distinct passing browser cases** across the final checks:
+43 lesson/sequence/aim/framing cases, 12 reading/placement/puff/message cases and
+three injury-disclosure cases. Seven profile-specific cases are intentionally
+skipped. The first matrix had 42 passes and one desktop driver timeout: the trace
+showed an E press before the Place control rendered. The driver now waits for the
+visible, enabled control, then uses E on desktop or a touch tap. Its clean desktop
+rerun passes all six applicable cases. This changed test synchronization, not
+the game's placement rules. Evidence is in `.tmp/tutorial-feedback-mobile-final`,
+`.tmp/tutorial-feedback-desktop-final`, `.tmp/tutorial-feedback-regressions-final`
+and `.tmp/tutorial-feedback-injury-help-final`, with corresponding `.log` files.
+
+The production build, client/server type checks, generated-type check, 40 server
+unit suites plus saved-progress checks and 18 ordinary multiplayer scenarios pass.
+The final inherited-steering fix was additionally checked by the practice suite
+and final browser runs. Lint has zero errors and 185 existing warnings.
+
+Conservative internal review, not a usability measurement: hierarchy,
+consistency, responsiveness and feedback are 9/10; usability, accessibility and
+performance remain 8/10. Priorities are uncoached newcomer observation, enlarged
+text/screen-reader review, then frame/input timing on physical phones. Chromium
+uses trusted multi-touch; WebKit uses pointer holds and DOM taps. These are
+emulated profiles, not physical-device playtests. These are local pre-release
+results; the production rollout also requires hosted client/server verification.
+
+## Previous release and review record
+
 The user approved committing, merging and deploying this reviewed batch on
 October 31. GitHub's pull request and production workflow record the published
 revision and release result. The local-review status below predates that

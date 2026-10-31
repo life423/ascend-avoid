@@ -838,7 +838,12 @@ export class MultiplayerMode extends GameMode {
             return
         }
         const readingPractice = this.isPractice && state.practice?.phase === 'ready'
-        if (readingPractice) events.length = 0
+        if (readingPractice) {
+            this.sendSteer({ x: 0, y: 0 })
+            this.predicted = { x: me.x, y: me.y }
+            this.resetMotion()
+            return
+        }
         // Send releases before any disabled-movement early return, including while stunned or flying.
         for (const event of events.filter(event => event === 'cancel' || event === 'exhale')) {
             this.inhaleHeld = false
@@ -848,7 +853,7 @@ export class MultiplayerMode extends GameMode {
         const keyX = Number(input.right) - Number(input.left)
         const keyY = Number(input.down) - Number(input.up)
         const keyLength = Math.hypot(keyX, keyY)
-        const steer = this.introPlaying || readingPractice || (me.stunned && !me.capturedBy) || editing ? { x: 0, y: 0 } : me.capturedBy && keyLength > 0 ? { x: keyX / keyLength, y: keyY / keyLength } : this.steerVector(input, me)
+        const steer = this.introPlaying || (me.stunned && !me.capturedBy) || editing ? { x: 0, y: 0 } : me.capturedBy && keyLength > 0 ? { x: keyX / keyLength, y: keyY / keyLength } : this.steerVector(input, me)
         this.sendSteer(steer)
         if (me.state !== 'alive') {
             this.shotAim = null
@@ -1190,7 +1195,10 @@ export class MultiplayerMode extends GameMode {
                 this.controls.puffNeedsBreath = this.stamina < EXHALE.BREATH_COST
             }
             if (!this.isPractice && !this.introPlaying) this.game.practiceUI?.offerIfReady()
+            ctx.save()
+            if (this.isPractice && state.practice?.phase === 'ready') ctx.globalAlpha *= .4
             this.controls?.draw(ctx, timestamp, this.breath)
+            ctx.restore()
             drawIncoming(this, ctx, canvas, state, me, timestamp)
             if (me && me.state !== 'alive') drawKnockedOut(this, ctx, canvas)
             ctx.globalAlpha = 1

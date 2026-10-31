@@ -2,6 +2,24 @@
 
 Updated October 31, 2026. This is the durable list of the user's requests and decisions. Current code and later feedback override historical tuning. The approved injury-only theft change supersedes ordinary healthy-player stealing and the earlier theft-allowance suggestion. The fifteen archived balance options remain proposals unless separately accepted.
 
+## Tutorial reading and feedback release
+
+After replaying the deployed five lessons, the user requested fixes for the false
+early-Place retry, reading time before aim, puff coaching and fleeting teaching
+messages. These are implemented on `codex/tutorial-reading-feedback`, based on
+`f10fc82`. Preparation keeps the real captive and remaining budget; real early
+placement is credited, and missed-puff coaching permits correction in the same
+attempt. Explanations carry into the next action, and injury details stay out of
+active escape. [PRACTICE_TUTORIAL.md](PRACTICE_TUTORIAL.md#reading-and-feedback-release)
+records behavior and verification. The current task includes another complete
+mobile pass, now complete on phone portrait/landscape, a 320px reduced-motion
+phone and tablet, with desktop coverage. All 58 distinct browser cases pass after
+fixing a desktop test-driver render race. The user approved committing, merging
+and deploying this batch; GitHub's PR and production workflow record final
+delivery. The local review preview is <http://127.0.0.1:3180/>. Shared live rules and the
+disabled damage/loading trials are preserved. Physical-device and uncoached
+learnability review remain.
+
 ## October 31 delivery authorization
 
 The user approved committing, merging and deploying the reviewed escape-wave,
