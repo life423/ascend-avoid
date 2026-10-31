@@ -2,6 +2,8 @@ import * as schema from "@colyseus/schema";
 const { Schema, MapSchema, ArraySchema, type } = schema;
 import { BlackHoleSchema } from "./BlackHoleSchema.js";
 import { PracticeSchema } from "./PracticeSchema.js";
+import { GustWaveSchema } from './GustWaveSchema.js';
+import { updateGustWaves } from '../systems/gustWaves.js';
 import { BLACK_HOLE } from "../constants/gameConstants.js";
 import { PlayerSchema } from "./PlayerSchema.js";
 import { ObstacleSchema } from "./ObstacleSchema.js";
@@ -18,7 +20,7 @@ import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 import { exhaustAngle } from "../game/turbine.js";
 import type { Direction } from "../game/movement.js";
 import { updateLatches } from "../systems/latches.js";
-import { updateTurbines, clearanceAt } from "../systems/turbines.js";
+import { updateTurbines } from "../systems/turbines.js";
 import { updateTraffic, reshuffleLanes, launchObstacle } from "../systems/traffic.js";
 import { updateInhales, knockOutWithGems, clearCapture, syncContinuedTheft } from "../systems/inhale.js";
 import { slideBlackHoleRims } from "../game/blackHole.js";
@@ -27,14 +29,14 @@ import { botMouth, bombDanger, balanceBots } from "../systems/bots.js";
 import { updateBombs } from "../systems/bombs.js";
 import { updateShift, startGrace, startShift, endShift, fall } from "../systems/shift.js";
 import { collectGems, sprayGems, spreadSettledGems, topUpField } from "../systems/gems.js";
-import { keepApart, pruneBodyContacts } from "../systems/bodies.js";
+import { keepApart } from "../systems/bodies.js";
 import { updateSurges } from "../systems/surges.js";
 import { PinwheelSchema } from "./PinwheelSchema.js";
 import { deployWeapon, updateWeapons } from "../systems/weapons.js";
 import { PINWHEEL } from "../constants/gameConstants.js";
-import { viewShort } from '../game/camera.js';
+import { chooseSpawn, SPAWN_RETRY_MS } from '../game/spawnSafety.js';
 
-const { WORLD, ARENA_RULES, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS, COMETS, BOMBS, TURBINE, SURGE } = GAME_CONSTANTS;
+const { WORLD, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS, COMETS, BOMBS, TURBINE, SURGE } = GAME_CONSTANTS;
 /** Which way each of a bot's decisions steers it */
 const STEER: Record<Direction, { x: number; y: number }> = {
   up: { x: 0, y: -1 },
@@ -43,8 +45,6 @@ const STEER: Record<Direction, { x: number; y: number }> = {
   right: { x: 1, y: 0 },
 };
 
-/** How many random spots to try when looking for a safe place to (re)spawn */
-const SPAWN_TRIES = 24;
 
 /**
  * The online world: one big open arena that never stops. Players drop in the moment they join,
@@ -54,6 +54,7 @@ const SPAWN_TRIES = 24;
  * bots fill in when it's quiet.
  */
 class GameState extends Schema {
+  gustWaves = new MapSchema<GustWaveSchema>();
   private gemSpreadAt = 0;
   players: schema.MapSchema<PlayerSchema>;
   obstacles: schema.ArraySchema<ObstacleSchema>;
@@ -113,7 +114,7 @@ class GameState extends Schema {
   /** Server-only: bots fill in until this many are playing (the automated test sets 0) */
   botFill: number = BOTS.FILL_TO;
   brains = new Map<string, BotBrain>();
-  bodyContacts = new Map<string, { a: string; b: string }>();
+  private spawnRetries = new Map<string, number>();
   nextBotId = 1;
   private startedAt = 0;
   /** Server-only: each traffic lane's direction (1 or -1) and speed; across lanes first, then down */
@@ -204,6 +205,8 @@ class GameState extends Schema {
   }
 
   removePlayer(sessionId: string): void {
+    if (this.gustWaves.has(sessionId)) this.gustWaves.delete(sessionId);
+    this.spawnRetries.delete(sessionId);
     clearCapture(this, sessionId, this.now);
     this.clearTheftFor(sessionId);
     this.players.delete(sessionId);
@@ -227,13 +230,13 @@ class GameState extends Schema {
     this.time = Math.round(now - this.startedAt);
     if (this.cores.length) this.cores.clear();
     this.players.forEach((player) => player.markTick());
-    pruneBodyContacts(this);
     updateShift(this, deltaTime, now);
     updateSurges(this, deltaTime, now);
     updateTraffic(this);
     updateInhales(this, now, deltaTime);
     updateWeapons(this, deltaTime, now);
     updateFlights(this, now, deltaTime);
+    updateGustWaves(this, now);
     updateLatches(this, now, deltaTime);
     updateBombs(this, now, deltaTime);
     updateTurbines(this, now, deltaTime);
@@ -303,7 +306,7 @@ class GameState extends Schema {
 
     this.players.forEach((player) => {
       if (player.state !== PLAYER_STATE.ALIVE) {
-        if (now >= player.respawnAt) this.spawn(player, now);
+        if (now >= player.respawnAt && now >= (this.spawnRetries.get(player.sessionId) ?? 0)) this.spawn(player, now);
         return;
       }
       const fromX = player.x;
@@ -632,7 +635,7 @@ class GameState extends Schema {
    * traffic (where it is and where it's headed), from other players and, most of all, from
    * the leader.
    */
-  spawn(player: PlayerSchema, now: number): void {
+  spawn(player: PlayerSchema, now: number): boolean {
     clearCapture(this, player.sessionId, now);
     player.land();
     player.setGems(player.gems, this.worldWidth, this.worldHeight);
@@ -640,35 +643,18 @@ class GameState extends Schema {
     const pending = player.pendingWeaponGems + player.pendingCombatGems;
     player.pendingWeaponGems = player.pendingCombatGems = 0;
     if (pending > 0) player.setGems(player.gems + pending, this.worldWidth, this.worldHeight);
-    const size = player.width;
-    // Keep a centered newborn view wholly on the map, including wide desktops.
-    const halfView = viewShort(ARENA_RULES.PLAYER_SIZE) * WORLD.MAX_VIEW_ASPECT / 2 + 120;
-    const marginX = Math.min(halfView, (this.worldWidth - size) / 3);
-    const marginY = Math.min(halfView, (this.worldHeight - size) / 3);
-    const leader = this.leader();
-    let best = { x: (this.worldWidth - size) / 2, y: (this.worldHeight - size) / 2 };
-    let bestClearance = -Infinity;
-    for (let attempt = 0; attempt < SPAWN_TRIES; attempt++) {
-      // During a grace period or shift, only the (new) floor will do
-      const onFloor = this.layout ? randomFloorPoint(this.layout, size / 2 + 10) : null;
-      const x = onFloor ? onFloor.x - size / 2 : marginX + Math.random() * (this.worldWidth - size - 2 * marginX);
-      const y = onFloor ? onFloor.y - size / 2 : marginY + Math.random() * (this.worldHeight - size - 2 * marginY);
-      const clearance = clearanceAt(this, x + size / 2, y + size / 2, player, leader);
-      if (clearance > bestClearance) {
-        best = { x, y };
-        bestClearance = clearance;
+    const spot = chooseSpawn(this, player);
+    if (!spot) {
+      if (player.state === PLAYER_STATE.ALIVE) {
+        player.state = PLAYER_STATE.SPAWNING;
+        player.respawnAt = now;
       }
-      if (clearance >= WORLD.SPAWN_CLEARANCE) break;
+      this.spawnRetries.set(player.sessionId, now + SPAWN_RETRY_MS);
+      return false;
     }
-    // Crowding or an unlucky random stream should not hide an available safe spawn.
-    if (bestClearance < WORLD.SPAWN_CLEARANCE) for (let row = 0; row < 5; row++) for (let col = 0; col < 5; col++) {
-      const x = marginX + col / 4 * (this.worldWidth - size - 2 * marginX);
-      const y = marginY + row / 4 * (this.worldHeight - size - 2 * marginY);
-      if (!this.isFloorAt(x + size / 2, y + size / 2)) continue;
-      const clearance = clearanceAt(this, x + size / 2, y + size / 2, player, leader);
-      if (clearance > bestClearance) { best = { x, y }; bestClearance = clearance; }
-    }
-    player.spawnAt(Math.round(best.x), Math.round(best.y), now);
+    this.spawnRetries.delete(player.sessionId);
+    player.spawnAt(spot.x, spot.y, now);
+    return true;
   }
 
 }
@@ -707,5 +693,6 @@ type([PinwheelSchema])(GameState.prototype, "weaponSets");
 
 type([BlackHoleSchema])(GameState.prototype, "blackHoles");
 type(PracticeSchema)(GameState.prototype, "practice");
+type({ map: GustWaveSchema })(GameState.prototype, "gustWaves");
 
 export { GameState };

@@ -7,6 +7,7 @@ import { cannonTargetAppeal } from '../game/botAim.js';
 import { exhale, fireCaptive, stealWeight, injuryVulnerable } from "./inhale.js";
 import { botPreyAvailable, botSuctionThreat } from '../game/botTargets.js';
 import { CANNON, EXHALE } from '../constants/gameConstants.js';
+import { waveBlocks } from '../game/gustWave.js';
 
 const { PLAYER_STATE, BOTS, INHALE, BOMBS } = GAME_CONSTANTS;
 
@@ -54,6 +55,11 @@ export function botMouth(state: GameState, bot: PlayerSchema, now: number) : voi
   const robber = botSuctionThreat(state, bot, now);
   if (brain?.gustDefense.ready(robber?.sessionId ?? '', now) && robber && now >= bot.exhaleReadyAt) {
     const dx = robber.x + robber.width / 2 - cx, dy = robber.y + robber.height / 2 - cy;
+    const robberMouth={x:robber.x+robber.width/2+Math.cos(robber.facing)*robber.width*.3,y:robber.y+robber.height/2+Math.sin(robber.facing)*robber.width*.3};
+    const rearWave={x:cx,y:cy,width:bot.width,facing:bot.facing,at:state.time-EXHALE.WAVE_WRAP_MS};
+    if(waveBlocks(rearWave,state.time,robberMouth,{x:cx,y:cy})){
+      bot.stopInhale(now);exhale(state,bot,now);brain.gustDefense.attempted(now);return;
+    }
     // A human can hold/aim and release into a puff. Use that same turn rate and breath cost.
     if (!bot.inhaling) bot.startInhale(now, INHALE.MAX_MS);
     bot.aimAt(dx, dy);

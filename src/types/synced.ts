@@ -95,6 +95,7 @@ export interface SyncedGameState {
     weaponSets: SyncedArray<SyncedPinwheel>
     blackHoles: SyncedArray<SyncedBlackHole>
     practice: SyncedPractice
+    gustWaves: SyncedMap<SyncedGustWave>
 }
 
 /** GemSchema, as synced to the browser */
@@ -111,6 +112,16 @@ export interface SyncedGem {
     launchY: number
     launchAngle: number
     launchSpeed: number
+}
+
+/** GustWaveSchema, as synced to the browser */
+export interface SyncedGustWave {
+    owner: string
+    x: number
+    y: number
+    width: number
+    facing: number
+    at: number
 }
 
 /** ObstacleSchema, as synced to the browser */
@@ -223,6 +234,7 @@ export interface SyncedPractice {
     completed: string
     resetSerial: number
     sequence: boolean
+    feedback: string
 }
 
 /** TurbineSchema, as synced to the browser */

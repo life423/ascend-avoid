@@ -1,19 +1,33 @@
 # Optional practice tutorial
 
-The October 29 tutorial request supersedes the earlier decision against adding a tutorial. Implementation starts from main `9be662dbe2c3763822b63cab9766b8365346da72` on `codex/practice-tutorial`. The user reviewed the local preview and authorized committing, merging to main and deploying this release batch. GitHub's pull request and production workflow identify the published revision.
+The user approved committing, merging and deploying this reviewed batch on
+October 31. GitHub's pull request and production workflow record the published
+revision and release result. The local-review status below predates that
+authorization; automated browser evidence does not replace human/device review.
+
+October 31: the approved [five-lesson remodel](TUTORIAL_REMODEL_PLAN.md) is
+implemented locally on `codex/wrap-wave-shell-spawns`, based on deployed main
+`939a97a`. It teaches the new rear escape wave, split-shell injury, soft contact
+and ordinary safer respawns. This branch is not merged or deployed. The older
+release/review sections below are historical where they describe four lessons.
 
 ## Experience
 
-Normal play starts immediately. The first-visit offer has **Play tutorial** and **Not now**, expires after eight seconds and does not take focus. Play tutorial starts the complete sequence directly. Menu → **Practice / Tutorials** offers **Start full tutorial** and all four individually unlocked lessons. The full sequence automatically loads each next lesson after success. An old `ascend.guideSeen` flag suppresses the new automatic offer without completing any lessons. The previous four-second starter guide is removed.
+Normal play starts immediately. The first-visit offer has **Play tutorial** and **Not now**, expires after eight seconds and does not take focus. Play tutorial starts the complete sequence directly. Menu → **Practice / Tutorials** offers **Start full tutorial** and all five individually unlocked lessons. The full sequence automatically loads each next lesson after success. An old `ascend.guideSeen` flag suppresses the automatic offer without completing any lessons. The previous four-second starter guide remains removed.
 
 Every lesson is unlocked. Actions must succeed to advance within the selected lesson. A failed attempt restores its target, captive, breath or assembled weapon as needed, retaining earlier passed steps. Two misses reveal a clearer contextual hint. Skip lesson leaves unfinished work unfinished; Exit tutorial and Play now create a clean live session. Completed lessons can be replayed.
 
-- **Grow, capture & finish:** four nearby ten-gem pickups; capture a healthy 12-gem rival (no instant reward because it is smaller than the standard bullet); release and fire the standard 60-unit shot into a larger, approximately 89-unit stationary rival; steal from its real injury, grow, and finish at the mouth under the ordinary 1.3× size/contact rules. A forceful body bump can interrupt inhale under normal rules; contextual text explains releasing and holding again. Letting theft work before charging avoids this interruption.
-- **Build a weapon:** exactly three Pulsar components, normal contact/inhale collection, automatic assembly, E or the existing touch Place weapon control, then actual automatic Pulsar damage against a staged rival. No invented assembly or firing button.
-- **Black-hole shot:** first capture a healthy 100-gem rival using ordinary inhale. The actual captive carries into a shot toward a hole 520 units from the starting player center (formerly 260). Capture transfers 68 growth immediately, leaving 32 gems in the standard bullet. Release, aim and fire; a missed shot restores only this already-reached shot step. A successful core elimination credits the remaining 32 once. Larger, outlined gem diamonds visibly spiral into the hole and arc back to the shooter over 2.2 seconds; the scene stays intact for 2.4 seconds before completion. Reduced motion uses a stationary arrival ring. Arena geometry keeps the learner away from the rim; damage and immunity rules are unchanged.
-- **Defensive burst:** an equal-sized, empty-mouth learner faces a stationary attacker; 1.4 seconds of warning, then ordinary suction. Only an actual parry of that attacker completes the step. A premature puff, lost connection or missed window restores the attempt.
+1. **Move, grow & capture:** gather four real ten-gem pickups and capture a healthy smaller rival. A nearby soft body demonstrates sliding contact without an obsolete bump stun. The full sequence carries this actual captive into the next lesson. Direct selection supplies normal practice ammunition without granting capture completion.
+2. **Aim, hit & finish:** deliberately aim diagonally through an outlined rival before firing; land a real shot while over 20% wider to shatter it. A second, larger rival survives its hit. Separate approach, theft and mouth-finish stages teach its exposed gems and the ordinary 1.3× width/contact finish. Missing restores the current target/ammunition, with the proven aim retained on a shatter retry. Draining a rival before mouth contact is acknowledged accurately and restores only the mouth-finish attempt.
+3. **Escape & recover:** the first attempt of each timed stage waits for **Ready**. Flee a pursuer behind you, tap without turning back, let the ordinary 220ms wave form, and move beyond its fixed rear wall after it interrupts real suction. A front puff alone does not certify this skill. Then escape while genuinely injured until the normal seven-second injury expires; inhale and puff remain blocked. A real knockout goes through normal safe spawning and protection before restoring this checkpoint.
+4. **Black-hole shot:** first capture a healthy 100-gem rival using ordinary inhale. The actual captive carries into a shot toward a hole 520 units from the starting player center. Capture transfers 68 growth immediately, leaving 32 gems in the standard bullet. A missed shot restores only the shot step. Core elimination credits the remaining 32 once; visible diamonds spiral into the hole and arc to the shooter over 2.2 seconds, with 2.4 seconds before completion. Reduced motion uses a stationary arrival ring.
+5. **Build a weapon:** collect three matching Pulsar components, assemble automatically, deploy with E or the existing touch Place weapon control, then watch actual automatic damage against the marked rival. No invented assembly or firing control.
 
-Essential instructions are contextual; optional injury text explains breathing restrictions, unchanged movement, already-held firing after release, and the seven-second window with eligible continuous-theft extension. The instruction panel respects touch controls and safe areas and includes a sound toggle. The black-hole camera frames both ends of the shot; that private lesson uses a 1600×2000 arena so even narrow portrait views stay inside the map. Other lessons retain their 1600×1600 arena and existing framing. Normal live camera behavior is unchanged. Highlights are static, including with reduced motion.
+Essential instructions are contextual. Failure reasons survive the immediate attempt restoration, and two misses add a clearer hint. The 44px **About injury** disclosure explains breathing restrictions, unchanged movement, held firing after release and eligible continuous-theft extension. Combat/defense framing keeps both creatures visible; combat and black-hole arenas are 1600×2000, defense is 2400×2400 for the real escape duration, and basics/weapon are 1600×1600. Ordinary live camera rules are unchanged.
+
+The lesson panel includes Sound and, on desktop, the shared **Mouse On/Off** switch. The user's report that mouse controls could not be toggled inside practice is fixed here, without reopening the hidden live toolbar. Preference changes persist across lessons and returning to play; clicking or keyboard-activating the switch cancels held gameplay input without firing a captive. Touch keeps its existing joystick/aim controls. Fresh scenario inventories do not generate pickup celebrations; actual earned growth still does.
+
+Reading a Ready stage cannot consume gameplay actions or move the creature. Starting it preserves the prepared attempt and reset serial, so a movement gesture begun immediately after Ready is not erased by another setup. A genuine new attempt clears old inputs and aligns predicted breath with the server's restored full breath. Bots, NPCs and humans retain the same movement, turning, capture, damage, injury, puff and spawn mechanics. The separate 33% damage and one-second loading trials stay disabled.
 
 October 30 follow-up, local preview on `codex/black-hole-tutorial`: **Practice / Tutorials** is the first action inside Game Menu, with settings directly below. Reopening the menu resets its scroll position so a long activity feed cannot hide these actions. Mobile sound stays in the drawer as requested; desktop also has a sound button alongside its controls. Sound preferences persist and remain synchronized across the menu, desktop toolbar and lesson controls. The mobile Menu action is labeled and separate from the minimap; the player count is removed entirely from the arena HUD after the user questioned its value. The leaderboard contracts to its actual rows. The user approved committing, merging and deploying this follow-up on October 30; GitHub’s pull request and production workflow record release completion.
 
@@ -29,9 +43,85 @@ Practice high-score, global activity and weapon-record updates are suppressed. P
 
 ## Progress
 
-`ascend.practice.v1` stores version 1, whether the offer was acknowledged, an overall status and per-lesson `not-started`, `in-progress`, `skipped` or `completed`. Only server-confirmed completion writes completed. Skipping never grants completion or erases an earlier verified completion. Storage errors retain in-memory progress for this page; persistence across reloads is unavailable when browser storage is blocked. No account, database or cross-device sync is added. Passed steps are checkpoints within the private room; reopening a lesson in a new session is a replay rather than account-level step restoration.
+`ascend.practice.v2` stores version 2, offer acknowledgment, overall status and each lesson's `not-started`, `in-progress`, `skipped` or `completed` status. It migrates v1 without deleting the original: applicable basics and unchanged weapon/black-hole achievements stay completed; old defense completion is retained as history and labeled **Updated — try rear cover**, while new combat mastery remains unproved. Returning players are not forced through another first-visit offer.
+
+Only server-confirmed completion writes completed. Skipping never grants completion or erases an earlier verified completion. Storage errors retain in-memory progress for this page; persistence across reloads is unavailable when browser storage is blocked. No account, database or cross-device sync is added. Passed steps are checkpoints within the private room; reopening a lesson in a new session is a replay rather than account-level step restoration.
 
 ## Verification commands
+
+### October 31 local remodel verification
+
+The 40 server unit suites and progress migration checks pass. Targeted mechanics
+also cover an early wave's real resolution interval, missing the defense window,
+holding instead of tapping, a half-second reaction delay before wounded retreat,
+and restoring proven aim after a missed shatter. Client/server types, generated
+schema checks and the production build pass. Lint has zero errors and 185
+existing warnings. All 18 normal multiplayer scenarios pass after the shared
+input-readiness gate; the private tutorial network checks also pass, including
+stale Ready rejection and movement immediately after Ready without another reset.
+
+The five-lesson browser matrix passes **31 cases**, with four intentional skips
+for the small-phone case outside its designated profile: desktop Chrome,
+Android-shaped Chrome, iPhone portrait/landscape WebKit and iPad WebKit each
+complete all five lessons separately and as a continuous sequence. A separate
+320×812 Chromium run completes the sequence with reduced motion. The actual
+captive carries from basics into combat, server-confirmed progress persists,
+and Play now returns to an ordinary clean live room. No page errors occur.
+
+An additional **50 browser regressions pass** across desktop Chrome,
+Android-shaped Chrome and iPhone WebKit. They cover missed shots, retained and
+replacement thumb aim, the injured rival staying in view, repeat-puff hints,
+blocked injured breathing, actual knockout/safe spawning, storage migration and
+blocked storage, unlocked/skipped lessons, first-visit behavior, keyboard focus,
+late-connection exit and real room expiry. Ten profile/test-hook skips are
+intentional; the quiet-HUD hook-only cases are not run against production mode.
+
+Rendered desktop, 320px portrait, ordinary phone, landscape and tablet states
+were inspected. The aiming rival is explicitly checked below the real panel
+edge, including landscape; its earlier position behind the desktop panel was
+fixed. Defense scenarios are vertically centered in their private arena so
+expanded injury help can leave both subjects clear without showing exterior.
+Ready closes that reading detail before the chase starts, clearing the short
+landscape play area and touch controls.
+The compact loaded-shot badge moves beside its owner if it would be cut
+off by a short viewport, leaving the eyes clear. Desktop Mouse On/Off is visible
+in practice and responds to both clicking and Space, persists and matches the
+live toolbar without firing or releasing the captive.
+
+Focused reruns after the final presentation fixes pass for combat, defense and
+expanded injury details across the five profiles. The final centered defense
+run also repeats the complete 320px/reduced-motion sequence successfully. Ready
+is checked with injury details open: it closes them before real injured escape,
+and the ordinary healing result still completes the stage. Expanded-help checks
+verify 44px controls, unobscured target geometry and reachable Ready/Skip/Exit.
+The local production preview is `http://127.0.0.1:3178/`.
+
+Chromium touch profiles use trusted multi-touch events. WebKit uses pointer-event
+holds with ordinary DOM taps. These are emulated browser profiles, not physical
+Android/iOS devices. State is read to choose real movement/action inputs and
+verify outcomes; no teleport, gem-setting or completion hooks are used. Separate
+private-room network checks confirm those hooks cannot be called.
+
+#### Design review and remaining limits
+
+Conservative internal heuristics, not user-study measurements:
+
+| Dimension | Review | Evidence / next check |
+| --- | --- | --- |
+| Usability | 8/10 | Actions and real success gates pass. Observe uncoached newcomers, especially aiming before the ordinary captive deadline; if reading causes repeated timeouts, evaluate a read-before-capture setup rather than changing live hold rules. |
+| Hierarchy | 9/10 | One active instruction and one outlined target; optional detail is disclosed separately. |
+| Accessibility | 8/10 | Keyboard activation/focus, 44px actions and reduced motion checked. Screen-reader navigation and enlarged-text use still need a dedicated review; full nonvisual gameplay is not certified. |
+| Consistency | 9/10 | Shared controls/preferences, physics and server outcomes; no bot-only capability changes. |
+| Responsiveness | 9/10 | Actual rendered phone, landscape, tablet and desktop review, including panel occlusion and narrow-screen controls. |
+| Feedback | 9/10 | Readable failure reasons, clearer repeat hints, genuine injury/healing, shatter and spatial gem rewards. |
+| Performance | 8/10 | No browser errors in completion runs; profile frame/input timing on physical phones, including Android Firefox, before making device-performance claims. |
+
+Priorities are uncoached touch observation, enlarged-text/screen-reader review,
+then physical-device performance measurement. Automated completion does not
+prove learnability, human escape fairness or ideal balance. This batch has not
+been merged or deployed.
+
+### Commands
 
 ```powershell
 npm run type-check
@@ -51,7 +141,7 @@ $env:NODE_ENV='production'; $env:PORT='3004'; node server/dist/index.js
 ```powershell
 node scripts/practice-network.mjs
 $env:PRACTICE_E2E='1'; $env:E2E_URL='http://127.0.0.1:3004'
-npx playwright test tests/e2e/practice.spec.mjs
+npx playwright test tests/e2e/five-lessons.spec.mjs tests/e2e/tutorial-remodel.spec.mjs tests/e2e/practice.spec.mjs tests/e2e/mobile-tutorial-regressions.spec.mjs
 ```
 
 The network script defaults to `ws://127.0.0.1:3004`; `PRACTICE_URL` overrides it. The mechanics and storage unit tests run in `test:unit`. Browser tests explicitly exercise local production rooms without test hooks. The trusted multi-touch sequence applies to Chromium touch profiles; other profiles exercise actual keyboard and placement inputs plus touch-shaped layout. Playwright emulation does not certify physical-device feel or full nonvisual accessibility. CI's disabled browser matrix remains unchanged; browser evidence must be run explicitly.

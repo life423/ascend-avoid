@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { openLesson, practiceInput, playPractice } from './helpers/practice.mjs';
 
 test.skip(!process.env.PRACTICE_E2E, 'explicit local production tutorial checks');
 test.beforeEach(async ({ page, hasTouch }) => {
@@ -19,8 +20,9 @@ const ready = page => page.waitForFunction(() => {
 async function controls(page, browserName) {
   const points = new Map(), cdp = browserName === 'chromium' ? await page.context().newCDPSession(page) : null;
   const send = async (type, id, x, y) => {
+    const released = points.get(id);
     if (type === 'touchEnd') points.delete(id); else points.set(id, { id, x, y, radiusX: 7, radiusY: 7 });
-    if (cdp) await cdp.send('Input.dispatchTouchEvent', { type, touchPoints: [...points.values()] });
+    if (cdp) await cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' && released ? [released] : [...points.values()] });
     else await page.evaluate(({ type, id, x, y }) => {
       const kind = type === 'touchStart' ? 'pointerdown' : type === 'touchMove' ? 'pointermove' : 'pointerup';
       (kind === 'pointerdown' ? document.querySelector('canvas.game-canvas') : window).dispatchEvent(new PointerEvent(kind, {
@@ -100,17 +102,11 @@ test('a new touch aim replaces the retained direction before firing', async ({ p
   expect((await state(page)).gems).toBe(350);
 });
 
-test('the injured rival and learner stay fully in view while the injury timer runs', async ({ page }) => {
-  await start(page, 'basics');
-  // Reach the real injury through supported keyboard inputs; this case isolates mobile camera geometry.
-  await page.locator('canvas.game-canvas').click({ position: { x: 10, y: 250 } });
-  await page.keyboard.down('ArrowRight'); await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.phase === 'success'); await page.keyboard.up('ArrowRight');
-  await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.stage === 'capture');
-  await page.keyboard.down('Space');
-  await page.waitForFunction(() => !!window.game.currentGameMode.multiplayerManager.getLocalPlayer().gulping);
-  await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.stage === 'shoot');
-  await page.keyboard.up('Space'); await page.keyboard.press('Space');
-  await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.stage === 'finish');
+test('the injured rival and learner stay fully in view while the injury timer runs', async ({ page, browserName, hasTouch }) => {
+  await openLesson(page, 'combat');
+  const input = await practiceInput(page, browserName, hasTouch);
+  try { await playPractice(page, input, { until: v => v.stage === 'approach' && v.phase === 'waiting' }); }
+  finally { await input.close(); }
   for (let i = 0; i < 6; i++) {
     await page.waitForTimeout(250);
     const sample = await page.evaluate(() => {

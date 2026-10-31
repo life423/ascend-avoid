@@ -53,7 +53,7 @@ export class GameRoom extends Room<GameState> {
 
     // Where the browser is steering (a direction no longer than 1), whenever it changes
     this.onMessage("steer", (client, data: any) => {
-      if (!this.allowMessage(client)) return;
+      if (!this.allowMessage(client) || !this.gameplayReady) return;
       const player = this.state.players.get(client.sessionId);
       if (!player) return;
       player.steer(Number(data?.x) || 0, Number(data?.y) || 0);
@@ -61,14 +61,14 @@ export class GameRoom extends Room<GameState> {
 
     // Where an inhale is aimed: the creature turns to face it (its eyes give it away)
     this.onMessage("aim", (client, data: any) => {
-      if (!this.allowMessage(client)) return;
+      if (!this.allowMessage(client) || !this.gameplayReady) return;
       const player = this.state.players.get(client.sessionId);
       if (player && !player.capturedBy) player.aimAt(Number(data?.x) || 0, Number(data?.y) || 0);
     });
     // Hold the button to inhale, release to stop; tap with something in your mouth to spit it, or with
     // someone caught inside to fire them (a full mouth can't inhale until it's empty)
     this.onMessage("inhale", (client) => {
-      if (!this.allowMessage(client)) return;
+      if (!this.allowMessage(client) || !this.gameplayReady) return;
       const player = this.state.players.get(client.sessionId);
       if (!player) return;
       if (player.gulping) fireCaptive(this.state, player, Date.now());
@@ -77,7 +77,7 @@ export class GameRoom extends Room<GameState> {
     // A quick tap (the button let go within the browser's tap window, so never an inhale): fires a
     // captive, spits a bomb, or, with an empty mouth, exhales a puff, all along the creature's facing
     this.onMessage("tap", (client) => {
-      if (!this.allowMessage(client)) return;
+      if (!this.allowMessage(client) || !this.gameplayReady) return;
       const player = this.state.players.get(client.sessionId);
       if (!player) return;
       const now = Date.now();
@@ -97,7 +97,7 @@ export class GameRoom extends Room<GameState> {
       player.captureNeedsRelease = false;
     });
     this.onMessage("placeWeapon", (client) => {
-      if (!this.allowMessage(client)) return;
+      if (!this.allowMessage(client) || !this.gameplayReady) return;
       const player = this.state.players.get(client.sessionId);
       if (player) deployWeapon(this.state, player);
     });
@@ -111,7 +111,7 @@ export class GameRoom extends Room<GameState> {
       if (player) player.captureNeedsRelease = false;
     });
     this.onMessage("spit", (client, data: any) => {
-      if (!this.allowMessage(client)) return;
+      if (!this.allowMessage(client) || !this.gameplayReady) return;
       const player = this.state.players.get(client.sessionId);
       if (player) this.state.spit(player, Number(data?.x) || 0, Number(data?.y) || 0, Date.now());
     });
@@ -251,6 +251,8 @@ export class GameRoom extends Room<GameState> {
   }
 
   protected get testHooksEnabled(): boolean { return true; }
+  /** Private lessons can wait for reading; normal rooms always accept gameplay input. */
+  protected get gameplayReady(): boolean { return true; }
   protected async configureArena(options: any): Promise<void> {
     // The automated test can start a world with no loose gems, so its gem counts stay exact
     const fieldGems = !IS_PRODUCTION && Number.isInteger(options.testFieldGems) ? options.testFieldGems : undefined;

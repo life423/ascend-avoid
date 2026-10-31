@@ -1,6 +1,40 @@
 # Ascend Avoid — ordered work and idea inventory
 
-Updated October 30, 2026. This is the durable list of the user's requests and decisions. Current code and later feedback override historical tuning. The approved injury-only theft change supersedes ordinary healthy-player stealing and the earlier theft-allowance suggestion. The fifteen archived balance options remain proposals unless separately accepted.
+Updated October 31, 2026. This is the durable list of the user's requests and decisions. Current code and later feedback override historical tuning. The approved injury-only theft change supersedes ordinary healthy-player stealing and the earlier theft-allowance suggestion. The fifteen archived balance options remain proposals unless separately accepted.
+
+## October 31 delivery authorization
+
+The user approved committing, merging and deploying the reviewed escape-wave,
+shell, contact, spawn and five-lesson tutorial batch on
+`codex/wrap-wave-shell-spawns`, based on main `939a97a`. The release includes the
+tutorial mouse switch, Ready/input fixes and phone framing. GitHub's PR and
+production workflow record the final revision and deployment; the local-only
+status notes below predate this authorization. The 33% damage/loading trials
+remain disabled. Human learnability and physical-device measurements remain
+follow-up work rather than claims established by automated tests.
+
+## October 31 approved follow-up — implemented and verified locally
+
+[DEFENSE_CONTACT_RESPAWN.md](DEFENSE_CONTACT_RESPAWN.md) records the front-to-rear
+escape wave, split shell/worried eyes, safest-candidate respawns with two exits,
+removal of the duplicate arena surge banner, and soft contact without bump stun
+or shove. Forty server unit suites, progress checks, 18 multiplayer scenarios
+and 47 focused browser cases pass, including the existing four-lesson touch
+sequence and landscape regressions. Human timing and physical-device review
+remain. No merge or deployment of this branch has occurred, and the separate
+33% damage/one-second loading trial remains disabled.
+
+The user approved the [five-lesson tutorial remodel](TUTORIAL_REMODEL_PLAN.md),
+now implemented locally: growth/capture; deliberate aim, hit and finish; rear
+cover and wounded escape; black-hole capture/shot/reward; and automatic weapon
+assembly/placement. First timed attempts wait for Ready; retries preserve passed
+steps and readable feedback. All lessons remain unlocked and the full sequence
+advances automatically. Progress v2 preserves applicable old achievements while
+requiring the new combat/rear-cover skills. Desktop practice now exposes the
+shared Mouse On/Off switch beside Sound following the user's report. See
+[PRACTICE_TUTORIAL.md](PRACTICE_TUTORIAL.md) for verification and limits.
+Uncoached human touch use and physical-device performance remain to be reviewed;
+this branch is not merged or deployed.
 
 ## Size-based movement and credible rival damage — local trial
 
@@ -40,7 +74,7 @@ Release batch: `fix/contested-weapon-assembly`. Healthy cargo theft now survives
 
 ## Remaining requests and playtest decisions
 
-**October 30 live mobile tutorial review:** the two functional findings are addressed locally on `codex/fix-mobile-tutorial-aim`: a deliberately chosen loaded touch aim survives lifting and walking, and finishing-step framing keeps the learner and injured rival visible together. The user approved committing, merging and deploying these changes after reviewing the local preview; GitHub’s PR and production workflow identify the published revision. `9ebec92` is the reviewed baseline. Still pending: teach aiming before the first shot, split theft/approach guidance into clearer substeps, retain a readable failure reason, give the first defensive attempt reading time, suppress seeded scenario gems from pickup feedback, and enlarge About injury's 32px tap area. Detailed historical evidence and local verification are in [PRACTICE_TUTORIAL.md](PRACTICE_TUTORIAL.md#local-aim-and-camera-fixes-after-mobile-review). The user requested the two fixes and another mobile tutorial pass; the remaining recommendations are proposals.
+**October 30 live mobile tutorial review:** retained touch aim and paired finishing framing shipped in PR #58. The October 31 local remodel above also addresses the teaching findings: aiming before shooting, separate approach/theft/finish cues, persistent failure reasons, Ready before timed threats, no seeded-gain celebrations and a 44px injury disclosure. Screenshot review additionally found the diagonal aiming rival behind the desktop/landscape lesson panel; paired framing now reserves the panel's actual height and browser tests check the target remains unobscured. [PRACTICE_TUTORIAL.md](PRACTICE_TUTORIAL.md) separates current implementation from the historical review. Human learnability and physical-device feel remain open.
 
 - **Current review: simple physical-size missile rule.** The user explicitly chose a shatter on any player-missile hit from a shooter at least 20% wider. Ammunition size and speed no longer gate that finish; visible body width is the comparison. See [COMBAT_STUDY.md](COMBAT_STUDY.md) for current verification and superseded experiments. Human feel, latency/mobile escape fairness and reasonably dodgeable assembled-weapon attacks remain unfinished; this is not a release claim.
 - **Smaller-bot behavior — measured, local decision fixes.** [BOT_SIZE_STUDY.md](BOT_SIZE_STUDY.md) records 630 encounters before and after recognizing the real 1.3× capture threshold and correcting escape movement toward the mouth. Captures against healthy larger bots fell from 232/315 to 169/315. Close mouth starts remain dangerous, and injured larger players remain attackable. Turning and combat are shared with humans; no bot-only weakness was added.

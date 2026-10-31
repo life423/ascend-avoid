@@ -4,35 +4,7 @@ import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 
 const { ARENA_RULES, PLAYER_STATE } = GAME_CONSTANTS;
 
-/**
- * Creatures are solid. Fresh, forceful contacts briefly stagger and separate both bodies,
- * with immunity and a separation requirement before the pair can bump again. Soft contact
- * permits sliding sideways out of crowds. When two overlap, whoever moved into the other this
- * tick gives way. On softer contact, anyone pulled into someone by suction is the one moved back,
- * and a thief growing as it steals is the one that makes room. The one doing the moving stops
- * going that way, so at an angle it slides along. Inhaling changes nothing.
- */
-export function pruneBodyContacts(state: GameState): void {
-  for (const [key, pair] of state.bodyContacts) {
-    const a = state.players.get(pair.a), b = state.players.get(pair.b);
-    if (!a || !b || a.state !== PLAYER_STATE.ALIVE || b.state !== PLAYER_STATE.ALIVE || a.capturedBy || b.capturedBy || a.flying || b.flying || Math.hypot(a.x + a.width / 2 - b.x - b.width / 2, a.y + a.height / 2 - b.y - b.height / 2) > (a.width + b.width) / 2 + ARENA_RULES.BUMP_REARM_GAP) state.bodyContacts.delete(key);
-  }
-}
-
-function bump(state: GameState, a: PlayerSchema, b: PlayerSchema, nx: number, ny: number): boolean {
-  const now = state.now;
-  if (a.spawnProtected || b.spawnProtected || a.flying || b.flying || a.capturedBy || b.capturedBy || a.sliding || b.sliding || a.stunned || b.stunned || now < a.stunImmuneUntil || now < b.stunImmuneUntil) return false;
-  const av = a.velocity(), bv = b.velocity();
-  if ((av.x - bv.x) * nx + (av.y - bv.y) * ny < ARENA_RULES.BUMP_SPEED) return false;
-  const ratio = Math.max(0.35, Math.min(1.7, b.width / a.width));
-  a.stun(now, ARENA_RULES.BUMP_STUN_MS); b.stun(now, ARENA_RULES.BUMP_STUN_MS);
-  a.nudge(-nx * 8, -ny * 8, state.worldWidth, state.worldHeight);
-  b.nudge(nx * 8, ny * 8, state.worldWidth, state.worldHeight);
-  a.skid(-nx, -ny, ARENA_RULES.BUMP_PUSH * ratio);
-  b.skid(nx, ny, ARENA_RULES.BUMP_PUSH * Math.max(0.35, Math.min(1.7, a.width / b.width)));
-  return true;
-}
-
+/** Soft contact permits compression and sliding while both creatures retain steering. */
 export function keepApart(state: GameState, player: PlayerSchema) : void {
   if (player.state !== PLAYER_STATE.ALIVE) return;
   state.players.forEach((other) => {
@@ -46,11 +18,6 @@ export function keepApart(state: GameState, player: PlayerSchema) : void {
     if (overlap <= -ARENA_RULES.CONTACT_TOUCH) return;
     const nx = distance > 1e-6 ? dx / distance : 1;
     const ny = distance > 1e-6 ? dy / distance : 0;
-    const ids = [player.sessionId, other.sessionId].sort();
-    const key = JSON.stringify(ids);
-    const fresh = !state.bodyContacts.has(key);
-    state.bodyContacts.set(key, { a: player.sessionId, b: other.sessionId });
-    if (fresh && bump(state, player, other, nx, ny)) return;
     // Touching: most of this step's sideways movement is undone, so they stay pressed together
     // instead of orbiting; moving away peels off freely
     const stepX = player.x + player.width / 2 - player.tickX;

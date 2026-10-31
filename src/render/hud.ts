@@ -365,6 +365,8 @@ export function drawNotices(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
 }
 
 export function drawKnockedOut(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) : void {
+    const me=mode.multiplayerManager?.getLocalPlayer();
+    if(me?.state==='spawning'){drawMessage(mode,ctx,canvas,'Joining the arena','Finding clear space…');return}
     const elapsed = mode.knockedOutAt === null ? 0 : performance.now() - mode.knockedOutAt
     const seconds = Math.ceil((WORLD.RESPAWN_DELAY_MS - elapsed) / 1000)
     // The credit and the knockout can land a frame or two apart, in either order
@@ -380,7 +382,7 @@ export function drawKnockedOut(mode: MultiplayerMode, ctx: CanvasRenderingContex
         : cause?.how === 'drain' ? 'Drained'
         : 'Knocked out'
     const title = credited && cause ? cause.how === 'burnup' ? 'Burned up in flight' : cause.how === 'blackhole' ? 'Shot into a black hole' : `${verb} by ${cause.by}` : 'Hit!'
-    drawMessage(mode, ctx, canvas, title, seconds > 0 ? `Back in ${seconds}` : 'Back in a moment')
+    drawMessage(mode, ctx, canvas, title, seconds > 0 ? `Back in ${seconds}` : 'Finding clear space…')
 }
 
 /** Dim the screen and show a centered title and subtitle */

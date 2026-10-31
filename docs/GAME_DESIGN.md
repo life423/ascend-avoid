@@ -1,5 +1,38 @@
 # Ascend Avoid
 
+## October 31 release authorization
+
+The user approved committing, merging to main and deploying the defense/contact/
+spawn changes and five-lesson tutorial remodel after local review, including the
+desktop tutorial Mouse On/Off switch. The release starts from deployed main
+`939a97a` on `codex/wrap-wave-shell-spawns`. GitHub's pull request and production
+workflow identify the final published revision and rollout status. The local
+implementation notes below describe the reviewed batch; physical-device and
+uncoached human review remain follow-up work. Damage/loading trials remain off.
+
+## October 31 five-lesson tutorial remodel — local
+
+The approved [tutorial remodel](PRACTICE_TUTORIAL.md) is implemented locally on
+`codex/wrap-wave-shell-spawns`: move/grow/capture; aim/hit/finish; escape/recover;
+black-hole shot; and weapon building. It teaches actual shared rear-wall
+interruption and injury recovery, with Ready before timed threats and immediate
+checkpoint retries. The full sequence carries real ammunition into combat;
+individual lessons stay unlocked. Revision-aware saved progress preserves old
+achievements without granting new mastery. Desktop practice includes the shared
+Mouse On/Off switch beside Sound. The implementation is not merged or deployed;
+physical-device and uncoached human review remain. The separate damage/loading
+trials stay off.
+
+## October 31 defense, contact and spawn follow-up — local
+
+The approved [escape-wave and shell follow-up](DEFENSE_CONTACT_RESPAWN.md) is
+implemented on `codex/wrap-wave-shell-spawns`: a front-origin puff wraps into
+fixed rear cover, vulnerable bodies split into plates with worried eyes,
+respawns require clearance and two exits, and ordinary contact squishes/slides
+without bump stun or shove. The duplicate arena surge banner is removed while
+its world marker and side activity remain. Bots and humans share the rules.
+This batch is not deployed; the separate 33% damage/loading trial stays off.
+
 ## October 30 integration and release authorization
 
 The user approved committing, merging and pushing the completed movement and research work to `main`. This batch starts from `1873710` (PR #59) and includes the shared quarter-power walking curve, current-size rotation limits, gradual body suction resistance, and reproducible damage/loading studies. Both `CANNON.PEER_HIT_SHARE` and `CANNON.CAPTURE_FIRE_DELAY_MS` remain **0** in normal games. The 33% damage plus one-second delay is a future playable-trial candidate requiring contextual readiness feedback; this merge does not activate it. GitHub's pull request and main deployment workflow identify the final published revision. The study sections below record the measurements and provisional human-feel limits, rather than claiming ideal balance.

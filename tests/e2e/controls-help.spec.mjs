@@ -41,29 +41,21 @@ test('short Help fits, has reachable actions and keeps keyboard focus inside', a
   await page.keyboard.press('Escape'); await expect(dialog).toBeHidden();
 });
 
-test('mobile surge HUD stays quiet and desktop notices expire while the event continues', async ({ page }) => {
+test('the arena stays free of duplicate surge countdowns while the event continues', async ({ page }) => {
   await start(page);
   await page.evaluate(() => {
     window.surgeTexts = 0;
     const fill = CanvasRenderingContext2D.prototype.fillText;
     CanvasRenderingContext2D.prototype.fillText = function(text, ...args) {
-      if (/^Gem surge ·/.test(String(text))) window.surgeTexts++;
+      if (/^Gem surge ·|^Gem surge in|^Jackpot!.*left/.test(String(text))) window.surgeTexts++;
       return fill.call(this, text, ...args);
     };
     window.game.currentGameMode.multiplayerManager.room.send('test:surge', { active: true });
   });
-  const quiet = await page.evaluate(() => window.game.currentGameMode.controls.touchDevice || matchMedia('(max-width: 1199px)').matches);
-  if (quiet) {
-    await page.waitForTimeout(400);
-    expect(await page.evaluate(() => window.surgeTexts)).toBe(0);
-    expect(await page.evaluate(() => window.game.currentGameMode.multiplayerManager.room.state.surgePhase)).toBe('active');
-    return;
-  }
-  await expect.poll(() => page.evaluate(() => window.surgeTexts)).toBeGreaterThan(0);
-  await page.waitForTimeout(3250);
-  const count = await page.evaluate(() => window.surgeTexts);
+  await page.waitForTimeout(400);
+  expect(await page.evaluate(() => window.surgeTexts)).toBe(0);
   await page.waitForTimeout(300);
-  expect(await page.evaluate(() => window.surgeTexts)).toBe(count);
+  expect(await page.evaluate(() => window.surgeTexts)).toBe(0);
   expect(await page.evaluate(() => window.game.currentGameMode.multiplayerManager.room.state.surgePhase)).toBe('active');
 });
 

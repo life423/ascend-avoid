@@ -35,6 +35,17 @@ try {
   resumed.send('practice:skip', { attempt }); await wait(() => resumed.state.practice.phase === 'choosing', 'skip remains unfinished');
   assert.equal(resumed.state.practice.completed, '');
   resumed.send('practice:lesson', { lesson: 'defense' }); await wait(() => resumed.state.practice.lesson === 'defense', 'other lessons unlocked');
+  await wait(() => resumed.state.practice.phase === 'ready', 'first threat waits for the learner');
+  const reader = resumed.state.players.get(session), x = reader.x, readyAttempt = resumed.state.practice.attempt, serial = resumed.state.practice.resetSerial;
+  resumed.send('steer', { x: 1, y: 0 }); resumed.send('inhale'); resumed.send('tap');
+  await new Promise(r => setTimeout(r, 200));
+  assert.equal(reader.x, x); assert.equal(reader.inhaling, false); assert.equal(reader.puffReadyAt, 0);
+  assert.equal(resumed.state.gustWaves.size, 0, 'reading cannot accidentally spend actions');
+  resumed.send('practice:ready', { attempt: readyAttempt - 1 }); await new Promise(r => setTimeout(r, 100));
+  assert.equal(resumed.state.practice.phase, 'ready', 'stale readiness is ignored');
+  resumed.send('practice:ready', { attempt: readyAttempt }); resumed.send('steer', { x: 1, y: 0 });
+  await wait(() => reader.x > x + 10, 'movement immediately after Ready is retained');
+  assert.equal(resumed.state.practice.resetSerial, serial, 'Ready activates its prepared scene without cancelling new input');
   await resumed.leave();
   await new Promise(r => setTimeout(r, 200)); await assert.rejects(client.joinById(id, { token }));
   console.log('Practice network: private/authenticated single learner, explicit create, public isolation, no production test hooks/client completion, reconnect, stale skip, unlocked selection and disposal passed.');

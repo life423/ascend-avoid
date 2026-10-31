@@ -5,7 +5,6 @@ import { FONT, GOLD, drawCrown, drawRobot, roundedRect } from './style'
 import { SMOOTHING, SNAP_DISTANCE } from './shared'
 import { drawAirflow } from './stream'
 import type { SyncedGameState, SyncedPlayer } from '../types/synced'
-import { drawInjury } from './injury'
 import { formatGems } from '../utils/score'
 
 const REDUCED_MOTION = matchMedia('(prefers-reduced-motion: reduce)')
@@ -37,8 +36,10 @@ const headings = new Map<string, number>()
 
 export function drawPlayer(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, player: SyncedPlayer, sessionId: string, isLocal: boolean, isLeader: boolean, timestamp: number, held?: HeldPose) : void {
     if (player.state !== 'alive') {
+        mode.contactShapes.delete(sessionId)
         return // knocked out: gone until they're back
     }
+    if (held || player.flying) mode.contactShapes.delete(sessionId)
     const justLaunched = player.flying && player.flightKind === 'missile' && mode.captures.has(sessionId)
 
     // Back out of a mouth (let go, slipped free, fired or expelled): it swells back up to size as it comes out
@@ -178,13 +179,13 @@ export function drawPlayer(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
     }
     const heading = headings.get(sessionId) ?? facing
     // Pressed against someone, the body gives a little along the line of contact
-    const squash = squashFor(mode, sessionId, left + size / 2, top + size / 2, size)
+    const squash = held || player.flying ? { angle: 0, amount: 0 } : squashFor(mode, sessionId, left + size / 2, top + size / 2, size, timestamp)
     // A full belly breathes gently; the captive cannot nudge its captor.
     const holding = player.gulping ? world?.players.get(player.gulping) : undefined
     const quiver = holding ? 1 + 0.008 * Math.sin(timestamp / 300) : 1
     // Exhaling: the body puffs out as the air goes, then settles
     const puff = mode.puffs.find((p) => p.by === sessionId)
-    const puffed = puff ? 1 + 0.14 * Math.sin(Math.PI * Math.min(1, (timestamp - puff.at) / 260)) : 1
+    const puffed = puff && !REDUCED_MOTION.matches ? 1 + 0.14 * Math.sin(Math.PI * Math.min(1, (timestamp - puff.at) / 260)) : 1
     const injuryRemaining = player.continuedTheft ? 1000 : (player.injuredUntil ?? 0) - (world ? mode.worldNow(world, timestamp) : 0)
     const injuryAge = INHALE.INJURY_MS - injuryRemaining
     const impactPop = !REDUCED_MOTION.matches && player.injuredUntil > 0 && injuryAge >= 0 && injuryAge < 220 ? Math.sin(Math.PI * injuryAge / 220) : 0
@@ -205,7 +206,7 @@ export function drawPlayer(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
         if (bulge !== 1) ctx.scale(bulge, bulge)
         if (squash.amount > 0) {
             ctx.rotate(squash.angle)
-            ctx.scale(1 - squash.amount, 1 + squash.amount * 0.5)
+            ctx.scale(1 - squash.amount, 1 / (1 - squash.amount))
             ctx.rotate(-squash.angle)
         }
         ctx.translate(-(left + size / 2), -(top + size / 2))
@@ -216,8 +217,8 @@ export function drawPlayer(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
     const cheekProgress = holding ? Math.max(0, Math.min(1, heldFor / SUCK_MS)) : 0
     const cheeks = 1 - Math.pow(1 - cheekProgress, 3)
     if (player.flying) drawProjectile(ctx, left + size / 2, top + size / 2, size, color, heading, timestamp)
-    else drawCreature(ctx, left + size / 2, top + size / 2, size, color, facing, timestamp, player.mouth ?? '', Boolean(player.inhaling), cheeks, Boolean(player.stunned))
-    if (!held && !player.flying && player.injuredUntil > 0) drawInjury(ctx, centerX, centerY, size, facing, injuryAge, injuryRemaining, REDUCED_MOTION.matches, mode.cssScale)
+    else drawCreature(ctx, left + size / 2, top + size / 2, size, color, facing, timestamp, player.mouth ?? '', Boolean(player.inhaling), cheeks, Boolean(player.stunned),
+        !held&&injuryRemaining>0?{age:injuryAge,remaining:injuryRemaining,reduced:REDUCED_MOTION.matches,pixelRatio:mode.cssScale}:null)
     ctx.restore()
     const weaponProtection = world ? Math.max(0, player.weaponSafeUntil - mode.worldNow(world, timestamp)) : 0
     if (!held && !player.flying && weaponProtection > 0) {
@@ -283,8 +284,15 @@ function drawMouthful(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, capt
     const u = 1 / Math.max(0.001, Math.abs(ctx.getTransform().a))
     const width = (own ? 118 : 76) * u
     const height = (own ? 38 : 28) * u
-    const x = cx - width / 2
-    const y = cy + size / 2 + 12 * u
+    let x = cx - width / 2
+    let y = cy + size / 2 + 12 * u
+    const transform = ctx.getTransform()
+    if (own && mode.isPractice && (y + height) * transform.d + transform.f > ctx.canvas.height - 8) {
+        // Short landscape views keep the ready shot beside the body, clear of its eyes.
+        x = cx + size / 2 + 12 * u
+        if ((x + width) * transform.a + transform.e > ctx.canvas.width - 8) x = cx - size / 2 - 12 * u - width
+        y = cy - height / 2
+    }
     const now = mode.worldNow(state, timestamp)
     const remaining = Math.max(0, (captor.gulpEndsAt - now) / 1000)
     const loading = Math.max(0, Math.min(1, (captor.gulpEndsAt - now) / Math.max(1, captive.captureHoldMs)))
@@ -332,7 +340,7 @@ function drawMouthful(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, capt
 }
 
 /** Pressed against another creature: how much this one squishes, and along which line (lighter ones squish more) */
-export function squashFor(mode: MultiplayerMode, id: string, x: number, y: number, size: number) : { angle: number; amount: number } {
+export function squashFor(mode: MultiplayerMode, id: string, x: number, y: number, size: number, timestamp=performance.now()) : { angle: number; amount: number } {
     const state = mode.multiplayerManager?.getState()
     if (!state) return { angle: 0, amount: 0 }
     const self = state.players.get(id) as SyncedPlayer | undefined
@@ -354,5 +362,22 @@ export function squashFor(mode: MultiplayerMode, id: string, x: number, y: numbe
             angle = Math.atan2(oy - y, ox - x)
         }
     })
-    return { angle, amount }
+    let shape = mode.contactShapes.get(id)
+    if (!shape) {
+        shape = { angle, amount: 0, speed: 0, at: timestamp - 16 }
+        mode.contactShapes.set(id, shape)
+    }
+    const dt = Math.max(0, Math.min(.05, (timestamp - shape.at) / 1000))
+    shape.at = timestamp
+    if (amount > 0) shape.angle += Math.atan2(Math.sin(angle - shape.angle), Math.cos(angle - shape.angle)) * Math.min(1, dt * 24)
+    if (REDUCED_MOTION.matches) {
+        shape.amount = amount
+        shape.speed = 0
+    } else {
+        const omega = 24, delta = shape.amount - amount
+        const change = shape.speed + omega * delta, decay = Math.exp(-omega * dt)
+        shape.amount = Math.max(0, Math.min(.14, amount + (delta + change * dt) * decay))
+        shape.speed = (shape.speed - omega * change * dt) * decay
+    }
+    return { angle: shape.angle, amount: shape.amount }
 }

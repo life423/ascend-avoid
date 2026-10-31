@@ -67,6 +67,7 @@ export const STATE = {
 export const PLAYER_STATE = {
   ALIVE: "alive",
   DEAD: "dead",
+  SPAWNING: "spawning",
   SPECTATING: "spectating",
 } as const;
 
@@ -591,6 +592,10 @@ export type WeaponKind = keyof typeof WEAPON_RECIPES;
 export const WEAPON_FLEET = { SETS: 9, ORBIT_RESPAWN_MS: 35000, CLAIM_PULSE_MS: 900, ORBIT_MS: 26000, ORBIT_ENTRY_MS: 1800, ION_RANGE: 560, ION_PERIOD_MS: 1800, ION_WARNING_MS: 600, ION_FIRE_MS: 500 } as const;
 
 export const EXHALE = {
+  WAVE_WRAP_MS: 220,
+  WAVE_HOLD_MS: 900,
+  WAVE_HALF_ARC: 1.05,
+  WAVE_THICKNESS: 12,
   IMPULSE_RELATIVE_SPEED: 560,
   IMPULSE_ADDED_SPEED_CAP: 560,
   IMPULSE_RECOIL_CAP: 420,
@@ -635,10 +640,6 @@ export const ARENA_RULES = {
   SCALE_SHOVE_RATIO: 4, // something this many times wider moving into a creature pushes it aside instead of being stopped by it
   CONTACT_TOUCH: 3, // ...count as touching within this many units...
   CONTACT_GRIP: 0.15, // allow creatures to slide sideways out of a crowd rather than stick together
-  BUMP_STUN_MS: 220,
-  BUMP_SPEED: 120,
-  BUMP_PUSH: 45,
-  BUMP_REARM_GAP: 18,
   MOVE_RESPONSE: 14, // how quickly you reach the speed you're steering (and glide to a stop)
   HOP_REPEAT_DELAY: 0.2, // holding a direction: the first repeat hop comes after this many seconds,
   HOP_REPEAT: 1 / 6, // then one every this many seconds (six a second)

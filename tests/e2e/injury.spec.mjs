@@ -8,7 +8,7 @@ async function start(page) {
     window.crackStrokes = 0; window.injuryRipples = 0;
     const stroke = CanvasRenderingContext2D.prototype.stroke;
     CanvasRenderingContext2D.prototype.stroke = function(...args) {
-      if (this.strokeStyle === '#ffbd77') window.crackStrokes++;
+      if (String(this.strokeStyle).replace(/\s/g, '') === 'rgba(65,47,48,0.55)') window.crackStrokes++;
       if (String(this.strokeStyle).startsWith('rgba(255, 189, 119,')) window.injuryRipples++;
       return stroke.apply(this, args);
     };
@@ -23,7 +23,7 @@ async function start(page) {
 const send = (page, type, data) => page.evaluate(({ type, data }) => window.game.currentGameMode.multiplayerManager.room.send(type, data), { type, data });
 const mine = page => page.evaluate(() => { const m = window.game.currentGameMode, p = m.multiplayerManager.getLocalPlayer(); return { gems: p.gems, injury: p.injuredUntil, time: m.multiplayerManager.room.state.time, state: p.state, x: p.x }; });
 
-test('damage cracks the rear shell, permits movement and visibly heals on time', async ({ page }) => {
+test('damage splits the shell, permits movement and visibly heals on time', async ({ page }) => {
   await start(page);
   await send(page, 'test:setGems', { count: 300 }); await send(page, 'test:moveTo', { x: 2100, y: 2100 }); await send(page, 'test:protect', { ms: 0 });
   await page.waitForFunction(() => { const p = window.game.currentGameMode.multiplayerManager.getLocalPlayer(); return p.gems === 300 && !p.spawnProtected; });
