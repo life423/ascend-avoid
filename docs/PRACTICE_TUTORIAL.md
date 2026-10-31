@@ -51,6 +51,20 @@ Only server-confirmed completion writes completed. Skipping never grants complet
 
 ### October 31 local remodel verification
 
+Hosted rollout follow-up: PR #61 deployed main `ace5825` successfully. Its hosted
+client and multiplayer bundles match the verified build byte for byte, and the
+server exposes the new combat/defense stages and centered final exercise. Live
+browser verification exposed a test-driver assumption: waiting a fixed 60ms
+after Ready could click it again before the network acknowledgement, then wait
+on the next Ready stage while the chase ran without inputs. The driver now
+waits for the server to leave Ready before continuing. Both desktop and trusted
+touch defense checks pass against production with this correction. This changes
+test synchronization, not gameplay rules, timing or the application build.
+The same acknowledgement rule covers Place weapon so a slower response cannot
+make the driver re-enter a disappearing placement control.
+Both complete live sequences now pass with real captures, shots, rear cover,
+injury recovery and weapon placement on desktop and trusted-touch profiles.
+
 The 40 server unit suites and progress migration checks pass. Targeted mechanics
 also cover an early wave's real resolution interval, missing the defense window,
 holding instead of tapping, a half-second reaction delay before wounded retreat,
