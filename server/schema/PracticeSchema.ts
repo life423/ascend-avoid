@@ -19,6 +19,7 @@ export class PracticeSchema extends Schema {
   objectiveY = 0;
   cue = "";
   completed = "";
+  feedback = "";
 }
 type("boolean")(PracticeSchema.prototype, "enabled");
 type("string")(PracticeSchema.prototype, "lesson");
@@ -37,3 +38,4 @@ type("string")(PracticeSchema.prototype, "completed");
 
 type("number")(PracticeSchema.prototype, "resetSerial");
 type("boolean")(PracticeSchema.prototype, "sequence");
+type("string")(PracticeSchema.prototype, "feedback");

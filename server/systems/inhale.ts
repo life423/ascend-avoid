@@ -6,6 +6,9 @@ import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 
 import { CANNON, EXHALE } from "../constants/gameConstants.js";
 import { canCatch, launchSpeed, captureHoldMs, shooterMassContribution, captureGrowthTransfer } from "../game/cannon.js";
+import { GustWaveSchema } from '../schema/GustWaveSchema.js';
+import { bodyMass } from '../game/creatureSize.js';
+import { suctionBlocked } from '../game/gustWave.js';
 
 const { PLAYER_STATE, INHALE, LATCH } = GAME_CONSTANTS;
 import { sprayGems } from "./gems.js";
@@ -241,6 +244,8 @@ export function fadeLocks(_state: GameState, eater: PlayerSchema, keep: Set<stri
  */
 export function stealWeight(state: GameState, thief: PlayerSchema, victim: PlayerSchema) : number {
   if (thief.breathingBlocked || !thief.inhaling || thief.state !== PLAYER_STATE.ALIVE || victim.state !== PLAYER_STATE.ALIVE || victim.spawnProtected) return 0;
+  const mouth={x:thief.x+thief.width/2+Math.cos(thief.facing)*thief.width*.3,y:thief.y+thief.height/2+Math.sin(thief.facing)*thief.width*.3};
+  if(suctionBlocked(state.gustWaves.values(),state.time,mouth,{x:victim.x+victim.width/2,y:victim.y+victim.height/2}))return 0;
   if (state.now < victim.suctionSafeUntil) return 0;
   const fx = Math.cos(thief.facing);
   const fy = Math.sin(thief.facing);
@@ -496,6 +501,11 @@ export function exhale(state: GameState, player: PlayerSchema, now: number) : vo
   const impulses = puffImpulses(player.width, hits.map(hit => ({ id: hit.target.sessionId, width: hit.target.width, falloff: hit.falloff })));
   for (const hit of impulses.hits) state.players.get(hit.id)?.skid(fx, fy, hit.velocity / GAME_CONSTANTS.PUSH.FRICTION);
   if (impulses.recoil > 0) player.skid(-fx, -fy, impulses.recoil / GAME_CONSTANTS.PUSH.FRICTION);
+  const wave=new GustWaveSchema();
+  wave.owner=player.sessionId;wave.x=player.x+player.width/2;wave.y=player.y+player.height/2;
+  wave.width=player.width;wave.facing=player.facing;wave.at=state.time;
+  wave.remainingImpulse=bodyMass(player.width)*Math.max(0,EXHALE.IMPULSE_RECOIL_CAP-impulses.recoil);
+  state.gustWaves.set(player.sessionId,wave);
   state.onEvent?.('exhale', { id: player.sessionId, x: Math.round(mouthX), y: Math.round(mouthY), facing: Math.round(player.facing * 100) / 100,
     reach: Math.round(reach), breathLeft: player.stamina, recoil: impulses.recoil });
 }

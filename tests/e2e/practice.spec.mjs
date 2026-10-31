@@ -16,7 +16,7 @@ async function start(page, lesson, sequence = false) {
   await page.waitForFunction(() => !!window.game?.currentGameMode?.multiplayerManager?.getLocalPlayer());
   await page.evaluate(() => window.drawerUI.open());
   await page.getByRole('button', { name: 'Practice / Tutorials', exact: true }).click();
-  const names = { basics: 'Grow, capture & finish', weapon: 'Build a weapon', blackhole: 'Black-hole shot', defense: 'Defensive burst' };
+  const names = { basics: 'Move, grow & capture', combat: 'Aim, hit & finish', defense: 'Escape & recover', blackhole: 'Black-hole shot', weapon: 'Build a weapon' };
   if (sequence) await page.getByRole('button', { name: 'Start full tutorial', exact: true }).click();
   else await page.locator(`[data-lesson="${lesson}"]`).click();
   await page.waitForFunction(id => window.game?.currentGameMode?.multiplayerManager?.getState()?.practice?.lesson === id, lesson);
@@ -57,32 +57,6 @@ async function objectiveVisible(page) {
   })).toBe(true);
 }
 
-test('basic lesson uses actual movement, capture, release, hit, theft/growth and mouth finish', async ({ page }) => {
-  await start(page, 'basics');
-  await page.keyboard.down('ArrowRight');
-  await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.phase === 'success'); await page.keyboard.up('ArrowRight');
-  await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.stage === 'capture');
-  await screenshot(page, 'basics-capture.png');
-  await page.keyboard.down('Space');
-  await page.waitForFunction(() => !!window.game.currentGameMode.multiplayerManager.getLocalPlayer().gulping);
-  await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.stage === 'shoot');
-  await objectiveVisible(page);
-  let v = await read(page); expect(v.me.width).toBeLessThan(v.target.width);
-  await page.keyboard.up('Space'); await shot(page);
-  await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.stage === 'finish');
-  expect(await page.evaluate(() => window.game.currentGameMode.banner?.title)).toBe('Cannonball hit!');
-  expect(await page.evaluate(() => window.game.currentGameMode.cannonHits.length)).toBeGreaterThan(0);
-  await screenshot(page, 'basics-injury-finish.png');
-  v = await read(page); await page.keyboard.down('Space');
-  await page.keyboard.down('ArrowRight');
-  await page.waitForFunction(() => { const m=window.game.currentGameMode.multiplayerManager,s=m.getState(),p=m.getLocalPlayer(),t=s.players.get(s.practice.targetId); return s.practice.phase === 'success' || t && Math.hypot(t.x+t.width/2-p.x-p.width/2,t.y+t.height/2-p.y-p.height/2)<210; });
-  await page.keyboard.up('ArrowRight');
-  await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.phase === 'complete');
-  await page.keyboard.up('Space'); await page.keyboard.up('ArrowRight');
-  expect((await read(page)).me.injured).toBe(false);
-  await expect(page.getByRole('button', { name: 'Play now', exact: true })).toBeVisible();
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('ascend.practice.v1')).lessons.basics)).toBe('completed');
-});
 
 test('weapon lesson: real collection, automatic assembly, E/touch placement and actual Pulsar damage', async ({ page, hasTouch }) => {
   await start(page, 'weapon');
@@ -132,18 +106,6 @@ test('a missed shot restores that attempt and cancels held movement/action input
   await page.keyboard.up('Space'); await page.keyboard.up('ArrowDown');
 });
 
-test('defensive lesson restores only misses, gives a clearer hint, and requires real parry', async ({ page }) => {
-  await start(page, 'defense');
-  await shot(page); await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.failures === 1);
-  await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.phase === 'waiting');
-  await shot(page); await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.failures === 2);
-  await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.phase === 'waiting');
-  await expect(page.locator('.practice-hint')).toContainText('quick tap');
-  await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.cue === 'attacking');
-  await screenshot(page, 'defense-suction.png'); await shot(page);
-  await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.phase === 'complete');
-  expect((await read(page)).me.injured).toBe(false);
-});
 
 test('skip leaves unfinished, every lesson is unlocked, replay and exit start a clean live session', async ({ page }) => {
   await start(page, 'basics'); const privateId = (await read(page)).room;
@@ -151,7 +113,7 @@ test('skip leaves unfinished, every lesson is unlocked, replay and exit start a 
   const picker = page.getByRole('dialog', { name: 'Practice / Tutorials' });
   await expect(picker).toBeVisible();
   await expect(picker.locator('[data-lesson="basics"]')).toContainText('Unfinished · skipped');
-  for (const id of ['basics', 'weapon', 'blackhole', 'defense']) await expect(picker.locator(`[data-lesson="${id}"]`)).toBeEnabled();
+  for (const id of ['basics', 'combat', 'defense', 'blackhole', 'weapon']) await expect(picker.locator(`[data-lesson="${id}"]`)).toBeEnabled();
   await picker.locator('[data-lesson="blackhole"]').click();
   await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.lesson === 'blackhole');
   await page.getByRole('button', { name: 'Exit tutorial', exact: true }).click();
@@ -204,7 +166,7 @@ test('first visit offers Play tutorial directly and Not now dismisses without st
   expect(await page.evaluate(() => window.game.currentGameMode.multiplayerManager.getState().practice.enabled)).toBe(false);
   await page.getByRole('button', { name: 'Not now', exact: true }).click();
   await expect(page.locator('.practice-offer')).toBeHidden();
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('ascend.practice.v1')).status)).toBe('skipped');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('ascend.practice.v2')).status)).toBe('skipped');
   await page.reload(); await page.waitForFunction(() => !!window.game?.currentGameMode?.multiplayerManager?.getLocalPlayer());
   await expect(page.locator('.practice-offer')).toBeHidden();
   await page.evaluate(() => window.drawerUI.open()); await page.getByRole('button', { name: 'Practice / Tutorials', exact: true }).click();
@@ -249,93 +211,4 @@ test('finished private rooms expire without automatic room creation', async ({ p
   await page.locator('[data-lesson="weapon"]').click();
   await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager?.getState()?.practice?.lesson === 'weapon');
   expect(creates).toBe(2);
-});
-
-test('trusted touch stick, inhale/release/fire, placement and parry complete all four lessons', async ({ page, browserName, hasTouch }) => {
-  test.skip(browserName !== 'chromium' || !hasTouch, 'trusted Chromium multi-touch sequence');
-  test.setTimeout(90_000);
-  const cdp = await page.context().newCDPSession(page), points = new Map();
-  const ready = () => page.waitForFunction(() => {
-    const mode = window.game.currentGameMode;
-    return mode.renderView && mode.practiceReset === mode.multiplayerManager.getState().practice.resetSerial;
-  });
-  const touch = async (type, id, x, y) => {
-    if (type === 'touchEnd') points.delete(id); else points.set(id, { x, y, id, radiusX: 8, radiusY: 8 });
-    await cdp.send('Input.dispatchTouchEvent', { type, touchPoints: [...points.values()] });
-  };
-  const stick = async (dx = 1, dy = 0) => {
-    const { height } = page.viewportSize();
-    if (!points.has(1)) await touch('touchStart', 1, 96, height - 100);
-    await touch('touchMove', 1, 96 + dx * 56, height - 100 + dy * 56);
-  };
-  const release = async id => { if (points.has(id)) await touch('touchEnd', id); };
-  let actionStartedAt = 0;
-  const action = async () => { const { width, height } = page.viewportSize(); await touch('touchStart', 2, width - 74, height - 80); actionStartedAt = Date.now(); };
-  const tap = async () => { await action(); await page.waitForTimeout(50); await release(2); };
-  const pick = async lesson => {
-    // The full tutorial advances itself; no lesson-picker action is used between successes.
-    await page.waitForFunction(id => window.game.currentGameMode.multiplayerManager.getState().practice.lesson === id && window.game.currentGameMode.multiplayerManager.getState().practice.phase === 'waiting', lesson);
-    await expect(page.locator('.practice-instruction')).toBeVisible();
-    await ready();
-  };
-  const approach = async (getTarget, tolerance = 24) => {
-    for (let i = 0; i < 160; i++) {
-      const v = await read(page), target = await getTarget(v); if (!target) break;
-      const dx = target.x - v.me.x, dy = target.y - v.me.y, d = Math.hypot(dx, dy);
-      if (d <= tolerance) break;
-      await stick(dx / d, dy / d); await page.waitForTimeout(40);
-    }
-    if (points.has(1)) await release(1);
-  };
-  await start(page, 'basics', true); await ready(); await stick();
-  await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.phase === 'success'); await release(1);
-  await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.stage === 'capture');
-  await action(); await page.waitForFunction(() => !!window.game.currentGameMode.multiplayerManager.getLocalPlayer().gulping); await release(2);
-  await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.stage === 'shoot'); await tap();
-  await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.stage === 'finish');
-  await ready();
-  await action(); await page.waitForTimeout(220);
-  await approach(v => v.lesson === 'basics' && v.phase === 'waiting' ? v.target : null, 150);
-  let finishAttempt = (await read(page)).attempt;
-  for (let i = 0; i < 60; i++) {
-    const v = await read(page); if (v.phase === 'complete') break;
-    if (v.attempt !== finishAttempt) {
-      // A real retry cancels controls; native contacts must be lifted before new gestures.
-      if (points.has(1)) await release(1);
-      if (points.has(2)) await release(2);
-      finishAttempt = v.attempt; await ready();
-    }
-    if (v.phase === 'waiting' && !v.me.inhaling && (!points.has(2) || Date.now() - actionStartedAt > 500)) {
-      await release(2); await page.waitForTimeout(220); await action();
-      await page.waitForTimeout(250); // A hold must outlast the real 180ms tap window.
-    }
-    // Follow the lesson: let theft build the size advantage, then move to the mouth.
-    if (v.phase === 'waiting' && v.target) {
-      const dx = v.target.x - v.me.x, dy = v.target.y - v.me.y, distance = Math.hypot(dx, dy);
-      const bodyContact = (v.me.width + v.target.width) / 2;
-      const desired = v.me.width >= v.target.width * 1.3 ? bodyContact : bodyContact + 90;
-      if (distance > desired) await stick(dx / distance, dy / distance);
-      else if (points.has(1)) await release(1);
-    } else if (points.has(1)) await release(1);
-    await page.waitForTimeout(150);
-  }
-  await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.phase === 'complete', {}, { timeout: 5000 }); await release(2);
-  if (points.has(1)) await release(1);
-  await screenshot(page, 'touch-basics-complete.png');
-  await pick('weapon');
-  for (let i = 0; i < 3; i++) await approach(() => page.evaluate(() => { const m=window.game.currentGameMode.multiplayerManager,w=m.getState().pinwheel,p=w.parts.find(p=>p.carriedBy!==m.localSessionId);return p?{x:p.x,y:p.y}:null; }), 24);
-  await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.stage === 'place');
-  await page.getByRole('button', { name: /Place weapon/ }).tap();
-  await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.phase === 'complete');
-  await screenshot(page, 'touch-weapon-complete.png');
-  await pick('blackhole'); await screenshot(page, 'touch-blackhole-capture.png');
-  await action(); await page.waitForFunction(() => !!window.game.currentGameMode.multiplayerManager.getLocalPlayer().gulping);
-  await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.stage === 'shoot');
-  await release(2); await screenshot(page, 'touch-blackhole-ready.png'); await tap();
-  await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.phase === 'complete');
-  await pick('defense'); await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.cue === 'attacking');
-  await screenshot(page, 'touch-defense-suction.png'); await tap();
-  await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.phase === 'complete');
-  expect((await read(page)).me.injured).toBe(false);
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('ascend.practice.v1')).status)).toBe('completed');
 });

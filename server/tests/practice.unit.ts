@@ -3,165 +3,164 @@ import { createPracticeArena } from '../practice/arena.js';
 import { PracticeController } from '../practice/PracticeController.js';
 import { fireCaptive, exhale } from '../systems/inhale.js';
 import { deployWeapon } from '../systems/weapons.js';
-import type { PracticeLesson } from '../practice/definitions.js';
+import { PRACTICE_LESSONS, type PracticeLesson } from '../practice/definitions.js';
 
 function setup(lesson: PracticeLesson) {
   const s = createPracticeArena(); let now = 100_000;
-  const p = s.addPlayer('learner', 'Learner', now);
-  const c = new PracticeController(s);
+  s.update(0, now);
+  const p = s.addPlayer('learner', 'Learner', now), c = new PracticeController(s);
   const events: { type: string; data: Record<string, unknown> }[] = [];
   s.onEvent = (type, data) => { events.push({ type, data }); c.observe(type, data, now); };
   c.attach(p.sessionId, lesson, now);
   const step = (ms = 17) => { now += ms; c.beforeTick(now); s.update(ms / 1000, now); c.afterTick(now); };
-  const until = (predicate: () => boolean, max = 600) => { for (let i = 0; i < max && !predicate(); i++) step(); if (!predicate()) console.log({p: {x:p.x,y:p.y,gems:p.gems,state:p.state},gems:[...s.gems.values()].map(g=>({x:g.x,y:g.y,value:g.value})),view:s.practice.toJSON()}); assert(predicate(), `Timed out: ${lesson}/${s.practice.stage}/${s.practice.phase}`); };
-  return { s, p, c, events, step, until, now: () => now };
+  const until = (condition: () => boolean, max = 900) => {
+    for (let i = 0; i < max && !condition(); i++) step();
+    assert(condition(), `Timed out: ${s.practice.lesson}/${s.practice.stage}/${s.practice.phase}: ${s.practice.feedback}`);
+  };
+  const drive = () => {
+    const v = s.practice, t = s.players.get(v.targetId);
+    p.steer(0, 0);
+    if (v.phase === 'ready') { c.ready(v.attempt, now); return; }
+    if (!['waiting', 'resolving'].includes(v.phase)) return;
+    const dx = t ? t.x + t.width / 2 - p.x - p.width / 2 : 0;
+    const dy = t ? t.y + t.height / 2 - p.y - p.height / 2 : 0;
+    const d = Math.hypot(dx, dy);
+    if (v.lesson === 'basics') {
+      if (v.stage === 'grow') p.steer(1, 0); else if (!p.inhaling) p.startInhale(now);
+    } else if (v.lesson === 'combat') {
+      p.aimAt(dx, dy);
+      if (['shatter', 'wound'].includes(v.stage) && p.gulping) {
+        const error = Math.abs(Math.atan2(Math.sin(Math.atan2(dy, dx) - p.facing), Math.cos(Math.atan2(dy, dx) - p.facing)));
+        if (error < .04) { p.stopInhale(now); p.captureNeedsRelease = false; fireCaptive(s, p, now); }
+      } else if (['approach', 'steal', 'finish'].includes(v.stage)) {
+        if (v.stage !== 'approach' && !p.inhaling) p.startInhale(now);
+        if (v.stage !== 'steal' && d > 1) p.steer(dx / Math.max(1, d), dy / Math.max(1, d));
+      }
+    } else if (v.lesson === 'defense') {
+      p.steer(1, 0);
+      if (v.stage === 'rear-cover' && v.cue === 'attacking' && !s.gustWaves.size) exhale(s, p, now);
+    } else if (v.lesson === 'blackhole') {
+      if (v.stage === 'capture') { if (!p.inhaling) p.startInhale(now); }
+      else if (p.gulping) { p.stopInhale(now); p.captureNeedsRelease = false; p.aimAt(1, 0); fireCaptive(s, p, now); }
+    } else if (v.lesson === 'weapon') {
+      if (v.stage === 'collect') {
+        const part = s.pinwheel.parts.find(part => part.carriedBy !== p.sessionId);
+        if (part) {
+          const x = part.x - p.x - p.width / 2, y = part.y - p.y - p.height / 2, length = Math.max(1, Math.hypot(x, y));
+          p.steer(x / length, y / length);
+        }
+      } else if (v.stage === 'place') deployWeapon(s, p);
+    }
+  };
+  const play = (condition: () => boolean, max = 7000) => {
+    for (let i = 0; i < max && !condition(); i++) { drive(); step(); }
+    assert(condition(), `Play stalled: ${s.practice.lesson}/${s.practice.stage}/${s.practice.phase} ${s.practice.feedback}`);
+  };
+  return { s, p, c, events, step, until, drive, play, now: () => now };
 }
-{
-  const { s, p, c, step, until, now, events } = setup('basics');
-  p.steer(1, 0); until(() => s.practice.phase === 'success'); p.steer(0, 0);
-  until(() => s.practice.stage === 'capture');
-  p.startInhale(now()); until(() => s.practice.phase === 'success');
-  assert(p.gulping, 'healthy smaller opponent is actual ammunition');
-  until(() => s.practice.stage === 'shoot');
-  let target = s.players.get(s.practice.targetId); assert(target);
-  assert(p.width < target.width, 'learner starts smaller than the main rival');
-  assert(!fireCaptive(s, p, now()), 'capture requires release before firing');
-  p.stopInhale(now()); p.captureNeedsRelease = false;
-  const miss = s.practice.attempt;
-  p.facing = Math.PI / 2; assert(fireCaptive(s, p, now()));
-  until(() => s.practice.attempt > miss);
-  assert.equal(s.practice.stage, 'shoot'); assert.equal(s.practice.passed, 2);
-  assert(p.gulping, 'a missed shot restores ammunition without repeating growth or capture');
-  target = s.players.get(s.practice.targetId); assert(target); p.facing = 0;
-  assert(fireCaptive(s, p, now()));
-  until(() => s.practice.stage === 'finish');
-  assert.equal(target.state, 'alive'); assert(target.injuredUntil > s.time);
-  // Ordinary walking and tracking inhale steal gems, grow the smaller learner and finish at mouth.
-  p.startInhale(now());
-  for (let i = 0; i < 450 && s.practice.phase !== 'success'; i++) {
-    const dx = target.x + target.width / 2 - p.x - p.width / 2, dy = target.y + target.height / 2 - p.y - p.height / 2;
-    const d = Math.hypot(dx, dy); if(!p.inhaling) p.startInhale(now()); p.aimAt(dx, dy); p.steer(dx / Math.max(1,d), dy / Math.max(1,d)); step();
+
+for (const lesson of PRACTICE_LESSONS) {
+  const { s, p, c, play, events, now } = setup(lesson);
+  if (lesson === 'defense') {
+    const attempt = s.practice.attempt;
+    c.ready(attempt - 1, now()); assert.equal(s.practice.phase, 'ready', 'stale readiness cannot start a threat');
   }
-  if(s.practice.phase !== 'success') console.log({p:{x:p.x,y:p.y,gems:p.gems,inhale:p.inhaling,blocked:p.breathingBlocked,stun:p.stunned},target:{x:target.x,y:target.y,gems:target.gems,state:target.state,injured:target.injuredUntil},stage:s.practice.stage,attempt:s.practice.attempt,events:events.map(e=>[e.type,e.data.how,e.data.targetId])});
-  assert.equal(s.practice.phase, 'success', 'normal damage, drain/growth and mouth eligibility suffice');
-  assert(events.some(e => e.type === 'combatReward' && e.data.how === 'mouth'));
-  until(() => s.practice.phase === 'complete');
-  const attempt = s.practice.attempt; c.observe('capture', { byId: p.sessionId, targetId: target.sessionId }, now(), attempt - 1);
+  play(() => s.practice.phase === 'complete');
+  assert.equal(s.practice.completed, lesson);
+  assert.equal(s.practice.failures, 0, `ordinary successful controls need no special rules or retries: ${lesson}/${s.practice.stage} ${s.practice.feedback}`);
+  if (lesson === 'combat') {
+    assert(events.some(e => e.type === 'combatReward' && e.data.how === 'cannon'));
+    assert(events.some(e => e.type === 'combatReward' && e.data.how === 'mouth'));
+  }
+  if (lesson === 'defense') {
+    assert(events.some(e => e.type === 'parry' && e.data.id === p.sessionId));
+    assert(!p.breathingBlocked && p.injuredUntil <= s.time, 'actual injury expired before completion');
+  }
+  const attempt = s.practice.attempt;
+  c.observe('combatReward', { byId: p.sessionId, how: 'mouth', targetId: s.practice.targetId }, now(), attempt - 1);
   assert.equal(s.practice.phase, 'complete');
-  c.select('basics', true, now()); assert.equal(s.practice.stage, 'grow'); assert.equal(s.practice.passed, 0);
+  c.select(lesson, true, now()); assert.equal(s.practice.passed, 0, 'replay starts cleanly');
 }
 {
-  const { s, p, c, until, now, step, events } = setup('blackhole');
-  assert.equal(s.practice.stage, 'capture'); assert.equal(s.practice.total, 2);
-  assert.equal(s.worldHeight, 2000, 'portrait framing has enough arena for both ends of the shot');
-  assert(!p.gulping, 'black-hole lesson starts empty-mouthed');
-  assert(!fireCaptive(s, p, now()), 'a shot cannot bypass capture');
-  const originalAmmo = s.practice.targetId;
-  assert.equal(s.players.get(originalAmmo)?.gems, 100);
-  p.startInhale(now()); until(() => s.practice.phase === 'success');
-  assert.equal(p.gulping, originalAmmo, 'the learner performs the real capture');
-  until(() => s.practice.stage === 'shoot');
-  assert.equal(p.gulping, originalAmmo, 'successful capture is carried into the shot');
-  assert.equal(p.gems, 318); assert.equal(s.players.get(p.gulping)?.gems, 32);
-  assert(s.practice.objectiveX - p.x - p.width / 2 >= 500, 'shot starts substantially farther from the hole');
-  assert(!fireCaptive(s, p, now()), 'capture still requires release before firing');
+  const { s, p, play, until, now } = setup('combat');
+  play(() => s.practice.stage === 'shatter' && s.practice.phase === 'waiting');
+  const attempt = s.practice.attempt;
+  p.stopInhale(now()); p.captureNeedsRelease = false; p.facing = Math.PI / 2;
+  assert(fireCaptive(s, p, now())); until(() => s.practice.attempt > attempt);
+  assert.equal(s.practice.stage, 'shatter'); assert.equal(s.practice.passed, 1);
+  assert(p.gulping); assert(Math.abs(p.facing + Math.PI / 4) < .01, 'retry restores the already-proven aim as well as ammunition');
+}
+{
+  const { s, p, c, step, until, now } = setup('defense');
+  for (let i = 0; i < 180; i++) step();
+  assert.equal(s.practice.phase, 'ready'); assert(!s.players.get(s.practice.targetId)?.inhaling, 'reading time does not trigger a threat');
+  c.ready(s.practice.attempt, now()); until(() => s.practice.cue === 'attacking');
+  p.steer(1, 0); exhale(s, p, now()); step(100);
+  assert.equal(s.practice.phase, 'resolving', 'a valid rear cast is not rejected before the 220ms wrap');
+  until(() => s.practice.cue === 'move-clear');
+  assert.equal(s.practice.completed, '', 'parry alone does not prove escaping');
+  until(() => s.practice.phase === 'success');
+  p.steer(0, 0); until(() => s.practice.stage === 'injured-escape');
+  assert.equal(s.practice.phase, 'ready'); c.ready(s.practice.attempt, now());
+  const injury = p.injuredUntil, breath = p.stamina;
+  exhale(s, p, now()); p.startInhale(now()); step();
+  assert(!p.inhaling && !s.gustWaves.size && p.stamina === breath, 'injured practice uses the same breathing restrictions');
+  assert.equal(s.practice.phase, 'waiting', 'expected injury does not fail the stage');
+  for (let i = 0; i < 30; i++) step(); // A real half-second reaction delay before moving.
+  p.steer(1, 0); until(() => s.practice.phase === 'complete');
+  assert(s.time >= injury);
+}
+{
+  const { s, p, c, step, now } = setup('defense');
+  c.ready(s.practice.attempt, now());
+  exhale(s, p, now()); step(100);
+  assert.equal(s.practice.phase, 'resolving', 'an early wave gets its real wrap/hold interval rather than an instant failure');
+  assert.equal(s.practice.passed, 0, 'casting alone cannot certify rear cover');
+}
+for (const holding of [false, true]) {
+  const { s, p, c, until, now } = setup('defense');
+  c.ready(s.practice.attempt, now());
+  const attempt = s.practice.attempt;
+  if (holding) p.startInhale(now());
+  until(() => s.practice.attempt > attempt);
+  assert.equal(s.practice.stage, 'rear-cover'); assert.equal(s.practice.passed, 0);
+  assert.equal(s.practice.failures, 1); assert.equal(s.practice.completed, '');
+  assert(!p.inhaling, 'missing the window or holding instead of tapping restores only the attempt and breath');
+  assert(s.practice.feedback.includes('quick tap'));
+}
+{
+  const { s, p, c, step, until, now } = setup('blackhole');
+  p.startInhale(now()); until(() => s.practice.stage === 'shoot');
   p.stopInhale(now()); p.captureNeedsRelease = false;
   const attempt = s.practice.attempt;
   p.facing = Math.PI / 2; assert(fireCaptive(s, p, now()));
-  until(() => s.practice.attempt > attempt); assert.equal(s.practice.failures, 1); assert(p.gulping);
-  assert.equal(s.practice.stage, 'shoot'); assert.equal(s.practice.passed, 1);
-  assert.equal(p.gems, 318, 'retry restores the shot without farming capture growth');
-  c.observe('combatReward', { byId: p.sessionId, targetId: 'old-ammo', how: 'blackhole' }, now(), attempt);
+  until(() => s.practice.attempt > attempt);
+  assert.equal(s.practice.passed, 1); assert.equal(s.practice.stage, 'shoot'); assert(p.gulping);
+  assert.equal(p.gems, 318, 'retry does not farm capture growth'); assert(s.practice.feedback.includes('missed'));
+  c.observe('combatReward', { byId: p.sessionId, targetId: 'stale-ammo', how: 'blackhole' }, now(), attempt);
   assert.equal(s.practice.phase, 'waiting');
-  p.facing = 0; assert(fireCaptive(s, p, now()));
-  until(() => s.practice.phase === 'success');
-  assert.equal(p.gems, 350);
-  step(1000);
-  assert.equal(s.practice.phase, 'success'); assert.equal(s.blackHoles.length, 1, 'the scene remains for the gem-return animation');
+  p.facing = 0; p.aimAt(1, 0); assert(fireCaptive(s, p, now())); until(() => s.practice.phase === 'success');
+  assert.equal(p.gems, 350); step(1000); assert.equal(s.practice.phase, 'success', 'visible return is not cut off');
   until(() => s.practice.phase === 'complete');
-  assert.equal(events.filter(e => e.type === 'combatReward' && e.data.how === 'blackhole').length, 1);
-  assert.equal(p.gems, 350, 'visible gems never pay a second reward');
-  c.select('defense', false, now()); assert.equal(s.worldHeight, 1600, 'other lessons retain their original arena');
 }
 {
-  const { s, p, until } = setup('weapon');
-  assert.equal(s.pinwheel.parts.length, 3);
-  for (const part of [...s.pinwheel.parts]) {
-    if (!part) continue;
-    p.placeAt(part.x - p.width / 2, part.y - p.height / 2); until(() => part.carriedBy === p.sessionId || s.pinwheel.phase === 'carried');
-  }
-  until(() => s.practice.stage === 'place'); assert.equal(s.pinwheel.phase, 'carried');
-  assert(deployWeapon(s, p)); until(() => s.practice.phase === 'complete');
-}
-{
-  const { s, p, c, until, now } = setup('weapon');
-  for (const part of [...s.pinwheel.parts]) {
-    if (!part) continue;
-    p.placeAt(part.x - p.width / 2, part.y - p.height / 2);
-    until(() => part.carriedBy === p.sessionId || s.pinwheel.phase === 'carried');
-  }
-  until(() => s.practice.stage === 'place');
-  const before = s.practice.attempt;
-  c.observe('weaponPlaced', { byId: p.sessionId }, now(), before - 1);
-  assert.equal(s.practice.phase, 'waiting', 'old placement cannot advance the lesson');
-  assert(deployWeapon(s, p)); until(() => s.practice.stage === 'effect');
-  s.players.delete(s.practice.targetId); // A lost target restores only the already-reached effect step.
-  until(() => s.practice.attempt > before + 1);
-  assert.equal(s.practice.stage, 'effect'); assert.equal(s.practice.passed, 2);
-  assert.equal(s.practice.failures, 1); assert.equal(s.pinwheel.phase, 'charging');
-  until(() => s.practice.phase === 'complete');
-  c.select('basics', false, now()); assert.equal(s.practice.passed, 0);
-  c.select('weapon', true, now()); assert.equal(s.practice.stage, 'collect');
-}
-{
-  const { s, p, c, step, until, now, events } = setup('defense');
-  exhale(s, p, now()); until(() => s.practice.failures === 1 && s.practice.phase === 'waiting');
-  until(() => s.practice.cue === 'attacking');
-  p.facing = 0; exhale(s, p, now()); step();
-  until(() => s.practice.phase === 'complete');
-  assert(events.some(e => e.type === 'parry' && e.data.id === p.sessionId));
-  c.select('weapon', false, now()); c.skip(s.practice.attempt, now());
-  assert.equal(s.practice.phase, 'choosing'); assert(!s.practice.completed.includes('weapon'));
-  c.observe('parry', { id: p.sessionId, targetId: s.practice.targetId }, now());
-  assert.equal(s.practice.phase, 'choosing', 'duplicate completion cannot finish another lesson');
-  c.select('blackhole', false, now());
-  assert(!c.shouldClose(now())); assert(c.shouldClose(now() + 600_001));
-}
-console.log('Practice: actual capture/release/hit/theft/mouth finish, assembly/placement/effect, black-hole reward, defensive parry, retries, stale events, skip and replay passed.');
-
-{
-  const { s, p, c, step, now } = setup('basics');
+  const { s, p, c, play, step, now } = setup('basics');
   c.startSequence(now());
-  for (let i = 0; i < 3000; i++) {
+  let actualCaptive = '';
+  for (let i = 0; i < 2500 && s.practice.lesson === 'basics'; i++) {
+    if (s.practice.stage === 'capture' && p.gulping) actualCaptive = p.gulping;
     const v = s.practice;
-    if (v.lesson === 'defense' && v.phase === 'complete') break;
-    p.steer(0, 0);
-    if (v.phase === 'waiting') {
-      if (v.lesson === 'basics') {
-        if (v.stage === 'grow') p.steer(1, 0);
-        else if (v.stage === 'capture') { if (!p.inhaling) p.startInhale(now()); }
-        else if (v.stage === 'shoot') { p.stopInhale(now()); p.captureNeedsRelease = false; p.facing = 0; if (p.gulping) fireCaptive(s, p, now()); }
-        else {
-          const target = s.players.get(v.targetId); assert(target);
-          const dx = target.x + target.width / 2 - p.x - p.width / 2, dy = target.y + target.height / 2 - p.y - p.height / 2, d = Math.hypot(dx, dy);
-          if (!p.inhaling) p.startInhale(now()); p.aimAt(dx, dy);
-          if (d > 210) p.steer(dx / d, dy / d);
-        }
-      } else if (v.lesson === 'weapon') {
-        if (v.stage === 'collect') { const part = s.pinwheel.parts.find(part => part.carriedBy !== p.sessionId); if (part) p.placeAt(part.x - p.width / 2, part.y - p.height / 2); }
-        else if (v.stage === 'place') deployWeapon(s, p);
-      } else if (v.lesson === 'blackhole') {
-        if (v.stage === 'capture') { if (!p.inhaling) p.startInhale(now()); }
-        else { p.stopInhale(now()); p.captureNeedsRelease = false; if (p.gulping) fireCaptive(s, p, now()); }
-      }
-      else if (v.lesson === 'defense' && v.cue === 'attacking') exhale(s, p, now());
-    }
+    if (v.phase === 'waiting') { if (v.stage === 'grow') p.steer(1, 0); else p.startInhale(now()); }
+    else p.steer(0, 0);
     step();
   }
-  assert.equal(s.practice.lesson, 'defense'); assert.equal(s.practice.phase, 'complete'); assert(s.practice.sequence);
-  assert.equal(s.practice.completed.split(',').length, 4, 'only actual success automatically advances the whole tutorial');
+  assert.equal(s.practice.lesson, 'combat'); assert(actualCaptive && p.gulping === actualCaptive, 'the full sequence carries the real captured opponent into aiming');
+  play(() => s.practice.lesson === 'weapon' && s.practice.phase === 'complete');
+  assert.deepEqual(s.practice.completed.split(','), [...PRACTICE_LESSONS]);
   c.startSequence(now()); c.skip(s.practice.attempt, now());
-  assert.equal(s.practice.lesson, 'weapon'); assert.equal(s.practice.completed, '', 'a sequence skip advances without certifying the skipped lesson');
-  c.select('blackhole', false, now()); assert(!s.practice.sequence, 'individual lessons remain available outside the automatic sequence');
+  assert.equal(s.practice.lesson, 'combat'); assert.equal(s.practice.completed, '', 'skip remains unfinished');
+  c.select('defense', false, now()); assert(!s.practice.sequence);
+  c.skip(s.practice.attempt, now()); assert.equal(s.practice.phase, 'choosing');
+  assert(c.shouldClose(now() + 60001));
 }
-console.log('Full tutorial: all four actual successes automatically advance in order; skip stays unfinished and individual selection stays unlocked.');
+console.log('Five practice lessons pass through real movement, capture, aiming, shatter, wound/theft/finish, rear cover, injury recovery, black-hole rewards and weapon damage; retries, readiness, stale events, sequence handoff, skip and replay pass.');

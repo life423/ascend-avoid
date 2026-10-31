@@ -1,5 +1,7 @@
 import type { Breath } from '../core/OnlineControls'
 import { ARENA_RULES } from '../../server/constants/gameConstants'
+import { drawInjury } from './injury'
+import type { InjuryVisual } from './injury'
 
 /** A coordinate moved by `distance` between `low` and `high`, bouncing off the ends (how balls move) */
 export function bounce(position: number, distance: number, low: number, high: number): number {
@@ -25,7 +27,7 @@ export function mouthRadius(size: number): number {
 }
 
 /** A round creature with eyes toward where it faces, so everyone can see which side is its back */
-export function drawCreature(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string, facing: number, timestamp = 0, mouth = '', inhaling = false, cheeks = 0, dizzy = false): void {
+export function drawCreature(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string, facing: number, timestamp = 0, mouth = '', inhaling = false, cheeks = 0, dizzy = false, injury:InjuryVisual|null=null): void {
     const r = size / 2
     const fullness = Math.max(0, Math.min(1, cheeks))
     ctx.fillStyle = color
@@ -50,6 +52,7 @@ export function drawCreature(ctx: CanvasRenderingContext2D, x: number, y: number
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)'
     ctx.lineWidth = Math.max(1.5, size * 0.06)
     ctx.stroke()
+    if(injury)drawInjury(ctx,x,y,size,color,facing,injury)
     const fx = Math.cos(facing)
     const fy = Math.sin(facing)
     if (fullness > 0) {
@@ -109,7 +112,7 @@ export function drawCreature(ctx: CanvasRenderingContext2D, x: number, y: number
         const ey = y + fy * r * 0.42 + fx * r * 0.36 * side
         ctx.fillStyle = '#ffffff'
         ctx.beginPath()
-        ctx.arc(ex, ey, r * 0.26, 0, Math.PI * 2)
+        ctx.arc(ex, ey, r * (injury && !dizzy ? 0.28 : 0.26), 0, Math.PI * 2)
         ctx.fill()
         ctx.strokeStyle = 'rgba(16, 21, 31, 0.55)'
         ctx.lineWidth = Math.max(1, size * 0.025)
@@ -134,6 +137,14 @@ export function drawCreature(ctx: CanvasRenderingContext2D, x: number, y: number
         } else {
             ctx.arc(ex, ey, r * 0.13, 0, Math.PI * 2)
             ctx.fill()
+        }
+        if(injury&&!dizzy){
+            const u=injury.pixelRatio/Math.max(.001,Math.abs(ctx.getTransform().a))
+            ctx.save();ctx.translate(ex,ey);ctx.rotate(facing)
+            ctx.globalAlpha*=Math.min(1,injury.remaining/750)
+            ctx.strokeStyle='#493f4b';ctx.lineWidth=Math.max(1.3*u,size*.018);ctx.lineCap='round'
+            ctx.beginPath();ctx.moveTo(r*.38,-side*r*.18)
+            ctx.quadraticCurveTo(r*.38,side*r*.01,r*.22,side*r*.22);ctx.stroke();ctx.restore()
         }
     }
 

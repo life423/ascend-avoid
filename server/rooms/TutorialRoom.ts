@@ -14,6 +14,7 @@ export class TutorialRoom extends GameRoom {
   private sequence = false;
   private controller!: PracticeController;
   protected get testHooksEnabled(): boolean { return false; }
+  protected get gameplayReady(): boolean { return this.state.practice.phase !== 'ready'; }
 
   protected async configureArena(options: Record<string, unknown>): Promise<void> {
     if (typeof options.token !== 'string' || !/^[a-f0-9]{64}$/.test(options.token)) throw new Error('Practice requires a private capability');
@@ -37,6 +38,9 @@ export class TutorialRoom extends GameRoom {
     });
     this.onMessage('practice:retry', (client, data) => {
       if (this.allowMessage(client) && client.sessionId === this.owner) this.controller.retry(data?.attempt, Date.now());
+    });
+    this.onMessage('practice:ready', (client, data) => {
+      if (this.allowMessage(client) && client.sessionId === this.owner) this.controller.ready(data?.attempt, Date.now());
     });
   }
   onAuth(client: Client, options: Record<string, unknown>): boolean {

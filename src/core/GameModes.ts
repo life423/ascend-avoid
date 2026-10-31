@@ -9,10 +9,11 @@ import { InputState } from '../types'
 import { GameEvents } from '../constants/client-constants'
 import { ARENA_RULES, BOMBS, CAMERA, EXHALE, GEMS, INHALE, LATCH, SHIFT, WORLD, WEAPON_RECIPES } from '../../server/constants/gameConstants'
 import { allWeapons } from '../../server/game/weaponKit'
+import { isPracticeLesson } from '../../server/practice/definitions'
 import { sound } from './Sound'
 import type { OnlineSession } from '../managers/MultiplayerManager'
 import { WeaponPlacement } from '../ui/WeaponPlacement'
-import { drawSurge, drawSurgeHud } from '../render/surge'
+import { drawSurge } from '../render/surge'
 import { breathRate } from '../../server/game/airflow'
 import { CameraRig, constrainArenaView } from '../../server/game/camera'
 import { turnStep, walk } from '../../server/game/movement'
@@ -27,7 +28,8 @@ import { COMPACT, GOLD } from '../render/style'
 import { drawBall, drawBomb, drawComet, drawGem, drawLaunchPuff, gemColor } from '../render/world'
 import { SMOOTHING, SNAP_DISTANCE, View } from '../render/shared'
 import { drawTopBar, drawLeaderboard, drawMinimap, drawBanner, drawShiftChip, drawTrafficChip, drawNotices, drawKnockedOut, drawMessage, drawCapturePrompt } from '../render/hud'
-import { drawGemBursts, drawBlasts, drawBursts, drawPuffs, drawTheft } from '../render/effects'
+import { drawGemBursts, drawBlasts, drawBursts, drawTheft } from '../render/effects'
+import { drawPuffs } from '../render/gust'
 import { SHIFT as RIM_SHIFT } from '../../server/constants/gameConstants'
 import { slideBlackHoleRims } from '../../server/game/blackHole'
 import { drawBlackHoles } from '../render/blackHoles'
@@ -510,7 +512,6 @@ export class MultiplayerMode extends GameMode {
     private publishActivity(text: string): void {
         if (!this.isPractice) window.dispatchEvent(new CustomEvent('ascend:activity', { detail: text }))
     }
-    surgeNotice: { key: string; at: number } | null = null
     private wasLoaded = false
     private wasCaptured = false
     private releaseControls = (): void => {
@@ -538,6 +539,7 @@ export class MultiplayerMode extends GameMode {
     private lastRenderAt = 0
     /** Each player's drawn size, springing toward their real size so growing and shrinking pop */
     drawnSizes = new Map<string, { size: number; speed: number }>()
+    contactShapes = new Map<string, { angle:number; amount:number; speed:number; at:number }>()
     /** Each creature's growth pop: when it last gained a gem and how big the pop was (see drawPlayer) */
     gemPops = new Map<string, { at: number; amount: number }>()
     /** Creatures caught in a mouth: when and where each was caught, so it can be seen sliding in (see drawPlayer) */
@@ -700,7 +702,7 @@ export class MultiplayerMode extends GameMode {
         })
         eventBus.on('multiplayer:surge', (data: { phase?: string }) => {
             sound.play('surge')
-            this.addNotice(data?.phase === 'warning' ? 'Gem surge incoming — follow the gold marker!' : 'Gem surge! Jackpot in the final seconds.', true)
+            this.publishActivity(data?.phase === 'warning' ? 'Gem surge incoming — follow the gold marker!' : 'Gem surge! Jackpot in the final seconds.')
         })
         eventBus.on('multiplayer:blast', (data: any) => this.blasts.push({ x: Number(data?.x) || 0, y: Number(data?.y) || 0, radius: Number(data?.radius) || BOMBS.BLAST_RADIUS, at: performance.now() }))
         eventBus.on('multiplayer:exhale', (data: { id?: string; x?: number; y?: number; facing?: number; reach?: number; recoil?: number; breathLeft?: number }) => {
@@ -753,8 +755,11 @@ export class MultiplayerMode extends GameMode {
         const practice = this.multiplayerManager?.getState()?.practice
         if (this.isPractice && practice?.enabled) {
             const session = this.multiplayerManager?.session
-            if (session?.kind === 'practice' && ['basics', 'weapon', 'blackhole', 'defense'].includes(practice.lesson)) { session.lesson = practice.lesson; session.sequence = practice.sequence }
+            if (session?.kind === 'practice' && isPracticeLesson(practice.lesson)) { session.lesson = practice.lesson; session.sequence = practice.sequence }
             if (practice.resetSerial !== this.practiceReset) { this.cancelInput(); this.predicted = null; this.practiceReset = practice.resetSerial
+                // Scenario inventories are setup, not pickups. Genuine in-attempt gains still animate.
+                this.lastSeen.clear(); this.pickups = []; this.gemPops.clear(); this.drawnSizes.clear()
+                this.stamina = 1; this.staminaAt = performance.now(); this.breath = { phase: 'ready' }
                 const me = this.multiplayerManager?.getLocalPlayer()
                 if (me) { this.facing = { x: Math.cos(me.facing), y: Math.sin(me.facing) }; this.aim = { ...this.facing }; this.localFacing = me.facing; this.sentAim = { x: 0, y: 0 } }
             }
@@ -832,6 +837,8 @@ export class MultiplayerMode extends GameMode {
             this.predicted = null
             return
         }
+        const readingPractice = this.isPractice && state.practice?.phase === 'ready'
+        if (readingPractice) events.length = 0
         // Send releases before any disabled-movement early return, including while stunned or flying.
         for (const event of events.filter(event => event === 'cancel' || event === 'exhale')) {
             this.inhaleHeld = false
@@ -841,7 +848,7 @@ export class MultiplayerMode extends GameMode {
         const keyX = Number(input.right) - Number(input.left)
         const keyY = Number(input.down) - Number(input.up)
         const keyLength = Math.hypot(keyX, keyY)
-        const steer = this.introPlaying || (me.stunned && !me.capturedBy) || editing ? { x: 0, y: 0 } : me.capturedBy && keyLength > 0 ? { x: keyX / keyLength, y: keyY / keyLength } : this.steerVector(input, me)
+        const steer = this.introPlaying || readingPractice || (me.stunned && !me.capturedBy) || editing ? { x: 0, y: 0 } : me.capturedBy && keyLength > 0 ? { x: keyX / keyLength, y: keyY / keyLength } : this.steerVector(input, me)
         this.sendSteer(steer)
         if (me.state !== 'alive') {
             this.shotAim = null
@@ -1121,6 +1128,7 @@ export class MultiplayerMode extends GameMode {
         for (const id of this.drawnSizes.keys()) {
             if (!present.has(id)) this.drawnSizes.delete(id)
         }
+        for(const id of this.contactShapes.keys())if(!present.has(id))this.contactShapes.delete(id)
         for (const id of this.flows.keys()) {
             if (!present.has(id)) this.flows.delete(id)
         }
@@ -1169,7 +1177,6 @@ export class MultiplayerMode extends GameMode {
             drawTrafficChip(this, ctx, canvas, state, timestamp)
             drawBanner(this, ctx, canvas)
             drawCapturePrompt(this, ctx, canvas, state, me, timestamp)
-            drawSurgeHud(this, ctx, canvas, state, view, timestamp)
             }
             const loaded = Boolean(me?.gulping)
             if (loaded && !this.wasLoaded) sound.play('ready')
@@ -1223,15 +1230,18 @@ export class MultiplayerMode extends GameMode {
             const x = target ? target.x + target.width / 2 : objective.objectiveX
             const y = target ? target.y + target.height / 2 : objective.objectiveY
             const radius = target ? target.width / 2 + 30 : objective.objectiveKind === 'hole' ? 96 : 44
-            if (objective.objectiveKind === 'hole' || (objective.lesson === 'basics' && objective.stage === 'finish')) {
-                // Keep both ends of the shot, or the learner and injured rival, in the same view.
+            if (objective.objectiveKind === 'hole' || objective.lesson === 'combat' || objective.lesson === 'defense') {
+                // Fit both subjects in the visible arena below the lesson, not behind its panel.
                 const playerX = me.x + me.width / 2, playerY = me.y + me.height / 2, playerRadius = me.width / 2 + 24
                 const left = Math.min(playerX - playerRadius, x - radius), right = Math.max(playerX + playerRadius, x + radius)
                 const top = Math.min(playerY - playerRadius, y - radius), bottom = Math.max(playerY + playerRadius, y + radius)
-                if (left < framing.x - canvas.width / scale / 2 || right > framing.x + canvas.width / scale / 2 || top < framing.y - canvas.height / scale / 2 || bottom > framing.y + canvas.height / scale / 2) {
-                    framing = { x: (left + right) / 2, y: (top + bottom) / 2 }
-                    scale = Math.min(scale, canvas.width / (right - left), canvas.height / (bottom - top))
-                }
+                const box = canvas.getBoundingClientRect(), pixels = canvas.width / Math.max(1, box.width)
+                const margin = 12 * pixels
+                const panelBottom = Math.max(margin, ((this.game.practiceUI?.occupiedBottom ?? box.top) - box.top + 12) * pixels)
+                scale = Math.min(scale, (canvas.width - 2 * margin) / (right - left), Math.max(1, canvas.height - panelBottom - margin) / (bottom - top))
+                const minX = right - (canvas.width / 2 - margin) / scale, maxX = left + (canvas.width / 2 - margin) / scale
+                const minY = bottom - (canvas.height / 2 - margin) / scale, maxY = top - (panelBottom - canvas.height / 2) / scale
+                framing = { x: Math.max(minX, Math.min(maxX, framing.x)), y: Math.max(minY, Math.min(maxY, framing.y)) }
             } else {
                 scale = Math.min(scale, canvas.width / (2 * (Math.abs(x - this.camera.x) + radius)), canvas.height / (2 * (Math.abs(y - this.camera.y) + radius)))
             }

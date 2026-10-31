@@ -1,11 +1,12 @@
 /** Scenario identifiers and geometry only; instructional copy belongs to the client. */
-export const PRACTICE_LESSONS = ['basics', 'weapon', 'blackhole', 'defense'] as const;
+export const PRACTICE_LESSONS = ['basics', 'combat', 'defense', 'blackhole', 'weapon'] as const;
 export type PracticeLesson = typeof PRACTICE_LESSONS[number];
 export const PRACTICE_STAGES: Record<PracticeLesson, readonly string[]> = {
-  basics: ['grow', 'capture', 'shoot', 'finish'],
+  basics: ['grow', 'capture'],
+  combat: ['aim', 'shatter', 'wound', 'approach', 'steal', 'finish'],
   weapon: ['collect', 'place', 'effect'],
   blackhole: ['capture', 'shoot'],
-  defense: ['parry'],
+  defense: ['rear-cover', 'injured-escape'],
 };
 export function isPracticeLesson(value: unknown): value is PracticeLesson {
   return typeof value === 'string' && PRACTICE_LESSONS.some(id => id === value);

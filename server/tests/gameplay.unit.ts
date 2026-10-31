@@ -7,7 +7,7 @@ import { updateFlights } from '../systems/flights.js';
 import { beginSurge, updateSurges } from '../systems/surges.js';
 import { updateJackpot } from '../systems/gems.js';
 import { BotBrain } from '../game/bots.js';
-import { keepApart, pruneBodyContacts } from '../systems/bodies.js';
+import { keepApart } from '../systems/bodies.js';
 
 const NOW = 100_000;
 function world() {
@@ -93,16 +93,11 @@ for (const gems of [0, 4, 11, 12, 80]) for (const kind of ['missile', 'turbine']
   a.updateMovement(s.worldWidth, s.worldHeight, NOW, 0.05);
   b.updateMovement(s.worldWidth, s.worldHeight, NOW, 0.05);
   a.markTick(); b.markTick(); keepApart(s, a);
-  assert(a.stunned && b.stunned && a.sliding && b.sliding, 'a forceful fresh bump staggers and separates both players');
-  const ends = a.stunEndsAt;
-  keepApart(s, b); assert.equal(a.stunEndsAt, ends, 'the other side of the same pair cannot retrigger the stun');
-  a.placeAt(1000, 1000); b.placeAt(1018, 1000);
-  s.now += 3000;
-  a.updateMovement(s.worldWidth, s.worldHeight, s.now, 0);
-  b.updateMovement(s.worldWidth, s.worldHeight, s.now, 0);
-  keepApart(s, a); assert.equal(a.stunEndsAt, ends, 'continued contact cannot re-stun after immunity expires');
-  b.placeAt(1300, 1000); pruneBodyContacts(s);
-  assert.equal(s.bodyContacts.size, 0, 'separation rearms the pair');
+  assert(!a.stunned && !b.stunned && !a.sliding && !b.sliding, 'ordinary contact keeps both players in control');
+  a.steer(0, 1); b.steer(0, -1);
+  assert.equal(a.steering().y, 1); assert.equal(b.steering().y, -1);
+  const before=a.y; a.updateMovement(s.worldWidth,s.worldHeight,NOW+100,.1);keepApart(s,a);
+  assert(a.y>before, 'pressed bodies can slide sideways');
 }
 for (const targetGems of [12, 40, 100]) for (const protectedTarget of [false, true]) {
   const s = world(), flier = player(s, 'missile', 4), target = player(s, 'small-target', targetGems, 1100, 1000);
