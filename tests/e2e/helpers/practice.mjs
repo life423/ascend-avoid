@@ -87,7 +87,11 @@ export async function playPractice(page, input, { until = v => v.phase === 'comp
       await input.stop();
       const readyButton = page.getByRole('button', { name: 'Ready', exact: true });
       if (input.touch) await readyButton.tap(); else await readyButton.click();
-      await page.waitForTimeout(60); continue;
+      await page.waitForFunction(attempt => {
+        const view = window.game.currentGameMode.multiplayerManager.getState().practice;
+        return view.attempt !== attempt || view.phase !== 'ready';
+      }, v.attempt, {timeout:10000});
+      continue;
     }
     if (!['waiting', 'resolving'].includes(v.phase)) { await input.stop(); await page.waitForTimeout(60); continue; }
     const dx = v.target ? v.target.x - v.me.x : 0, dy = v.target ? v.target.y - v.me.y : 0, distance = Math.max(1, Math.hypot(dx, dy));
