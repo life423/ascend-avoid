@@ -67,6 +67,68 @@ artifacts are also excluded from the website Docker build context. A debug APK
 can be built with `npm run android:debug`; it uses Android's separate debug key
 and does not inherit the release APK's website trust.
 
+## Wireless phone installation
+
+**Saved at the user's request, November 1, 2026:** when they ask for the command
+to update Ascend Avoid on their Pixel over Wi-Fi, use this in **PowerShell on
+their PC**, not on the phone:
+
+```powershell
+cd C:\Users\aiand\Documents\programming\ascend-avoid
+npm run android:phone
+```
+
+The phone must be connected to the same Wi-Fi with Wireless debugging enabled.
+This command builds, verifies, installs and launches the signed Android app.
+
+The user requested Wi-Fi installation and a repeatable local build/test command
+on November 1, 2026. The signed release APK is now paired, installed and launched
+on the user's phone over Wi-Fi. Its first portrait game screen was inspected:
+the arena fills the screen without browser chrome, with the leaderboard,
+minimap, Menu, joystick and inhale control visible. This establishes initial
+installation/full-screen launch, not a complete gameplay/performance test.
+
+The user's test phone is a **Google Pixel 10 Pro XL**, verified through ADB as
+running **Android 17 / API 37**. TalkBack's displayed app version is separate
+from the OS version.
+
+For Android 11 or newer, connect the phone and computer to the same Wi-Fi, enable
+Developer options, then open **Wireless debugging > Pair device with pairing
+code**. Keep that dialog open and use its IP address and pairing port:
+
+```powershell
+npm run android:pair -- -Address 192.168.1.50:37001
+# Type the current six-digit pairing code when adb asks for it.
+npm run android:devices
+npm run android:phone
+```
+
+Addresses above are examples. After pairing, ADB usually discovers the phone
+automatically. If it does not, use the different **IP address & port** shown on
+the main Wireless debugging screen:
+
+```powershell
+npm run android:phone -- -Address 192.168.1.50:41001
+```
+
+`android:phone` selects a single connected device, builds the signed release,
+verifies it, installs with `adb install -r` to retain data, then launches the app.
+Multiple devices require an explicit `-Serial` from `android:devices`; an offline
+or unauthorized device is refused. `-SkipBuild` verifies and installs the existing
+APK/AAB instead of rebuilding. Pairing codes are prompted, not saved. Installation
+and launch results go into ignored `artifacts/android/device-installation.json`;
+full-screen and manual play checks start explicitly unverified there. The first
+portrait screen has a separate visual verification record; a reinstall resets
+those flags until the resulting screen is checked again.
+
+This is a local deployment workflow. GitHub-hosted runners do not automatically
+reach the phone. The TWA continues to load the deployed live website; native
+launcher/SDK/icon changes need a new APK. The current website-arrow icon is usable
+for device testing. The final game icon should be designed before store listing
+artwork and release screenshots are finalized.
+
+See [Android wireless debugging](https://developer.android.com/tools/adb#connect-to-a-device-over-wi-fi).
+
 ## Signing and backup
 
 The first release build creates a unique 3072-bit RSA upload key at
@@ -147,12 +209,14 @@ $env:E2E_URL='http://127.0.0.1:3182'
 npx playwright test tests/e2e/android-package.spec.mjs --project='Chrome (desktop)' --project='Android phone (Chrome)' --project='iPhone (Safari)' --retries=0
 ```
 
-No Android phone was attached to ADB during preparation. Compilation, browser
-emulation and bundle validation do not establish an installed-device result.
-On a real phone, test launch/trusted full screen, both orientations, touch aim,
+Initial preparation had no phone attached. On November 1, the signed APK was
+installed and launched on the user's Pixel 10 Pro XL / Android 17 over wireless
+ADB, and its actual first portrait game screenshot showed full-screen play with
+no browser address bar. The APK certificate also matches the deployed website
+association. Full physical-device checks remain for both orientations, touch aim,
 all five tutorials, sound/mute, Back, Home/resume, name entry/keyboard, network
-loss/reconnection and repeat launch. The new website metadata must be deployed
-before the trusted full-screen test can pass.
+loss/reconnection and repeat launch. Compilation/browser emulation alone is not
+evidence for these checks.
 
 ## Remaining Google Play steps
 
