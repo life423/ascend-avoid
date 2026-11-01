@@ -11,7 +11,9 @@ const heldShot=page=>page.evaluate(()=>{
 test('reading before aiming preserves the captured opponent and remaining shot time',async({page,browserName,hasTouch})=>{
   test.setTimeout(65000);await openLesson(page,'basics',true);const input=await practiceInput(page,browserName,hasTouch);
   try{
-    await playPractice(page,input,{until:v=>v.lesson==='combat'&&v.stage==='aim'&&v.phase==='ready'});
+    await playPractice(page,input,{until:v=>v.lesson==='combat'&&v.stage==='aim'&&v.phase==='countdown'});
+    await page.getByRole('button',{name:'Pause',exact:true}).click();
+    await page.waitForFunction(()=>window.game.currentGameMode.multiplayerManager.getState().practice.phase==='ready');
     const before=await heldShot(page);expect(before.id).toMatch(/^practice-basics-ammo-/);
     await expect(page.locator('.practice-instruction')).toContainText('Your captive waits here');
     await page.waitForTimeout(7500);
@@ -20,7 +22,7 @@ test('reading before aiming preserves the captured opponent and remaining shot t
     expect(after).toMatchObject({id:before.id,gems:before.gems,x:before.x,y:before.y,attempt:before.attempt,failures:0,phase:'ready'});
     expect(Math.abs(after.budget-before.budget)).toBeLessThan(150);
     await page.screenshot({path:test.info().outputPath('reading-before-aim.png'),scale:'css'});
-    const ready=page.getByRole('button',{name:'Ready',exact:true});if(hasTouch)await ready.tap();else await ready.click();
+    const ready=page.getByRole('button',{name:'Start now',exact:true});if(hasTouch)await ready.tap();else await ready.click();
     await page.waitForFunction(()=>window.game.currentGameMode.multiplayerManager.getState().practice.phase==='waiting');
     const started=await heldShot(page);expect(started.id).toBe(before.id);expect(started.budget).toBeLessThanOrEqual(before.budget+80);
     const result=await playPractice(page,input);expect(result.completed).toContain('combat');expect(result.failures).toBe(0);

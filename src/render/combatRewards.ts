@@ -1,6 +1,6 @@
 import type { MultiplayerMode } from '../core/GameModes'
 import type { SyncedGameState } from '../types/synced'
-import { INJURY_CRACKS, shellPlate } from './injury'
+import { INJURY_CRACKS, SHELL_PIECES, shellPlate } from './injury'
 import { PLAYER_COLORS } from '../../server/constants/gameConstants'
 
 export interface CombatRewardEvent {
@@ -38,8 +38,8 @@ export function drawCombatRewards(mode: MultiplayerMode, ctx: CanvasRenderingCon
             if (!reduced && age < 550) {
                 const color = effect.targetId === mode.multiplayerManager?.localSessionId ? '#ffffff' : PLAYER_COLORS[(effect.playerIndex ?? 0) % PLAYER_COLORS.length]
                 const spread = 1 - Math.pow(1 - shatter, 2), r = effect.size / 2
-                for (let i = 0; i < 3; i++) {
-                    const angle = i===0?Math.PI:i===1?-Math.PI/4:Math.PI/4, travel = r * (.15 + spread * 1.4)
+                for (let i = 0; i < SHELL_PIECES.length; i++) {
+                    const angle = SHELL_PIECES[i].angle, travel = r * (.15 + spread * 1.4)
                     ctx.save(); ctx.translate(Math.cos(angle) * travel, Math.sin(angle) * travel)
                     ctx.rotate(shatter * (i % 2 ? 1 : -1)); ctx.fillStyle = color
                     ctx.globalAlpha = Math.max(0, 1 - shatter); ctx.lineWidth = Math.max(1, effect.size * .004)

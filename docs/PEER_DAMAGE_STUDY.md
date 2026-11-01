@@ -1,5 +1,11 @@
 # Peer missile damage — October 30 headless experiment
 
+November 1 follow-up: the later approved local candidate is a
+[25% physical-width floor preserving stronger early hits](RIVAL_DAMAGE_AND_BREATH.md),
+with standard 60-unit bullets and no capture-to-fire delay. This supersedes the
+disabled-normal-game status below; the October 30 pure-33% evidence remains
+historical. Research scripts preserve explicit legacy/pure/floor comparisons.
+
 The user requested testing roughly 33% damage between similarly sized players together with smooth walking, slower large-body rotation and gradual suction resistance. They specifically asked for different sizes/distances and for ammunition acquisition not to make defeating a peer too easy.
 
 **Original study decision: keep the candidate disabled pending the timing experiment.** The user subsequently clarified that total knockouts are fun; a fast finish is not automatically a failure. The [capture-to-fire follow-up](CAPTURE_FIRE_DELAY_STUDY.md) now recommends a default-off one-second playtest candidate while preserving measured knockout volume. The measurements below remain historical evidence and do not certify human fun or deploy new damage.

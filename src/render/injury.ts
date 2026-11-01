@@ -1,78 +1,112 @@
-/** Three broad shell seams, shared with the finishing shatter. */
+/** Rear and side fractures leave a quiet front plate for the eyes. Shared with the shatter. */
 type ShellPoint = readonly [number, number];
-export const INJURY_CRACKS: ReadonlyArray<ReadonlyArray<ShellPoint>> = [
-    [[0, -1], [.03, -.5], [-.24, -.2], [-.08, 0]],
-    [[-.08, 0], [-.18, .28], [.05, .55], [0, 1]],
-    [[-.08, 0], [.3, .05], [.55, -.06], [1, 0]],
-];
+const joint: ShellPoint = [-.26, 0];
+const rays = [
+    { angle: 1.32, points: [joint, [-.1, .23], [-.22, .45], [-.02, .66]] },
+    { angle: 2.22, points: [joint, [-.36, .23], [-.6, .3], [-.5, .55]] },
+    { angle: Math.PI, points: [joint, [-.5, .08], [-.64, -.09], [-.84, .06]] },
+    { angle: 3.93, points: [joint, [-.46, -.13], [-.4, -.37], [-.63, -.48]] },
+    { angle: 5.06, points: [joint, [-.18, -.23], [-.28, -.43], [-.07, -.56], [.02, -.78]] },
+] satisfies ReadonlyArray<{ angle: number; points: ShellPoint[] }>;
+
+export const INJURY_CRACKS: ReadonlyArray<ReadonlyArray<ShellPoint>> = rays.map(ray =>
+    [...ray.points, [Math.cos(ray.angle), Math.sin(ray.angle)] as const]);
+
+/** Each fragment leaves along its own outer arc, including the intact front plate. */
+export const SHELL_PIECES = rays.map((ray, i) => {
+    const next = rays[(i + 1) % rays.length].angle + (i === rays.length - 1 ? Math.PI * 2 : 0);
+    return { start: ray.angle, end: next, angle: (ray.angle + next) / 2 };
+});
+
 export interface InjuryVisual {
     age: number;
     remaining: number;
     reduced: boolean;
     pixelRatio: number;
 }
+
 let core: HTMLCanvasElement | null = null;
 function warmCore(): HTMLCanvasElement {
-    if (core)
-        return core;
+    if (core) return core;
     core = document.createElement('canvas');
     core.width = core.height = 128;
     const ctx = core.getContext('2d');
     if (!ctx) return core;
-    const light = ctx.createRadialGradient(61, 64, 0, 64, 64, 64);
-    light.addColorStop(0, '#ffe3b9');
-    light.addColorStop(1, '#d98d79');
+    const light = ctx.createRadialGradient(43, 64, 3, 64, 64, 67);
+    light.addColorStop(0, '#fff0c4');
+    light.addColorStop(.48, '#ffc181');
+    light.addColorStop(1, '#e47865');
     ctx.fillStyle = light;
     ctx.fillRect(0, 0, 128, 128);
     return core;
 }
-/** Trace a full plate so the injury and shatter describe the same shell. */
+
+/** Trace exactly the boundaries used by the live fractures, not unrelated triangular debris. */
 export function shellPlate(ctx: CanvasRenderingContext2D, index: number, r: number): void {
+    const piece = SHELL_PIECES[index], first = INJURY_CRACKS[index], next = INJURY_CRACKS[(index + 1) % rays.length];
     ctx.beginPath();
-    if (index === 0) {
-        ctx.arc(0, 0, r, -Math.PI / 2, Math.PI / 2, true);
-        for (const [x, y] of [[.05, .55], [-.18, .28], [-.08, 0], [-.24, -.2], [.03, -.5], [0, -1]])
-            ctx.lineTo(x * r, y * r);
-    }
-    else if (index === 1) {
-        ctx.arc(0, 0, r, -Math.PI / 2, 0);
-        for (const [x, y] of [[.55, -.06], [.3, .05], [-.08, 0], [-.24, -.2], [.03, -.5], [0, -1]])
-            ctx.lineTo(x * r, y * r);
-    }
-    else {
-        ctx.arc(0, 0, r, 0, Math.PI / 2);
-        for (const [x, y] of [[.05, .55], [-.18, .28], [-.08, 0], [.3, .05], [.55, -.06], [1, 0]])
-            ctx.lineTo(x * r, y * r);
-    }
+    first.forEach(([x, y], i) => {
+        if (i) ctx.lineTo(x * r, y * r); else ctx.moveTo(x * r, y * r);
+    });
+    ctx.arc(0, 0, r, piece.start, piece.end);
+    for (let i = next.length - 2; i >= 0; i--) ctx.lineTo(next[i][0] * r, next[i][1] * r);
     ctx.closePath();
 }
-/** Separated plates reveal a warm core; eyes retain their actual size and direction. */
-export function drawInjury(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string, facing: number, visual: InjuryVisual): void {
-    if (visual.remaining <= 0)
-        return;
-    const r = size / 2, u = visual.pixelRatio / Math.max(.001, Math.abs(ctx.getTransform().a));
-    const heal = Math.min(1, visual.remaining / 750), open = visual.reduced ? 1 : Math.min(1, Math.max(0, visual.age / 180));
-    const pulse = visual.reduced ? 1 : .94 + .06 * Math.sin(visual.age * Math.PI / 1000);
-    const gap = Math.max(size * .025, 1.3 * u) * heal * open * pulse;
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(facing);
+
+function traceFractures(ctx: CanvasRenderingContext2D, r: number): void {
     ctx.beginPath();
-    ctx.arc(0, 0, r * .96, 0, Math.PI * 2);
-    ctx.clip();
-    ctx.globalAlpha *= heal;
+    for (const seam of INJURY_CRACKS) seam.forEach(([x, y], i) => {
+        // Break the outer rim too, rather than leaving an unbroken healthy outline.
+        const edge = i === seam.length - 1 ? 1.065 : 1;
+        if (i) ctx.lineTo(x * r * edge, y * r * edge); else ctx.moveTo(x * r, y * r);
+    });
+}
+
+/** A fractured shell with warm recessed seams. The face is painted afterward, never obscured. */
+export function drawInjury(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string, facing: number, visual: InjuryVisual): void {
+    if (visual.remaining <= 0) return;
+    const transform = ctx.getTransform(), r = size / 2;
+    const u = visual.pixelRatio / Math.max(.001, Math.hypot(transform.a, transform.b));
+    const closing = Math.min(1, visual.remaining / 750), heal = closing * closing * (3 - 2 * closing);
+    const open = visual.reduced ? 1 : Math.min(1, Math.max(0, visual.age / 180));
+    const strength = heal * open;
+    const pulse = visual.reduced ? 1 : .96 + .04 * Math.sin(visual.age * Math.PI / 1000);
+    const gap = Math.max(size * .014, 1.05 * u) * strength * pulse;
+    const edge = Math.max(Math.min(2.4 * u, size * .07), size * .032);
+    ctx.save();
+    ctx.translate(x, y); ctx.rotate(facing);
+    ctx.beginPath(); ctx.arc(0, 0, r * 1.065, 0, Math.PI * 2); ctx.clip();
+    // The shell keeps its original color. Only the openings reveal the warm interior.
+    ctx.save();
+    ctx.beginPath(); ctx.arc(0, 0, r * .985, 0, Math.PI * 2); ctx.clip();
+    ctx.globalAlpha *= strength;
     ctx.drawImage(warmCore(), -r, -r, size, size);
-    for (let i = 0; i < 3; i++) {
-        ctx.save();
-        ctx.translate(i === 0 ? -gap : gap * .65, i === 1 ? -gap * .65 : i === 2 ? gap * .65 : 0);
+    for (let i = 0; i < SHELL_PIECES.length; i++) {
+        const angle = SHELL_PIECES[i].angle, distance = i === SHELL_PIECES.length - 1 ? gap * .2 : gap;
+        ctx.save(); ctx.translate(Math.cos(angle) * distance, Math.sin(angle) * distance);
         shellPlate(ctx, i, r);
-        ctx.fillStyle = color;
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(65,47,48,.55)';
-        ctx.lineWidth = Math.max(1 * u, size * .009);
-        ctx.lineJoin = 'round';
-        ctx.stroke();
+        ctx.fillStyle = color; ctx.fill();
         ctx.restore();
     }
+    ctx.restore();
+    ctx.globalAlpha *= strength;
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    // A restrained lit lip makes the fractures feel recessed into a soft shell.
+    ctx.save(); ctx.translate(-.65 * u, -.65 * u);
+    traceFractures(ctx, r);
+    ctx.strokeStyle = 'rgba(255,255,255,.65)';
+    ctx.lineWidth = (edge + .6 * u) * strength;
+    ctx.stroke(); ctx.restore();
+    traceFractures(ctx, r);
+    ctx.strokeStyle = '#6b3e4b';
+    ctx.lineWidth = edge * strength;
+    ctx.stroke();
+    // Broad dark edges and a narrow warm center stay legible on white and colored bodies.
+    ctx.strokeStyle = '#ed977b';
+    ctx.lineWidth = edge * .52 * strength * pulse;
+    ctx.stroke();
+    ctx.strokeStyle = '#ffe4af';
+    ctx.lineWidth = edge * .22 * strength * pulse;
+    ctx.stroke();
     ctx.restore();
 }

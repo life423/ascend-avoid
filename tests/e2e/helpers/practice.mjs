@@ -17,7 +17,7 @@ export async function openLesson(page, lesson = 'basics', sequence = false) {
   await page.getByRole('button', { name: 'Practice / Tutorials', exact: true }).click();
   if (sequence) await page.getByRole('button', { name: 'Start full tutorial', exact: true }).click();
   else await page.locator(`[data-lesson="${lesson}"]`).click();
-  await page.waitForFunction(id => window.game?.currentGameMode?.multiplayerManager?.getState()?.practice?.lesson === id && ['ready','waiting'].includes(window.game.currentGameMode.multiplayerManager.getState().practice.phase), lesson);
+  await page.waitForFunction(id => window.game?.currentGameMode?.multiplayerManager?.getState()?.practice?.lesson === id && ['ready','countdown','waiting'].includes(window.game.currentGameMode.multiplayerManager.getState().practice.phase), lesson);
   await settled(page);
   await expect(page.locator('.practice-instruction')).toBeVisible();
   // Wait for the closing menu/backdrop to release the actual play surface before a gesture starts.
@@ -48,7 +48,9 @@ export async function practiceInput(page, browserName, hasTouch) {
       if (Math.hypot(dx, dy) < .1) { await release(1); return; }
       const y = page.viewportSize().height - 100;
       if (!points.has(1)) await touch('touchStart', 1, 96, y);
-      await touch('touchMove', 1, 96 + dx * 56, y + dy * 56);
+      // A unit direction must reach full input. The real stick radius is up to
+      // 68px; the old 56px gesture delivered only about 96% on Android.
+      await touch('touchMove', 1, 96 + dx * 80, y + dy * 80);
     } else {
       const next = new Set([dx > .2 && 'ArrowRight', dx < -.2 && 'ArrowLeft', dy > .2 && 'ArrowDown', dy < -.2 && 'ArrowUp'].filter(Boolean));
       for (const k of keys) if (!next.has(k)) { await page.keyboard.up(k); keys.delete(k); }
@@ -71,6 +73,7 @@ export async function practiceInput(page, browserName, hasTouch) {
   const tap = async () => { await releaseAction(); await hold(); await page.waitForTimeout(45); await releaseAction(); };
   const tapButton = async locator => {
     if (!hasTouch) { await locator.click(); return; }
+    await locator.scrollIntoViewIfNeeded();
     const box = await locator.boundingBox();
     if (!box) throw Error('Button is not visible');
     const x = box.x + box.width / 2, y = box.y + box.height / 2;

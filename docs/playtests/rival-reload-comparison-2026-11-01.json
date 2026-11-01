@@ -1,0 +1,302 @@
+{
+  "date": "2026-11-01",
+  "method": "2160 current-rule reload executions: four formulas x two defenses x270cases. Each begins with a guaranteed real missile hit; one pre-existing ammo source, either active ordinary BotBrain or separate idle stress control. Exact250ms-input aim and prompt fire make this a committed-hunter stress test, not human frequency or dodge accuracy. Same seeds/specs across formulas; outcomes include real spills, injury, speed, capture-growth and subsequent shot snapshots. Normal loading remains0.",
+  "rows": [
+    {
+      "formula": "legacy",
+      "defense": "retreat",
+      "cases": 270,
+      "allKnockouts": 57,
+      "activeAmmoCases": 135,
+      "activeAmmoKnockouts": 8,
+      "activeAmmoFastKnockouts": 3,
+      "byWidth": [
+        {
+          "width": 100,
+          "cases": 27,
+          "knockouts": 3
+        },
+        {
+          "width": 200,
+          "cases": 27,
+          "knockouts": 2
+        },
+        {
+          "width": 400,
+          "cases": 27,
+          "knockouts": 3
+        },
+        {
+          "width": 650,
+          "cases": 27,
+          "knockouts": 0
+        },
+        {
+          "width": 900,
+          "cases": 27,
+          "knockouts": 0
+        }
+      ],
+      "sourceReport": "reports/combat/nov1-legacy-retreat.json.gz"
+    },
+    {
+      "formula": "legacy",
+      "defense": "weave",
+      "cases": 270,
+      "allKnockouts": 52,
+      "activeAmmoCases": 135,
+      "activeAmmoKnockouts": 14,
+      "activeAmmoFastKnockouts": 2,
+      "byWidth": [
+        {
+          "width": 100,
+          "cases": 27,
+          "knockouts": 2
+        },
+        {
+          "width": 200,
+          "cases": 27,
+          "knockouts": 4
+        },
+        {
+          "width": 400,
+          "cases": 27,
+          "knockouts": 8
+        },
+        {
+          "width": 650,
+          "cases": 27,
+          "knockouts": 0
+        },
+        {
+          "width": 900,
+          "cases": 27,
+          "knockouts": 0
+        }
+      ],
+      "sourceReport": "reports/combat/nov1-legacy-weave.json.gz"
+    },
+    {
+      "formula": "floor25",
+      "defense": "retreat",
+      "cases": 270,
+      "allKnockouts": 138,
+      "activeAmmoCases": 135,
+      "activeAmmoKnockouts": 39,
+      "activeAmmoFastKnockouts": 14,
+      "byWidth": [
+        {
+          "width": 100,
+          "cases": 27,
+          "knockouts": 3
+        },
+        {
+          "width": 200,
+          "cases": 27,
+          "knockouts": 9
+        },
+        {
+          "width": 400,
+          "cases": 27,
+          "knockouts": 9
+        },
+        {
+          "width": 650,
+          "cases": 27,
+          "knockouts": 14
+        },
+        {
+          "width": 900,
+          "cases": 27,
+          "knockouts": 4
+        }
+      ],
+      "sourceReport": "reports/combat/nov1-floor25-retreat.json.gz"
+    },
+    {
+      "formula": "floor25",
+      "defense": "weave",
+      "cases": 270,
+      "allKnockouts": 115,
+      "activeAmmoCases": 135,
+      "activeAmmoKnockouts": 35,
+      "activeAmmoFastKnockouts": 14,
+      "byWidth": [
+        {
+          "width": 100,
+          "cases": 27,
+          "knockouts": 2
+        },
+        {
+          "width": 200,
+          "cases": 27,
+          "knockouts": 7
+        },
+        {
+          "width": 400,
+          "cases": 27,
+          "knockouts": 13
+        },
+        {
+          "width": 650,
+          "cases": 27,
+          "knockouts": 11
+        },
+        {
+          "width": 900,
+          "cases": 27,
+          "knockouts": 2
+        }
+      ],
+      "sourceReport": "reports/combat/nov1-floor25-weave.json.gz"
+    },
+    {
+      "formula": "floor30",
+      "defense": "retreat",
+      "cases": 270,
+      "allKnockouts": 157,
+      "activeAmmoCases": 135,
+      "activeAmmoKnockouts": 48,
+      "activeAmmoFastKnockouts": 19,
+      "byWidth": [
+        {
+          "width": 100,
+          "cases": 27,
+          "knockouts": 3
+        },
+        {
+          "width": 200,
+          "cases": 27,
+          "knockouts": 8
+        },
+        {
+          "width": 400,
+          "cases": 27,
+          "knockouts": 11
+        },
+        {
+          "width": 650,
+          "cases": 27,
+          "knockouts": 16
+        },
+        {
+          "width": 900,
+          "cases": 27,
+          "knockouts": 10
+        }
+      ],
+      "sourceReport": "reports/combat/nov1-floor30-retreat.json.gz"
+    },
+    {
+      "formula": "floor30",
+      "defense": "weave",
+      "cases": 270,
+      "allKnockouts": 121,
+      "activeAmmoCases": 135,
+      "activeAmmoKnockouts": 38,
+      "activeAmmoFastKnockouts": 15,
+      "byWidth": [
+        {
+          "width": 100,
+          "cases": 27,
+          "knockouts": 2
+        },
+        {
+          "width": 200,
+          "cases": 27,
+          "knockouts": 8
+        },
+        {
+          "width": 400,
+          "cases": 27,
+          "knockouts": 13
+        },
+        {
+          "width": 650,
+          "cases": 27,
+          "knockouts": 12
+        },
+        {
+          "width": 900,
+          "cases": 27,
+          "knockouts": 3
+        }
+      ],
+      "sourceReport": "reports/combat/nov1-floor30-weave.json.gz"
+    },
+    {
+      "formula": "floor33",
+      "defense": "retreat",
+      "cases": 270,
+      "allKnockouts": 166,
+      "activeAmmoCases": 135,
+      "activeAmmoKnockouts": 54,
+      "activeAmmoFastKnockouts": 19,
+      "byWidth": [
+        {
+          "width": 100,
+          "cases": 27,
+          "knockouts": 3
+        },
+        {
+          "width": 200,
+          "cases": 27,
+          "knockouts": 9
+        },
+        {
+          "width": 400,
+          "cases": 27,
+          "knockouts": 11
+        },
+        {
+          "width": 650,
+          "cases": 27,
+          "knockouts": 17
+        },
+        {
+          "width": 900,
+          "cases": 27,
+          "knockouts": 14
+        }
+      ],
+      "sourceReport": "reports/combat/nov1-floor33-retreat.json.gz"
+    },
+    {
+      "formula": "floor33",
+      "defense": "weave",
+      "cases": 270,
+      "allKnockouts": 131,
+      "activeAmmoCases": 135,
+      "activeAmmoKnockouts": 42,
+      "activeAmmoFastKnockouts": 15,
+      "byWidth": [
+        {
+          "width": 100,
+          "cases": 27,
+          "knockouts": 2
+        },
+        {
+          "width": 200,
+          "cases": 27,
+          "knockouts": 11
+        },
+        {
+          "width": 400,
+          "cases": 27,
+          "knockouts": 14
+        },
+        {
+          "width": 650,
+          "cases": 27,
+          "knockouts": 12
+        },
+        {
+          "width": 900,
+          "cases": 27,
+          "knockouts": 3
+        }
+      ],
+      "sourceReport": "reports/combat/nov1-floor33-weave.json.gz"
+    }
+  ]
+}

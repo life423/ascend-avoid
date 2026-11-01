@@ -1,0 +1,2908 @@
+{
+  "date": "2026-11-01",
+  "variant": "floor33",
+  "method": "72 controlled fights per variant at physical target widths100/200/300/500, shooter ratios0.9/1/1.2, edge gaps100/350/650, idle or outward retreat300ms after hit. One shooter starts with one standard captive; defender has none. Real fireCaptive/flight, damage, theft, movement and respawn,30Hz, no opponents/field/arena hazards. Shooter begins pursuit/inhale250ms after hit. No fairness/fun claim; idle and fixed-direction controls do not represent a human duel. Separate formula table is launch-speed damage before flight drag, not a promise of loss at every distance. peer33 sets the existing process-local trial to0.33; floor33 patches only this process with max(current damage, width-scaled33% damage), preserving stronger early hits. Neither edits constants/source or enables a running game. captureGrowth separately performs ten actual mouth captures and fires, with legally sized half-width/max-legal ammo; shatter flags are against a rival unchanged from the pre-capture shooter width. Second-shot flags assume unchanged shooter width and no defender recovery before the next hit.",
+  "peerHitTrial": 0,
+  "captureFireDelayMs": 0,
+  "equalDamage": [
+    {
+      "width": 60,
+      "gems": 32,
+      "damage": 27,
+      "lossPercent": 84.38,
+      "lethal": false,
+      "afterWidth": 30,
+      "speedBefore": 243.14741940850962,
+      "speedAfter": 289.1526411551503,
+      "nextShotHasShatterAdvantage": true
+    },
+    {
+      "width": 100,
+      "gems": 97,
+      "damage": 55,
+      "lossPercent": 56.7,
+      "lethal": false,
+      "afterWidth": 68,
+      "speedBefore": 213.99689759245504,
+      "speedAfter": 235.65694812921595,
+      "nextShotHasShatterAdvantage": true
+    },
+    {
+      "width": 200,
+      "gems": 414,
+      "damage": 137,
+      "lossPercent": 33.09,
+      "lethal": false,
+      "afterWidth": 165,
+      "speedBefore": 179.94922406091172,
+      "speedAfter": 188.81499924456986,
+      "nextShotHasShatterAdvantage": true
+    },
+    {
+      "width": 300,
+      "gems": 993,
+      "damage": 328,
+      "lossPercent": 33.03,
+      "lethal": false,
+      "afterWidth": 249.5,
+      "speedBefore": 162.6024794094767,
+      "speedAfter": 170.2706679623173,
+      "nextShotHasShatterAdvantage": true
+    },
+    {
+      "width": 500,
+      "gems": 3125,
+      "damage": 1031,
+      "lossPercent": 32.99,
+      "lethal": false,
+      "afterWidth": 419.5,
+      "speedBefore": 143.10835055998655,
+      "speedAfter": 149.52867533600136,
+      "nextShotHasShatterAdvantage": false
+    }
+  ],
+  "captureGrowth": [
+    {
+      "rivalWidth": 100,
+      "ammoNaturalWidth": 50,
+      "transfer": 0,
+      "shooterAfterCapture": 100,
+      "shotShooterWidth": 100,
+      "firstHitHasShatterAdvantage": false
+    },
+    {
+      "rivalWidth": 100,
+      "ammoNaturalWidth": 76,
+      "transfer": 22,
+      "shooterAfterCapture": 110.5,
+      "shotShooterWidth": 110.5,
+      "firstHitHasShatterAdvantage": false
+    },
+    {
+      "rivalWidth": 200,
+      "ammoNaturalWidth": 100,
+      "transfer": 65,
+      "shooterAfterCapture": 214,
+      "shotShooterWidth": 214,
+      "firstHitHasShatterAdvantage": false
+    },
+    {
+      "rivalWidth": 200,
+      "ammoNaturalWidth": 153.5,
+      "transfer": 206,
+      "shooterAfterCapture": 241.5,
+      "shotShooterWidth": 241.5,
+      "firstHitHasShatterAdvantage": true
+    },
+    {
+      "rivalWidth": 300,
+      "ammoNaturalWidth": 150,
+      "transfer": 194,
+      "shooterAfterCapture": 325,
+      "shotShooterWidth": 325,
+      "firstHitHasShatterAdvantage": false
+    },
+    {
+      "rivalWidth": 300,
+      "ammoNaturalWidth": 230.5,
+      "transfer": 531,
+      "shooterAfterCapture": 364,
+      "shotShooterWidth": 364,
+      "firstHitHasShatterAdvantage": true
+    },
+    {
+      "rivalWidth": 500,
+      "ammoNaturalWidth": 250,
+      "transfer": 636,
+      "shooterAfterCapture": 541.5,
+      "shotShooterWidth": 541.5,
+      "firstHitHasShatterAdvantage": false
+    },
+    {
+      "rivalWidth": 500,
+      "ammoNaturalWidth": 384.5,
+      "transfer": 1693,
+      "shooterAfterCapture": 602.5,
+      "shotShooterWidth": 602.5,
+      "firstHitHasShatterAdvantage": true
+    },
+    {
+      "rivalWidth": 800,
+      "ammoNaturalWidth": 400,
+      "transfer": 1849,
+      "shooterAfterCapture": 841.5,
+      "shotShooterWidth": 841.5,
+      "firstHitHasShatterAdvantage": false
+    },
+    {
+      "rivalWidth": 800,
+      "ammoNaturalWidth": 615,
+      "transfer": 5028,
+      "shooterAfterCapture": 897.5,
+      "shotShooterWidth": 897.5,
+      "firstHitHasShatterAdvantage": false
+    }
+  ],
+  "summary": [
+    {
+      "ratio": 0.9,
+      "gap": 100,
+      "response": "idle",
+      "cases": 4,
+      "directKnockouts": 0,
+      "followupKnockouts": 4,
+      "recoveries": 0
+    },
+    {
+      "ratio": 0.9,
+      "gap": 100,
+      "response": "retreat300ms",
+      "cases": 4,
+      "directKnockouts": 0,
+      "followupKnockouts": 3,
+      "recoveries": 1
+    },
+    {
+      "ratio": 0.9,
+      "gap": 350,
+      "response": "idle",
+      "cases": 4,
+      "directKnockouts": 0,
+      "followupKnockouts": 4,
+      "recoveries": 0
+    },
+    {
+      "ratio": 0.9,
+      "gap": 350,
+      "response": "retreat300ms",
+      "cases": 4,
+      "directKnockouts": 0,
+      "followupKnockouts": 2,
+      "recoveries": 2
+    },
+    {
+      "ratio": 0.9,
+      "gap": 650,
+      "response": "idle",
+      "cases": 4,
+      "directKnockouts": 0,
+      "followupKnockouts": 4,
+      "recoveries": 0
+    },
+    {
+      "ratio": 0.9,
+      "gap": 650,
+      "response": "retreat300ms",
+      "cases": 4,
+      "directKnockouts": 0,
+      "followupKnockouts": 0,
+      "recoveries": 4
+    },
+    {
+      "ratio": 1,
+      "gap": 100,
+      "response": "idle",
+      "cases": 4,
+      "directKnockouts": 0,
+      "followupKnockouts": 4,
+      "recoveries": 0
+    },
+    {
+      "ratio": 1,
+      "gap": 100,
+      "response": "retreat300ms",
+      "cases": 4,
+      "directKnockouts": 0,
+      "followupKnockouts": 3,
+      "recoveries": 1
+    },
+    {
+      "ratio": 1,
+      "gap": 350,
+      "response": "idle",
+      "cases": 4,
+      "directKnockouts": 0,
+      "followupKnockouts": 4,
+      "recoveries": 0
+    },
+    {
+      "ratio": 1,
+      "gap": 350,
+      "response": "retreat300ms",
+      "cases": 4,
+      "directKnockouts": 0,
+      "followupKnockouts": 2,
+      "recoveries": 2
+    },
+    {
+      "ratio": 1,
+      "gap": 650,
+      "response": "idle",
+      "cases": 4,
+      "directKnockouts": 0,
+      "followupKnockouts": 4,
+      "recoveries": 0
+    },
+    {
+      "ratio": 1,
+      "gap": 650,
+      "response": "retreat300ms",
+      "cases": 4,
+      "directKnockouts": 0,
+      "followupKnockouts": 0,
+      "recoveries": 4
+    },
+    {
+      "ratio": 1.2,
+      "gap": 100,
+      "response": "idle",
+      "cases": 4,
+      "directKnockouts": 4,
+      "followupKnockouts": 0,
+      "recoveries": 0
+    },
+    {
+      "ratio": 1.2,
+      "gap": 100,
+      "response": "retreat300ms",
+      "cases": 4,
+      "directKnockouts": 4,
+      "followupKnockouts": 0,
+      "recoveries": 0
+    },
+    {
+      "ratio": 1.2,
+      "gap": 350,
+      "response": "idle",
+      "cases": 4,
+      "directKnockouts": 4,
+      "followupKnockouts": 0,
+      "recoveries": 0
+    },
+    {
+      "ratio": 1.2,
+      "gap": 350,
+      "response": "retreat300ms",
+      "cases": 4,
+      "directKnockouts": 4,
+      "followupKnockouts": 0,
+      "recoveries": 0
+    },
+    {
+      "ratio": 1.2,
+      "gap": 650,
+      "response": "idle",
+      "cases": 4,
+      "directKnockouts": 4,
+      "followupKnockouts": 0,
+      "recoveries": 0
+    },
+    {
+      "ratio": 1.2,
+      "gap": 650,
+      "response": "retreat300ms",
+      "cases": 4,
+      "directKnockouts": 4,
+      "followupKnockouts": 0,
+      "recoveries": 0
+    }
+  ],
+  "fights": [
+    {
+      "targetWidth": 100,
+      "attackerWidth": 90,
+      "ratio": 0.9,
+      "gap": 100,
+      "response": "idle",
+      "initialGems": 97,
+      "hitAt": 33,
+      "directLoss": 52,
+      "directOut": false,
+      "finishedAt": 1533,
+      "finishedHow": "mouth",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 33,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 52,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 1533,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "mouth",
+          "kind": "",
+          "out": true,
+          "gems": 45
+        }
+      ]
+    },
+    {
+      "targetWidth": 100,
+      "attackerWidth": 90,
+      "ratio": 0.9,
+      "gap": 100,
+      "response": "retreat300ms",
+      "initialGems": 97,
+      "hitAt": 33,
+      "directLoss": 52,
+      "directOut": false,
+      "finishedAt": null,
+      "finishedHow": null,
+      "recoveredAt": 7033,
+      "targetGems": 38,
+      "events": [
+        {
+          "time": 33,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 52,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 6167,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "stole",
+          "kind": "",
+          "out": false,
+          "gems": 7
+        }
+      ]
+    },
+    {
+      "targetWidth": 100,
+      "attackerWidth": 90,
+      "ratio": 0.9,
+      "gap": 350,
+      "response": "idle",
+      "initialGems": 97,
+      "hitAt": 233,
+      "directLoss": 49,
+      "directOut": false,
+      "finishedAt": 2433,
+      "finishedHow": "mouth",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 233,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 49,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 2433,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "mouth",
+          "kind": "",
+          "out": true,
+          "gems": 40
+        }
+      ]
+    },
+    {
+      "targetWidth": 100,
+      "attackerWidth": 90,
+      "ratio": 0.9,
+      "gap": 350,
+      "response": "retreat300ms",
+      "initialGems": 97,
+      "hitAt": 233,
+      "directLoss": 49,
+      "directOut": false,
+      "finishedAt": null,
+      "finishedHow": null,
+      "recoveredAt": 7233,
+      "targetGems": 49,
+      "events": [
+        {
+          "time": 233,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 49,
+          "earned": 0,
+          "projectileId": "ammo"
+        }
+      ]
+    },
+    {
+      "targetWidth": 100,
+      "attackerWidth": 90,
+      "ratio": 0.9,
+      "gap": 650,
+      "response": "idle",
+      "initialGems": 97,
+      "hitAt": 500,
+      "directLoss": 44,
+      "directOut": false,
+      "finishedAt": 4067,
+      "finishedHow": "mouth",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 500,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 44,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 4067,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "mouth",
+          "kind": "",
+          "out": true,
+          "gems": 49
+        }
+      ]
+    },
+    {
+      "targetWidth": 100,
+      "attackerWidth": 90,
+      "ratio": 0.9,
+      "gap": 650,
+      "response": "retreat300ms",
+      "initialGems": 97,
+      "hitAt": 500,
+      "directLoss": 44,
+      "directOut": false,
+      "finishedAt": null,
+      "finishedHow": null,
+      "recoveredAt": 7500,
+      "targetGems": 55,
+      "events": [
+        {
+          "time": 500,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 44,
+          "earned": 0,
+          "projectileId": "ammo"
+        }
+      ]
+    },
+    {
+      "targetWidth": 100,
+      "attackerWidth": 100,
+      "ratio": 1,
+      "gap": 100,
+      "response": "idle",
+      "initialGems": 97,
+      "hitAt": 33,
+      "directLoss": 55,
+      "directOut": false,
+      "finishedAt": 1533,
+      "finishedHow": "mouth",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 33,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 55,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 1533,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "mouth",
+          "kind": "",
+          "out": true,
+          "gems": 42
+        }
+      ]
+    },
+    {
+      "targetWidth": 100,
+      "attackerWidth": 100,
+      "ratio": 1,
+      "gap": 100,
+      "response": "retreat300ms",
+      "initialGems": 97,
+      "hitAt": 33,
+      "directLoss": 55,
+      "directOut": false,
+      "finishedAt": null,
+      "finishedHow": null,
+      "recoveredAt": 7033,
+      "targetGems": 35,
+      "events": [
+        {
+          "time": 33,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 55,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 6100,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "stole",
+          "kind": "",
+          "out": false,
+          "gems": 7
+        }
+      ]
+    },
+    {
+      "targetWidth": 100,
+      "attackerWidth": 100,
+      "ratio": 1,
+      "gap": 350,
+      "response": "idle",
+      "initialGems": 97,
+      "hitAt": 233,
+      "directLoss": 51,
+      "directOut": false,
+      "finishedAt": 2400,
+      "finishedHow": "mouth",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 233,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 51,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 2400,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "mouth",
+          "kind": "",
+          "out": true,
+          "gems": 39
+        }
+      ]
+    },
+    {
+      "targetWidth": 100,
+      "attackerWidth": 100,
+      "ratio": 1,
+      "gap": 350,
+      "response": "retreat300ms",
+      "initialGems": 97,
+      "hitAt": 233,
+      "directLoss": 51,
+      "directOut": false,
+      "finishedAt": null,
+      "finishedHow": null,
+      "recoveredAt": 7233,
+      "targetGems": 48,
+      "events": [
+        {
+          "time": 233,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 51,
+          "earned": 0,
+          "projectileId": "ammo"
+        }
+      ]
+    },
+    {
+      "targetWidth": 100,
+      "attackerWidth": 100,
+      "ratio": 1,
+      "gap": 650,
+      "response": "idle",
+      "initialGems": 97,
+      "hitAt": 500,
+      "directLoss": 46,
+      "directOut": false,
+      "finishedAt": 4100,
+      "finishedHow": "mouth",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 500,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 46,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 4100,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "mouth",
+          "kind": "",
+          "out": true,
+          "gems": 51
+        }
+      ]
+    },
+    {
+      "targetWidth": 100,
+      "attackerWidth": 100,
+      "ratio": 1,
+      "gap": 650,
+      "response": "retreat300ms",
+      "initialGems": 97,
+      "hitAt": 500,
+      "directLoss": 46,
+      "directOut": false,
+      "finishedAt": null,
+      "finishedHow": null,
+      "recoveredAt": 7500,
+      "targetGems": 53,
+      "events": [
+        {
+          "time": 500,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 46,
+          "earned": 0,
+          "projectileId": "ammo"
+        }
+      ]
+    },
+    {
+      "targetWidth": 100,
+      "attackerWidth": 120,
+      "ratio": 1.2,
+      "gap": 100,
+      "response": "idle",
+      "initialGems": 97,
+      "hitAt": 33,
+      "directLoss": 97,
+      "directOut": true,
+      "finishedAt": 33,
+      "finishedHow": "cannon",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 33,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": true,
+          "gems": 97,
+          "earned": 97,
+          "projectileId": "ammo"
+        }
+      ]
+    },
+    {
+      "targetWidth": 100,
+      "attackerWidth": 120,
+      "ratio": 1.2,
+      "gap": 100,
+      "response": "retreat300ms",
+      "initialGems": 97,
+      "hitAt": 33,
+      "directLoss": 97,
+      "directOut": true,
+      "finishedAt": 33,
+      "finishedHow": "cannon",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 33,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": true,
+          "gems": 97,
+          "earned": 97,
+          "projectileId": "ammo"
+        }
+      ]
+    },
+    {
+      "targetWidth": 100,
+      "attackerWidth": 120,
+      "ratio": 1.2,
+      "gap": 350,
+      "response": "idle",
+      "initialGems": 97,
+      "hitAt": 233,
+      "directLoss": 97,
+      "directOut": true,
+      "finishedAt": 233,
+      "finishedHow": "cannon",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 233,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": true,
+          "gems": 97,
+          "earned": 97,
+          "projectileId": "ammo"
+        }
+      ]
+    },
+    {
+      "targetWidth": 100,
+      "attackerWidth": 120,
+      "ratio": 1.2,
+      "gap": 350,
+      "response": "retreat300ms",
+      "initialGems": 97,
+      "hitAt": 233,
+      "directLoss": 97,
+      "directOut": true,
+      "finishedAt": 233,
+      "finishedHow": "cannon",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 233,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": true,
+          "gems": 97,
+          "earned": 97,
+          "projectileId": "ammo"
+        }
+      ]
+    },
+    {
+      "targetWidth": 100,
+      "attackerWidth": 120,
+      "ratio": 1.2,
+      "gap": 650,
+      "response": "idle",
+      "initialGems": 97,
+      "hitAt": 467,
+      "directLoss": 97,
+      "directOut": true,
+      "finishedAt": 467,
+      "finishedHow": "cannon",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 467,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": true,
+          "gems": 97,
+          "earned": 97,
+          "projectileId": "ammo"
+        }
+      ]
+    },
+    {
+      "targetWidth": 100,
+      "attackerWidth": 120,
+      "ratio": 1.2,
+      "gap": 650,
+      "response": "retreat300ms",
+      "initialGems": 97,
+      "hitAt": 467,
+      "directLoss": 97,
+      "directOut": true,
+      "finishedAt": 467,
+      "finishedHow": "cannon",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 467,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": true,
+          "gems": 97,
+          "earned": 97,
+          "projectileId": "ammo"
+        }
+      ]
+    },
+    {
+      "targetWidth": 200,
+      "attackerWidth": 180,
+      "ratio": 0.9,
+      "gap": 100,
+      "response": "idle",
+      "initialGems": 414,
+      "hitAt": 33,
+      "directLoss": 111,
+      "directOut": false,
+      "finishedAt": 1867,
+      "finishedHow": "mouth",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 33,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 111,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 1867,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "mouth",
+          "kind": "",
+          "out": true,
+          "gems": 280
+        }
+      ]
+    },
+    {
+      "targetWidth": 200,
+      "attackerWidth": 180,
+      "ratio": 0.9,
+      "gap": 100,
+      "response": "retreat300ms",
+      "initialGems": 414,
+      "hitAt": 33,
+      "directLoss": 111,
+      "directOut": false,
+      "finishedAt": 5867,
+      "finishedHow": "mouth",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 33,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 111,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 5867,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "mouth",
+          "kind": "",
+          "out": true,
+          "gems": 73
+        }
+      ]
+    },
+    {
+      "targetWidth": 200,
+      "attackerWidth": 180,
+      "ratio": 0.9,
+      "gap": 350,
+      "response": "idle",
+      "initialGems": 414,
+      "hitAt": 200,
+      "directLoss": 111,
+      "directOut": false,
+      "finishedAt": 2500,
+      "finishedHow": "mouth",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 200,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 111,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 2500,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "mouth",
+          "kind": "",
+          "out": true,
+          "gems": 248
+        }
+      ]
+    },
+    {
+      "targetWidth": 200,
+      "attackerWidth": 180,
+      "ratio": 0.9,
+      "gap": 350,
+      "response": "retreat300ms",
+      "initialGems": 414,
+      "hitAt": 200,
+      "directLoss": 111,
+      "directOut": false,
+      "finishedAt": null,
+      "finishedHow": null,
+      "recoveredAt": 7433,
+      "targetGems": 297,
+      "events": [
+        {
+          "time": 200,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 111,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 5767,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "stole",
+          "kind": "",
+          "out": false,
+          "gems": 14
+        }
+      ]
+    },
+    {
+      "targetWidth": 200,
+      "attackerWidth": 180,
+      "ratio": 0.9,
+      "gap": 650,
+      "response": "idle",
+      "initialGems": 414,
+      "hitAt": 400,
+      "directLoss": 111,
+      "directOut": false,
+      "finishedAt": 4233,
+      "finishedHow": "mouth",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 400,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 111,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 4233,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "mouth",
+          "kind": "",
+          "out": true,
+          "gems": 233
+        }
+      ]
+    },
+    {
+      "targetWidth": 200,
+      "attackerWidth": 180,
+      "ratio": 0.9,
+      "gap": 650,
+      "response": "retreat300ms",
+      "initialGems": 414,
+      "hitAt": 400,
+      "directLoss": 111,
+      "directOut": false,
+      "finishedAt": null,
+      "finishedHow": null,
+      "recoveredAt": 7400,
+      "targetGems": 310,
+      "events": [
+        {
+          "time": 400,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 111,
+          "earned": 0,
+          "projectileId": "ammo"
+        }
+      ]
+    },
+    {
+      "targetWidth": 200,
+      "attackerWidth": 200,
+      "ratio": 1,
+      "gap": 100,
+      "response": "idle",
+      "initialGems": 414,
+      "hitAt": 33,
+      "directLoss": 137,
+      "directOut": false,
+      "finishedAt": 1533,
+      "finishedHow": "mouth",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 33,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 137,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 1533,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "mouth",
+          "kind": "",
+          "out": true,
+          "gems": 277
+        }
+      ]
+    },
+    {
+      "targetWidth": 200,
+      "attackerWidth": 200,
+      "ratio": 1,
+      "gap": 100,
+      "response": "retreat300ms",
+      "initialGems": 414,
+      "hitAt": 33,
+      "directLoss": 137,
+      "directOut": false,
+      "finishedAt": 5133,
+      "finishedHow": "mouth",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 33,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 137,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 5133,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "mouth",
+          "kind": "",
+          "out": true,
+          "gems": 82
+        }
+      ]
+    },
+    {
+      "targetWidth": 200,
+      "attackerWidth": 200,
+      "ratio": 1,
+      "gap": 350,
+      "response": "idle",
+      "initialGems": 414,
+      "hitAt": 200,
+      "directLoss": 137,
+      "directOut": false,
+      "finishedAt": 2433,
+      "finishedHow": "mouth",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 200,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 137,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 2433,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "mouth",
+          "kind": "",
+          "out": true,
+          "gems": 222
+        }
+      ]
+    },
+    {
+      "targetWidth": 200,
+      "attackerWidth": 200,
+      "ratio": 1,
+      "gap": 350,
+      "response": "retreat300ms",
+      "initialGems": 414,
+      "hitAt": 200,
+      "directLoss": 137,
+      "directOut": false,
+      "finishedAt": null,
+      "finishedHow": null,
+      "recoveredAt": 7200,
+      "targetGems": 256,
+      "events": [
+        {
+          "time": 200,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 137,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 6100,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "stole",
+          "kind": "",
+          "out": false,
+          "gems": 22
+        }
+      ]
+    },
+    {
+      "targetWidth": 200,
+      "attackerWidth": 200,
+      "ratio": 1,
+      "gap": 650,
+      "response": "idle",
+      "initialGems": 414,
+      "hitAt": 400,
+      "directLoss": 137,
+      "directOut": false,
+      "finishedAt": 4133,
+      "finishedHow": "mouth",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 400,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 137,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 4133,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "mouth",
+          "kind": "",
+          "out": true,
+          "gems": 209
+        }
+      ]
+    },
+    {
+      "targetWidth": 200,
+      "attackerWidth": 200,
+      "ratio": 1,
+      "gap": 650,
+      "response": "retreat300ms",
+      "initialGems": 414,
+      "hitAt": 400,
+      "directLoss": 137,
+      "directOut": false,
+      "finishedAt": null,
+      "finishedHow": null,
+      "recoveredAt": 7400,
+      "targetGems": 287,
+      "events": [
+        {
+          "time": 400,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 137,
+          "earned": 0,
+          "projectileId": "ammo"
+        }
+      ]
+    },
+    {
+      "targetWidth": 200,
+      "attackerWidth": 240,
+      "ratio": 1.2,
+      "gap": 100,
+      "response": "idle",
+      "initialGems": 414,
+      "hitAt": 33,
+      "directLoss": 414,
+      "directOut": true,
+      "finishedAt": 33,
+      "finishedHow": "cannon",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 33,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": true,
+          "gems": 414,
+          "earned": 414,
+          "projectileId": "ammo"
+        }
+      ]
+    },
+    {
+      "targetWidth": 200,
+      "attackerWidth": 240,
+      "ratio": 1.2,
+      "gap": 100,
+      "response": "retreat300ms",
+      "initialGems": 414,
+      "hitAt": 33,
+      "directLoss": 414,
+      "directOut": true,
+      "finishedAt": 33,
+      "finishedHow": "cannon",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 33,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": true,
+          "gems": 414,
+          "earned": 414,
+          "projectileId": "ammo"
+        }
+      ]
+    },
+    {
+      "targetWidth": 200,
+      "attackerWidth": 240,
+      "ratio": 1.2,
+      "gap": 350,
+      "response": "idle",
+      "initialGems": 414,
+      "hitAt": 200,
+      "directLoss": 414,
+      "directOut": true,
+      "finishedAt": 200,
+      "finishedHow": "cannon",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 200,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": true,
+          "gems": 414,
+          "earned": 414,
+          "projectileId": "ammo"
+        }
+      ]
+    },
+    {
+      "targetWidth": 200,
+      "attackerWidth": 240,
+      "ratio": 1.2,
+      "gap": 350,
+      "response": "retreat300ms",
+      "initialGems": 414,
+      "hitAt": 200,
+      "directLoss": 414,
+      "directOut": true,
+      "finishedAt": 200,
+      "finishedHow": "cannon",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 200,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": true,
+          "gems": 414,
+          "earned": 414,
+          "projectileId": "ammo"
+        }
+      ]
+    },
+    {
+      "targetWidth": 200,
+      "attackerWidth": 240,
+      "ratio": 1.2,
+      "gap": 650,
+      "response": "idle",
+      "initialGems": 414,
+      "hitAt": 367,
+      "directLoss": 414,
+      "directOut": true,
+      "finishedAt": 367,
+      "finishedHow": "cannon",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 367,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": true,
+          "gems": 414,
+          "earned": 414,
+          "projectileId": "ammo"
+        }
+      ]
+    },
+    {
+      "targetWidth": 200,
+      "attackerWidth": 240,
+      "ratio": 1.2,
+      "gap": 650,
+      "response": "retreat300ms",
+      "initialGems": 414,
+      "hitAt": 367,
+      "directLoss": 414,
+      "directOut": true,
+      "finishedAt": 367,
+      "finishedHow": "cannon",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 367,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": true,
+          "gems": 414,
+          "earned": 414,
+          "projectileId": "ammo"
+        }
+      ]
+    },
+    {
+      "targetWidth": 300,
+      "attackerWidth": 270,
+      "ratio": 0.9,
+      "gap": 100,
+      "response": "idle",
+      "initialGems": 993,
+      "hitAt": 33,
+      "directLoss": 265,
+      "directOut": false,
+      "finishedAt": 2000,
+      "finishedHow": "mouth",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 33,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 265,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 2000,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "mouth",
+          "kind": "",
+          "out": true,
+          "gems": 650
+        }
+      ]
+    },
+    {
+      "targetWidth": 300,
+      "attackerWidth": 270,
+      "ratio": 0.9,
+      "gap": 100,
+      "response": "retreat300ms",
+      "initialGems": 993,
+      "hitAt": 33,
+      "directLoss": 265,
+      "directOut": false,
+      "finishedAt": 5133,
+      "finishedHow": "mouth",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 33,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 265,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 5133,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "mouth",
+          "kind": "",
+          "out": true,
+          "gems": 185
+        }
+      ]
+    },
+    {
+      "targetWidth": 300,
+      "attackerWidth": 270,
+      "ratio": 0.9,
+      "gap": 350,
+      "response": "idle",
+      "initialGems": 993,
+      "hitAt": 167,
+      "directLoss": 265,
+      "directOut": false,
+      "finishedAt": 2567,
+      "finishedHow": "mouth",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 167,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 265,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 2567,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "mouth",
+          "kind": "",
+          "out": true,
+          "gems": 538
+        }
+      ]
+    },
+    {
+      "targetWidth": 300,
+      "attackerWidth": 270,
+      "ratio": 0.9,
+      "gap": 350,
+      "response": "retreat300ms",
+      "initialGems": 993,
+      "hitAt": 167,
+      "directLoss": 265,
+      "directOut": false,
+      "finishedAt": 12767,
+      "finishedHow": "drain",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 167,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 265,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 12767,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "drain",
+          "kind": "",
+          "out": true
+        }
+      ]
+    },
+    {
+      "targetWidth": 300,
+      "attackerWidth": 270,
+      "ratio": 0.9,
+      "gap": 650,
+      "response": "idle",
+      "initialGems": 993,
+      "hitAt": 367,
+      "directLoss": 265,
+      "directOut": false,
+      "finishedAt": 4267,
+      "finishedHow": "mouth",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 367,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 265,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 4267,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "mouth",
+          "kind": "",
+          "out": true,
+          "gems": 406
+        }
+      ]
+    },
+    {
+      "targetWidth": 300,
+      "attackerWidth": 270,
+      "ratio": 0.9,
+      "gap": 650,
+      "response": "retreat300ms",
+      "initialGems": 993,
+      "hitAt": 367,
+      "directLoss": 265,
+      "directOut": false,
+      "finishedAt": null,
+      "finishedHow": null,
+      "recoveredAt": 7367,
+      "targetGems": 737,
+      "events": [
+        {
+          "time": 367,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 265,
+          "earned": 0,
+          "projectileId": "ammo"
+        }
+      ]
+    },
+    {
+      "targetWidth": 300,
+      "attackerWidth": 300,
+      "ratio": 1,
+      "gap": 100,
+      "response": "idle",
+      "initialGems": 993,
+      "hitAt": 33,
+      "directLoss": 328,
+      "directOut": false,
+      "finishedAt": 1533,
+      "finishedHow": "mouth",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 33,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 328,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 1533,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "mouth",
+          "kind": "",
+          "out": true,
+          "gems": 667
+        }
+      ]
+    },
+    {
+      "targetWidth": 300,
+      "attackerWidth": 300,
+      "ratio": 1,
+      "gap": 100,
+      "response": "retreat300ms",
+      "initialGems": 993,
+      "hitAt": 33,
+      "directLoss": 328,
+      "directOut": false,
+      "finishedAt": 4467,
+      "finishedHow": "mouth",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 33,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 328,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 4467,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "mouth",
+          "kind": "",
+          "out": true,
+          "gems": 216
+        }
+      ]
+    },
+    {
+      "targetWidth": 300,
+      "attackerWidth": 300,
+      "ratio": 1,
+      "gap": 350,
+      "response": "idle",
+      "initialGems": 993,
+      "hitAt": 167,
+      "directLoss": 328,
+      "directOut": false,
+      "finishedAt": 2500,
+      "finishedHow": "mouth",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 167,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 328,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 2500,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "mouth",
+          "kind": "",
+          "out": true,
+          "gems": 492
+        }
+      ]
+    },
+    {
+      "targetWidth": 300,
+      "attackerWidth": 300,
+      "ratio": 1,
+      "gap": 350,
+      "response": "retreat300ms",
+      "initialGems": 993,
+      "hitAt": 167,
+      "directLoss": 328,
+      "directOut": false,
+      "finishedAt": 12400,
+      "finishedHow": "drain",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 167,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 328,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 12400,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "drain",
+          "kind": "",
+          "out": true
+        }
+      ]
+    },
+    {
+      "targetWidth": 300,
+      "attackerWidth": 300,
+      "ratio": 1,
+      "gap": 650,
+      "response": "idle",
+      "initialGems": 993,
+      "hitAt": 367,
+      "directLoss": 328,
+      "directOut": false,
+      "finishedAt": 4133,
+      "finishedHow": "mouth",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 367,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 328,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 4133,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "mouth",
+          "kind": "",
+          "out": true,
+          "gems": 354
+        }
+      ]
+    },
+    {
+      "targetWidth": 300,
+      "attackerWidth": 300,
+      "ratio": 1,
+      "gap": 650,
+      "response": "retreat300ms",
+      "initialGems": 993,
+      "hitAt": 367,
+      "directLoss": 328,
+      "directOut": false,
+      "finishedAt": null,
+      "finishedHow": null,
+      "recoveredAt": 7367,
+      "targetGems": 673,
+      "events": [
+        {
+          "time": 367,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 328,
+          "earned": 0,
+          "projectileId": "ammo"
+        }
+      ]
+    },
+    {
+      "targetWidth": 300,
+      "attackerWidth": 360,
+      "ratio": 1.2,
+      "gap": 100,
+      "response": "idle",
+      "initialGems": 993,
+      "hitAt": 33,
+      "directLoss": 993,
+      "directOut": true,
+      "finishedAt": 33,
+      "finishedHow": "cannon",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 33,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": true,
+          "gems": 993,
+          "earned": 993,
+          "projectileId": "ammo"
+        }
+      ]
+    },
+    {
+      "targetWidth": 300,
+      "attackerWidth": 360,
+      "ratio": 1.2,
+      "gap": 100,
+      "response": "retreat300ms",
+      "initialGems": 993,
+      "hitAt": 33,
+      "directLoss": 993,
+      "directOut": true,
+      "finishedAt": 33,
+      "finishedHow": "cannon",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 33,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": true,
+          "gems": 993,
+          "earned": 993,
+          "projectileId": "ammo"
+        }
+      ]
+    },
+    {
+      "targetWidth": 300,
+      "attackerWidth": 360,
+      "ratio": 1.2,
+      "gap": 350,
+      "response": "idle",
+      "initialGems": 993,
+      "hitAt": 167,
+      "directLoss": 993,
+      "directOut": true,
+      "finishedAt": 167,
+      "finishedHow": "cannon",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 167,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": true,
+          "gems": 993,
+          "earned": 993,
+          "projectileId": "ammo"
+        }
+      ]
+    },
+    {
+      "targetWidth": 300,
+      "attackerWidth": 360,
+      "ratio": 1.2,
+      "gap": 350,
+      "response": "retreat300ms",
+      "initialGems": 993,
+      "hitAt": 167,
+      "directLoss": 993,
+      "directOut": true,
+      "finishedAt": 167,
+      "finishedHow": "cannon",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 167,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": true,
+          "gems": 993,
+          "earned": 993,
+          "projectileId": "ammo"
+        }
+      ]
+    },
+    {
+      "targetWidth": 300,
+      "attackerWidth": 360,
+      "ratio": 1.2,
+      "gap": 650,
+      "response": "idle",
+      "initialGems": 993,
+      "hitAt": 333,
+      "directLoss": 993,
+      "directOut": true,
+      "finishedAt": 333,
+      "finishedHow": "cannon",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 333,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": true,
+          "gems": 993,
+          "earned": 993,
+          "projectileId": "ammo"
+        }
+      ]
+    },
+    {
+      "targetWidth": 300,
+      "attackerWidth": 360,
+      "ratio": 1.2,
+      "gap": 650,
+      "response": "retreat300ms",
+      "initialGems": 993,
+      "hitAt": 333,
+      "directLoss": 993,
+      "directOut": true,
+      "finishedAt": 333,
+      "finishedHow": "cannon",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 333,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": true,
+          "gems": 993,
+          "earned": 993,
+          "projectileId": "ammo"
+        }
+      ]
+    },
+    {
+      "targetWidth": 500,
+      "attackerWidth": 450,
+      "ratio": 0.9,
+      "gap": 100,
+      "response": "idle",
+      "initialGems": 3125,
+      "hitAt": 33,
+      "directLoss": 835,
+      "directOut": false,
+      "finishedAt": 2100,
+      "finishedHow": "mouth",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 33,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 835,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 2100,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "mouth",
+          "kind": "",
+          "out": true,
+          "gems": 1979
+        }
+      ]
+    },
+    {
+      "targetWidth": 500,
+      "attackerWidth": 450,
+      "ratio": 0.9,
+      "gap": 100,
+      "response": "retreat300ms",
+      "initialGems": 3125,
+      "hitAt": 33,
+      "directLoss": 835,
+      "directOut": false,
+      "finishedAt": 5333,
+      "finishedHow": "mouth",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 33,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 835,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 5333,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "mouth",
+          "kind": "",
+          "out": true,
+          "gems": 171
+        }
+      ]
+    },
+    {
+      "targetWidth": 500,
+      "attackerWidth": 450,
+      "ratio": 0.9,
+      "gap": 350,
+      "response": "idle",
+      "initialGems": 3125,
+      "hitAt": 167,
+      "directLoss": 835,
+      "directOut": false,
+      "finishedAt": 2767,
+      "finishedHow": "mouth",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 167,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 835,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 2767,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "mouth",
+          "kind": "",
+          "out": true,
+          "gems": 1524
+        }
+      ]
+    },
+    {
+      "targetWidth": 500,
+      "attackerWidth": 450,
+      "ratio": 0.9,
+      "gap": 350,
+      "response": "retreat300ms",
+      "initialGems": 3125,
+      "hitAt": 167,
+      "directLoss": 835,
+      "directOut": false,
+      "finishedAt": 9200,
+      "finishedHow": "drain",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 167,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 835,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 9200,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "drain",
+          "kind": "",
+          "out": true
+        }
+      ]
+    },
+    {
+      "targetWidth": 500,
+      "attackerWidth": 450,
+      "ratio": 0.9,
+      "gap": 650,
+      "response": "idle",
+      "initialGems": 3125,
+      "hitAt": 333,
+      "directLoss": 835,
+      "directOut": false,
+      "finishedAt": 4333,
+      "finishedHow": "mouth",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 333,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 835,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 4333,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "mouth",
+          "kind": "",
+          "out": true,
+          "gems": 812
+        }
+      ]
+    },
+    {
+      "targetWidth": 500,
+      "attackerWidth": 450,
+      "ratio": 0.9,
+      "gap": 650,
+      "response": "retreat300ms",
+      "initialGems": 3125,
+      "hitAt": 333,
+      "directLoss": 835,
+      "directOut": false,
+      "finishedAt": null,
+      "finishedHow": null,
+      "recoveredAt": 9033,
+      "targetGems": 1405,
+      "events": [
+        {
+          "time": 333,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 835,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 9033,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "stole",
+          "kind": "",
+          "out": false,
+          "gems": 876
+        }
+      ]
+    },
+    {
+      "targetWidth": 500,
+      "attackerWidth": 500,
+      "ratio": 1,
+      "gap": 100,
+      "response": "idle",
+      "initialGems": 3125,
+      "hitAt": 33,
+      "directLoss": 1031,
+      "directOut": false,
+      "finishedAt": 1533,
+      "finishedHow": "mouth",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 33,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 1031,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 1533,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "mouth",
+          "kind": "",
+          "out": true,
+          "gems": 2092
+        }
+      ]
+    },
+    {
+      "targetWidth": 500,
+      "attackerWidth": 500,
+      "ratio": 1,
+      "gap": 100,
+      "response": "retreat300ms",
+      "initialGems": 3125,
+      "hitAt": 33,
+      "directLoss": 1031,
+      "directOut": false,
+      "finishedAt": 4767,
+      "finishedHow": "mouth",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 33,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 1031,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 4767,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "mouth",
+          "kind": "",
+          "out": true,
+          "gems": 281
+        }
+      ]
+    },
+    {
+      "targetWidth": 500,
+      "attackerWidth": 500,
+      "ratio": 1,
+      "gap": 350,
+      "response": "idle",
+      "initialGems": 3125,
+      "hitAt": 167,
+      "directLoss": 1031,
+      "directOut": false,
+      "finishedAt": 2700,
+      "finishedHow": "mouth",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 167,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 1031,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 2700,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "mouth",
+          "kind": "",
+          "out": true,
+          "gems": 1386
+        }
+      ]
+    },
+    {
+      "targetWidth": 500,
+      "attackerWidth": 500,
+      "ratio": 1,
+      "gap": 350,
+      "response": "retreat300ms",
+      "initialGems": 3125,
+      "hitAt": 167,
+      "directLoss": 1031,
+      "directOut": false,
+      "finishedAt": 8400,
+      "finishedHow": "drain",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 167,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 1031,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 8400,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "drain",
+          "kind": "",
+          "out": true
+        }
+      ]
+    },
+    {
+      "targetWidth": 500,
+      "attackerWidth": 500,
+      "ratio": 1,
+      "gap": 650,
+      "response": "idle",
+      "initialGems": 3125,
+      "hitAt": 333,
+      "directLoss": 1031,
+      "directOut": false,
+      "finishedAt": 4233,
+      "finishedHow": "mouth",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 333,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 1031,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 4233,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "mouth",
+          "kind": "",
+          "out": true,
+          "gems": 636
+        }
+      ]
+    },
+    {
+      "targetWidth": 500,
+      "attackerWidth": 500,
+      "ratio": 1,
+      "gap": 650,
+      "response": "retreat300ms",
+      "initialGems": 3125,
+      "hitAt": 333,
+      "directLoss": 1031,
+      "directOut": false,
+      "finishedAt": null,
+      "finishedHow": null,
+      "recoveredAt": 10100,
+      "targetGems": 877,
+      "events": [
+        {
+          "time": 333,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": false,
+          "gems": 1031,
+          "earned": 0,
+          "projectileId": "ammo"
+        },
+        {
+          "time": 10100,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "stole",
+          "kind": "",
+          "out": false,
+          "gems": 1206
+        }
+      ]
+    },
+    {
+      "targetWidth": 500,
+      "attackerWidth": 600,
+      "ratio": 1.2,
+      "gap": 100,
+      "response": "idle",
+      "initialGems": 3125,
+      "hitAt": 33,
+      "directLoss": 3125,
+      "directOut": true,
+      "finishedAt": 33,
+      "finishedHow": "cannon",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 33,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": true,
+          "gems": 3125,
+          "earned": 3125,
+          "projectileId": "ammo"
+        }
+      ]
+    },
+    {
+      "targetWidth": 500,
+      "attackerWidth": 600,
+      "ratio": 1.2,
+      "gap": 100,
+      "response": "retreat300ms",
+      "initialGems": 3125,
+      "hitAt": 33,
+      "directLoss": 3125,
+      "directOut": true,
+      "finishedAt": 33,
+      "finishedHow": "cannon",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 33,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": true,
+          "gems": 3125,
+          "earned": 3125,
+          "projectileId": "ammo"
+        }
+      ]
+    },
+    {
+      "targetWidth": 500,
+      "attackerWidth": 600,
+      "ratio": 1.2,
+      "gap": 350,
+      "response": "idle",
+      "initialGems": 3125,
+      "hitAt": 167,
+      "directLoss": 3125,
+      "directOut": true,
+      "finishedAt": 167,
+      "finishedHow": "cannon",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 167,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": true,
+          "gems": 3125,
+          "earned": 3125,
+          "projectileId": "ammo"
+        }
+      ]
+    },
+    {
+      "targetWidth": 500,
+      "attackerWidth": 600,
+      "ratio": 1.2,
+      "gap": 350,
+      "response": "retreat300ms",
+      "initialGems": 3125,
+      "hitAt": 167,
+      "directLoss": 3125,
+      "directOut": true,
+      "finishedAt": 167,
+      "finishedHow": "cannon",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 167,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": true,
+          "gems": 3125,
+          "earned": 3125,
+          "projectileId": "ammo"
+        }
+      ]
+    },
+    {
+      "targetWidth": 500,
+      "attackerWidth": 600,
+      "ratio": 1.2,
+      "gap": 650,
+      "response": "idle",
+      "initialGems": 3125,
+      "hitAt": 333,
+      "directLoss": 3125,
+      "directOut": true,
+      "finishedAt": 333,
+      "finishedHow": "cannon",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 333,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": true,
+          "gems": 3125,
+          "earned": 3125,
+          "projectileId": "ammo"
+        }
+      ]
+    },
+    {
+      "targetWidth": 500,
+      "attackerWidth": 600,
+      "ratio": 1.2,
+      "gap": 650,
+      "response": "retreat300ms",
+      "initialGems": 3125,
+      "hitAt": 333,
+      "directLoss": 3125,
+      "directOut": true,
+      "finishedAt": 333,
+      "finishedHow": "cannon",
+      "recoveredAt": null,
+      "targetGems": 0,
+      "events": [
+        {
+          "time": 333,
+          "byId": "attacker",
+          "by": "Attacker",
+          "targetId": "target",
+          "target": "Target",
+          "how": "cannon",
+          "kind": "",
+          "out": true,
+          "gems": 3125,
+          "earned": 3125,
+          "projectileId": "ammo"
+        }
+      ]
+    }
+  ]
+}

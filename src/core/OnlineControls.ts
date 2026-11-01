@@ -3,6 +3,7 @@
 /** inhale: hold begins; exhale: release stops inhaling; cancel: interrupted press; tap: puff, spit or fire. */
 import { sound } from './Sound'
 import { mouseControlEnabled, MOUSE_CONTROL_EVENT } from './MouseControl'
+import type { Bounds } from '../practice/layout'
 export type ControlEvent = 'inhale' | 'exhale' | 'cancel' | 'tap'
 
 /**
@@ -40,6 +41,9 @@ export class OnlineControls {
     action: 'INHALE' | 'CAPTURED' | 'INJURED' | 'FIRE' | 'SPIT' = 'INHALE'
     puffCooldown = 0
     puffNeedsBreath = false
+    /** A held press cannot silently restart after exhaustion or a denied inhale. */
+    releaseToInhale = false
+    private inhaleConfirmed = false
 
     /** Whether this device has a touchscreen (the joystick and INHALE button are drawn only then) */
     readonly touchDevice: boolean
@@ -52,8 +56,37 @@ export class OnlineControls {
     private touchedOnce = false
     private insets = { top: 0, right: 0, bottom: 0, left: 0 }
     setInsets(insets: typeof this.insets): void { this.insets = insets }
-    private get stickRadius(): number { return Math.max(40, STICK_RADIUS * Math.min(1, (this.canvas.width - this.insets.left - this.insets.right) / 320)) }
+    // Short landscape/windows need room for the arena and DOM controls too.
+    // Minimum visible diameters stay 80px for the stick and 56px for the action.
+    private get controlScale(): number { return Math.min(1, (this.canvas.width - this.insets.left - this.insets.right) / 320, (this.canvas.height - this.insets.top - this.insets.bottom) / 480) }
+    private get stickRadius(): number { return Math.max(40, STICK_RADIUS * this.controlScale) }
     get isPointerSteering(): boolean { return !!this.stick || !!this.mouse }
+
+    private stickLayout() {
+        const radius = this.stickRadius, knob = Math.min(28, radius / 2)
+        const x = this.stick ? Math.max(this.insets.left + radius + knob, Math.min(this.canvas.width / 2 - radius - knob, this.stick.originX)) : this.insets.left + radius + 28
+        const y = this.stick ? Math.max(this.insets.top + radius + knob, Math.min(this.canvas.height - this.insets.bottom - radius - knob, this.stick.originY)) : this.canvas.height - this.insets.bottom - radius - 28
+        let dx = this.stick ? this.stick.x - this.stick.originX : 0, dy = this.stick ? this.stick.y - this.stick.originY : 0
+        const length = Math.hypot(dx, dy)
+        if (length > radius) { dx *= radius / length; dy *= radius / length }
+        return { x, y, radius, knob, dx, dy }
+    }
+
+    private actionLayout() {
+        const radius = Math.max(28, BUTTON_RADIUS * this.controlScale)
+        return { x: this.canvas.width - this.insets.right - radius - 24, y: this.canvas.height - this.insets.bottom - radius - 30, radius }
+    }
+
+    /** CSS-space footprints include the stick's full knob travel, avoiding movement-induced jumps. */
+    touchBounds(): Bounds[] {
+        if (!this.touchDevice) return []
+        const box = this.canvas.getBoundingClientRect(), sx = box.width / this.canvas.width, sy = box.height / this.canvas.height
+        const stick = this.stickLayout(), action = this.actionLayout()
+        return [{ ...stick, reach: stick.radius + stick.knob + 1 }, { ...action, reach: action.radius + 24 }].map(c => ({
+            left: box.left + (c.x - c.reach) * sx, right: box.left + (c.x + c.reach) * sx,
+            top: box.top + (c.y - c.reach) * sy, bottom: box.top + (c.y + c.reach) * sy,
+        }))
+    }
 
     constructor(private canvas: HTMLCanvasElement) {
         this.touchDevice = window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0
@@ -104,6 +137,17 @@ export class OnlineControls {
         return events
     }
 
+    /** Follow real server state, with time for an initial press to be acknowledged. No input repeats. */
+    observeInhale(inhaling: boolean, available: boolean): void {
+        if (!this.press?.held || this.action !== 'INHALE') {
+            this.inhaleConfirmed = false
+            this.releaseToInhale = false
+            return
+        }
+        if (inhaling) this.inhaleConfirmed = true
+        this.releaseToInhale = available && !inhaling && (this.inhaleConfirmed || performance.now() - this.press.at > 800)
+    }
+
     /** Drag the existing action control to aim independently of walking. */
     aimVector(): { x: number; y: number } | null {
         if (!this.touchAim) return null
@@ -147,12 +191,13 @@ export class OnlineControls {
      * also shows your breath.
      */
     draw(ctx: CanvasRenderingContext2D, timestamp: number, breath: Breath): void {
-        const { width, height } = this.canvas
+        const { height } = this.canvas
         const inhaling = breath.phase === 'inhaling'
         const recovering = breath.phase === 'recovering'
         const share = breath.phase === 'inhaling' ? breath.left : breath.phase === 'recovering' ? breath.back : 1
         const low = inhaling && share < 0.25
-        const breathColor = !inhaling
+        const release = this.releaseToInhale && this.action === 'INHALE'
+        const breathColor = release ? '#ffd47d' : !inhaling
             ? 'rgba(255, 255, 255, 0.45)'
             : share > 0.5
               ? '#a0e6ff'
@@ -167,7 +212,8 @@ export class OnlineControls {
             ctx.textAlign = 'left'
             ctx.font = `700 12px ${FONT}`
             ctx.fillStyle = inhaling ? breathColor : `rgba(255, 255, 255, ${recovering ? 0.35 : 0.65})`
-            const hint = this.action === 'CAPTURED' ? 'Captured' : this.action === 'INJURED' ? 'Injured · move to escape' : this.action === 'FIRE' ? 'SPACE  tap to FIRE' : this.action === 'SPIT' ? 'SPACE  tap to SPIT' : inhaling ? 'SPACE  inhaling' : `SPACE  hold to inhale · ${this.puffCooldown > 0 ? `puff in ${this.puffCooldown.toFixed(1)}s` : this.puffNeedsBreath ? 'puff needs 35% breath' : 'puff costs 35% breath'}`
+            const hint = this.action === 'CAPTURED' ? 'Captured' : this.action === 'INJURED' ? 'Injured · move to escape' : this.action === 'FIRE' ? 'SPACE  tap to FIRE' : this.action === 'SPIT' ? 'SPACE  tap to SPIT' : release ? 'SPACE  release, then hold again' : inhaling ? 'SPACE  inhaling' : `SPACE  hold to inhale · ${this.puffCooldown > 0 ? `puff in ${this.puffCooldown.toFixed(1)}s` : this.puffNeedsBreath ? 'puff needs 35% breath' : 'puff costs 35% breath'}`
+            if (release) ctx.fillStyle = breathColor
             ctx.fillText(hint, 14 + this.insets.left, height - this.insets.bottom - 16)
             if (inhaling || recovering) {
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.12)'
@@ -178,12 +224,10 @@ export class OnlineControls {
             ctx.restore()
             return
         }
-        this.drawStick(ctx, height, timestamp)
+        this.drawStick(ctx, timestamp)
 
         // The button: lit while you inhale, dimmed while you catch your breath
-        const r = Math.max(28, BUTTON_RADIUS * Math.min(1, (width - this.insets.left - this.insets.right) / 320))
-        const x = width - this.insets.right - r - 24
-        const y = height - this.insets.bottom - r - 30
+        const { x, y, radius: r } = this.actionLayout()
         ctx.fillStyle = inhaling
             ? `rgba(160, 230, 255, ${0.16 + 0.1 * Math.sin(timestamp / 90)})`
             : recovering
@@ -194,8 +238,8 @@ export class OnlineControls {
         ctx.fill()
         // A glowing teal ring
         ctx.lineWidth = 4
-        ctx.strokeStyle = recovering ? 'rgba(255, 255, 255, 0.15)' : 'rgba(79, 209, 197, 0.95)'
-        ctx.shadowColor = 'rgba(79, 209, 197, 0.65)'
+        ctx.strokeStyle = release ? '#ffd47d' : recovering ? 'rgba(255, 255, 255, 0.15)' : 'rgba(79, 209, 197, 0.95)'
+        ctx.shadowColor = release ? 'rgba(255, 212, 125, 0.35)' : 'rgba(79, 209, 197, 0.65)'
         ctx.shadowBlur = recovering ? 0 : 16
         ctx.stroke()
         ctx.shadowBlur = 0
@@ -208,10 +252,10 @@ export class OnlineControls {
             ctx.stroke()
         }
         // Center the complete label block, including its helper, rather than centering only INHALE.
-        ctx.fillStyle = recovering ? 'rgba(255, 255, 255, 0.4)' : low ? breathColor : '#ffffff'
+        ctx.fillStyle = release ? '#ffd47d' : recovering ? 'rgba(255, 255, 255, 0.4)' : low ? breathColor : '#ffffff'
         ctx.textBaseline = 'alphabetic'
-        const helper = this.action === 'INJURED' ? 'MOVE TO ESCAPE' : this.action === 'CAPTURED' ? '' : this.action === 'INHALE' ? this.puffCooldown > 0 ? `PUFF ${this.puffCooldown.toFixed(1)}s` : this.puffNeedsBreath ? 'NEED 35% BREATH' : 'PUFF −35%' : ''
-        const lines = [{ text: this.action, weight: 800, size: 17 }, ...(helper ? [{ text: helper, weight: 600, size: 10 }] : [])]
+        const helper = r < 40 ? '' : release ? 'HOLD AGAIN' : this.action === 'INJURED' ? 'MOVE TO ESCAPE' : this.action === 'CAPTURED' ? '' : this.action === 'INHALE' ? this.puffCooldown > 0 ? `PUFF ${this.puffCooldown.toFixed(1)}s` : this.puffNeedsBreath ? 'NEED 35% BREATH' : 'PUFF −35%' : ''
+        const lines = [{ text: release ? 'LET GO' : this.action, weight: 800, size: 17 }, ...(helper ? [{ text: helper, weight: 600, size: 10 }] : [])]
         const measured = lines.map(line => {
             ctx.font = `${line.weight} ${line.size}px ${FONT}`
             const width = ctx.measureText(line.text).width
@@ -237,8 +281,8 @@ export class OnlineControls {
         ctx.restore()
     }
 
-    private drawStick(ctx: CanvasRenderingContext2D, height: number, timestamp: number): void {
-        const radius = this.stickRadius, knob = Math.min(28, radius / 2)
+    private drawStick(ctx: CanvasRenderingContext2D, timestamp: number): void {
+        const { x, y, radius, knob, dx, dy } = this.stickLayout()
         const drawStick = (x: number, y: number, knobX: number, knobY: number, alpha: number) => {
             ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.35})`
             ctx.beginPath()
@@ -253,20 +297,9 @@ export class OnlineControls {
             ctx.fill()
         }
         if (this.stick) {
-            let dx = this.stick.x - this.stick.originX
-            let dy = this.stick.y - this.stick.originY
-            const reach = Math.hypot(dx, dy)
-            if (reach > radius) {
-                dx *= radius / reach
-                dy *= radius / reach
-            }
-            const x = Math.max(this.insets.left + radius + knob, Math.min(this.canvas.width / 2 - radius - knob, this.stick.originX))
-            const y = Math.max(this.insets.top + radius + knob, Math.min(height - this.insets.bottom - radius - knob, this.stick.originY))
             drawStick(x, y, x + dx, y + dy, 0.4)
         } else {
             // Where thumbs usually land; it pulses until the first touch
-            const x = this.insets.left + radius + 28
-            const y = height - this.insets.bottom - radius - 28
             drawStick(x, y, x, y, this.touchedOnce ? 0.18 : 0.24 + 0.14 * Math.sin(timestamp / 300))
         }
     }
@@ -282,12 +315,16 @@ export class OnlineControls {
     /** The button pressed (by a pointer on the right half, or the space bar): nothing yet; held past TAP_MS it becomes an inhale (see takeEvents) */
     private pressDown(id: number | 'key'): void {
         if (this.press) return
+        this.inhaleConfirmed = false
+        this.releaseToInhale = false
         this.press = { id, at: performance.now(), held: false }
     }
 
     /** The button let go: within the tap window it was a tap (never an inhale); past it, the inhale stops */
     private pressUp(id: number | 'key'): void {
         if (this.press?.id !== id) return
+        this.inhaleConfirmed = false
+        this.releaseToInhale = false
         if (this.touchAim?.id === id && this.aimVector() && !this.press.held) { this.press = null; return }
         this.events.push(this.press.held ? 'exhale' : 'tap')
         this.press = null
@@ -295,6 +332,8 @@ export class OnlineControls {
 
     /** Slid off the button, pressed Esc, or the touch was cancelled: an inhale stops (but it isn't a release); a press still undecided was nothing */
     private cancelPress(): void {
+        this.inhaleConfirmed = false
+        this.releaseToInhale = false
         if (!this.press) return
         if (this.press.held) this.events.push('cancel')
         this.press = null

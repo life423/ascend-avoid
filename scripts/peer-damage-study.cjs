@@ -12,18 +12,30 @@ const { updateInhales, fireCaptive } = require('../server/dist/systems/inhale.js
 const { CANNON, BOTS } = require('../server/dist/constants/gameConstants.js');
 const options = Object.fromEntries(process.argv.slice(2).map(v => v.replace(/^--/, '').split('=')));
 const share = Number(options.share || 0), mode = options.mode || 'duel', repeats = Number(options.repeats || 3);
+const formula = options.formula || (share > 0 ? 'pure33' : 'legacy');
 const defense = options.defense || 'bot';
 const firing = options.firing || 'bot';
 const loadMs = Number(options['load-ms'] || 0);
 const preparationMs = options['load-ms'] === undefined ? 0 : 3000;
 const ammoAngle = Number(options['ammo-angle'] || 90);
-assert([0, .33].includes(share)); assert(['duel', 'reload', 'acquire', 'loading'].includes(mode));
+assert([0, .25, .30, .33].includes(share)); assert(['duel', 'reload', 'acquire', 'loading'].includes(mode));
+assert(['legacy','pure33','floor33','floor'].includes(formula));
 assert(['bot','retreat','weave'].includes(defense));
 assert(['bot','prompt'].includes(firing));
 assert(Number.isInteger(loadMs) && loadMs >= 0 && loadMs <= 2000);
 assert([45,90,135].includes(ammoAngle));
 assert(Number.isInteger(repeats) && repeats > 0 && repeats <= 10);
-CANNON.PEER_HIT_SHARE = share;
+CANNON.PEER_HIT_SHARE = formula === 'legacy' ? 0 : formula === 'floor' ? share : .33;
+if (formula === 'pure33') {
+  // Keep the historical experiment reproducible after the game's floor candidate changes.
+  const cannon = require('../server/dist/game/cannon.js'), original = cannon.impactGems;
+  cannon.impactGems = (...args) => {
+    const [gems,,,,,kind='missile',shooterWidth=0]=args,targetWidth=args[3];
+    if(kind==='missile'&&gems>0&&Number.isFinite(shooterWidth)&&shooterWidth>0&&targetWidth>0)
+      return Math.min(gems,Math.max(1,Math.round(gems*Math.min(CANNON.IMPACT_MAX_SHARE,.33*(shooterWidth/targetWidth)**2))));
+    return original(...args);
+  };
+}
 CANNON.CAPTURE_FIRE_DELAY_MS = loadMs;
 const label = options.label || `peer-${Math.round(share * 100)}-${mode}`;
 assert(/^[a-zA-Z0-9_-]+$/.test(label));
@@ -195,7 +207,7 @@ const summary={cases:results.length,openingHits:results.filter(r=>r.opening).len
   secondHits:results.filter(r=>r.secondHit!==null&&r.secondHit!==undefined).length,underFiveSecondKills:results.filter(r=>r.outcome==='defender knocked out'&&r.elapsed<5).length};
 const report={mode,share,repeats,defense,method:'Normal 4200x4200 world, fixed 60-unit missiles, current walking/rotation/suction. No assembled weapons, hazards or ambient gems. All opening ammunition is actually captured and fired; defender starts empty. Opening hit is guaranteed to isolate follow-up risk, not estimate hit accuracy. Spent opening ammunition is removed only after its knockout, so it cannot become an idle reload dispenser. Additional ammo sources exist before launch and use ordinary bot brains, except explicitly labelled idle stress controls. Reload hunter decisions run at 250ms and shots use the ordinary fallible BotCannonAim. Retreat controls start 250ms after impact, use ordinary movement and avoid map edges; bot defense uses unchanged ordinary brains. Population, collision, shield, spill, theft and size rules are not bypassed.',summary,results};
 fs.mkdirSync(path.join('reports','combat'),{recursive:true});
-report.firing=firing;
+report.firing=firing;report.formula=formula;
 report.loadMs=loadMs;report.preparationMs=preparationMs;
 report.ammoAngleDegrees=ammoAngle;
 if(preparationMs)report.method+=' The opening bullet is held for three simulated seconds before all fighters are staged at the recorded starting sizes/positions; every delay, including zero, uses that same preparation. The shared server delay runs concurrently with movement and aiming. Early attempts are rejected without losing ammo; this study retries at its normal input cadence and does not implement queued fire.';

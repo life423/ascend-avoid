@@ -1,5 +1,46 @@
 # Escape wave, vulnerable shell, soft contact and safer spawning
 
+## November 1 local update — passing gust, no stun or barrier
+
+The user approved keeping the mouth-origin, two-sided rear sweep while removing
+the solid/shield behavior and stun. The local follow-up preserves the 220ms wrap,
+allows one finite push per creature during a 140ms rear pulse, then lets the arc
+open and dissolve into thin wisps over 480ms. The artwork is not a persistent
+suction blocker. A connected inhale can be interrupted once for 350ms, with no
+global suction-safety window. Both sides can steer and turn during the short air
+drift; no gust stun or movement-locking skid is applied. Held ammunition stays
+held. Cost remains 35% breath with a 1.8s cooldown, shared by bots and humans.
+The defense lesson checks the actual shove and subsequent movement, and Help
+no longer promises rear cover. This supersedes the historical wall description
+below. Other combat effects, injury art and safe-spawn behavior are unchanged.
+This follow-up is local only; no push, merge or deployment is authorized.
+
+### Current local verification
+
+All 40 server unit suites and saved-progress checks pass, including one-hit
+front/rear accounting, no hidden skid/stun, steering and turning at small/medium/
+large sizes, held ammunition, inhale restart across still-visible air, finite
+budgets, cooldown/cost, protection, death/disconnect cleanup and bot/human parity.
+All 18 real multiplayer scenarios pass, including actual client inputs during a
+front push. The passing five-profile wrap/contact browser checks exercise desktop
+Chrome, Android Chrome emulation, iPhone portrait/landscape Safari and iPad Safari.
+All-lesson and visual review results are recorded alongside the tutorial notes.
+
+Internal review scores are conservative heuristics, not measured player ratings:
+usability 8, hierarchy 9, accessibility 8, consistency 9, responsiveness 9,
+feedback 8 and performance 8 out of 10. The remaining high-priority validation is
+an uncoached physical-Pixel escape/recapture playtest, checking whether the shorter
+shove gives a readable response window. Review reduced-motion comfort and profile
+frame time on the actual phone; emulation/screenshots do not establish those.
+No additional persistent labels or shield-like UI were added.
+
+Final production build, client/server type checks, lint and generated-schema
+consistency pass. After refreshing the local preview, ten final rendering and
+saved-progress checks pass across the same five profiles, including the renamed
+escape-gust prompt and registered shove event. Desktop, tablet, phone portrait
+and phone landscape screenshots were inspected. Local review is available at
+<http://127.0.0.1:3199/>; no GitHub publish or hosted deployment was performed.
+
 The user authorized committing, merging and deploying this batch together with
 the five-lesson tutorial remodel on October 31. GitHub's PR and production
 workflow record the resulting release; the local status below is the pre-release

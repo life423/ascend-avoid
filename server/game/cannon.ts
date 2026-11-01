@@ -56,13 +56,9 @@ export function shooterMassContribution(shooterWidth: number, ammoWidth: number)
   return Math.min(ammo * CANNON.SHOOTER_MASS_CAP, Math.sqrt(ammo * shooter) * CANNON.SHOOTER_MASS_WEIGHT);
 }
 
-/** Default damage follows pre-impact mass; the headless peer trial uses immutable shooter width. */
+/** Physical shooter size adds credible rival damage without softening stronger early impacts. */
 export function impactGems(targetGems: number, speed: number, flierWidth: number, targetWidth: number = creatureSize(targetGems), storedShooterMass = 0, kind: 'missile' | 'turbine' = 'missile', shooterWidth = 0): number {
   if (targetGems <= 0) return 0;
-  if (kind === 'missile' && CANNON.PEER_HIT_SHARE > 0 && Number.isFinite(shooterWidth) && shooterWidth > 0 && targetWidth > 0) {
-    const share = Math.min(CANNON.IMPACT_MAX_SHARE, CANNON.PEER_HIT_SHARE * (shooterWidth / targetWidth) ** 2);
-    return Math.min(targetGems, Math.max(1, Math.round(targetGems * share)));
-  }
   const ammo = bodyMass(flierWidth);
   // Keep the existing CURRENT pre-impact ammunition mass rule. If ammunition changes,
   // its stored shooter bonus still cannot overwhelm that current physical body.
@@ -73,7 +69,10 @@ export function impactGems(targetGems: number, speed: number, flierWidth: number
   const base = kind === 'turbine' ? CANNON.TURBINE_IMPACT_BASE_GEMS : CANNON.IMPACT_BASE_GEMS;
   const share = CANNON.IMPACT_MAX_SHARE * relativeMass / (relativeMass + pivot);
   const energy = base * relativeMass / (relativeMass + 1);
-  return Math.min(targetGems, Math.max(1, Math.round(Math.min(targetGems * CANNON.IMPACT_MAX_SHARE, (targetGems * share + energy) * pace))));
+  const massDamage = Math.min(targetGems, Math.max(1, Math.round(Math.min(targetGems * CANNON.IMPACT_MAX_SHARE, (targetGems * share + energy) * pace))));
+  if (kind !== 'missile' || CANNON.PEER_HIT_SHARE <= 0 || !Number.isFinite(shooterWidth) || shooterWidth <= 0 || targetWidth <= 0) return massDamage;
+  const rivalShare = Math.min(CANNON.IMPACT_MAX_SHARE, CANNON.PEER_HIT_SHARE * (shooterWidth / targetWidth) ** 2);
+  return Math.max(massDamage, Math.min(targetGems, Math.max(1, Math.round(targetGems * rivalShare))));
 }
 
 /** A launcher at least 20% wider shatters on any missile hit; other shots retain relative-energy lethality. */

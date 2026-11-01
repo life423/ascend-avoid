@@ -13,7 +13,7 @@ export interface WavePoint {
 export function waveRadius(width: number): number { return Math.max(42, width / 2 + Math.min(40, 12 + width * .1)); }
 export function waveActive(wave: GustWave, time: number): boolean {
   const age = time - wave.at;
-  return age >= EXHALE.WAVE_WRAP_MS && age < EXHALE.WAVE_WRAP_MS + EXHALE.WAVE_HOLD_MS;
+  return age >= EXHALE.WAVE_WRAP_MS && age < EXHALE.WAVE_WRAP_MS + EXHALE.WAVE_PUSH_MS;
 }
 function arc(wave: GustWave, heading: number): WavePoint[] {
   const radius = waveRadius(wave.width), points: WavePoint[] = [];
@@ -38,7 +38,7 @@ function rear(wave: GustWave): WavePoint[] {
   rearCache.set(wave, { x: wave.x, y: wave.y, width: wave.width, facing: wave.facing, points });
   return points;
 }
-/** Two front lobes sweep around the flanks and merge into one fixed rear wall. */
+/** Two front lobes sweep around the flanks; the rear airflow then dissipates. */
 export function waveArcs(wave: GustWave, time: number): WavePoint[][] {
   const t = Math.max(0, Math.min(1, (time - wave.at) / EXHALE.WAVE_WRAP_MS));
   if (t === 0)
@@ -67,7 +67,8 @@ function crosses(a: WavePoint, b: WavePoint, c: WavePoint, d: WavePoint): boolea
   const t = ((c.x - a.x) * v - (c.y - a.y) * u) / det, s = ((c.x - a.x) * y - (c.y - a.y) * x) / det;
   return t >= 0 && t <= 1 && s >= 0 && s <= 1 || Math.min(segmentDistance(a, c, d), segmentDistance(b, c, d), segmentDistance(c, a, b), segmentDistance(d, a, b)) <= EXHALE.WAVE_THICKNESS / 2;
 }
-export function waveBlocks(wave: GustWave, time: number, a: WavePoint, b: WavePoint): boolean {
+/** A connection crossed by the brief rear pulse, not an obstruction to later airflow. */
+export function waveIntercepts(wave: GustWave, time: number, a: WavePoint, b: WavePoint): boolean {
   if (!waveActive(wave, time))
     return false;
   const radius = waveRadius(wave.width), c = Math.cos(wave.facing), s = Math.sin(wave.facing);
@@ -78,12 +79,6 @@ export function waveBlocks(wave: GustWave, time: number, a: WavePoint, b: WavePo
   const points = rear(wave);
   for (let i = 1; i < points.length; i++)
     if (crosses(a, b, points[i - 1], points[i]))
-      return true;
-  return false;
-}
-export function suctionBlocked(waves: Iterable<GustWave>, time: number, a: WavePoint, b: WavePoint): boolean {
-  for (const wave of waves)
-    if (waveBlocks(wave, time, a, b))
       return true;
   return false;
 }

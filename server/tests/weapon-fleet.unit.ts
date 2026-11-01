@@ -3,7 +3,7 @@ import { GameState } from '../schema/GameState.js';
 import { WeaponBoltSchema } from '../schema/PinwheelSchema.js';
 import { initializeWeaponSets, spawnWeapon, updateWeapons, deployWeapon } from '../systems/weapons.js';
 import { allWeapons, weaponKinds, weaponProfile, orbitalPosition } from '../game/weaponKit.js';
-import { PINWHEEL, WEAPON_FLEET } from '../constants/gameConstants.js';
+import { PINWHEEL, WEAPON_FLEET, WEAPON_SHOTS } from '../constants/gameConstants.js';
 
 const NOW = 100000;
 function required<T>(value: T | undefined): T { assert(value !== undefined); return value; }
@@ -67,7 +67,7 @@ for (const kind of weaponKinds) {
 {
   const { s, a, b, builds } = setup(), w = required(builds.find(w => w.kind === 'ricochet'));
   w.phase = 'active'; w.owner = a.sessionId; w.at = s.time + 16000; w.nextShotAt = Infinity; w.activatedAt = s.time;
-  const bolt = new WeaponBoltSchema(); bolt.x = s.worldWidth - 5; bolt.y = 1600; bolt.angle = 0; bolt.bornAt = s.time;
+  const bolt = new WeaponBoltSchema(); bolt.x = s.worldWidth - 5; bolt.y = 1600; bolt.angle = 0; bolt.bornAt = s.time - 3000;
   w.bolts.set('bounce', bolt); updateWeapons(s, .02, NOW);
   assert.equal(bolt.bounces, 1); assert(Math.cos(bolt.angle) < 0);
   b.setGems(100, s.worldWidth, s.worldHeight); b.placeAt(s.worldWidth - 150 - b.width / 2, 1600 - b.height / 2);
@@ -89,12 +89,15 @@ for (const kind of weaponKinds) {
 }
 {
   const { s, a, b, builds } = setup(), w = required(builds.find(w => w.kind === 'sentinel'));
-  w.phase = 'active'; w.owner = a.sessionId; w.at = s.time + 16000; w.nextShotAt = s.time + 850; w.activatedAt = s.time; w.originX = 1700; w.originY = 1700;
-  b.placeAt(2000, 1800); updateWeapons(s, 0, NOW); const aim = w.angle;
-  b.placeAt(1800, 2100); s.time += 800; updateWeapons(s, .02, NOW);
+  const period = weaponProfile(w.kind).shotMs;
+  w.phase = 'active'; w.owner = a.sessionId; w.at = s.time + 16000; w.nextShotAt = s.time + period; w.activatedAt = s.time; w.originX = 1700; w.originY = 1700;
+  w.nextAimAt = w.nextShotAt - WEAPON_SHOTS.CHARGE_MS;
+  b.placeAt(2000, 1800); s.time += period - WEAPON_SHOTS.CHARGE_MS; updateWeapons(s, 0, NOW);
+  const aim = w.angle, x = w.x, y = w.y;
+  b.placeAt(1800, 2100); s.time += WEAPON_SHOTS.CHARGE_MS - 50; updateWeapons(s, .02, NOW);
   assert(w.aimPoint); assert.deepEqual(w.aimPoint, { x: 2000 + b.width / 2, y: 1800 + b.height / 2 });
-  assert(Math.abs(w.angle - Math.atan2(w.aimPoint.y - w.y, w.aimPoint.x - w.x)) < 1e-8, 'moving satellite keeps its warning on the original point');
-  assert.notEqual(w.angle, aim, 'platform movement is compensated'); assert.equal(w.bolts.size, 0);
+  assert.equal(w.angle, aim, 'charging commits to a direction without tracking a dodging player');
+  assert.equal(w.x, x); assert.equal(w.y, y); assert.equal(w.bolts.size, 0);
   s.time += 50; updateWeapons(s, .02, NOW); assert.equal(w.bolts.size, 1);
 }
 for (const [ox, oy] of [[56, 56], [2000, 2000], [3944, 3944]] as const) {
@@ -106,4 +109,29 @@ for (const [ox, oy] of [[56, 56], [2000, 2000], [3944, 3944]] as const) {
     assert(Math.hypot(pos.x - prior.x, pos.y - prior.y) < 60, 'orbit entry and traversal have no teleport'); prior = pos;
   }
 }
-console.log('Weapon fleet passed: six recipes, duplicate reservations, unlocking, carrying, deployment, orbital continuity, reflected damage, aim warnings and ion windows.');
+{
+  const s=new GameState(0);s.botFill=0;s.weaponsOn=true;initializeWeaponSets(s);
+  s.addPlayer('collector','Collector',NOW).placeAt(100,100);
+  const builds=allWeapons(s),interval=WEAPON_FLEET.PARTS_INTERVAL_MS;
+  for(let i=0;i<builds.length;i++) {
+    s.time=PINWHEEL.FIRST_MS+i*interval-1;updateWeapons(s,0,NOW+s.time);
+    assert.equal(builds.filter(w=>w.phase==='parts').length,i,'no component set appears early');
+    s.time++;updateWeapons(s,0,NOW+s.time);
+    assert.equal(builds.filter(w=>w.phase==='parts').length,i+1,'only one new build becomes available per interval');
+  }
+}
+{
+  const s=new GameState(0);s.botFill=0;s.weaponsOn=true;initializeWeaponSets(s);
+  s.time=200000;updateWeapons(s,0,NOW+s.time);
+  assert(allWeapons(s).every(w=>w.phase==='waiting'),'empty rooms do not release components');
+  s.addPlayer('collector','Collector',NOW+s.time).placeAt(100,100);
+  const builds=allWeapons(s),oldest=required(builds.at(-1));oldest.at=1;
+  updateWeapons(s,0,NOW+s.time);
+  assert.equal(oldest.phase,'parts','the oldest request wins even from the last array slot');
+  assert.equal(builds.filter(w=>w.phase==='parts').length,1,'overdue sets cannot catch up as a pile');
+  updateWeapons(s,0,NOW+s.time);
+  assert.equal(builds.filter(w=>w.phase==='parts').length,1,'another call in the same tick cannot release another set');
+  s.time+=WEAPON_FLEET.PARTS_INTERVAL_MS;updateWeapons(s,0,NOW+s.time);
+  assert.equal(builds.filter(w=>w.phase==='parts').length,2,'later release proceeds normally after the shared interval');
+}
+console.log('Weapon fleet passed: staggered initial/replacement release clock, overdue fairness, six recipes, duplicate reservations, carrying/deployment, orbital continuity, reflected damage, aim warnings and ion windows.');

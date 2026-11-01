@@ -107,12 +107,14 @@ export function drawCreature(ctx: CanvasRenderingContext2D, x: number, y: number
             ctx.fill()
         }
     }
+    const closing = injury ? Math.min(1, injury.remaining / 750) : 0;
+    const worried = dizzy ? 0 : closing * closing * (3 - 2 * closing);
     for (const side of [-1, 1]) {
         const ex = x + fx * r * 0.42 - fy * r * 0.36 * side
         const ey = y + fy * r * 0.42 + fx * r * 0.36 * side
         ctx.fillStyle = '#ffffff'
         ctx.beginPath()
-        ctx.arc(ex, ey, r * (injury && !dizzy ? 0.28 : 0.26), 0, Math.PI * 2)
+        ctx.arc(ex, ey, r * (.26 + .02 * worried), 0, Math.PI * 2)
         ctx.fill()
         ctx.strokeStyle = 'rgba(16, 21, 31, 0.55)'
         ctx.lineWidth = Math.max(1, size * 0.025)
@@ -138,13 +140,16 @@ export function drawCreature(ctx: CanvasRenderingContext2D, x: number, y: number
             ctx.arc(ex, ey, r * 0.13, 0, Math.PI * 2)
             ctx.fill()
         }
-        if(injury&&!dizzy){
-            const u=injury.pixelRatio/Math.max(.001,Math.abs(ctx.getTransform().a))
-            ctx.save();ctx.translate(ex,ey);ctx.rotate(facing)
-            ctx.globalAlpha*=Math.min(1,injury.remaining/750)
-            ctx.strokeStyle='#493f4b';ctx.lineWidth=Math.max(1.3*u,size*.018);ctx.lineCap='round'
-            ctx.beginPath();ctx.moveTo(r*.38,-side*r*.18)
-            ctx.quadraticCurveTo(r*.38,side*r*.01,r*.22,side*r*.22);ctx.stroke();ctx.restore()
+        if (injury && !dizzy) {
+            const transform = ctx.getTransform();
+            const u = injury.pixelRatio / Math.max(.001, Math.hypot(transform.a, transform.b));
+            ctx.save(); ctx.translate(ex, ey); ctx.rotate(facing);
+            ctx.globalAlpha *= worried;
+            ctx.strokeStyle = '#493f4b'; ctx.lineWidth = Math.max(1.2 * u, size * .015); ctx.lineCap = 'round';
+            // Raised inner brows sit outside the eye whites; the pupils remain unobscured.
+            ctx.beginPath(); ctx.moveTo(-r * .19, side * r * .27);
+            ctx.quadraticCurveTo(-r * .34, side * r * .23, -r * .36, side * r * .04);
+            ctx.stroke(); ctx.restore();
         }
     }
 

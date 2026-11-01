@@ -27,11 +27,13 @@ export class WeaponBoltSchema extends Schema {
   angle = 0;
   bornAt = 0;
   bounces = 0;
+  traveled = 0;
 }
 type("number")(WeaponBoltSchema.prototype, "x");
 type("number")(WeaponBoltSchema.prototype, "y");
 type("number")(WeaponBoltSchema.prototype, "angle");
 type("number")(WeaponBoltSchema.prototype, "bornAt");
+type("number")(WeaponBoltSchema.prototype, "traveled");
 
 /** One independent weapon set; all deadlines use the world clock. */
 export class PinwheelSchema extends Schema {
@@ -54,7 +56,10 @@ export class PinwheelSchema extends Schema {
   pulseAt = 0;
   pulseHits = new Set<string>();
   pulseGrazes = new Set<string>();
-  pulseDistances = new Map<string, number>();
+  pulsePositions = new Map<string, { x: number; y: number }>();
+  pulseFacing = 0;
+  pulseX = 0;
+  pulseY = 0;
   claimedAt = 0;
   activatedAt = 0;
   originX = 0;
@@ -82,3 +87,7 @@ type("number")(PinwheelSchema.prototype, "claimedAt");
 type("number")(PinwheelSchema.prototype, "activatedAt");
 type("number")(PinwheelSchema.prototype, "originX");
 type("number")(PinwheelSchema.prototype, "originY");
+type("number")(PinwheelSchema.prototype, "nextShotAt");
+type("number")(PinwheelSchema.prototype, "pulseFacing");
+type("number")(PinwheelSchema.prototype, "pulseX");
+type("number")(PinwheelSchema.prototype, "pulseY");

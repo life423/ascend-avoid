@@ -32,7 +32,7 @@ function setup() {
 {
   const {s,defender,held}=setup();
   defender.stun(now+600,400); updateHolds(s,now+600);
-  assert.equal(defender.gulping,''); assert.equal(held.capturedBy,'','gust/other hard stuns still free the captive');
+  assert.equal(defender.gulping,''); assert.equal(held.capturedBy,'','other hard stuns still free the captive');
 }
 {
   const {s,defender,held}=setup(); defender.knockOut(now+110); updateHolds(s,now+110);

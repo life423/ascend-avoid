@@ -9,14 +9,20 @@ import { updateFlights } from '../systems/flights.js';
 
 const previous = CANNON.PEER_HIT_SHARE;
 const old = impactGems(1000, 1250, 60, 300, 0, 'missile', 300);
-assert.equal(previous, 0, 'the candidate is disabled in normal games');
+assert.equal(previous, .25, 'the conservative local rival floor is active for both actor roles');
 try {
   Object.assign(CANNON, { PEER_HIT_SHARE: .33 });
-  for (const width of [60, 100, 200, 400, 650, 900, 1200]) {
-    assert.equal(impactGems(1000, 1250, 60, width, 0, 'missile', width), 330);
-    assert.equal(impactGems(1000, 1250, 60, width, 0, 'missile', width / 2), 83, 'relative physical size scales the candidate');
-    assert.equal(impactGems(1000, 100, 60, width, 0, 'missile', width), 330, 'the equal-peer candidate has no hidden speed gate');
+  for (const width of [60, 100, 200, 400, 650, 900, 1200]) for (const ratio of [.1,.5,.9,1,1.19]) {
+    const gems=stock(width),actual=creatureSize(gems),shooter=actual*ratio;
+    Object.assign(CANNON,{PEER_HIT_SHARE:0});const baseline=impactGems(gems,1250,60,actual,0,'missile',shooter);
+    Object.assign(CANNON,{PEER_HIT_SHARE:.33});const damage=impactGems(gems,1250,60,actual,0,'missile',shooter);
+    assert(damage>=baseline,'stronger early impacts must not be softened');
+    assert(damage>=Math.round(gems*Math.min(.85,.33*ratio*ratio)),'physical width determines the rival floor');
+    assert(damage<=gems,'damage cannot invent or overdraw inventory');
   }
+  assert.equal(impactGems(1000,100,60,300,0,'missile',300),330,'the rival floor has no hidden speed gate');
+  assert.equal(impactGems(1000,1250,60,300,0,'missile',300),330);
+  assert.equal(impactGems(1000,1250,60,300,0,'missile',150),83);
   assert.equal(impactGems(1000, 1250, 100, 100, 0, 'turbine', 100), 290, 'transport damage is unchanged');
   assert(cannonTargetAppeal(10000, 600, 60, 2000, 500, 600) > cannonTargetAppeal(1, 20, 60, 2000, 200, 600),
     'bot opportunity selection sees the same credible peer damage as actual collisions');
@@ -51,4 +57,4 @@ try {
   }
 } finally { Object.assign(CANNON, { PEER_HIT_SHARE: previous }); }
 assert.equal(impactGems(1000, 1250, 60, 300, 0, 'missile', 300), old, 'default behavior is restored');
-console.log('Peer-damage trial: default off, physical-width scaling, shared bot prediction, real immutable launch hits, injury, single-hit accounting and unchanged transport passed.');
+console.log('Rival damage: 25% default floor, stronger early hits, physical-width scaling, shared bot prediction, immutable launch hits, injury, single-hit accounting and unchanged transport passed.');

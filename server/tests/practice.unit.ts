@@ -208,4 +208,28 @@ for (const holding of [false, true]) {
   c.skip(s.practice.attempt, now()); assert.equal(s.practice.phase, 'choosing');
   assert(c.shouldClose(now() + 60001));
 }
-console.log('Five practice lessons pass through real movement, capture, aiming, shatter, wound/theft/finish, rear cover, injury recovery, black-hole rewards and weapon damage; retries, readiness, stale events, sequence handoff, skip and replay pass.');
+{
+  const { s, p, c, step, now } = setup('combat');
+  c.select('combat', true, now(), true);
+  const attempt = s.practice.attempt, ammo = p.gulping, budget = p.gulpEndsAt - s.time;
+  assert.equal(s.practice.phase, 'countdown');
+  assert.equal(s.practice.countdownEndsAt - s.time, 3000);
+  c.ready(attempt - 1, now()); c.pauseCountdown(attempt - 1, now());
+  assert.equal(s.practice.phase, 'countdown', 'stale commands cannot alter the countdown');
+  step(1000); assert.equal(s.practice.phase, 'countdown');
+  assert.equal(p.gulping, ammo); assert(Math.abs(p.gulpEndsAt - s.time - budget) <= 1);
+  c.pauseCountdown(attempt, now()); step(6000);
+  assert.equal(s.practice.phase, 'ready', 'Pause gives unlimited reading within the ordinary session lifetime');
+  assert.equal(p.gulping, ammo); assert(Math.abs(p.gulpEndsAt - s.time - budget) <= 1);
+  c.ready(attempt, now()); assert.equal(s.practice.phase, 'waiting', 'Start now skips the remaining wait');
+  assert.equal(s.practice.countdownEndsAt, 0); assert.equal(s.practice.attempt, attempt);
+  c.select('defense', true, now(), true); step(2999);
+  assert.equal(s.practice.phase, 'countdown');
+  assert(!s.players.get(s.practice.targetId)?.inhaling, 'threats remain inactive during countdown');
+  step(1); assert.equal(s.practice.phase, 'waiting', 'the server starts automatically at the deadline');
+  c.select('basics', true, now(), true); c.skip(s.practice.attempt, now());
+  assert.equal(s.practice.lesson, 'combat'); assert.equal(s.practice.phase, 'countdown');
+  assert.equal(s.practice.completed, '', 'skipped lessons remain unfinished');
+  c.select('defense', true, now()); assert.equal(s.practice.phase, 'ready', 'individual lessons retain manual preparation');
+}
+console.log('Five practice lessons, honest progress/retries, countdown timing, pause/start-now, preserved ammunition, stale commands and selectable readiness pass.');

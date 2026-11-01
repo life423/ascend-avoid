@@ -241,7 +241,7 @@ export function clearanceAt(state: GameState, cx: number, cy: number, self: Play
     const reach = w.kind === 'pulsar' ? SHOCKWAVE.START_RADIUS + SHOCKWAVE.RANGE : w.kind === 'ion' ? WEAPON_FLEET.ION_RANGE : profile.range;
     for (const ahead of [0, WORLD.SPAWN_PROTECTION_MS / 2, WORLD.SPAWN_PROTECTION_MS]) {
       const age = w.phase === 'active' ? state.time + ahead - w.activatedAt : Math.max(0, state.time + ahead - w.at);
-      const at = profile.orbit ? orbitalPosition(w.originX, w.originY, age, state.worldWidth, state.worldHeight) : w;
+      const at = profile.orbit ? orbitalPosition(w.originX, w.originY, age, state.worldWidth, state.worldHeight, w.kind) : w;
       nearest = Math.min(nearest, Math.hypot(cx - at.x, cy - at.y) - reach - self.width / 2);
     }
     for (const bolt of w.bolts.values()) nearest = Math.min(nearest, distanceToSegment(cx, cy, bolt.x, bolt.y,

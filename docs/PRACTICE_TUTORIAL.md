@@ -1,5 +1,95 @@
 # Optional practice tutorial
 
+## Steerable escape gust — November 1 local follow-up
+
+The user approved preserving the front-to-back gust animation while removing
+stun and lasting barrier mechanics. Defense's first exercise remains **Puff &
+flee**. It now requires a real server-observed rear shove plus 145 units of
+movement, not a persistent wall or a pursuer that stays unable to inhale.
+Instructions explain the one-shot gust and continued movement; casting in the
+wrong direction still retries only this exercise. The stage ID `rear-cover`
+stays internal for compatibility; the UI teaches no wall or invincible air shield.
+The injured exercise and the other four lessons are unchanged. Bots and humans
+use the same control-preserving drift and 350ms restart delay for a broken inhale.
+See [DEFENSE_CONTACT_RESPAWN.md](DEFENSE_CONTACT_RESPAWN.md) for timing and scope.
+All changes remain local under the publishing pause.
+
+Verification: all five lessons individually and the full sequence pass across
+desktop Chrome, Android Chrome emulation, iPhone portrait/landscape Safari and
+iPad Safari. The 320px reduced-motion full sequence also passes. The sweep is
+**62 passed, eight conditional skips** (platform-specific mouse/small-phone
+cases), logged in `.tmp/gust-tutorials.log`. Actual keyboard/pointer/touch drivers
+complete defense without a barrier or stun; wrong-direction retries, injury
+restrictions/recovery, preserved ammunition and stale progress remain covered.
+The separate wrap/contact sweep passes ten cases on the same five profiles.
+Phone and desktop screenshots were inspected for readable effects, eyes and
+unobstructed tutorial actions. These are browser emulations, not a new physical
+Pixel playtest, Gecko validation or a claim that combat balance is final.
+
+## Measured clearance and sequence countdown — November 1 local candidate
+
+`codex/tutorial-countdown-layout` follows deployed PR #70. The user identified
+actual mobile joystick overlap despite the earlier fixed-offset assertions.
+OnlineControls now shares its rendered geometry with UI placement: reserve the
+entire joystick knob sweep, action ring/aim reach, actual canvas origin/scale and
+safe areas. The toolbar chooses a shallow fitting free area, wraps naturally,
+and clears the real Place button and lesson panel. An unusually constrained
+viewport can use a native scroll strip. Tests record actual canvas arcs and
+compare them to the DOM toolbar, including held gestures and viewport changes.
+Short windows also scale the control graphics while retaining at least nominal
+80px stick and 56px action diameters; long phone portrait controls keep their
+normal size. All buttons remain reachable in the rare scroll-strip fallback.
+
+In the **full sequence**, each new lesson and the injured-escape preparation
+shows a central 3–2–1 with a restrained mint progress ring and brief Go cue.
+**Start now** immediately overrides the countdown; **Pause** returns to untimed
+reading. Opening lesson selection/injury details, hiding the page or losing the
+connection pauses preparation. Controls can be held beforehand. The server
+alone starts the attempt, preserves the captive/remaining budget, blocks actions
+and keeps threats inactive while preparing. Stale commands cannot start a later
+attempt. Failed attempts stay immediate, completion remains success-gated, and
+skips remain unfinished. Individually selected lessons retain their prior Ready
+behavior. Reduced motion uses still digits and stepped ring progress.
+If no clear central area fits the countdown circle in a very short window, the
+lesson heading shows “Starts in …” until play begins instead of covering controls.
+Automatic starting also clears action presses begun during preparation while
+preserving held movement, preventing an accidental captive launch at the deadline.
+
+The appended `countdownEndsAt` schema field is generated into SyncedPractice.
+The temporary watcher error during editing was resolved; both TypeScript checks,
+schema comparison and the actual running Vite checker report no diagnostics.
+Browser/phone review and release status for this local candidate follow below;
+this section does not claim a production rollout or settled combat fairness.
+
+### Local verification
+
+- Full production build, TypeScript/lint/schema checks, the full unit suite and
+  all 18 multiplayer scenarios pass. The actual Vite checker reconnect reports
+  an empty TypeScript diagnostics list.
+- The five-profile sweep passes **108** browser cases (seven inapplicable cases
+  skipped): desktop Chromium, Android Chromium emulation, iPhone WebKit portrait
+  and landscape, and iPad WebKit. All five lessons and the full sequence finish;
+  the 320px reduced-motion sequence also finishes.
+- After the automatic-start action safeguard, **25** targeted flow/layout cases
+  pass; final countdown/fallback checks pass another **24** cases, plus two
+  sweeps with action text at 200%. These are overlapping suites, not unique-user
+  measurements. Tests include 17 viewport sizes from 280px portrait width to
+  1280px and 240px short landscape height, full joystick travel, keyboard access
+  to overflow actions, safe areas and a shifted/reduced visual viewport.
+- The first broad pass exposed insufficient room in a 360×280 window. Responsive
+  control sizing fixes it. An obsolete tablet assertion also assumed every
+  portrait bar must sit above the controls; actual drawn-circle assertions now
+  permit safe docking between them. Screenshots were reviewed for narrow phone,
+  ordinary phone, short landscape, tablet, desktop and the countdown state.
+- Firefox's installed test executable fails to launch on this PC with `spawn
+  UNKNOWN`, so Gecko coverage is not claimed. Real Pixel feel, physical-browser
+  chrome/keyboard behavior and device performance remain pending.
+
+The user's latest publishing instruction keeps this candidate local: no push,
+PR, merge or staging/production deployment until explicitly requested. The
+satellite/cannon projectile notes and defensive-ability discussion are preserved
+in TODO.md. Gust strength and wave mechanics remain unchanged.
+
 ## Pixel readiness follow-up — November 1, local candidate
 
 On `codex/mobile-tutorial-readiness`, based on main `884357e`, the user's real
@@ -32,6 +122,12 @@ combat stun, part/fan spawning and weapon/power-up proposals remain in
 does not settle those balance questions or replace physical-phone feel testing.
 
 ### Preliminary injury-escape timing probe
+
+**Superseded locally:** [INJURED_ESCAPE.md](INJURED_ESCAPE.md) records the November 1
+shared outer-retreat cap and revised defense scenario: 600-unit gap, 4200-square
+arena, safe actor placement and 250ms pursuit decisions. Delay/analog scenarios
+are measured separately from this original 20-case probe. Injury/breathing rules
+and stage-only retries remain. The following table is historical baseline evidence.
 
 A separate 20-case headless probe used the existing defense arena and real first
 exercise to reach injured escape, then ordinary movement/aim inputs at 17 ms

@@ -189,7 +189,7 @@ scenario('a freed player starts clear and can move away before any repeat captur
   await sleep(2500);
   assert.equal(me(kid).capturedBy, ''); assert(me(kid).y > y + 400, 'the former captive gets room to leave');
 });
-scenario('a real gust stuns a non-inhaling target and the target recovers', async (a, join) => {
+scenario('a real gust pushes without taking away steering, turning or ordinary inhale', async (a, join) => {
   const target = await join('Gust target');
   a.send('test:moveTo', { x: 1000, y: 1000 });
   a.send('test:face', { angle: 0 });
@@ -197,15 +197,14 @@ scenario('a real gust stuns a non-inhaling target and the target recovers', asyn
   target.send('test:protect', { ms: 0 });
   await sleep(100);
   a.send('tap');
-  await until(() => me(target).stunned, 'the gust stuns the target');
-  target.send('test:moveTo', { x: 1300, y: 1000 });
+  await until(() => me(target).puffVx > 0, 'the real gust applies air drift');
+  assert(!me(target).stunned && !me(target).sliding);
   target.send('steer', { x: 0, y: 1 });
   target.send('inhale');
-  await sleep(150);
-  assert.equal(me(target).inhaling, false);
-  assert(Math.abs(me(target).y - 1000) < 1, 'movement inputs cannot override a gust stun');
-  await until(() => !me(target).stunned, 'stun ends');
-  await until(() => me(target).y > 1010, 'steering works again');
+  await until(() => me(target).inhaling && me(target).y > 1010, 'steering and inhale remain usable during air drift', 500);
+  assert.equal(me(target).inhaling, true, 'an unrelated inhale is immediately usable');
+  assert(!me(target).stunned && !me(target).sliding);
+  assert(me(target).y > 1010, 'steering remains active throughout the shove');
 });
 scenario('a small missile burns up after missing and respawns protected', async (a, join) => {
   const kid = await capture(a, join);

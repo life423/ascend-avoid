@@ -130,11 +130,11 @@ export const GEMS = {
 } as const;
 
 /**
- * Knockback from blasts, hits and forceful body bumps. Weight grows with size, so heavier
- * creatures slide less; contact staggering and rearming are handled by systems/bodies.
+ * Legacy impact slides and their drag. Ordinary body contact only compresses and separates;
+ * gusts and assembled-weapon pushes add a brief steerable drift instead of locking movement.
  */
 export const PUSH = {
-  STUN_IMMUNE_MS: 1200, // shared post-stun immunity for player impacts, gusts and body bumps
+  STUN_IMMUNE_MS: 1200, // post-impact stun immunity; body contact and gusts do not stun
   DISTANCE: 140, // how far a shove sends someone your own weight (about two hops)...
   MIN_RATIO: 0.3, // ...scaled by your weight over theirs, kept within these limits
   MAX_RATIO: 3,
@@ -289,7 +289,8 @@ export const INHALE = {
   BODY_PULL_MAX: 3, // ...times your width over its (mass, with pull and resistance each growing as the square root of mass), up to this...
   PEER_BODY_PULL: 0.25, // near-sized bodies strongly resist being dragged; does not change gem theft
   BODY_PULL_FULL_RATIO: 2, // full bodily pull when the hunter is twice the prey's width
-  BODY_STRAFE_ESCAPE: 0.5, // purposeful movement across the airflow can halve body pull; straight retreat remains harder
+  BODY_STRAFE_ESCAPE: 0.5, // purposeful movement across the airflow can halve body pull
+  RETREAT_SPEED_KEEP: 0.5, // outer suction preserves half a faster runner's deliberate radial speed advantage
   PREY_PULL_CAP: 0.9, // ...but never more than this share of its own top speed: react early, or slip out of the cone sideways, and it can get away...
   PREY_PULL_CLOSE: 1.6, // maximum inner pull for much smaller prey; reaching capture size alone grants no boost
   EAT_RATIO: 1.3, // healthy capture needs a hunter at least 30% wider; pull strength ramps separately
@@ -438,7 +439,7 @@ export const CANNON = {
   TURBINE_IMPACT_MASS_PIVOT: 2.4, // turbine transport retains its existing damage profile
   TURBINE_IMPACT_BASE_GEMS: 80,
   IMPACT_MAX_SHARE: 0.85, // ceiling, never a floor; tiny shots cannot erase most of a giant's progress
-  PEER_HIT_SHARE: 0, // headless trial only: 0 keeps current damage; studies compare 0.33 at equal widths
+  PEER_HIT_SHARE: 0.25, // local candidate: equal-width rival floor, scaled by squared physical width ratio; stronger early hits remain
   CAPTURE_FIRE_DELAY_MS: 0, // headless trial: shared minimum from capture to firing; normal games unchanged
   LETHAL_ENERGY_RATIO: 1.2, // effective ammo/target mass × bounded squared speed; substantial hits finish more often
   SHATTER_SHOOTER_RATIO: 1.2, // any landed player-fired missile shatters when its launcher was at least 20% wider than the target
@@ -549,10 +550,10 @@ export const PINWHEEL = {
   GUST_SPEED: 600,
   CHARGE_MS: 1200,
   ACTIVE_MS: 8000,
-  SHOT_MS: 140,
+  SHOT_MS: 320,
   SPIN: Math.PI * 0.65,
-  BOLT_SPEED: 620,
-  BOLT_RANGE: 900,
+  BOLT_SPEED: 420,
+  BOLT_RANGE: 650,
   BOLT_RADIUS: 8,
   HIT_PUSH: 65,
   HIT_SHARE: 0.45,
@@ -562,18 +563,23 @@ export const PINWHEEL = {
   HIT_IMMUNE_MS: 500,
 } as const;
 
-/** A deployed Pulsar Array releases four damaging plasma shockwaves, without movement-locking stuns. */
+/** Four forward crescents: recover/rotate, lock/charge, release. No stun or steering lock. */
 export const SHOCKWAVE = {
   CHARGE_MS: 1200,
-  ACTIVE_MS: 8300,
-  BEAT_MS: 2200,
-  WINDUP_MS: 700,
+  ACTIVE_MS: 9900,
+  BEAT_MS: 2600,
+  WINDUP_MS: 1000,
+  FOLLOW_THROUGH_MS: 180,
+  TURN_STEP: Math.PI / 6,
+  HALF_ARC: Math.PI / 4,
+  FRONT_HALF_WIDTH: 6,
+  FADE_MS: 120,
   WAVE_MS: 900,
   START_RADIUS: 44,
   RANGE: 360,
-  PUSH: 420,
-  MIN_PUSH: 220,
-  DAMAGE_SHARE: 0.25,
+  PUSH_SPEED: 420,
+  MIN_PUSH_SPEED: 180,
+  DAMAGE_SHARE: 0.15,
   DAMAGE_MIN_GEMS: 6,
   KO_GEMS: 8,
 } as const;
@@ -589,11 +595,21 @@ export const WEAPON_RECIPES = {
 export type WeaponKind = keyof typeof WEAPON_RECIPES;
 
 
-export const WEAPON_FLEET = { SETS: 9, ORBIT_RESPAWN_MS: 35000, CLAIM_PULSE_MS: 900, ORBIT_MS: 26000, ORBIT_ENTRY_MS: 1800, ION_RANGE: 560, ION_PERIOD_MS: 1800, ION_WARNING_MS: 600, ION_FIRE_MS: 500 } as const;
+export const WEAPON_FLEET = { SETS: 9, PARTS_INTERVAL_MS: 12000, ORBIT_RESPAWN_MS: 35000, CLAIM_PULSE_MS: 900, ORBIT_MS: 26000, ORBIT_ENTRY_MS: 1800, ION_RANGE: 560, ION_PERIOD_MS: 1800, ION_WARNING_MS: 600, ION_FIRE_MS: 500 } as const;
+
+/** Visible launch/approach, shared by every builder and target; damage itself is unchanged. */
+export const WEAPON_SHOTS = {
+  ARM_MS: 550,
+  CHARGE_MS: 650,
+  WARNING_S: 1.2,
+  BOT_REACT_MIN_MS: 250,
+  BOT_REACT_MAX_MS: 450,
+} as const;
 
 export const EXHALE = {
   WAVE_WRAP_MS: 220,
-  WAVE_HOLD_MS: 900,
+  WAVE_PUSH_MS: 140, // one passing gust, never continuous cover
+  WAVE_FADE_MS: 480, // visual dissipation after wrapping; no lasting shield
   WAVE_HALF_ARC: 1.05,
   WAVE_THICKNESS: 12,
   IMPULSE_RELATIVE_SPEED: 560,
@@ -609,9 +625,8 @@ export const EXHALE = {
   PUSH_MAX: 500,
   DEFENSE_PUSH: 200,
   COOLDOWN_MS: 1800, // a deliberate defense, not repeated knockback
-  BREAK_MS: 1000, // a successful puff breaks suction on its user for a short escape window
   PARRY_MS: 350, // minimum restart lock on a broken inhale
-  STUN_MS: 800, // a gust hit disables steering and inhaling; knockback still carries the target away
+  DRAG: 12, // short steerable air impulse, separate from control-locking impact skids
   BREATH_COST: 0.35, // 35 percentage points from a full meter, not 35% of the remaining breath
 } as const;
 

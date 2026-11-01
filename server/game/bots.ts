@@ -3,6 +3,8 @@ import { hop, moveSpeed } from "./movement.js";
 import { BotCannonAim } from './botAim.js';
 import { BotGustDefense } from './botDefense.js';
 import { BotWeaponPlan } from './botWeapons.js';
+import { BotProjectileDodge } from './botProjectiles.js';
+import { BotPulsarDodge } from './botPulsar.js';
 import { botPreyAvailable, botSuctionThreat } from './botTargets.js';
 import { injuryVulnerable } from '../systems/inhale.js';
 import { canCatch } from './cannon.js';
@@ -77,6 +79,8 @@ export class BotBrain {
   readonly cannonAim = new BotCannonAim();
   readonly gustDefense = new BotGustDefense();
   readonly weaponPlan = new BotWeaponPlan();
+  readonly projectileDodge = new BotProjectileDodge();
+  readonly pulsarDodge = new BotPulsarDodge();
   /** When the bot next decides (it keeps steering the same way until then) */
   nextThinkAt = 0;
   /** Who the bot is hunting, if anyone (it runs into them to shove them) */
@@ -122,6 +126,8 @@ export class BotBrain {
       if (world.isFloorAt(box.x + box.width / 2, box.y + box.height / 2)) return careless;
     }
 
+    const dodge = this.projectileDodge.move(bot, world, now) ?? this.pulsarDodge.move(bot, world, now);
+    if (dodge) { this.victim = null; return dodge; }
     const target = this.target(bot, world, now);
     const distanceFrom = (box: Box) =>
       Math.hypot(target.x - (box.x + box.width / 2), target.y - (box.y + box.height / 2));
@@ -169,10 +175,15 @@ export class BotBrain {
       const fx = Math.cos(robber.facing);
       const fy = Math.sin(robber.facing);
       const side = Math.sign((cx - rx) * -fy + (cy - ry) * fx) || 1;
-      // Cross the cone while gaining clearance, rather than steering back toward the mouth.
+      // Injured creatures cannot puff: favor a faster outward retreat. Healthy
+      // creatures still cross the cone while preparing ordinary gust defense.
       const distance = Math.hypot(cx - rx, cy - ry) || 1;
-      return { x: cx - fy * side * 220 + (cx - rx) / distance * 220,
-        y: cy + fx * side * 220 + (cy - ry) / distance * 220 };
+      const fasterRetreat = bot.breathingBlocked && bot.width < robber.width;
+      const lateral = fasterRetreat ? 65 : 220;
+      const outward = fasterRetreat ? 300 : 220;
+      const margin = bot.width / 2 + 40;
+      return { x: Math.max(margin, Math.min(world.worldWidth - margin, cx - fy * side * lateral + (cx - rx) / distance * outward)),
+        y: Math.max(margin, Math.min(world.worldHeight - margin, cy + fx * side * lateral + (cy - ry) / distance * outward)) };
     }
     // Something big enough to capture it close by: get away (smaller, it's faster).
     const threat = { x: 0, y: 0, distance: BOTS.FLEE_RANGE };

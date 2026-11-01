@@ -154,6 +154,10 @@ export interface SyncedPinwheel {
     activatedAt: number
     originX: number
     originY: number
+    nextShotAt: number
+    pulseFacing: number
+    pulseX: number
+    pulseY: number
 }
 
 /** PlayerSchema, as synced to the browser */
@@ -214,6 +218,8 @@ export interface SyncedPlayer {
     captureHoldMs: number
     weaponSafeUntil: number
     breathingBlocked: boolean
+    puffVx: number
+    puffVy: number
 }
 
 /** PracticeSchema, as synced to the browser */
@@ -235,6 +241,7 @@ export interface SyncedPractice {
     resetSerial: number
     sequence: boolean
     feedback: string
+    countdownEndsAt: number
 }
 
 /** TurbineSchema, as synced to the browser */
@@ -266,6 +273,7 @@ export interface SyncedWeaponBolt {
     y: number
     angle: number
     bornAt: number
+    traveled: number
 }
 
 /** WeaponPartSchema, as synced to the browser */

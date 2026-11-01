@@ -1,0 +1,75 @@
+{
+  "adaptive_ready": false,
+  "files": [
+    {
+      "path": "play-store/ascend-play-512.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "bytes": 235250,
+      "sha256": "de3c5b553fcc58b855ffc9e56471a76dfa585d2566b183b5bf51b0c9b4e0805e"
+    },
+    {
+      "path": "res/mipmap-hdpi/ic_launcher.png",
+      "size": [
+        72,
+        72
+      ],
+      "mode": "RGBA",
+      "bytes": 8308,
+      "sha256": "bf3f3d053ba886a33c2249e443661bccc41b99cfbeafbff3751165aad22c2158"
+    },
+    {
+      "path": "res/mipmap-mdpi/ic_launcher.png",
+      "size": [
+        48,
+        48
+      ],
+      "mode": "RGBA",
+      "bytes": 4467,
+      "sha256": "6a1370ede723e826a1bcebd376667497fb710d0f80f025c8412df3f980c85a16"
+    },
+    {
+      "path": "res/mipmap-xhdpi/ic_launcher.png",
+      "size": [
+        96,
+        96
+      ],
+      "mode": "RGBA",
+      "bytes": 13171,
+      "sha256": "01f62a43547bdf7ab4e9af4114984db5978ad38bdbebc8fb5cddb006fd98ad21"
+    },
+    {
+      "path": "res/mipmap-xxhdpi/ic_launcher.png",
+      "size": [
+        144,
+        144
+      ],
+      "mode": "RGBA",
+      "bytes": 25393,
+      "sha256": "93eb7405ab940176565a58d7326ebc8296f518870a9ad7c0308b0e5ccddd4b96"
+    },
+    {
+      "path": "res/mipmap-xxxhdpi/ic_launcher.png",
+      "size": [
+        192,
+        192
+      ],
+      "mode": "RGBA",
+      "bytes": 40963,
+      "sha256": "a772e1147adf49e0274b69a3bfd8a9834450d43a50f87f413fac83a32c06a669"
+    },
+    {
+      "path": "source/ascend-master-1024.png",
+      "size": [
+        1024,
+        1024
+      ],
+      "mode": "RGB",
+      "bytes": 827243,
+      "sha256": "c29d6e9ad8932724a06c31bae5d80baf75ab68bebd627b7436d4cbafd82f16dd"
+    }
+  ]
+}

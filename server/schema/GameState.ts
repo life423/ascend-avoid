@@ -35,6 +35,8 @@ import { PinwheelSchema } from "./PinwheelSchema.js";
 import { deployWeapon, updateWeapons } from "../systems/weapons.js";
 import { PINWHEEL } from "../constants/gameConstants.js";
 import { chooseSpawn, SPAWN_RETRY_MS } from '../game/spawnSafety.js';
+import { fanClearOfHole, partClearOfFan } from '../game/arenaPlacement.js';
+import { allWeapons } from '../game/weaponKit.js';
 
 const { WORLD, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS, COMETS, BOMBS, TURBINE, SURGE } = GAME_CONSTANTS;
 /** Which way each of a bot's decisions steers it */
@@ -100,6 +102,8 @@ class GameState extends Schema {
   blackHoles = new ArraySchema<BlackHoleSchema>();
   practice = new PracticeSchema();
   weaponsOn: boolean = PINWHEEL.ENABLED;
+  /** Shared release clock for new/replacement component sets; never an actor-specific cooldown. */
+  nextWeaponPartsAt = 0;
 
   /** Server-only: whether traffic hits players (the automated test turns this off) */
   trafficHits = true;
@@ -587,12 +591,13 @@ class GameState extends Schema {
     return found;
   }
 
-  /** A spot for a new turbine: away from the edge, other turbines and players, and on the floor during a shift */
+  /** A new fan keeps clear of players, other fans, black-hole landmarks and loose components. */
   turbineSpot(): { x: number; y: number; intake: number } | null {
     const margin = TURBINE.EDGE_MARGIN;
+    const parts = allWeapons(this).filter(w => w.phase === 'parts').flatMap(w => w.parts.filter(p => !p.carriedBy));
     for (let attempt = 0; attempt < 40; attempt++) {
-      const x = margin + Math.random() * (this.worldWidth - 2 * margin);
-      const y = margin + Math.random() * (this.worldHeight - 2 * margin);
+      const x = Math.round(margin + Math.random() * (this.worldWidth - 2 * margin));
+      const y = Math.round(margin + Math.random() * (this.worldHeight - 2 * margin));
       let open = true;
       this.turbines.forEach((other) => {
         if (Math.hypot(other.x - x, other.y - y) < TURBINE.SPACING) open = false;
@@ -601,7 +606,9 @@ class GameState extends Schema {
         const near = Math.hypot(player.x + player.width / 2 - x, player.y + player.height / 2 - y);
         if (player.state === PLAYER_STATE.ALIVE && near < TURBINE.PLAYER_CLEARANCE + player.width / 2) open = false;
       });
-      if (open && this.turbineFits(x, y)) return { x, y, intake: Math.random() * Math.PI * 2 };
+      if (!open || !this.turbineFits(x, y)) continue;
+      const spot = { x, y, intake: Math.round(Math.random() * Math.PI * 2 * 1000) / 1000 };
+      if (this.blackHoles.every(hole => fanClearOfHole(spot, hole)) && parts.every(part => partClearOfFan(part, spot))) return spot;
     }
     return null;
   }

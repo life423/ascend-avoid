@@ -61,8 +61,8 @@ test('staying in the Pulsar core still injures and displays the brief weapon-onl
       return p.injuredUntil > s.time && p.weaponSafeUntil > s.time;
     });
     await page.screenshot({ path: test.info().outputPath('giant-weapon-guard.png') });
-    expect(await page.evaluate(() => window.game.currentGameMode.multiplayerManager.getLocalPlayer().gems)).toBeLessThan(4000);
-    expect(builder.state.players.get(builder.sessionId).weaponDamage).toBeGreaterThan(1200);
+    expect(await page.evaluate(() => window.game.currentGameMode.multiplayerManager.getLocalPlayer().gems)).toBeLessThan(4300);
+    expect(builder.state.players.get(builder.sessionId).weaponDamage).toBeGreaterThan(740);
     await expect(page.locator('.weapon-place-button')).toBeHidden();
   } finally { await builder.leave(); }
 });

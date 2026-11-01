@@ -1,0 +1,6752 @@
+{
+  "date": "2026-11-01",
+  "method": "450 real captured/fired standard60-unit missiles; target physical widths100/200/400/650/900, shooter ratios.75/1, gaps100/350/800, aim offsets-8/-4/0/4/8deg, idle or sideways/weave after300ms notice. Notice approximates portrait camera or existing0.5s incoming warning. Real collision/movement/flight drag, no forced opening hit or spare ammunition. Controlled stationary aim origin and synthetic defenses, not human hit rates. First-hit geometry is unchanged by damage; larger bodies are deliberately NOT normalized to equal hit probability.",
+  "summary": [
+    {
+      "width": 100,
+      "response": "idle",
+      "shots": 30,
+      "hits": 26
+    },
+    {
+      "width": 100,
+      "response": "side300ms",
+      "shots": 30,
+      "hits": 24
+    },
+    {
+      "width": 100,
+      "response": "weave300ms",
+      "shots": 30,
+      "hits": 24
+    },
+    {
+      "width": 200,
+      "response": "idle",
+      "shots": 30,
+      "hits": 26
+    },
+    {
+      "width": 200,
+      "response": "side300ms",
+      "shots": 30,
+      "hits": 28
+    },
+    {
+      "width": 200,
+      "response": "weave300ms",
+      "shots": 30,
+      "hits": 28
+    },
+    {
+      "width": 400,
+      "response": "idle",
+      "shots": 30,
+      "hits": 30
+    },
+    {
+      "width": 400,
+      "response": "side300ms",
+      "shots": 30,
+      "hits": 30
+    },
+    {
+      "width": 400,
+      "response": "weave300ms",
+      "shots": 30,
+      "hits": 30
+    },
+    {
+      "width": 650,
+      "response": "idle",
+      "shots": 30,
+      "hits": 30
+    },
+    {
+      "width": 650,
+      "response": "side300ms",
+      "shots": 30,
+      "hits": 30
+    },
+    {
+      "width": 650,
+      "response": "weave300ms",
+      "shots": 30,
+      "hits": 30
+    },
+    {
+      "width": 900,
+      "response": "idle",
+      "shots": 30,
+      "hits": 30
+    },
+    {
+      "width": 900,
+      "response": "side300ms",
+      "shots": 30,
+      "hits": 30
+    },
+    {
+      "width": 900,
+      "response": "weave300ms",
+      "shots": 30,
+      "hits": 30
+    }
+  ],
+  "rows": [
+    {
+      "targetWidth": 72,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 72,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 72,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 72,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 72,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 72,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 72,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 72,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 72,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 72,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 72,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 72,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 72,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 72,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 72,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 75,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 267,
+        "out": false,
+        "gems": 45
+      }
+    },
+    {
+      "targetWidth": 75,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 267,
+        "out": false,
+        "gems": 45
+      }
+    },
+    {
+      "targetWidth": 75,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 267,
+        "out": false,
+        "gems": 45
+      }
+    },
+    {
+      "targetWidth": 75,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 267,
+        "out": false,
+        "gems": 45
+      }
+    },
+    {
+      "targetWidth": 75,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 267,
+        "out": false,
+        "gems": 45
+      }
+    },
+    {
+      "targetWidth": 75,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 267,
+        "out": false,
+        "gems": 45
+      }
+    },
+    {
+      "targetWidth": 75,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 267,
+        "out": false,
+        "gems": 45
+      }
+    },
+    {
+      "targetWidth": 75,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 267,
+        "out": false,
+        "gems": 45
+      }
+    },
+    {
+      "targetWidth": 75,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 267,
+        "out": false,
+        "gems": 45
+      }
+    },
+    {
+      "targetWidth": 75,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 267,
+        "out": false,
+        "gems": 45
+      }
+    },
+    {
+      "targetWidth": 75,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 267,
+        "out": false,
+        "gems": 45
+      }
+    },
+    {
+      "targetWidth": 75,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 267,
+        "out": false,
+        "gems": 45
+      }
+    },
+    {
+      "targetWidth": 75,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 267,
+        "out": false,
+        "gems": 45
+      }
+    },
+    {
+      "targetWidth": 75,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 267,
+        "out": false,
+        "gems": 45
+      }
+    },
+    {
+      "targetWidth": 75,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 267,
+        "out": false,
+        "gems": 45
+      }
+    },
+    {
+      "targetWidth": 100,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": -8,
+      "noticedMs": 267,
+      "hit": null
+    },
+    {
+      "targetWidth": 78.5,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": -4,
+      "noticedMs": 167,
+      "hit": {
+        "time": 700,
+        "out": false,
+        "gems": 39
+      }
+    },
+    {
+      "targetWidth": 78.5,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": 0,
+      "noticedMs": 133,
+      "hit": {
+        "time": 667,
+        "out": false,
+        "gems": 39
+      }
+    },
+    {
+      "targetWidth": 78.5,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": 4,
+      "noticedMs": 167,
+      "hit": {
+        "time": 700,
+        "out": false,
+        "gems": 39
+      }
+    },
+    {
+      "targetWidth": 100,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": 8,
+      "noticedMs": 267,
+      "hit": null
+    },
+    {
+      "targetWidth": 100,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 267,
+      "hit": null
+    },
+    {
+      "targetWidth": 100,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 167,
+      "hit": null
+    },
+    {
+      "targetWidth": 78.5,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 133,
+      "hit": {
+        "time": 700,
+        "out": false,
+        "gems": 39
+      }
+    },
+    {
+      "targetWidth": 78.5,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 167,
+      "hit": {
+        "time": 700,
+        "out": false,
+        "gems": 39
+      }
+    },
+    {
+      "targetWidth": 100,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 267,
+      "hit": null
+    },
+    {
+      "targetWidth": 100,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 267,
+      "hit": null
+    },
+    {
+      "targetWidth": 100,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 167,
+      "hit": null
+    },
+    {
+      "targetWidth": 78.5,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 133,
+      "hit": {
+        "time": 700,
+        "out": false,
+        "gems": 39
+      }
+    },
+    {
+      "targetWidth": 78.5,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 167,
+      "hit": {
+        "time": 700,
+        "out": false,
+        "gems": 39
+      }
+    },
+    {
+      "targetWidth": 100,
+      "initialWidth": 100,
+      "shooterWidth": 75,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 267,
+      "hit": null
+    },
+    {
+      "targetWidth": 68,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 55
+      }
+    },
+    {
+      "targetWidth": 68,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 55
+      }
+    },
+    {
+      "targetWidth": 68,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 55
+      }
+    },
+    {
+      "targetWidth": 68,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 55
+      }
+    },
+    {
+      "targetWidth": 68,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 55
+      }
+    },
+    {
+      "targetWidth": 68,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 55
+      }
+    },
+    {
+      "targetWidth": 68,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 55
+      }
+    },
+    {
+      "targetWidth": 68,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 55
+      }
+    },
+    {
+      "targetWidth": 68,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 55
+      }
+    },
+    {
+      "targetWidth": 68,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 55
+      }
+    },
+    {
+      "targetWidth": 68,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 55
+      }
+    },
+    {
+      "targetWidth": 68,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 55
+      }
+    },
+    {
+      "targetWidth": 68,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 55
+      }
+    },
+    {
+      "targetWidth": 68,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 55
+      }
+    },
+    {
+      "targetWidth": 68,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 55
+      }
+    },
+    {
+      "targetWidth": 71.5,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 267,
+        "out": false,
+        "gems": 50
+      }
+    },
+    {
+      "targetWidth": 70.5,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 233,
+        "out": false,
+        "gems": 51
+      }
+    },
+    {
+      "targetWidth": 70.5,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 233,
+        "out": false,
+        "gems": 51
+      }
+    },
+    {
+      "targetWidth": 70.5,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 233,
+        "out": false,
+        "gems": 51
+      }
+    },
+    {
+      "targetWidth": 71.5,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 267,
+        "out": false,
+        "gems": 50
+      }
+    },
+    {
+      "targetWidth": 71.5,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 267,
+        "out": false,
+        "gems": 50
+      }
+    },
+    {
+      "targetWidth": 70.5,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 233,
+        "out": false,
+        "gems": 51
+      }
+    },
+    {
+      "targetWidth": 70.5,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 233,
+        "out": false,
+        "gems": 51
+      }
+    },
+    {
+      "targetWidth": 70.5,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 233,
+        "out": false,
+        "gems": 51
+      }
+    },
+    {
+      "targetWidth": 71.5,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 267,
+        "out": false,
+        "gems": 50
+      }
+    },
+    {
+      "targetWidth": 71.5,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 267,
+        "out": false,
+        "gems": 50
+      }
+    },
+    {
+      "targetWidth": 70.5,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 233,
+        "out": false,
+        "gems": 51
+      }
+    },
+    {
+      "targetWidth": 70.5,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 233,
+        "out": false,
+        "gems": 51
+      }
+    },
+    {
+      "targetWidth": 70.5,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 233,
+        "out": false,
+        "gems": 51
+      }
+    },
+    {
+      "targetWidth": 71.5,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 267,
+        "out": false,
+        "gems": 50
+      }
+    },
+    {
+      "targetWidth": 100,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": -8,
+      "noticedMs": 267,
+      "hit": null
+    },
+    {
+      "targetWidth": 75.5,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": -4,
+      "noticedMs": 100,
+      "hit": {
+        "time": 633,
+        "out": false,
+        "gems": 44
+      }
+    },
+    {
+      "targetWidth": 75.5,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": 0,
+      "noticedMs": 67,
+      "hit": {
+        "time": 633,
+        "out": false,
+        "gems": 44
+      }
+    },
+    {
+      "targetWidth": 75.5,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": 4,
+      "noticedMs": 100,
+      "hit": {
+        "time": 633,
+        "out": false,
+        "gems": 44
+      }
+    },
+    {
+      "targetWidth": 100,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": 8,
+      "noticedMs": 267,
+      "hit": null
+    },
+    {
+      "targetWidth": 100,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 267,
+      "hit": null
+    },
+    {
+      "targetWidth": 100,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 100,
+      "hit": null
+    },
+    {
+      "targetWidth": 75.5,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 67,
+      "hit": {
+        "time": 633,
+        "out": false,
+        "gems": 44
+      }
+    },
+    {
+      "targetWidth": 75.5,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 100,
+      "hit": {
+        "time": 633,
+        "out": false,
+        "gems": 44
+      }
+    },
+    {
+      "targetWidth": 100,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 267,
+      "hit": null
+    },
+    {
+      "targetWidth": 100,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 267,
+      "hit": null
+    },
+    {
+      "targetWidth": 100,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 100,
+      "hit": null
+    },
+    {
+      "targetWidth": 75.5,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 67,
+      "hit": {
+        "time": 633,
+        "out": false,
+        "gems": 44
+      }
+    },
+    {
+      "targetWidth": 75.5,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 100,
+      "hit": {
+        "time": 633,
+        "out": false,
+        "gems": 44
+      }
+    },
+    {
+      "targetWidth": 100,
+      "initialWidth": 100,
+      "shooterWidth": 100,
+      "ratio": 1,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 267,
+      "hit": null
+    },
+    {
+      "targetWidth": 189,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 46
+      }
+    },
+    {
+      "targetWidth": 189,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 46
+      }
+    },
+    {
+      "targetWidth": 189,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 46
+      }
+    },
+    {
+      "targetWidth": 189,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 46
+      }
+    },
+    {
+      "targetWidth": 189,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 46
+      }
+    },
+    {
+      "targetWidth": 189,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 46
+      }
+    },
+    {
+      "targetWidth": 189,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 46
+      }
+    },
+    {
+      "targetWidth": 189,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 46
+      }
+    },
+    {
+      "targetWidth": 189,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 46
+      }
+    },
+    {
+      "targetWidth": 189,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 46
+      }
+    },
+    {
+      "targetWidth": 189,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 46
+      }
+    },
+    {
+      "targetWidth": 189,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 46
+      }
+    },
+    {
+      "targetWidth": 189,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 46
+      }
+    },
+    {
+      "targetWidth": 189,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 46
+      }
+    },
+    {
+      "targetWidth": 189,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 46
+      }
+    },
+    {
+      "targetWidth": 189,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 233,
+        "out": false,
+        "gems": 46
+      }
+    },
+    {
+      "targetWidth": 189,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 200,
+        "out": false,
+        "gems": 46
+      }
+    },
+    {
+      "targetWidth": 189,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 200,
+        "out": false,
+        "gems": 46
+      }
+    },
+    {
+      "targetWidth": 189,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 200,
+        "out": false,
+        "gems": 46
+      }
+    },
+    {
+      "targetWidth": 189,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 233,
+        "out": false,
+        "gems": 46
+      }
+    },
+    {
+      "targetWidth": 189,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 233,
+        "out": false,
+        "gems": 46
+      }
+    },
+    {
+      "targetWidth": 189,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 200,
+        "out": false,
+        "gems": 46
+      }
+    },
+    {
+      "targetWidth": 189,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 200,
+        "out": false,
+        "gems": 46
+      }
+    },
+    {
+      "targetWidth": 189,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 200,
+        "out": false,
+        "gems": 46
+      }
+    },
+    {
+      "targetWidth": 189,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 233,
+        "out": false,
+        "gems": 46
+      }
+    },
+    {
+      "targetWidth": 189,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 233,
+        "out": false,
+        "gems": 46
+      }
+    },
+    {
+      "targetWidth": 189,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 200,
+        "out": false,
+        "gems": 46
+      }
+    },
+    {
+      "targetWidth": 189,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 200,
+        "out": false,
+        "gems": 46
+      }
+    },
+    {
+      "targetWidth": 189,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 200,
+        "out": false,
+        "gems": 46
+      }
+    },
+    {
+      "targetWidth": 189,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 233,
+        "out": false,
+        "gems": 46
+      }
+    },
+    {
+      "targetWidth": 200,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": -8,
+      "noticedMs": 167,
+      "hit": null
+    },
+    {
+      "targetWidth": 190,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 567,
+        "out": false,
+        "gems": 41
+      }
+    },
+    {
+      "targetWidth": 190,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 533,
+        "out": false,
+        "gems": 41
+      }
+    },
+    {
+      "targetWidth": 190,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 567,
+        "out": false,
+        "gems": 41
+      }
+    },
+    {
+      "targetWidth": 200,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": 8,
+      "noticedMs": 167,
+      "hit": null
+    },
+    {
+      "targetWidth": 200,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 167,
+      "hit": null
+    },
+    {
+      "targetWidth": 190,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 567,
+        "out": false,
+        "gems": 41
+      }
+    },
+    {
+      "targetWidth": 190,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 533,
+        "out": false,
+        "gems": 41
+      }
+    },
+    {
+      "targetWidth": 190,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 567,
+        "out": false,
+        "gems": 41
+      }
+    },
+    {
+      "targetWidth": 190.5,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 167,
+      "hit": {
+        "time": 600,
+        "out": false,
+        "gems": 40
+      }
+    },
+    {
+      "targetWidth": 200,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 167,
+      "hit": null
+    },
+    {
+      "targetWidth": 190,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 567,
+        "out": false,
+        "gems": 41
+      }
+    },
+    {
+      "targetWidth": 190,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 533,
+        "out": false,
+        "gems": 41
+      }
+    },
+    {
+      "targetWidth": 190,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 567,
+        "out": false,
+        "gems": 41
+      }
+    },
+    {
+      "targetWidth": 190.5,
+      "initialWidth": 200,
+      "shooterWidth": 150,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 167,
+      "hit": {
+        "time": 600,
+        "out": false,
+        "gems": 40
+      }
+    },
+    {
+      "targetWidth": 188,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 188,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 188,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 188,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 188,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 188,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 188,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 188,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 188,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 188,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 188,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 188,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 188,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 188,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 188,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 188,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 200,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 188,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 200,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 188,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 200,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 188,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 200,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 188,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 200,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 188,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 200,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 188,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 200,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 188,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 200,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 188,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 200,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 188,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 200,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 188,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 200,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 188,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 200,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 188,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 200,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 188,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 200,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 188,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 200,
+        "out": false,
+        "gems": 49
+      }
+    },
+    {
+      "targetWidth": 200,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": -8,
+      "noticedMs": 167,
+      "hit": null
+    },
+    {
+      "targetWidth": 188.5,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 500,
+        "out": false,
+        "gems": 48
+      }
+    },
+    {
+      "targetWidth": 188.5,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 500,
+        "out": false,
+        "gems": 48
+      }
+    },
+    {
+      "targetWidth": 188.5,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 500,
+        "out": false,
+        "gems": 48
+      }
+    },
+    {
+      "targetWidth": 200,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": 8,
+      "noticedMs": 167,
+      "hit": null
+    },
+    {
+      "targetWidth": 200,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 167,
+      "hit": null
+    },
+    {
+      "targetWidth": 188.5,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 533,
+        "out": false,
+        "gems": 47
+      }
+    },
+    {
+      "targetWidth": 188.5,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 500,
+        "out": false,
+        "gems": 48
+      }
+    },
+    {
+      "targetWidth": 188.5,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 500,
+        "out": false,
+        "gems": 48
+      }
+    },
+    {
+      "targetWidth": 189,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 167,
+      "hit": {
+        "time": 600,
+        "out": false,
+        "gems": 46
+      }
+    },
+    {
+      "targetWidth": 200,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 167,
+      "hit": null
+    },
+    {
+      "targetWidth": 188.5,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 533,
+        "out": false,
+        "gems": 47
+      }
+    },
+    {
+      "targetWidth": 188.5,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 500,
+        "out": false,
+        "gems": 48
+      }
+    },
+    {
+      "targetWidth": 188.5,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 500,
+        "out": false,
+        "gems": 48
+      }
+    },
+    {
+      "targetWidth": 189,
+      "initialWidth": 200,
+      "shooterWidth": 200,
+      "ratio": 1,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 167,
+      "hit": {
+        "time": 600,
+        "out": false,
+        "gems": 46
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 200,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 200,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 200,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 200,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 200,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 200,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 500,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 467,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 467,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 467,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 500,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 500,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 467,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 467,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 467,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 467,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 500,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 467,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 467,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 467,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394.5,
+      "initialWidth": 400,
+      "shooterWidth": 300,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 467,
+        "out": false,
+        "gems": 54
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 467,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 467,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 467,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 467,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 467,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 394,
+      "initialWidth": 400,
+      "shooterWidth": 400,
+      "ratio": 1,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 467,
+        "out": false,
+        "gems": 60
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487.5,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487.5,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487.5,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487.5,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487.5,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487.5,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487.5,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487.5,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487.5,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487.5,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487.5,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487.5,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487.5,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487.5,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487.5,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487.5,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487.5,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487.5,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487.5,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487.5,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487.5,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487.5,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487.5,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487.5,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487.5,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487.5,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487.5,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487.5,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487.5,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487.5,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 400,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 400,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 400,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 487,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 650,
+      "ratio": 1,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 650,
+      "ratio": 1,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 650,
+      "ratio": 1,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 650,
+      "ratio": 1,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 650,
+      "ratio": 1,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 650,
+      "ratio": 1,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 650,
+      "ratio": 1,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 650,
+      "ratio": 1,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 650,
+      "ratio": 1,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 650,
+      "ratio": 1,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 650,
+      "ratio": 1,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 650,
+      "ratio": 1,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 650,
+      "ratio": 1,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 650,
+      "ratio": 1,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 650,
+      "ratio": 1,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 650,
+      "ratio": 1,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 650,
+      "ratio": 1,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 650,
+      "ratio": 1,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 650,
+      "ratio": 1,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 650,
+      "ratio": 1,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 650,
+      "ratio": 1,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 650,
+      "ratio": 1,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 650,
+      "ratio": 1,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 650,
+      "ratio": 1,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 650,
+      "ratio": 1,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 650,
+      "ratio": 1,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 650,
+      "ratio": 1,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 650,
+      "ratio": 1,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 650,
+      "ratio": 1,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 650,
+      "ratio": 1,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 649.5,
+      "ratio": 1,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 649.5,
+      "ratio": 1,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 649.5,
+      "ratio": 1,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 400,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 649.5,
+      "ratio": 1,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 649.5,
+      "ratio": 1,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 649.5,
+      "ratio": 1,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 649.5,
+      "ratio": 1,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 649.5,
+      "ratio": 1,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 400,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 649.5,
+      "ratio": 1,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 649.5,
+      "ratio": 1,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 649.5,
+      "ratio": 1,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 649.5,
+      "ratio": 1,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 649.5,
+      "ratio": 1,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 400,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 649.5,
+      "ratio": 1,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 646.5,
+      "initialWidth": 650,
+      "shooterWidth": 649.5,
+      "ratio": 1,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 71
+      }
+    },
+    {
+      "targetWidth": 898.5,
+      "initialWidth": 900,
+      "shooterWidth": 675,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898.5,
+      "initialWidth": 900,
+      "shooterWidth": 675,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898.5,
+      "initialWidth": 900,
+      "shooterWidth": 675,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898.5,
+      "initialWidth": 900,
+      "shooterWidth": 675,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898.5,
+      "initialWidth": 900,
+      "shooterWidth": 675,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898.5,
+      "initialWidth": 900,
+      "shooterWidth": 675,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898.5,
+      "initialWidth": 900,
+      "shooterWidth": 675,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898.5,
+      "initialWidth": 900,
+      "shooterWidth": 675,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898.5,
+      "initialWidth": 900,
+      "shooterWidth": 675,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898.5,
+      "initialWidth": 900,
+      "shooterWidth": 675,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898.5,
+      "initialWidth": 900,
+      "shooterWidth": 675,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898.5,
+      "initialWidth": 900,
+      "shooterWidth": 675,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898.5,
+      "initialWidth": 900,
+      "shooterWidth": 675,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898.5,
+      "initialWidth": 900,
+      "shooterWidth": 675,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898.5,
+      "initialWidth": 900,
+      "shooterWidth": 675,
+      "ratio": 0.75,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 674.5,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 674.5,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 674.5,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 674.5,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 674.5,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 674.5,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 674.5,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 674.5,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 674.5,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 674.5,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 674.5,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 674.5,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 674.5,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 674.5,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 674.5,
+      "ratio": 0.75,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 674.5,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 674.5,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 674.5,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 400,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 674.5,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 674.5,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 674.5,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 674.5,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 674.5,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 400,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 674.5,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 674.5,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 674.5,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 674.5,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 674.5,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 400,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 674.5,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 674.5,
+      "ratio": 0.75,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898.5,
+      "initialWidth": 900,
+      "shooterWidth": 900,
+      "ratio": 1,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898.5,
+      "initialWidth": 900,
+      "shooterWidth": 900,
+      "ratio": 1,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898.5,
+      "initialWidth": 900,
+      "shooterWidth": 900,
+      "ratio": 1,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898.5,
+      "initialWidth": 900,
+      "shooterWidth": 900,
+      "ratio": 1,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898.5,
+      "initialWidth": 900,
+      "shooterWidth": 900,
+      "ratio": 1,
+      "gap": 100,
+      "response": "idle",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898.5,
+      "initialWidth": 900,
+      "shooterWidth": 900,
+      "ratio": 1,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898.5,
+      "initialWidth": 900,
+      "shooterWidth": 900,
+      "ratio": 1,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898.5,
+      "initialWidth": 900,
+      "shooterWidth": 900,
+      "ratio": 1,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898.5,
+      "initialWidth": 900,
+      "shooterWidth": 900,
+      "ratio": 1,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898.5,
+      "initialWidth": 900,
+      "shooterWidth": 900,
+      "ratio": 1,
+      "gap": 100,
+      "response": "side300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898.5,
+      "initialWidth": 900,
+      "shooterWidth": 900,
+      "ratio": 1,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898.5,
+      "initialWidth": 900,
+      "shooterWidth": 900,
+      "ratio": 1,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898.5,
+      "initialWidth": 900,
+      "shooterWidth": 900,
+      "ratio": 1,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898.5,
+      "initialWidth": 900,
+      "shooterWidth": 900,
+      "ratio": 1,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898.5,
+      "initialWidth": 900,
+      "shooterWidth": 900,
+      "ratio": 1,
+      "gap": 100,
+      "response": "weave300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 33,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 899.5,
+      "ratio": 1,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 899.5,
+      "ratio": 1,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 899.5,
+      "ratio": 1,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 899.5,
+      "ratio": 1,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 899.5,
+      "ratio": 1,
+      "gap": 350,
+      "response": "idle",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 899.5,
+      "ratio": 1,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 899.5,
+      "ratio": 1,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 899.5,
+      "ratio": 1,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 899.5,
+      "ratio": 1,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 899.5,
+      "ratio": 1,
+      "gap": 350,
+      "response": "side300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 899.5,
+      "ratio": 1,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 899.5,
+      "ratio": 1,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 899.5,
+      "ratio": 1,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 899.5,
+      "ratio": 1,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 899.5,
+      "ratio": 1,
+      "gap": 350,
+      "response": "weave300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 167,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 899.5,
+      "ratio": 1,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 899.5,
+      "ratio": 1,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 899.5,
+      "ratio": 1,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 400,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 899.5,
+      "ratio": 1,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 899.5,
+      "ratio": 1,
+      "gap": 800,
+      "response": "idle",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 899.5,
+      "ratio": 1,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 899.5,
+      "ratio": 1,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 899.5,
+      "ratio": 1,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 400,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 899.5,
+      "ratio": 1,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 899.5,
+      "ratio": 1,
+      "gap": 800,
+      "response": "side300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 899.5,
+      "ratio": 1,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": -8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 899.5,
+      "ratio": 1,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": -4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 899.5,
+      "ratio": 1,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": 0,
+      "noticedMs": 0,
+      "hit": {
+        "time": 400,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 899.5,
+      "ratio": 1,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": 4,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 98
+      }
+    },
+    {
+      "targetWidth": 898,
+      "initialWidth": 900,
+      "shooterWidth": 899.5,
+      "ratio": 1,
+      "gap": 800,
+      "response": "weave300ms",
+      "aimErrorDegrees": 8,
+      "noticedMs": 0,
+      "hit": {
+        "time": 433,
+        "out": false,
+        "gems": 98
+      }
+    }
+  ]
+}

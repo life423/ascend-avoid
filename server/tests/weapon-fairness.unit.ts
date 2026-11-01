@@ -24,7 +24,7 @@ function activate(s: GameState, owner: string, kind: string, w = s.pinwheel) {
   return w;
 }
 function bolt(s: GameState, w: PinwheelSchema, id = 'hit') {
-  const b = new WeaponBoltSchema(); b.x = 2148; b.y = 2100; b.angle = 0; b.bornAt = s.time; w.bolts.set(id, b);
+  const b = new WeaponBoltSchema(); b.x = 2148; b.y = 2100; b.angle = 0; b.bornAt = s.time - 3000; w.bolts.set(id, b);
 }
 for (const bot of [false, true]) for (const kind of weaponKinds.filter(k => k !== 'pulsar')) for (const graze of [false, true]) {
   const { s, owner, p, credits } = setup(5000, bot), w = activate(s, owner.sessionId, kind), profile = weaponProfile(kind);
@@ -41,13 +41,14 @@ for (const bot of [false, true]) for (const kind of weaponKinds.filter(k => k !=
   assert.equal(p.gems, 5000 - lost, `${kind}: full center hit or quarter-damage outer graze`);
   assert.equal(owner.gems, lost); assert.equal(owner.weaponDamage, lost); assert.equal(s.gems.size, 0);
   assert.equal(p.injuredUntil > s.time, !graze, 'only a direct hit opens injury');
-  assert.equal(p.sliding, !graze, 'grazes do not repeatedly interrupt walking');
+  assert(!p.sliding && !p.recovering && !p.stunned, 'neither grazes nor direct weapon hits lock steering');
+  assert.equal(p.puffVx > 0, !graze, 'only a direct hit adds a brief steerable push');
   assert.equal(credits.length, 1); assert.equal(credits[0].glancing, graze);
   assert.equal(p.weaponSafeUntil, s.time + weaponHitPause(width));
 }
 {
   const {s,owner,p}=setup(),w=activate(s,owner.sessionId,'pinwheel');
-  p.placeAt(2600-p.width/2,2100-p.height/2);bolt(s,w);updateWeapons(s,.3,NOW);
+  p.placeAt(2600-p.width/2,2100-p.height/2);bolt(s,w);updateWeapons(s,.4,NOW);
   assert.equal(p.gems,4830,'a center-line approach is full damage at first shell contact, before reaching the core');
 }
 {
@@ -72,8 +73,8 @@ for (const core of [false, true]) {
   p.placeAt(w.x + (core ? 180 : 600) - p.width / 2, w.y - p.height / 2); w.beatAt = s.time;
   updateWeapons(s, 0, NOW);
   for (let age = 25; age <= 950; age += 25) { s.time = 1000 + age; updateWeapons(s, .025, NOW + age); }
-  assert.equal(p.gems, core ? 3750 : 5000, 'wave damage waits for the bounded core; shell-only contact is harmless');
-  assert.equal(credits.length, core ? 1 : 0); assert.equal(owner.gems, core ? 1250 : 0);
+  assert.equal(p.gems, core ? 4250 : 5000, 'wave damage waits for the bounded core; shell-only contact is harmless');
+  assert.equal(credits.length, core ? 1 : 0); assert.equal(owner.gems, core ? 750 : 0);
   assert.equal(impacts.filter(i => i.glancing).length, 1, 'one quiet deflection flash per wave');
   assert.equal(p.injuredUntil > 0, core);
 }

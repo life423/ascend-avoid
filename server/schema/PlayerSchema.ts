@@ -5,6 +5,7 @@ import { turnStep, walk } from "../game/movement.js";
 import { breathRate } from "../game/airflow.js";
 import { CANNON } from "../constants/gameConstants.js";
 import { creatureSize } from '../game/creatureSize.js';
+import { puffDrift } from '../game/puffImpulse.js';
 import type { Box, Direction } from "../game/movement.js";
 
 const { ARENA_RULES, GEMS, INHALE, PLAYER_STATE, PUSH, WORLD } = GAME_CONSTANTS;
@@ -46,6 +47,9 @@ class PlayerSchema extends Schema {
   tickNudgeY = 0;
   movementVx = 0;
   movementVy = 0;
+  /** Brief air impulse: additive to steering, never a stun or impact skid. */
+  puffVx = 0;
+  puffVy = 0;
   flightRemainingMs = 0;
   continuedTheft = false;
   theftContinuations = new Map<string, number>();
@@ -94,9 +98,9 @@ class PlayerSchema extends Schema {
   stealShares = new Map<string, number>();
   /** Server-only: how long each creature has been held in this one's inhale (0-1 of INHALE.LOCK_MS); fades fast once it's out */
   lockOn = new Map<string, number>();
-  /** Stunned by a gust or impact: can't steer or inhale until it wears off (synced, for drawing) */
+  /** Stunned by an impact: can't steer or inhale until it wears off (synced, for drawing) */
   stunned: boolean;
-  /** A brief missile daze preserves already-held ammunition; gusts and other hard stuns still eject it. */
+  /** A brief missile daze preserves already-held ammunition; other hard stuns still eject it. */
   holdThroughStun = false;
   /** Server-only: when the stun wears off, and when another can land */
   stunEndsAt = 0;
@@ -362,6 +366,11 @@ class PlayerSchema extends Schema {
     this.inhaling = false;
   }
 
+  pushWithControl(dx: number, dy: number, speed: number): void {
+    this.puffVx += dx * speed;
+    this.puffVy += dy * speed;
+  }
+
   /** Who shoved this player within the last `withinMs` (their session id), if anyone */
   shovedBy(now: number, withinMs: number): string | null {
     return this.lastShoveBy && now - this.lastShoveAt <= withinMs ? this.lastShoveBy : null;
@@ -487,6 +496,7 @@ class PlayerSchema extends Schema {
     this.dropLatch();
     this.vx = 0;
     this.vy = 0;
+    this.puffVx = this.puffVy = 0;
     this.sliding = false;
   }
 
@@ -519,7 +529,7 @@ class PlayerSchema extends Schema {
 
   /** How fast the player is moving right now: walking and sliding together */
   velocity(): { x: number; y: number } {
-    return { x: this.walkX + this.vx, y: this.walkY + this.vy };
+    return { x: this.walkX + this.vx + this.puffVx, y: this.walkY + this.vy + this.puffVy };
   }
 
   /** Inhale or loaded-cannon aim, independent of walking. A zero vector returns to movement aiming. */
@@ -601,6 +611,11 @@ class PlayerSchema extends Schema {
     }
     if (this.inhaling && now >= this.inhaleStopAt) this.stopInhale(now);
     if (this.stunned && now >= this.stunEndsAt) this.stunned = false;
+    if (!this.flying && !this.capturedBy) {
+      const air = { x: this.puffVx, y: this.puffVy };
+      puffDrift(this, air, deltaTime, worldWidth, worldHeight);
+      this.puffVx = air.x; this.puffVy = air.y;
+    }
     if (this.sliding) {
       this.walkX = 0;
       this.walkY = 0;
@@ -653,6 +668,7 @@ class PlayerSchema extends Schema {
   private stopSliding(): void {
     this.vx = 0;
     this.vy = 0;
+    this.puffVx = this.puffVy = 0;
     if (this.sliding) this.sliding = false;
   }
 }
@@ -720,3 +736,5 @@ type("number")(PlayerSchema.prototype, "captureHoldMs");
 type("number")(PlayerSchema.prototype, "weaponSafeUntil");
 
 type("boolean")(PlayerSchema.prototype, "breathingBlocked");
+type("number")(PlayerSchema.prototype, "puffVx");
+type("number")(PlayerSchema.prototype, "puffVy");

@@ -17,6 +17,7 @@ import { drawSurge } from '../render/surge'
 import { breathRate } from '../../server/game/airflow'
 import { CameraRig, constrainArenaView } from '../../server/game/camera'
 import { turnStep, walk } from '../../server/game/movement'
+import { puffDrift } from '../../server/game/puffImpulse'
 import { launchDuration, launchPosition, turbineBodyPush } from '../../server/game/turbine'
 import { OnlineControls } from './OnlineControls'
 import type { Breath } from './OnlineControls'
@@ -508,6 +509,7 @@ export class MultiplayerMode extends GameMode {
     constructor(game: Game, readonly session: OnlineSession = { kind: 'play' }) { super(game) }
     get isPractice(): boolean { return this.session.kind === 'practice' }
     private practiceReset = -1
+    private practicePhase = ''
     cancelInput(preserveMovement = false): void {
         if (!preserveMovement) this.game.inputManager?.reset()
         this.clearControls(preserveMovement)
@@ -758,9 +760,11 @@ export class MultiplayerMode extends GameMode {
     update(inputState: InputState, _deltaTime: number, _timestamp: number): void {
         const practice = this.multiplayerManager?.getState()?.practice
         if (this.isPractice && practice?.enabled) {
+            if (this.practicePhase === 'countdown' && practice.phase === 'waiting') this.cancelInput(true)
+            this.practicePhase = practice.phase
             const session = this.multiplayerManager?.session
             if (session?.kind === 'practice' && isPracticeLesson(practice.lesson)) { session.lesson = practice.lesson; session.sequence = practice.sequence }
-            if (practice.resetSerial !== this.practiceReset) { this.cancelInput(practice.phase === 'ready'); this.predicted = null; this.practiceReset = practice.resetSerial
+            if (practice.resetSerial !== this.practiceReset) { this.cancelInput(['ready', 'countdown'].includes(practice.phase)); this.predicted = null; this.practiceReset = practice.resetSerial
                 // Reading freezes motion, but a thumb still held from the previous step stays prepared.
                 // Real retries, lesson selection, blur and exit still discard all movement input.
                 // Scenario inventories are setup, not pickups. Genuine in-attempt gains still animate.
@@ -843,7 +847,7 @@ export class MultiplayerMode extends GameMode {
             this.predicted = null
             return
         }
-        const readingPractice = this.isPractice && state.practice?.phase === 'ready'
+        const readingPractice = this.isPractice && ['ready', 'countdown'].includes(state.practice?.phase ?? '')
         if (readingPractice) {
             this.sendSteer({ x: 0, y: 0 })
             this.predicted = { x: me.x, y: me.y }
@@ -855,7 +859,7 @@ export class MultiplayerMode extends GameMode {
             this.inhaleHeld = false
             this.multiplayerManager?.sendMessage(event, {})
         }
-        // Stunned by a gust or impact: no steering or action prediction.
+        // A hard impact stun blocks prediction; ordinary contact and air pushes do not.
         const keyX = Number(input.right) - Number(input.left)
         const keyY = Number(input.down) - Number(input.up)
         const keyLength = Math.hypot(keyX, keyY)
@@ -943,6 +947,7 @@ export class MultiplayerMode extends GameMode {
         this.localFacing = turn.facing
         this.localSpin = turn.spin
         const rimFrom = { x: box.x, y: box.y }
+        puffDrift(box, { x: me.puffVx, y: me.puffVy }, deltaTime, state.worldWidth, state.worldHeight)
         walk(box, this.velocity, steer, deltaTime, state.worldWidth, state.worldHeight)
         // Creatures are solid: stop at anyone you walk into and slide along them, as the server does
         const myId = this.multiplayerManager?.localSessionId
@@ -960,7 +965,7 @@ export class MultiplayerMode extends GameMode {
             if (overlap <= -ARENA_RULES.CONTACT_TOUCH || distance < 1e-6) return
             const nx = dx / distance
             const ny = dy / distance
-            // Touching: most of this step's sideways movement is undone unless you're moving away (as the server does)
+            // The same small contact friction as the server; moving away peels off freely.
             const speed = Math.hypot(this.velocity.x, this.velocity.y)
             const toward = -(this.velocity.x * nx + this.velocity.y * ny)
             if (speed > 1e-6 && toward >= -0.2 * speed) {
@@ -1048,6 +1053,15 @@ export class MultiplayerMode extends GameMode {
         const me = localId ? state.players.get(localId) : undefined
         this.trackKnockout(me)
         this.trackEvents(state, localId, timestamp)
+        if (this.isPractice) this.game.practiceUI?.tickCountdown(this.worldNow(state, timestamp))
+        const canvasBox = canvas.getBoundingClientRect(), safe = this.game.responsiveManager.safeArea
+        this.cssScale = canvas.width / Math.max(1, canvasBox.width)
+        for (const side of ['top', 'right', 'bottom', 'left'] as const) this.hudInsets[side] = safe[side] * this.cssScale
+        this.controls?.setInsets(this.hudInsets)
+        if (this.isPractice) {
+            this.weaponPlacement?.update(state, localId, false)
+            this.game.practiceUI?.layout(canvasBox, safe, this.controls?.touchBounds() ?? [])
+        }
         const view = this.updateCamera(canvas, state, me, timestamp)
         if (!CAMERA.LOCKED && timestamp < this.shakeUntil) {
             const strength = ((this.shakeUntil - timestamp) / SHAKE_MS) * 8
@@ -1084,7 +1098,7 @@ export class MultiplayerMode extends GameMode {
             const x = target ? target.x + target.width / 2 : objective.objectiveX
             const y = target ? target.y + target.height / 2 : objective.objectiveY
             const radius = target ? target.width / 2 + 14 : objective.objectiveKind === 'hole' ? 80 : 24
-            ctx.save(); ctx.strokeStyle = '#c0fff0'; ctx.lineWidth = 2 / view.scale
+            ctx.save(); ctx.strokeStyle = objective.lesson === 'defense' ? '#ff9b88' : '#c0fff0'; ctx.lineWidth = 2 / view.scale
             ctx.setLineDash([8 / view.scale, 5 / view.scale]); ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.stroke(); ctx.restore()
         }
         drawTurbines(this, ctx, state, timestamp)
@@ -1166,12 +1180,7 @@ export class MultiplayerMode extends GameMode {
 
         // Screen-space overlays: hidden while the opening plays, then fading in
         ctx.setTransform(1, 0, 0, 1, 0, 0)
-        this.cssScale = canvas.width / Math.max(1, canvas.getBoundingClientRect().width)
-        const safe = this.game.responsiveManager.safeArea
-        for (const side of ['top', 'right', 'bottom', 'left'] as const) this.hudInsets[side] = safe[side] * this.cssScale
-        this.controls?.setInsets(this.hudInsets)
         const chrome = document.querySelector<HTMLElement>(document.body.classList.contains('bar-hidden') ? '.bar-tab' : '.app-header')?.getBoundingClientRect()
-        const canvasBox = canvas.getBoundingClientRect()
         this.chromeBottom = chrome && chrome.width > 0 ? Math.max(this.hudInsets.top, (chrome.bottom - canvasBox.top) * this.cssScale) : this.hudInsets.top
         this.chromeLeft = chrome && chrome.width > 0 ? (chrome.left - canvasBox.left) * this.cssScale : canvas.width
         const hud = this.isPractice ? 1 : this.runIntro(ctx, canvas, timestamp)
@@ -1199,10 +1208,11 @@ export class MultiplayerMode extends GameMode {
                 this.controls.action = me?.capturedBy ? 'CAPTURED' : me?.gulping ? 'FIRE' : me?.breathingBlocked ? 'INJURED' : me?.mouth ? 'SPIT' : 'INHALE'
                 this.controls.puffCooldown = Math.max(0, ((me?.puffReadyAt ?? 0) - this.worldNow(state, timestamp)) / 1000)
                 this.controls.puffNeedsBreath = this.stamina < EXHALE.BREATH_COST
+                this.controls.observeInhale(!!me?.inhaling, !!me && me.state === 'alive' && !me.stunned && !me.flying && !me.capturedBy && !me.breathingBlocked && !this.introPlaying && !(this.isPractice && ['ready', 'countdown'].includes(state.practice?.phase ?? '')))
             }
             if (!this.isPractice && !this.introPlaying) this.game.practiceUI?.offerIfReady()
             ctx.save()
-            if (this.isPractice && state.practice?.phase === 'ready') ctx.globalAlpha *= .4
+            if (this.isPractice && ['ready', 'countdown'].includes(state.practice?.phase ?? '')) ctx.globalAlpha *= .4
             this.controls?.draw(ctx, timestamp, this.breath)
             ctx.restore()
             drawIncoming(this, ctx, canvas, state, me, timestamp)

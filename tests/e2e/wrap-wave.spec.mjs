@@ -1,11 +1,15 @@
 import { test, expect } from '@playwright/test';
 import { Client } from 'colyseus.js';
+import { practiceInput } from './helpers/practice.mjs';
 
 test.skip(process.env.E2E_TEST_HOOKS !== '1', 'isolated local server only');
 
 async function scene(page, baseURL) {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
+  page.on('console', message => {
+    if (message.text().includes('gustHit') && /not registered|no.*handler/i.test(message.text())) errors.push(message.text());
+  });
   await page.addInitScript(() => {
     localStorage.setItem('ascend.guideSeen', 'true');
     localStorage.setItem('ascend.mouseFollow', 'off');
@@ -46,7 +50,7 @@ const read = page => page.evaluate(() => {
     squash: m.contactShapes.get(p.sessionId)?.amount ?? 0 };
 });
 
-test('a forward puff gives a fleeing player fixed rear cover without turning', async ({ page, baseURL, hasTouch, browserName }) => {
+test('a forward puff wraps behind and shoves once without a stun or barrier', async ({ page, baseURL, hasTouch, browserName }) => {
   const { peer, errors } = await scene(page, baseURL);
   let cdp;
   const points = new Map();
@@ -77,6 +81,8 @@ test('a forward puff gives a fleeing player fixed rear cover without turning', a
     await expect.poll(async () => (await read(page)).wave).not.toBeNull();
     const cast = (await read(page)).wave;
     await expect.poll(() => peer.state.players.get(peer.sessionId).inhaling, { intervals: [20, 30, 50] }).toBe(false);
+    // The peer's interruption patch may arrive before this browser's world clock patch.
+    await expect.poll(async () => (await read(page)).wave?.age ?? -1, { intervals: [20, 30] }).toBeGreaterThanOrEqual(220);
     const covered = await read(page);
     expect(covered.wave).not.toBeNull();
     expect(covered.wave.age).toBeGreaterThanOrEqual(200);
@@ -84,7 +90,11 @@ test('a forward puff gives a fleeing player fixed rear cover without turning', a
     expect(Math.abs(covered.facing)).toBeLessThan(.1);
     expect(covered.stunned).toBe(false);
     expect(peer.state.players.get(peer.sessionId).stunned).toBe(false);
-    await page.screenshot({ path: test.info().outputPath('rear-cover-while-fleeing.png'), scale: 'css' });
+    expect(peer.state.players.get(peer.sessionId).sliding).toBe(false);
+    const chaserY = peer.state.players.get(peer.sessionId).y;
+    peer.send('steer', { x: 0, y: 1 });
+    await page.screenshot({ path: test.info().outputPath('rear-airflow-while-fleeing.png'), scale: 'css' });
+    await expect.poll(() => peer.state.players.get(peer.sessionId).y, { intervals: [20, 30] }).toBeGreaterThan(chaserY + 2);
     await expect.poll(async () => (await read(page)).x).toBeGreaterThan(before.x + 60);
     await expect.poll(async () => (await read(page)).wave).toBeNull();
     expect((await read(page)).gems).toBe(100);
@@ -118,4 +128,48 @@ test('body contact compresses smoothly while the player keeps steering', async (
     expect((await read(page)).gems).toBe(100);
     expect(errors).toEqual([]);
   } finally { await page.keyboard.up('ArrowRight'); await page.keyboard.up('ArrowDown'); await peer.leave(); }
+});
+
+test('a real weapon bolt leaves keyboard and thumb movement available during its push', async ({ page, baseURL, browserName, hasTouch }) => {
+  const { peer, send, errors } = await scene(page, baseURL);
+  const input = await practiceInput(page, browserName, hasTouch);
+  try {
+    await send('test:moveTo', { x: 3100, y: 3100 });
+    peer.send('test:setGems', { count: 1000 });
+    await expect.poll(() => peer.state.players.get(peer.sessionId).gems).toBe(1000);
+    const width = peer.state.players.get(peer.sessionId).width;
+    peer.send('test:moveTo', { x: 2000 - width / 2, y: 2000 - width / 2 });
+    peer.send('test:face', { angle: 0 });
+    peer.send('test:pinwheel', { x: 2000, y: 2000, kind: 'pinwheel' });
+    await expect.poll(() => peer.state.pinwheel.phase).toBe('carried');
+    peer.send('placeWeapon');
+    await expect.poll(() => peer.state.pinwheel.phase).toBe('active');
+    await page.waitForFunction(() => {
+      const s = window.game.currentGameMode.multiplayerManager.getState();
+      return [...s.pinwheel.bolts.values()].some(b => s.time - b.bornAt >= 600 && b.traveled < 650);
+    });
+    const angle = await page.evaluate(() => {
+      const m = window.game.currentGameMode, s = m.multiplayerManager.getState(), p = m.multiplayerManager.getLocalPlayer();
+      const bolt = [...s.pinwheel.bolts.values()].find(b => s.time - b.bornAt >= 600 && b.traveled < 650);
+      if (!bolt) throw Error('The selected live bolt expired before arranging its collision');
+      const gap = p.width / 2 + 35;
+      m.multiplayerManager.room.send('test:moveTo', {
+        x: bolt.x + Math.cos(bolt.angle) * gap - p.width / 2,
+        y: bolt.y + Math.sin(bolt.angle) * gap - p.height / 2,
+      });
+      return bolt.angle;
+    });
+    await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getLocalPlayer().gems < 100);
+    const hit = await read(page);
+    expect(hit.stunned).toBe(false); expect(hit.sliding).toBe(false); expect(hit.injury).toBeGreaterThan(0);
+    const tx = -Math.sin(angle), ty = Math.cos(angle);
+    await input.move(tx, ty);
+    await page.waitForTimeout(180);
+    const after = await read(page);
+    expect((after.x - hit.x) * tx + (after.y - hit.y) * ty).toBeGreaterThan(8);
+    expect(after.stunned).toBe(false); expect(after.sliding).toBe(false);
+    expect(peer.state.players.get(peer.sessionId).weaponDamage).toBe(24);
+    await page.screenshot({ path: test.info().outputPath('steering-through-weapon-impact.png'), scale: 'css' });
+    expect(errors).toEqual([]);
+  } finally { await input.close(); await peer.leave(); }
 });

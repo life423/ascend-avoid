@@ -101,13 +101,15 @@ function setup() {
   b.setGems(100, s.worldWidth, s.worldHeight); b.placeAt(2250, 1950);
   a.placeAt(2100, 1990);
   w.bolts.clear();
-  const bolt = new WeaponBoltSchema(); bolt.x = 2090; bolt.y = 2000; bolt.bornAt = s.time; bolt.angle = 0;
+  const bolt = new WeaponBoltSchema(); bolt.x = 2090; bolt.y = 2000; bolt.bornAt = s.time - 3000; // Already-live projectile: launch safety is tested separately.
+ bolt.angle = 0;
   w.bolts.set('test', bolt);
   updateWeapons(s, 0.4, NOW);
   assert.equal(b.gems, 76, 'a swept bolt removes 24 gems from a 100-gem target, up from 16');
   assert(b.injuredUntil > s.time, 'a damaging Pinwheel hit exposes gems');
   assert.equal(a.gems, 24, 'the builder receives the actual removed gems');
   assert(!b.stunned, 'weapon bolts do not repeatedly stun targets');
+  assert(!b.sliding && !b.recovering && b.puffVx > 0, 'a bolt push retains steering instead of starting an impact skid');
   assert(!w.bolts.has('test'), 'each bolt hits once');
   s.time = w.at; updateWeapons(s, 0.01, NOW);
   assert.equal(w.phase, 'waiting'); assert.equal(w.bolts.size, 0);
@@ -116,7 +118,8 @@ for (const gems of [0, 7, 10, 20, 100, 1000]) {
   const { s, w, a, b } = setup();
   a.placeAt(1500, 1500); b.setGems(gems, s.worldWidth, s.worldHeight); b.placeAt(2200, 2000 - b.width / 2);
   w.owner = a.sessionId; w.phase = 'active'; w.at = s.time + 8000; w.nextShotAt = s.time + 10000;
-  const bolt = new WeaponBoltSchema(); bolt.x = 2090; bolt.y = 2000; bolt.angle = 0; bolt.bornAt = s.time;
+  const bolt = new WeaponBoltSchema(); bolt.x = 2090; bolt.y = 2000; bolt.angle = 0; bolt.bornAt = s.time - 3000; // Already-live projectile: launch safety is tested separately.
+
   w.bolts.set('damage', bolt);
   const credit: Record<string, unknown>[] = []; s.onEvent = (type, data) => { if (type === 'credit') credit.push(data); };
   updateWeapons(s, .4, NOW);
@@ -136,7 +139,7 @@ for (const gems of [0, 7, 10, 20, 100, 1000]) {
     s.time += 20; updateWeapons(s, .02, NOW + s.time);
     for (const [id, bolt] of w.bolts) angles.set(id, bolt.angle);
   }
-  assert(angles.size >= 27, 'rapid spinning fire launches at least 27 bolts in four seconds');
-  assert(new Set([...angles.values()].map(a => Math.floor(a * 10))).size > 20, 'successive straight bullets fan into an outward spiral');
+  assert(angles.size >= 12 && angles.size <= 13, 'spaced spinning fire launches about three bolts per second');
+  assert(new Set([...angles.values()].map(a => Math.floor(a * 10))).size >= 10, 'straight bullets retain the outward spiral with wider gaps');
 }
 console.log('Pinwheel regressions passed: claims, carrying, rapid spiral fire, mass-scaled damage, knockout credit and respawn.');
