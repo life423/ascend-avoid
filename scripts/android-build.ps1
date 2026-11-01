@@ -1,5 +1,7 @@
-param([ValidateSet('Debug','Release')][string]$Configuration = 'Debug')
+param([ValidateSet('Debug','Release')][string]$Configuration = 'Debug', [ValidateSet('production','test')][string]$Target = 'production')
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'android-target.ps1')
+$targetConfig = Get-AndroidTarget -Name $Target
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $toolRoot = Join-Path $env:USERPROFILE '.android/ascend-avoid-build'
 $configPath = Join-Path $toolRoot 'toolchain.json'
@@ -31,17 +33,17 @@ try {
     Push-Location (Join-Path $repoRoot 'android')
     try {
         $tasks = if ($Configuration -eq 'Release') { @('assembleRelease','bundleRelease','lintRelease') } else { @('assembleDebug') }
-        & .\gradlew.bat @tasks '--console=plain' '--no-daemon'
+        & .\gradlew.bat @tasks "-PascendTarget=$Target" '--console=plain' '--no-daemon'
         if ($LASTEXITCODE -ne 0) { throw "Android build failed ($LASTEXITCODE)" }
     } finally { Pop-Location }
-    $artifacts = Join-Path $repoRoot 'artifacts/android'
+    $artifacts = $targetConfig.artifactRoot
     New-Item -ItemType Directory -Force -Path $artifacts | Out-Null
     if ($Configuration -eq 'Release') {
-        Copy-Item -LiteralPath (Join-Path $repoRoot 'android/app/build/outputs/apk/release/app-release.apk') -Destination (Join-Path $artifacts 'Ascend-Avoid.apk') -Force
-        Copy-Item -LiteralPath (Join-Path $repoRoot 'android/app/build/outputs/bundle/release/app-release.aab') -Destination (Join-Path $artifacts 'Ascend-Avoid.aab') -Force
-        & (Join-Path $PSScriptRoot 'android-assetlinks.ps1')
+        Copy-Item -LiteralPath (Join-Path $repoRoot 'android/app/build/outputs/apk/release/app-release.apk') -Destination (Join-Path $artifacts "$($targetConfig.artifactName).apk") -Force
+        Copy-Item -LiteralPath (Join-Path $repoRoot 'android/app/build/outputs/bundle/release/app-release.aab') -Destination (Join-Path $artifacts "$($targetConfig.artifactName).aab") -Force
+        & (Join-Path $PSScriptRoot 'android-assetlinks.ps1') -Target $Target
     } else {
-        Copy-Item -LiteralPath (Join-Path $repoRoot 'android/app/build/outputs/apk/debug/app-debug.apk') -Destination (Join-Path $artifacts 'Ascend-Avoid-debug.apk') -Force
+        Copy-Item -LiteralPath (Join-Path $repoRoot 'android/app/build/outputs/apk/debug/app-debug.apk') -Destination (Join-Path $artifacts "$($targetConfig.artifactName)-debug.apk") -Force
     }
     Get-ChildItem -LiteralPath $artifacts | Select-Object Name,Length
 } finally {

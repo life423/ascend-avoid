@@ -2,9 +2,12 @@ param(
     [ValidateSet('Install','Devices','Pair')][string]$Action = 'Install',
     [ValidatePattern('^\S+:\d{1,5}$')][string]$Address,
     [ValidatePattern('^\S+$')][string]$Serial,
+    [ValidateSet('production','test')][string]$Target = 'production',
     [switch]$SkipBuild
 )
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'android-target.ps1')
+$targetConfig = Get-AndroidTarget -Name $Target
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $configPath = Join-Path $env:USERPROFILE '.android/ascend-avoid-build/toolchain.json'
 if (-not (Test-Path -LiteralPath $configPath)) { throw 'Run npm run android:setup -- -AcceptLicenses first.' }
@@ -37,6 +40,20 @@ function Select-Phone {
     $selected[0].Serial
 }
 
+function Select-UniquePhoneTransport {
+    param([string[]]$DeviceLines)
+    $transports = @(foreach ($line in $DeviceLines) { if ($line -match '^(\S+)\s+device\b') { $Matches[1] } })
+    if ($transports.Count -lt 2) { return }
+    $hardwareIds = @(foreach ($transport in $transports) {
+        (Invoke-Adb -Arguments @('-s',$transport,'shell','getprop','ro.serialno') | Out-String).Trim()
+    })
+    # Wi-Fi may list the same phone by IP and mDNS. Never infer identity from a model name.
+    if (@($hardwareIds | Where-Object { -not $_ -or $_ -eq 'unknown' }).Count -gt 0 -or @($hardwareIds | Sort-Object -Unique).Count -ne 1) { return }
+    $automatic = @($transports | Where-Object { $_ -match '_adb-tls-connect\._tcp$' })
+    if ($automatic.Count) { return $automatic[0] }
+    return $transports[0]
+}
+
 if ($Action -eq 'Devices') {
     Invoke-Adb -Arguments @('devices','-l')
     Invoke-Adb -Arguments @('mdns','services')
@@ -55,26 +72,28 @@ if ($Address) {
     if (-not ($connection -match '^(already )?connected to ')) { throw "Could not connect to phone: $($connection -join ' ')" }
     $Serial = $Address
 }
-$device = Select-Phone -DeviceLines @(Invoke-Adb -Arguments @('devices','-l')) -RequestedSerial $Serial
+$deviceLines = @(Invoke-Adb -Arguments @('devices','-l'))
+if (-not $Serial) { $Serial = Select-UniquePhoneTransport -DeviceLines $deviceLines }
+$device = Select-Phone -DeviceLines $deviceLines -RequestedSerial $Serial
 $sdk = (Invoke-Adb -Arguments @('-s',$device,'shell','getprop','ro.build.version.sdk') | Out-String).Trim()
 if ($sdk -notmatch '^\d+$' -or [int]$sdk -lt 24) { throw 'Ascend Avoid requires Android 7.0/API 24 or newer.' }
 $model = (Invoke-Adb -Arguments @('-s',$device,'shell','getprop','ro.product.model') | Out-String).Trim()
 Write-Host "Selected phone: $model (Android API $sdk)"
 
-if (-not $SkipBuild) { & (Join-Path $PSScriptRoot 'android-build.ps1') -Configuration Release }
-& (Join-Path $PSScriptRoot 'android-verify.ps1')
-$artifactRoot = Join-Path $repoRoot 'artifacts/android'
-$apk = Join-Path $artifactRoot 'Ascend-Avoid.apk'
-$packageId = 'io.drewclark.ascendavoid'
+if (-not $SkipBuild) { & (Join-Path $PSScriptRoot 'android-build.ps1') -Configuration Release -Target $Target }
+& (Join-Path $PSScriptRoot 'android-verify.ps1') -Target $Target
+$artifactRoot = $targetConfig.artifactRoot
+$apk = Join-Path $artifactRoot "$($targetConfig.artifactName).apk"
+$packageId = $targetConfig.packageId
 $installed = Invoke-Adb -Arguments @('-s',$device,'install','-r',$apk)
 if (-not ($installed -match '^Success\s*$')) { throw "Installation did not report success: $($installed -join ' ')" }
 $packagePath = Invoke-Adb -Arguments @('-s',$device,'shell','pm','path',$packageId)
 if (-not ($packagePath -match '^package:')) { throw 'Android did not report the installed app package.' }
-$launch = Invoke-Adb -Arguments @('-s',$device,'shell','am','start','-W','-n',"$packageId/.LauncherActivity")
+$launch = Invoke-Adb -Arguments @('-s',$device,'shell','am','start','-W','-n',"$packageId/$($targetConfig.launcher)")
 if (-not ($launch -match '^Status:\s+ok\s*$')) { throw "Android did not confirm a successful launch: $($launch -join ' ')" }
 $proof = [ordered]@{
     installedAt=[DateTime]::UtcNow.ToString('o');device=$device;model=$model;sdk=[int]$sdk
-    packageId=$packageId;apkSha256=(Get-FileHash -LiteralPath $apk -Algorithm SHA256).Hash
+    packageId=$packageId;origin=$targetConfig.origin;apkSha256=(Get-FileHash -LiteralPath $apk -Algorithm SHA256).Hash
     installed=$true;launcherStarted=$true;fullScreenVerified=$false;manualPlaytestComplete=$false
 }
 $proof | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $artifactRoot 'device-installation.json') -Encoding utf8

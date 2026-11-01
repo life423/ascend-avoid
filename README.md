@@ -43,6 +43,11 @@ available devices; the Android guide covers pairing and installing an existing A
 using a privately entered passphrase. The current [testing workflow and checklist](docs/ANDROID_TESTING_WORKFLOW.md)
 tracks staging, device checks and Google Play preparation.
 
+The separate **Ascend Avoid Test** app opens staging and can be installed beside
+the regular app with `npm run android:test:phone`. Its build/verification commands
+are `android:test:build` and `android:test:verify`; output stays under
+`artifacts/android/test/`.
+
 ## Checks
 
 ```sh

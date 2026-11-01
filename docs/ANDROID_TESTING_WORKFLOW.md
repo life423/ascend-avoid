@@ -9,7 +9,7 @@ APK push from GitHub to the user's phone.
 ## Five work areas
 
 1. **Git/GitHub and release traceability — started.** Wireless install support is
-   committed as `f6605ef` and backed up in PR #65. Main already requires `CI Build
+   committed as `f6605ef` and merged in PR #65 as `97c9a35`. Main already requires `CI Build
    and Test`; force pushes/deletion are blocked. Keep short-lived feature branches
    and pull requests rather than a second long-lived codebase. The explicitly
    deferred Ubuntu browser matrix stays deferred. Future work: expose both APK
@@ -29,12 +29,15 @@ APK push from GitHub to the user's phone.
    than an untested feature. All nine existing Android website integration cases
    passed against this baseline on desktop Chrome, Android Chrome emulation and
    iPhone Safari emulation. This does not establish physical-phone testing.
-   The new staging Actions workflow must first land on main to become dispatchable;
-   it then checks an exact feature commit and deploys its image digest to staging
+   The staging Actions workflow is now on main and dispatchable;
+   it checks an exact feature commit and deploys its image digest to staging
    only. GitHub's `staging` deployment environment has been created and restricts
    workflow controllers to protected branches. YAML parsing and embedded Bash
-   syntax checks pass; the workflow itself has not run yet.
-   **A separately named/package-isolated Test APK is not built yet.**
+   syntax checks pass. The Test APK is built and signature/bundle verified with
+   its own package, app name and compiled staging URL. Local production and staging
+   modes each pass nine browser integration checks, including association isolation.
+   Hosted deployment and phone results are recorded by the corresponding workflow
+   run and ignored `artifacts/android/test/device-installation.json`.
 4. **Physical device and human play — partial.** The user's Pixel 10 Pro XL runs
    Android 17/API 37. The production APK was installed wirelessly and portrait
    full-screen launch inspected. Remaining: both orientations, aim/movement/puff,
@@ -53,7 +56,7 @@ APK push from GitHub to the user's phone.
 ## Candidate to release
 
 - Work on a feature branch and open a PR targeting main. Required CI runs there.
-- Once the staging workflow is on main, run **Test a candidate on staging** from
+- Run **Test a candidate on staging** from
   main, supplying the feature commit's full SHA. Credentials remain in GitHub
   secrets. Only the hardcoded staging app is targeted, and the deployment receipt
   records the actual digest/revision. Staging never updates production's latest tag.
@@ -64,7 +67,8 @@ APK push from GitHub to the user's phone.
   not released merely because it was pushed to GitHub.
 - Native app changes additionally need the signed install command or a Play release.
   Keep the Test package separate so it can coexist with the regular app. The Test
-  APK, staging Digital Asset Links and CI native artifacts remain implementation work.
+  APK is built with `npm run android:test:build`; install it using
+  `npm run android:test:phone`. CI native artifact distribution remains follow-up work.
 
 No public self-hosted Actions runner on the user's PC is planned. Wireless ADB
 remains a local device-testing channel. Azure federation/OIDC and richer artifact

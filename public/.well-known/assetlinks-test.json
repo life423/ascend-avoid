@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "io.drewclark.ascendavoid.staging",
+      "sha256_cert_fingerprints": [
+        "99:2E:B4:71:81:50:C2:E3:97:8F:4E:D9:2B:EF:11:91:7B:FD:7C:58:8C:DB:B4:55:CD:07:ED:DD:5D:B6:4F:BF"
+      ]
+    }
+  }
+]
