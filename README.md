@@ -35,6 +35,14 @@ PowerShell 7, run `npm run android:setup -- -AcceptLicenses`, then
 `artifacts/android/`. [Android build and release](docs/ANDROID_RELEASE.md) covers
 signing, website verification and remaining device/Play Console checks.
 
+After pairing an Android phone over Wi-Fi, `npm run android:phone` builds,
+verifies, installs and launches the signed app. `npm run android:devices` lists
+available devices; the Android guide covers pairing and installing an existing APK.
+
+`npm run android:backup` creates and restore-checks an encrypted signing-key backup
+using a privately entered passphrase. The current [testing workflow and checklist](docs/ANDROID_TESTING_WORKFLOW.md)
+tracks staging, device checks and Google Play preparation.
+
 ## Checks
 
 ```sh

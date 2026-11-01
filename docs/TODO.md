@@ -4,6 +4,28 @@ Updated October 31, 2026. This is the durable list of the user's requests and de
 
 ## Android build and website release
 
+November 1 checklist work: [ANDROID_TESTING_WORKFLOW.md](ANDROID_TESTING_WORKFLOW.md)
+tracks five work areas. The user confirmed feature branches should be tested in
+isolation and merging main should deploy the live web game everywhere, including
+the regular Android app. Staging's baseline is live and passes nine browser
+integration checks. The real signing-key backup passed private-key restoration;
+its off-PC copy is pending. The separate Test APK and complete device playtest
+remain work. The prepared staging workflow has not yet run on GitHub.
+
+Saved user shortcut: run `npm run android:phone` in PC PowerShell from
+`C:\Users\aiand\Documents\programming\ascend-avoid` to update the Pixel over Wi-Fi.
+The phone needs the same Wi-Fi and Wireless debugging enabled. The user explicitly
+asked to remember this command on November 1, 2026.
+
+November 1: the user requested wireless phone installation and a local repeatable
+build/test command. `android:pair`, `android:devices` and `android:phone` provide
+that workflow. The signed app was paired, installed and launched on the user's
+Pixel 10 Pro XL / Android 17; the actual portrait screen showed full-screen
+gameplay without a browser address bar. The broader device playtest remains.
+Use the current arrow icon for testing;
+finalize store artwork before the Play listing/release screenshots. See
+[ANDROID_RELEASE.md](ANDROID_RELEASE.md#wireless-phone-installation).
+
 The user requested a build while Google reviews the new `drewclark.io` personal
 developer account. The local Trusted Web Activity project produces a signed APK
 for direct testing and a signed AAB for Play upload, preserving the existing

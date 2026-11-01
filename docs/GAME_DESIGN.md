@@ -12,6 +12,10 @@ bot/human rules, ads, purchases or analytics SDKs change. Real-phone installatio
 full-screen checks, the Play signing certificate and account/store/testing work
 remain. See [ANDROID_RELEASE.md](ANDROID_RELEASE.md).
 
+November 1: wireless installation and initial portrait full-screen launch are
+verified on the user's Pixel 10 Pro XL running Android 17. Full touch/tutorial,
+landscape, lifecycle and performance testing remain; this changes no game rules.
+
 ## October 31 tutorial reading and feedback release
 
 The user requested the fixes found in the latest hosted mobile review. The local
