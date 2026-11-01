@@ -6,7 +6,8 @@ import { mouseControlEnabled, setMouseControl } from '../core/MouseControl';
 import './practice.css';
 
 export const LESSON_NAMES: Record<PracticeLesson, string> = { basics: 'Move, grow & capture', combat: 'Aim, hit & finish', defense: 'Escape & recover', blackhole: 'Black-hole shot', weapon: 'Build a weapon' };
-const descriptions: Record<PracticeLesson, string> = { basics: 'Gather gems and capture a smaller healthy rival.', combat: 'Aim a shot, shatter a smaller rival, then learn an injured finish.', defense: 'Leave rear cover while fleeing, then escape an injury.', blackhole: 'Capture a rival, then aim a long shot into the core.', weapon: 'Three matching parts. One automatic weapon.' };
+const descriptions: Record<PracticeLesson, string> = { basics: 'Gather gems and capture a smaller healthy rival.', combat: 'Aim a shot, shatter a smaller rival, then learn an injured finish.', defense: 'Two exercises: Puff & flee, then Escape while injured.', blackhole: 'Capture a rival, then aim a long shot into the core.', weapon: 'Three matching parts. One automatic weapon.' };
+const defenseStages: Record<string, string> = { 'rear-cover': 'Puff & flee', 'injured-escape': 'Escape while injured' };
 export class PracticeUI {
   private store = browserPracticeStore();
   private root = document.createElement('div');
@@ -19,8 +20,9 @@ export class PracticeUI {
   private signature = '';
   private currentLesson = '';
   private returnFocus: HTMLElement | null = null;
+  private readyTouchAt = -Infinity;
   private touch = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
-  constructor(private choose: (lesson: PracticeLesson, sequence?: boolean) => void, private exit: () => void, private command: (type: string, data: unknown) => void, private cancel: () => void) {
+  constructor(private choose: (lesson: PracticeLesson, sequence?: boolean) => void, private exit: () => void, private command: (type: string, data: unknown) => void, private cancel: (preserveMovement?: boolean) => void) {
     this.root.className = 'practice-ui';
     this.offer.className = 'practice-offer'; this.offer.hidden = true;
     this.offer.setAttribute('aria-label', 'Optional practice');
@@ -31,11 +33,16 @@ export class PracticeUI {
     this.chooser.setAttribute('role', 'dialog'); this.chooser.setAttribute('aria-modal', 'true'); this.chooser.setAttribute('aria-labelledby', 'practice-title');
     this.root.append(this.offer, this.panel, this.chooser); document.body.append(this.root);
     this.root.addEventListener('click', this.click);
+    this.root.addEventListener('pointerdown', this.pointerDown);
     this.chooser.addEventListener('keydown', this.key);
     window.addEventListener('ascend:practice-open', this.open);
   }
   get modalOpen(): boolean { return !this.chooser.hidden; }
   get occupiedBottom(): number { return this.panel.hidden ? 0 : this.panel.getBoundingClientRect().bottom; }
+  get actionsTop(): number {
+    const actions = this.panel.querySelector<HTMLElement>('.practice-actions');
+    return !this.panel.hidden && actions && getComputedStyle(actions).position === 'fixed' ? actions.getBoundingClientRect().top : Infinity;
+  }
   begin(lesson: PracticeLesson): void {
     this.pendingLesson = lesson;
     this.active = true; this.view = null; this.signature = ''; this.currentLesson = ''; this.offer.hidden = true;
@@ -73,6 +80,7 @@ export class PracticeUI {
     const lesson = view.lesson as PracticeLesson;
     if (!isPracticeLesson(lesson)) return;
     let instruction = this.instruction(view);
+    if (lesson === 'defense' && defenseStages[view.stage]) instruction = `${defenseStages[view.stage]}: ${instruction}`;
     if (view.phase === 'success') instruction = view.feedback || 'That worked.';
     if (view.phase === 'reset') instruction = view.feedback || 'This attempt is being restored.';
     const next = PRACTICE_LESSONS[PRACTICE_LESSONS.indexOf(lesson) + 1];
@@ -112,7 +120,7 @@ export class PracticeUI {
     if (v.lesson === 'weapon') return v.stage === 'collect' ? 'Gather the three matching parts. They assemble automatically.'
       : v.stage === 'place' ? (this.touch ? 'Assembled. Tap Place weapon to deploy your Pulsar.' : 'Assembled. Press E to place your Pulsar.')
       : 'Placed. Your Pulsar charges and fires automatically. Watch it hit the marked rival.';
-    if (v.stage === 'injured-escape') return v.phase === 'ready' ? 'Next you will be injured. Keep moving away until the shell closes; breathing will be blocked.' : 'Injured: move away from the pursuer until your shell heals. You cannot inhale or puff.';
+    if (v.stage === 'injured-escape') return v.phase === 'ready' ? `${this.touch ? 'Hold the left stick right' : 'Hold Right'}, away from the pursuer, then ${this.touch ? 'tap' : 'press'} Ready. Keep moving until your shell closes.` : 'Move away from the pursuer until your shell heals. You cannot inhale or puff.';
     if (v.phase === 'ready') return 'A pursuer starts behind you. Keep facing away, move right and tap a puff to leave rear cover.';
     if (v.cue === 'move-clear') return 'Rear cover broke suction. Keep moving beyond the wall.';
     if (v.cue === 'wrapping') return 'The wave is wrapping behind you. Keep moving clear.';
@@ -130,6 +138,17 @@ export class PracticeUI {
     this.chooser.hidden = false; this.chooser.querySelector<HTMLButtonElement>('.practice-start')?.focus();
   };
   private close(): void { this.chooser.hidden = true; this.returnFocus?.focus(); this.returnFocus = null; }
+  private startAttempt(): void {
+    this.panel.querySelector('details')?.removeAttribute('open');
+    if (!this.view || this.view.phase !== 'ready') return;
+    this.cancel(true); this.command('practice:ready', { attempt: this.view.attempt });
+    (document.activeElement as HTMLElement | null)?.blur();
+  }
+  private pointerDown = (event: PointerEvent): void => {
+    if (event.pointerType === 'mouse' || (event.target as HTMLElement).closest<HTMLButtonElement>('button')?.dataset.do !== 'ready') return;
+    // A second thumb need not produce a compatibility click while the stick is held.
+    event.preventDefault(); this.readyTouchAt = performance.now(); this.startAttempt();
+  };
   private click = (event: MouseEvent): void => {
     const button = (event.target as HTMLElement).closest<HTMLButtonElement>('button'); if (!button) return;
     const lesson = button.dataset.lesson;
@@ -140,8 +159,7 @@ export class PracticeUI {
       case 'sound': sound.toggle(); break;
       case 'mouse': this.cancel(); setMouseControl(!mouseControlEnabled()); break;
       case 'ready':
-        this.panel.querySelector('details')?.removeAttribute('open');
-        if (this.view) { this.cancel(); this.command('practice:ready', { attempt: this.view.attempt }); (document.activeElement as HTMLElement | null)?.blur(); }
+        if (!event.detail || performance.now() - this.readyTouchAt >= 700) this.startAttempt();
         break;
       case 'dismiss': this.store.skipOffer(); this.offer.hidden = true; break;
       case 'close': this.close(); break;

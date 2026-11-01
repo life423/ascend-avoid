@@ -1,8 +1,93 @@
 # Ascend Avoid — ordered work and idea inventory
 
-Updated October 31, 2026. This is the durable list of the user's requests and decisions. Current code and later feedback override historical tuning. The approved injury-only theft change supersedes ordinary healthy-player stealing and the earlier theft-allowance suggestion. The fifteen archived balance options remain proposals unless separately accepted.
+Updated November 1, 2026. This is the durable list of the user's requests and decisions. Current code and later feedback override historical tuning. The approved injury-only theft change supersedes ordinary healthy-player stealing and the earlier theft-allowance suggestion. The fifteen archived balance options remain proposals unless separately accepted.
 
 ## Android build and website release
+
+### Pixel playtest follow-up — November 1
+
+Tracked in [GitHub #69](https://github.com/life423/ascend-avoid/issues/69), as part
+of the unfinished physical-device checks in #66. Preserve every point below;
+recording it does not mean it is fixed or that balance is settled.
+
+- [x] **Candidate: held joystick and reachable tutorial actions.** On
+  `codex/mobile-tutorial-readiness`, Ready and entry into its reading stage keep
+  held movement while clearing stale action/aim. Mobile actions sit near the
+  thumb controls with separate Place clearance. Local browser verification is
+  recorded in [PRACTICE_TUTORIAL.md](PRACTICE_TUTORIAL.md). Real Pixel confirmation
+  and release remain pending; no global injury balance change is claimed.
+- [x] **Candidate: distinguish the two defense exercises.** The single “Escape
+  & recover” lesson now names **Puff & flee** and **Escape while injured** in
+  its picker description and corresponding instructions. Both remain reachable
+  in the full sequence; completion and unlocked selection are preserved.
+- [ ] **Measure injured escape after fixing input.** The user finds it far too
+  difficult. Test movement directions, starting gaps, thumb preparation,
+  reaction time and latency before deciding shared injury/suction/speed tuning.
+  A tutorial input failure alone is not evidence that global balance is wrong.
+  The preliminary 20-case probe in PRACTICE_TUTORIAL.md does expose a narrow
+  escape window: sideways fails, and a one-second delayed retreat loses at the
+  current tutorial sizes/gap. Keep this balance follow-up high priority.
+- [ ] **Fair warning and counterplay for surprise shots.** The user reports
+  offscreen projectiles and moving satellites arriving/firing point blank with
+  no reasonable dodge opportunity. The current edge arrow covers only
+  player-fired cannonballs within 0.5 seconds, not weapon bolts. Assess lead
+  time, camera framing, muzzle proximity, visible approach and defensive options.
+- [ ] **Trace perceived clash stun.** Ordinary body contact already squishes
+  and slides without calling stun. Gameplay stun remains on cannonball/turbine
+  impacts (450 ms) and gust hits (800 ms). Identify the actual source before
+  removing effects indiscriminately; gust interruption supports escape from
+  suction. Keep control during ordinary similar-size contact.
+- [ ] **Overhaul injured-creature styling.** The user rejects the current
+  appearance as ugly and insufficiently damaged, especially at the back (Pixel
+  screenshot, November 1). Treat the existing split-shell treatment as needing
+  redesign, not an accepted finished look. Make damage read around the whole
+  shell, including rear/sides and every facing, while keeping eyes readable and
+  matching the creature's space-themed style. Healing and knockout should follow
+  the same damage language. Do not rely on face-only lines, sparse rear scratches
+  or rapid blinking. Record concepts and inspect actual phone/desktop rotations
+  before claiming the visual problem is resolved. This is requested backlog work;
+  no injury-art overhaul is implemented in the tutorial-input candidate.
+- [ ] **Spawn weapon parts clear of fans.** Fixed triangular part placement has
+  no obstacle clearance. Parts remain inhalable but should not initially overlap
+  fan/turbine artwork or intake footprints. Preserve pickup/cargo behavior.
+- [ ] **Refine weapon assembly and evaluate expansion.** The user likes building
+  weapons from three parts but wants the current weapons refined, with possibly
+  more types. Run-over power-ups are a design idea to explore, not approval for
+  a new set of mechanics. Favor readable, contextual effects and counterplay.
+
+Finish the Android readiness work alongside this feedback: Test app staging,
+physical touch/lifecycle/performance checks, release traceability, off-PC signing
+backup and store preparation. Icons remain deferred below. Bots and humans keep
+identical mechanics; the 20%-wider finish and disabled 33% damage/loading trials
+are unchanged by this report.
+
+### Deferred app icons — requested November 1
+
+Work on these after the current active implementation, deployment and testing
+tasks are finished:
+
+- [ ] Design the final **Ascend Avoid** production app icon.
+- [ ] Create a matching **Ascend Avoid Test** icon clearly marked **TEST**, readable
+  at small launcher sizes so the two installed apps are easy to distinguish.
+
+Keep the existing arrow icons during the current work; this request schedules
+the artwork rather than changing either app now.
+
+### Current release — November 1
+
+PR #67 merged as `884357e826a6e6d3b9e42a965fa1bc1a1cce2c79`. Production workflow
+`41325948278` passed its build/gameplay/multiplayer checks and deployed that exact
+image to ready Azure revision `ascend-avoid--0000108`, with 100% traffic. All nine
+hosted browser integration checks passed on desktop Chrome, Android Chrome
+emulation and iPhone Safari emulation. Production and staging each serve only
+their intended Android package association; alternate files are blocked.
+The Test app remains installed alongside the regular app on the user's Pixel,
+with its actual staging URL and portrait full-screen launch already verified.
+Both install commands are now on main. The larger real-device/human playtest,
+off-PC key backup copy and store tasks remain in GitHub issue #66. The deferred
+production/Test icon requests are tracked in issue #68.
+
+The earlier implementation notes below record the work leading to this release.
 
 November 1 follow-up: the user explicitly authorized merging PR #65, building
 the separate Test app and installing it on their Pixel. PR #65 merged as

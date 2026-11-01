@@ -508,16 +508,20 @@ export class MultiplayerMode extends GameMode {
     constructor(game: Game, readonly session: OnlineSession = { kind: 'play' }) { super(game) }
     get isPractice(): boolean { return this.session.kind === 'practice' }
     private practiceReset = -1
-    cancelInput(): void { this.game.inputManager?.reset(); this.releaseControls() }
+    cancelInput(preserveMovement = false): void {
+        if (!preserveMovement) this.game.inputManager?.reset()
+        this.clearControls(preserveMovement)
+    }
     private publishActivity(text: string): void {
         if (!this.isPractice) window.dispatchEvent(new CustomEvent('ascend:activity', { detail: text }))
     }
     private wasLoaded = false
     private wasCaptured = false
-    private releaseControls = (): void => {
+    private releaseControls = (): void => { this.clearControls() }
+    private clearControls(preserveMovement = false): void {
         if (this.shotAim) this.facing = { ...this.shotAim }
         this.shotAim = null
-        this.controls?.reset()
+        this.controls?.reset(preserveMovement)
         this.sendSteer({ x: 0, y: 0 })
         this.multiplayerManager?.sendMessage('cancel', {})
         this.resetMotion()
@@ -756,7 +760,9 @@ export class MultiplayerMode extends GameMode {
         if (this.isPractice && practice?.enabled) {
             const session = this.multiplayerManager?.session
             if (session?.kind === 'practice' && isPracticeLesson(practice.lesson)) { session.lesson = practice.lesson; session.sequence = practice.sequence }
-            if (practice.resetSerial !== this.practiceReset) { this.cancelInput(); this.predicted = null; this.practiceReset = practice.resetSerial
+            if (practice.resetSerial !== this.practiceReset) { this.cancelInput(practice.phase === 'ready'); this.predicted = null; this.practiceReset = practice.resetSerial
+                // Reading freezes motion, but a thumb still held from the previous step stays prepared.
+                // Real retries, lesson selection, blur and exit still discard all movement input.
                 // Scenario inventories are setup, not pickups. Genuine in-attempt gains still animate.
                 this.lastSeen.clear(); this.pickups = []; this.gemPops.clear(); this.drawnSizes.clear()
                 this.stamina = 1; this.staminaAt = performance.now(); this.breath = { phase: 'ready' }
@@ -1246,9 +1252,10 @@ export class MultiplayerMode extends GameMode {
                 const box = canvas.getBoundingClientRect(), pixels = canvas.width / Math.max(1, box.width)
                 const margin = 12 * pixels
                 const panelBottom = Math.max(margin, ((this.game.practiceUI?.occupiedBottom ?? box.top) - box.top + 12) * pixels)
-                scale = Math.min(scale, (canvas.width - 2 * margin) / (right - left), Math.max(1, canvas.height - panelBottom - margin) / (bottom - top))
+                const arenaBottom = Math.min(canvas.height - margin, ((this.game.practiceUI?.actionsTop ?? Infinity) - box.top - 12) * pixels)
+                scale = Math.min(scale, (canvas.width - 2 * margin) / (right - left), Math.max(1, arenaBottom - panelBottom) / (bottom - top))
                 const minX = right - (canvas.width / 2 - margin) / scale, maxX = left + (canvas.width / 2 - margin) / scale
-                const minY = bottom - (canvas.height / 2 - margin) / scale, maxY = top - (panelBottom - canvas.height / 2) / scale
+                const minY = bottom - (arenaBottom - canvas.height / 2) / scale, maxY = top - (panelBottom - canvas.height / 2) / scale
                 framing = { x: Math.max(minX, Math.min(maxX, framing.x)), y: Math.max(minY, Math.min(maxY, framing.y)) }
             } else {
                 scale = Math.min(scale, canvas.width / (2 * (Math.abs(x - this.camera.x) + radius)), canvas.height / (2 * (Math.abs(y - this.camera.y) + radius)))

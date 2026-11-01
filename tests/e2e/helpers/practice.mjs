@@ -69,8 +69,18 @@ export async function practiceInput(page, browserName, hasTouch) {
     await touch('touchMove', 2, width - 74 + dx * 60, height - 80 + dy * 60);
   };
   const tap = async () => { await releaseAction(); await hold(); await page.waitForTimeout(45); await releaseAction(); };
+  const tapButton = async locator => {
+    if (!hasTouch) { await locator.click(); return; }
+    const box = await locator.boundingBox();
+    if (!box) throw Error('Button is not visible');
+    const x = box.x + box.width / 2, y = box.y + box.height / 2;
+    if (cdp) {
+      await touch('touchStart', 3, x, y);
+      await touch('touchEnd', 3, x, y);
+    } else await locator.dispatchEvent('pointerdown', { pointerType: 'touch', pointerId: 3, clientX: x, clientY: y });
+  };
   const stop = async () => { await move(); await releaseAction(); };
-  return { move, hold, aim, tap, releaseAction, stop, touch: hasTouch, close: async () => { await stop(); if (cdp) await cdp.detach(); } };
+  return { move, hold, aim, tap, tapButton, releaseAction, stop, touch: hasTouch, close: async () => { await stop(); if (cdp) await cdp.detach(); } };
 }
 
 /** Read state to select human inputs; never send lesson completion, teleport or reward commands. */

@@ -1,5 +1,80 @@
 # Optional practice tutorial
 
+## Pixel readiness follow-up — November 1, local candidate
+
+On `codex/mobile-tutorial-readiness`, based on main `884357e`, the user's real
+Pixel feedback exposed a gap missed by the earlier automated playthroughs: Ready
+called the complete control reset, discarding an already-held joystick. Earlier
+test drivers released movement before Ready and therefore did not cover it.
+
+- Ready preserves active movement pointers and held movement keys while clearing
+  old inhale/fire/aim intent. A second thumb can start Ready on pointer-down;
+  compatibility clicks cannot repeat the action. Reading still freezes the
+  simulation. A held direction also survives advancement into the next Ready
+  stage. Genuine failed-attempt resets, changing lessons, blur and exit still
+  clear controls; released pointers do not return.
+- On touch devices, lesson actions sit near the play controls. Portrait places
+  them above the thumb row; landscape places them between it. A visible Place
+  weapon action gets separate clearance. The tutorial camera fits its two
+  subjects between the top instructions and lower actions. Desktop keeps its
+  existing action layout.
+- “Escape & recover” remains one of five selectable lessons, with two named
+  exercises: **Puff & flee**, then **Escape while injured**. Both are stated in
+  the picker and shown during their stage. Before injured escape, the prompt
+  explicitly permits preparing the escape direction before Ready.
+
+This candidate changes input/presentation, not shared injury, speed, suction,
+damage, stun or bot rules. The first wider replay caught a new Place-button
+overlap; it was corrected before the final verification run. Broader surprise
+projectile fairness, injury escape with realistic reaction/latency, perceived
+combat stun, part/fan spawning and weapon/power-up proposals remain in
+[GitHub #69](https://github.com/life423/ascend-avoid/issues/69). Automated success
+does not settle those balance questions or replace physical-phone feel testing.
+
+### Preliminary injury-escape timing probe
+
+A separate 20-case headless probe used the existing defense arena and real first
+exercise to reach injured escape, then ordinary movement/aim inputs at 17 ms
+ticks. The learner/pursuer widths were 101.5/134.5, initially 480 units apart;
+there were no rule changes, network delay or human execution. The table records
+outcomes within ten seconds after Ready, not a general fairness or fun verdict.
+
+| Movement after reaction delay | 0 ms | 250 ms | 500 ms | 750 ms | 1000 ms |
+| --- | --- | --- | --- | --- | --- |
+| Directly away | Recovered | Recovered | Recovered | Recovered, lost 13 gems | Caught |
+| Diagonally away | Recovered | Recovered | Recovered, lost 7 gems | Still vulnerable at cutoff | Caught |
+| Sideways | Caught | Caught | Caught | Caught | Caught |
+| Toward pursuer | Caught | Caught | Caught | Caught | Caught |
+
+This supports keeping escape balance **open and high priority** even after the
+input fix: straight retreat works under these conditions, but sideways movement
+fails and a one-second delayed retreat loses. Measure additional body ratios,
+start gaps, latency and real thumb execution before choosing shared tuning.
+The movement regression deliberately probes both left and right; movement toward
+the pursuer must respond correctly, but is not expected to be a safe escape.
+
+### Candidate verification
+
+- Production build, both TypeScript checks, lint, schema generation check,
+  complete unit suite and all 18 multiplayer scenarios pass.
+- All five lessons individually and the full sequence complete on desktop
+  Chromium, Android Chromium emulation, iPhone WebKit portrait/landscape and
+  iPad WebKit. The separate 320px reduced-motion sequence also completes.
+- All **25** final readiness regressions pass across those five profiles:
+  left/right movement held before Ready, movement held through the next reading
+  stage, stale-action cancellation and reachable/distinct defense controls.
+  Another nine focused cases pass for retry/blur input cleanup and the corrected
+  left-direction probe on desktop, Android and iPhone landscape.
+- The wider replay initially used an incorrect assertion that deliberately
+  walking toward the pursuer must also produce a failure-free escape. The
+  direction-response assertion passed; the escape assertion was corrected to
+  apply to movement away. The affected probe and the complete readiness suite
+  then passed. Gameplay rules were not weakened to make the test pass.
+- Screenshots were inspected for phone, narrow phone, landscape, tablet and
+  desktop states. Current limits: these are browser checks, Chromium uses trusted
+  touches, WebKit uses dispatched pointer events; fresh physical-Pixel feedback,
+  human reaction/fun, latency and a longer device session are still required.
+
 ## Reading and feedback release
 
 October 31, on `codex/tutorial-reading-feedback`, based on deployed main
