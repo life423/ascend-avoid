@@ -75,3 +75,12 @@ COMPLETE_DEPLOYMENT_SUMMARY.md
 # Playwright
 test-results/
 playwright-report/
+
+# Android: build products, machine configuration and signing material
+android/.gradle/
+android/**/build/
+android/local.properties
+*.jks
+*.keystore
+*.p12
+/artifacts/android/

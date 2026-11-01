@@ -8,3 +8,10 @@ dist
 coverage
 tests
 .env*
+.tmp
+.temp
+android
+artifacts
+*.jks
+*.keystore
+*.p12

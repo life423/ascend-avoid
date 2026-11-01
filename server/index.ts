@@ -79,6 +79,12 @@ app.use(cors({ origin: corsOrigins }));
 app.use(express.json());
 
 // Serve static files from the client build directory
+// Express ignores dot-directories by default. Expose only this public verification file.
+app.get('/.well-known/assetlinks.json', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-cache');
+  res.sendFile(path.join(distPath, '.well-known', 'assetlinks.json'), { dotfiles: 'allow' });
+});
+
 // In Docker, the dist folder is at /app/dist, in dev it's at ../dist
 // Vite's content-hashed bundles never change, so browsers keep them a year; everything else
 // (index.html) is always rechecked, so a new deploy shows up at once
