@@ -27,6 +27,14 @@ npm run build
 npm run start:prod
 ```
 
+## Android preparation
+
+The Android wrapper uses the same live multiplayer game. On Windows with
+PowerShell 7, run `npm run android:setup -- -AcceptLicenses`, then
+`npm run android:build` to create a signed test APK and Play upload AAB under
+`artifacts/android/`. [Android build and release](docs/ANDROID_RELEASE.md) covers
+signing, website verification and remaining device/Play Console checks.
+
 ## Checks
 
 ```sh

@@ -1,5 +1,17 @@
 # Ascend Avoid
 
+## Android build and website release
+
+The user requested an Android build while Play Console reviews the new personal
+account. `codex/android-store-build` prepares a signed Trusted Web Activity APK
+and AAB, targeting API 36 with an API 24 minimum, using the existing live game and
+server. The user approved committing, merging and deploying the web install
+metadata and release certificate association so the signed APK can be tested on
+a phone. GitHub's PR and production workflow record delivery. No gameplay,
+bot/human rules, ads, purchases or analytics SDKs change. Real-phone installation/
+full-screen checks, the Play signing certificate and account/store/testing work
+remain. See [ANDROID_RELEASE.md](ANDROID_RELEASE.md).
+
 ## October 31 tutorial reading and feedback release
 
 The user requested the fixes found in the latest hosted mobile review. The local

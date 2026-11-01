@@ -2,6 +2,19 @@
 
 Updated October 31, 2026. This is the durable list of the user's requests and decisions. Current code and later feedback override historical tuning. The approved injury-only theft change supersedes ordinary healthy-player stealing and the earlier theft-allowance suggestion. The fifteen archived balance options remain proposals unless separately accepted.
 
+## Android build and website release
+
+The user requested a build while Google reviews the new `drewclark.io` personal
+developer account. The local Trusted Web Activity project produces a signed APK
+for direct testing and a signed AAB for Play upload, preserving the existing
+website, server and shared rules. [ANDROID_RELEASE.md](ANDROID_RELEASE.md) records
+build/signing details and the website association. The user approved committing,
+merging and deploying this batch for direct-install phone testing; GitHub's PR
+and production workflow record delivery. Finish account review, test a real
+phone, add Google's distribution signing
+certificate, and complete the store declarations/listing and closed-test process
+before production. Nothing in this preparation is uploaded to Google Play.
+
 ## Tutorial reading and feedback release
 
 After replaying the deployed five lessons, the user requested fixes for the false
