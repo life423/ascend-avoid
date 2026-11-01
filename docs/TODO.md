@@ -4,6 +4,14 @@ Updated October 31, 2026. This is the durable list of the user's requests and de
 
 ## Android build and website release
 
+November 1 checklist work: [ANDROID_TESTING_WORKFLOW.md](ANDROID_TESTING_WORKFLOW.md)
+tracks five work areas. The user confirmed feature branches should be tested in
+isolation and merging main should deploy the live web game everywhere, including
+the regular Android app. Staging's baseline is live and passes nine browser
+integration checks. The real signing-key backup passed private-key restoration;
+its off-PC copy is pending. The separate Test APK and complete device playtest
+remain work. The prepared staging workflow has not yet run on GitHub.
+
 Saved user shortcut: run `npm run android:phone` in PC PowerShell from
 `C:\Users\aiand\Documents\programming\ascend-avoid` to update the Pixel over Wi-Fi.
 The phone needs the same Wi-Fi and Wireless debugging enabled. The user explicitly

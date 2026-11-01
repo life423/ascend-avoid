@@ -1,0 +1,114 @@
+name: Test a candidate on staging
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: Full commit SHA from the feature pull request
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ascend-avoid-staging
+  cancel-in-progress: false
+
+env:
+  IMAGE_NAME: aiandrew631/ascend-avoid
+  STAGING_URL: https://ascend-avoid-staging.livelyisland-db4ad2db.eastus.azurecontainerapps.io
+
+jobs:
+  checks:
+    # The controller runs from protected main; the candidate code is checked out by exact SHA.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Validate candidate identifier
+        env:
+          CANDIDATE: ${{ inputs.commit }}
+        run: '[[ "$CANDIDATE" =~ ^[0-9a-f]{40}$ ]]'
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm --prefix server ci
+      - name: Validate candidate
+        run: |
+          npm run type-check
+          npm run lint
+          node scripts/gen-synced-types.mjs --check
+          npm run build
+          npm run test:unit
+          node scripts/multiplayer-smoke.mjs
+
+  deploy:
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment:
+      name: staging
+      url: https://ascend-avoid-staging.livelyisland-db4ad2db.eastus.azurecontainerapps.io
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit }}
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Build candidate image
+        id: image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ env.IMAGE_NAME }}:candidate-${{ inputs.commit }}
+          labels: org.opencontainers.image.revision=${{ inputs.commit }}
+          cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: Update only the isolated staging app
+        env:
+          CANDIDATE: ${{ inputs.commit }}
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+        run: |
+          # Explicit staging resource: this workflow never selects a production resource from inputs.
+          az containerapp update --name ascend-avoid-staging --resource-group ascend-avoid-rg \
+            --image "$IMAGE_NAME@$IMAGE_DIGEST" \
+            --min-replicas 0 --max-replicas 1 \
+            --set-env-vars NODE_ENV=production PORT=3000 APP_ENV=staging \
+              "RELEASE_SHA=$CANDIDATE" "CORS_ORIGINS=$STAGING_URL" --output none
+          for attempt in {1..30}; do
+            az containerapp show --name ascend-avoid-staging --resource-group ascend-avoid-rg \
+              --query '{latest:properties.latestRevisionName,ready:properties.latestReadyRevisionName,image:properties.template.containers[0].image,url:properties.configuration.ingress.fqdn}' \
+              --output json > staging-deployment.json
+            if node -e 'const s=require("./staging-deployment.json"); process.exit(s.latest && s.latest===s.ready && s.image===process.env.IMAGE_NAME+"@"+process.env.IMAGE_DIGEST ? 0 : 1)'; then
+              curl --fail --retry 5 --retry-delay 5 "$STAGING_URL/health"
+              printf '\nCandidate %s deployed to %s\n' "$CANDIDATE" "$STAGING_URL" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo 'Staging did not become ready for the expected image.' >&2
+          exit 1
+      - name: Save deployment receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-${{ inputs.commit }}
+          path: staging-deployment.json
+          if-no-files-found: ignore
+          retention-days: 30

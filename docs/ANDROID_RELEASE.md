@@ -131,6 +131,13 @@ See [Android wireless debugging](https://developer.android.com/tools/adb#connect
 
 ## Signing and backup
 
+`npm run android:backup` prompts privately for a separate backup passphrase and
+exports `artifacts/android/signing-backup.p12`. It verifies private-key recovery
+by importing into a fresh keystore and comparing certificates. The user's real
+backup/restore check passed on November 1; copying the encrypted file off this PC
+and retaining its full password separately remain. See the current
+[testing checklist](ANDROID_TESTING_WORKFLOW.md) for staging and release status.
+
 The first release build creates a unique 3072-bit RSA upload key at
 `%USERPROFILE%\.android\ascend-avoid-signing\upload.jks`. Its generated password is
 stored in `password.xml` alongside it, encrypted with Windows DPAPI for the

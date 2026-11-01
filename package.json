@@ -23,6 +23,7 @@
         "android:devices": "pwsh -NoProfile -File scripts/android-phone.ps1 -Action Devices",
         "android:pair": "pwsh -NoProfile -File scripts/android-phone.ps1 -Action Pair",
         "android:phone": "pwsh -NoProfile -File scripts/android-phone.ps1",
+        "android:backup": "pwsh -NoProfile -File scripts/android-backup-signing.ps1",
         "preview:prod": "npm run build && npm run start:prod",
         "start:prod": "cross-env NODE_ENV=production node ./server/dist/index.js",
         "start:prod:safe": "npm run verify:server && npm run start:prod",
