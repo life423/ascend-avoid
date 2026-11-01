@@ -1,5 +1,27 @@
 # Ascend Avoid
 
+## November 1 physical-phone feedback and priorities
+
+The user's Pixel playtest reports unfair surprise projectile/satellite hits,
+difficult injured escape, an active joystick lost on tutorial Ready, distant
+top-screen lesson actions, repeated defense headings, perceived clash stun and
+weapon pieces spawning over fans. Preserve the full report and acceptance work
+in [TODO.md](TODO.md#pixel-playtest-follow-up--november-1) and
+[GitHub #69](https://github.com/life423/ascend-avoid/issues/69).
+Fix input/readiness defects before drawing balance conclusions. Ordinary body
+contact must keep steering and use soft squash/slide; current contact code has
+no stun. Gust/impact interruption is separate and needs deliberate review.
+Possible run-over power-ups and additional weapons remain proposals; refining
+existing three-part weapons and fair counterplay comes first. Keep bots and
+humans on the same rules and finish the Android readiness checklist.
+
+Later November 1 feedback explicitly rejects the current injured appearance:
+the face looks awkward and the back still looks undamaged. Overhaul vulnerability
+styling around the entire shell and across rotations, with unobscured readable
+eyes and consistent healing/finish effects. The current split-shell art is not
+considered a finished or accepted solution. This is a recorded follow-up, not an
+implemented visual change in the tutorial-readiness candidate.
+
 ## Android build and website release
 
 The user requested an Android build while Play Console reviews the new personal

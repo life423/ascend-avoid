@@ -46,3 +46,14 @@ body.practice-mode .app-header,body.practice-mode .bar-tab,body.practice-mode .h
 .practice-feedback { margin:4px 0; color:#f3cf9e; font-size:12px; }
 @media(max-height:500px) { .practice-panel .practice-feedback { grid-column:1 / -1; } }
 .practice-start { width:100%; margin:0 0 16px; }
+
+/* Keep preparation readable above play and its actions near the learner's thumbs. */
+@media(pointer:coarse) {
+  .practice-panel { left:0; right:0; margin-inline:auto; transform:none; }
+  .practice-panel .practice-actions { position:fixed; top:auto; bottom:calc(156px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); width:max-content; max-width:calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)); box-sizing:border-box; justify-content:center; gap:4px 8px; padding:8px; border:1px solid var(--practice-line); border-radius:12px; background:var(--practice-bg); }
+  body.practice-mode:has(.weapon-place-button:not([hidden])) .practice-panel .practice-actions { bottom:calc(248px + env(safe-area-inset-bottom)); }
+}
+@media(pointer:coarse) and (orientation:landscape) {
+  .practice-panel .practice-actions { bottom:calc(12px + env(safe-area-inset-bottom)); max-width:calc(100vw - 344px - env(safe-area-inset-left) - env(safe-area-inset-right)); }
+  body.practice-mode:has(.weapon-place-button:not([hidden])) .practice-panel .practice-actions { bottom:calc(72px + env(safe-area-inset-bottom)); }
+}

@@ -69,9 +69,11 @@ export class OnlineControls {
         document.addEventListener('keyup', this.onKeyUp)
     }
 
-    reset(): void {
-        this.stick = null
-        this.mouse = null
+    reset(preserveMovement = false): void {
+        if (!preserveMovement) {
+            this.stick = null
+            this.mouse = null
+        }
         this.touchAim = null
         this.press = null
         this.events = []

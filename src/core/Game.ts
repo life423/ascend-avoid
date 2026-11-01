@@ -283,7 +283,7 @@ export default class Game {
             },
             () => { void this.initializeGameMode('multiplayer') },
             (type, data) => { if (this.currentGameMode instanceof MultiplayerMode) this.currentGameMode.multiplayerManager?.sendMessage(type, data) },
-            () => { if (this.currentGameMode instanceof MultiplayerMode) this.currentGameMode.cancelInput() }
+            preserveMovement => { if (this.currentGameMode instanceof MultiplayerMode) this.currentGameMode.cancelInput(preserveMovement) }
         )
 
         // Everyone who opens the site joins the shared multiplayer game
