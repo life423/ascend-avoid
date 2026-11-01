@@ -10,7 +10,7 @@ const mine = page => page.evaluate(() => {
   return { capturedBy: p.capturedBy, x: p.x, y: p.y, flying: p.flying, inhaling: p.inhaling };
 });
 
-test('gust stun blocks real keyboard input and shows a readable dizzy face', async ({ page }) => {
+test('a hard-impact stun blocks keyboard input and held movement resumes afterward', async ({ page }) => {
   await page.route('**/matchmake/joinOrCreate/game_room', route => route.continue({
     url: route.request().url().replace('/joinOrCreate/', '/create/'),
     postData: JSON.stringify({ ...route.request().postDataJSON(), testBots: 0, testFieldGems: 0, testCores: 0 }),
@@ -22,8 +22,8 @@ test('gust stun blocks real keyboard input and shows a readable dizzy face', asy
   await send('test:setGems', { count: 300 });
   await send('test:moveTo', { x: 1500, y: 1500 });
   await send('test:protect', { ms: 0 });
-  // An actual peer gust is covered in the network suite; this fixture holds the visual state long
-  // enough to check input and capture screenshots on both fast desktops and slower phone projects.
+  // Actual missile-impact timing is covered by the server regressions. This fixture holds that
+  // disabled-input state long enough to inspect it; gusts and ordinary contact never set it.
   await send('test:stun', { ms: 1200 });
   await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getLocalPlayer().stunned);
   const before = await mine(page);
@@ -33,7 +33,7 @@ test('gust stun blocks real keyboard input and shows a readable dizzy face', asy
   const after = await mine(page);
   expect(after.inhaling).toBe(false);
   expect(Math.hypot(after.x - before.x, after.y - before.y)).toBeLessThan(1);
-  await page.screenshot({ path: test.info().outputPath('gust-stunned.png') });
+  await page.screenshot({ path: test.info().outputPath('impact-stunned.png') });
   await page.keyboard.up('Space');
   await page.waitForFunction(() => !window.game.currentGameMode.multiplayerManager.getLocalPlayer().stunned);
   await expect.poll(async () => (await mine(page)).y).toBeGreaterThan(before.y + 5);

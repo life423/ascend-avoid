@@ -1,6 +1,6 @@
 import type { GameState } from "../schema/GameState.js";
 import { PlayerSchema } from "../schema/PlayerSchema.js";
-import { airflowQuality, bodyPullScale, cleanAir, drainRamp, innerBodyPullBoost, lethalShare, pressureBuildSeconds, scaleDrain } from "../game/airflow.js";
+import { airflowQuality, bodyPullScale, cleanAir, drainRamp, innerBodyPullBoost, lethalShare, pressureBuildSeconds, retreatPull, scaleDrain } from "../game/airflow.js";
 import { moveSpeed } from "../game/movement.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 
@@ -8,7 +8,6 @@ import { CANNON, EXHALE } from "../constants/gameConstants.js";
 import { canCatch, launchSpeed, captureHoldMs, shooterMassContribution, captureGrowthTransfer } from "../game/cannon.js";
 import { GustWaveSchema } from '../schema/GustWaveSchema.js';
 import { bodyMass } from '../game/creatureSize.js';
-import { suctionBlocked } from '../game/gustWave.js';
 
 const { PLAYER_STATE, INHALE, LATCH } = GAME_CONSTANTS;
 import { sprayGems } from "./gems.js";
@@ -167,6 +166,8 @@ export function updateInhales(state: GameState, now: number, deltaTime: number) 
       pullSpeed *= 1 - Math.min(1, prey.width / eater.width) * away;
       const across = Math.min(1, Math.abs(velocity.x * (mouthY - py) - velocity.y * (mouthX - px)) / (d * speed));
       pullSpeed *= 1 - INHALE.BODY_STRAFE_ESCAPE * across;
+      const intentAway = (intent.x * (px - mouthX) + intent.y * (py - mouthY)) / d;
+      pullSpeed = retreatPull(pullSpeed, eater.width, prey.width, gap, reach, intentAway);
       const pull = Math.min(d, pullSpeed * deltaTime);
       const forces = pulls.get(prey) ?? [];
       forces.push({ eater, x: ((mouthX - px) / d) * pull, y: ((mouthY - py) / d) * pull, speed: pull });
@@ -244,8 +245,6 @@ export function fadeLocks(_state: GameState, eater: PlayerSchema, keep: Set<stri
  */
 export function stealWeight(state: GameState, thief: PlayerSchema, victim: PlayerSchema) : number {
   if (thief.breathingBlocked || !thief.inhaling || thief.state !== PLAYER_STATE.ALIVE || victim.state !== PLAYER_STATE.ALIVE || victim.spawnProtected) return 0;
-  const mouth={x:thief.x+thief.width/2+Math.cos(thief.facing)*thief.width*.3,y:thief.y+thief.height/2+Math.sin(thief.facing)*thief.width*.3};
-  if(suctionBlocked(state.gustWaves.values(),state.time,mouth,{x:victim.x+victim.width/2,y:victim.y+victim.height/2}))return 0;
   if (state.now < victim.suctionSafeUntil) return 0;
   const fx = Math.cos(thief.facing);
   const fy = Math.sin(thief.facing);
@@ -453,7 +452,7 @@ function clashStrength(state: GameState, thief: PlayerSchema, victim: PlayerSche
 
 /**
  * Exhaling: the button tapped with nothing in your mouth. A short puff out of the mouth: loose gems in
- * front of it are blown away, and creatures in it are shoved back and briefly stunned,
+ * front of it are blown away, and creatures in it receive a brief steerable push,
  * which pushes a robber out of its own inhale's reach. Costs EXHALE.BREATH_COST from the full
  * breath meter, with a pause before the next one (EXHALE.COOLDOWN_MS).
  */
@@ -487,24 +486,23 @@ export function exhale(state: GameState, player: PlayerSchema, now: number) : vo
     if (d < 1e-6 || gap > reach || (ox * fx + oy * fy) / d < cone) return;
     const parried = other.inhaling && stealWeight(state, other, player) > 0;
     if (parried) {
-      player.suctionSafeUntil = Math.max(player.suctionSafeUntil, now + EXHALE.BREAK_MS);
       other.stopInhale(now);
       other.dropLatch();
       other.lockOn.delete(player.sessionId);
       other.heldFor.delete(player.sessionId);
-      other.inhaleBlockedUntil = now + EXHALE.PARRY_MS;
+      other.inhaleBlockedUntil = Math.max(other.inhaleBlockedUntil, now + EXHALE.PARRY_MS);
       state.onEvent?.("parry", { id: player.sessionId, targetId: other.sessionId });
     }
     hits.push({ target: other, falloff: 1 - gap / reach });
-    if (now >= other.stunImmuneUntil) other.stun(now, EXHALE.STUN_MS);
   });
   const impulses = puffImpulses(player.width, hits.map(hit => ({ id: hit.target.sessionId, width: hit.target.width, falloff: hit.falloff })));
-  for (const hit of impulses.hits) state.players.get(hit.id)?.skid(fx, fy, hit.velocity / GAME_CONSTANTS.PUSH.FRICTION);
-  if (impulses.recoil > 0) player.skid(-fx, -fy, impulses.recoil / GAME_CONSTANTS.PUSH.FRICTION);
+  for (const hit of impulses.hits) state.players.get(hit.id)?.pushWithControl(fx, fy, hit.velocity);
+  if (impulses.recoil > 0) player.pushWithControl(-fx, -fy, impulses.recoil);
   const wave=new GustWaveSchema();
   wave.owner=player.sessionId;wave.x=player.x+player.width/2;wave.y=player.y+player.height/2;
   wave.width=player.width;wave.facing=player.facing;wave.at=state.time;
   wave.remainingImpulse=bodyMass(player.width)*Math.max(0,EXHALE.IMPULSE_RECOIL_CAP-impulses.recoil);
+  for (const hit of hits) { wave.pushed.add(hit.target.sessionId); wave.parried.add(hit.target.sessionId); }
   state.gustWaves.set(player.sessionId,wave);
   state.onEvent?.('exhale', { id: player.sessionId, x: Math.round(mouthX), y: Math.round(mouthY), facing: Math.round(player.facing * 100) / 100,
     reach: Math.round(reach), breathLeft: player.stamina, recoil: impulses.recoil });

@@ -18,8 +18,7 @@ export function keepApart(state: GameState, player: PlayerSchema) : void {
     if (overlap <= -ARENA_RULES.CONTACT_TOUCH) return;
     const nx = distance > 1e-6 ? dx / distance : 1;
     const ny = distance > 1e-6 ? dy / distance : 0;
-    // Touching: most of this step's sideways movement is undone, so they stay pressed together
-    // instead of orbiting; moving away peels off freely
+    // A little contact friction while pressed together; moving away peels off freely.
     const stepX = player.x + player.width / 2 - player.tickX;
     const stepY = player.y + player.height / 2 - player.tickY;
     const stepToward = stepX * nx + stepY * ny;

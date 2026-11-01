@@ -1,5 +1,11 @@
 # Guiding game loop: lasting dominance
 
+November 1 local starting candidate: the approved
+[25% width-scaled rival damage floor and exhausted-input cue](RIVAL_DAMAGE_AND_BREATH.md)
+preserve stronger early hits, fixed 60-unit bullets and the 20%-wider finish.
+Shared capture growth and injury remain; the loading experiment stays off.
+This is local and provisional, with no new claim of human fun or giant longevity.
+
 Approved and saved at the user's explicit request on October 25, 2026. This is the intended experience, not a claim that current balance achieves it. The user values becoming enormous, feeling almost untouchable and retaining that size for hours through good play. Frequent knockouts across the arena must coexist with rare, durable giants. Later explicit decisions take precedence.
 
 October 30 clarification: **“we want total knockouts. those are fun.”** Knockout frequency is a positive outcome when testing stronger peer damage and capture-to-fire timing. Do not optimize for universal survival or treat every quick finish as a failure. Keep the action rewarding while evaluating readable setup, shared rules and human/touch feel. [CAPTURE_FIRE_DELAY_STUDY.md](CAPTURE_FIRE_DELAY_STUDY.md) records the current default-off one-second playtest candidate and separate body/flight KO totals; it does not certify human fun or change the published game.

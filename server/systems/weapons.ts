@@ -1,16 +1,19 @@
 import type { GameState } from '../schema/GameState.js';
 import type { PlayerSchema } from '../schema/PlayerSchema.js';
 import { PinwheelSchema, WeaponPartSchema, WeaponBoltSchema } from '../schema/PinwheelSchema.js';
-import { EXHALE, INHALE, PINWHEEL, SHOCKWAVE, WEAPON_FLEET, type WeaponKind } from '../constants/gameConstants.js';
+import { EXHALE, INHALE, PINWHEEL, PUSH, SHOCKWAVE, WEAPON_FLEET, WEAPON_SHOTS, type WeaponKind } from '../constants/gameConstants.js';
 import { allWeapons, weaponProfile, orbitalPosition, ionFiring } from '../game/weaponKit.js';
 import { weaponGraze } from '../game/weaponFairness.js';
 import { sweptHit } from '../game/cannon.js';
 import { weaponDamage } from './weaponDamage.js';
 import { resetPartTheft, tryPartTheft } from './weaponTheft.js';
 import { updateShockwave } from './shockwave.js';
+import { firstImpact } from '../game/incomingShot.js';
+import { findPartLayout, PLACEMENT } from '../game/arenaPlacement.js';
 
 export function initializeWeaponSets(state: GameState, count: number = WEAPON_FLEET.SETS): void {
   state.weaponSets.clear();
+  state.nextWeaponPartsAt = state.time;
   const kinds: WeaponKind[] = ['pulsar', 'pinwheel', 'sentinel', 'ricochet', 'ion', 'comet', 'pulsar', 'pinwheel', 'comet'];
   for (let i = 0; i < Math.max(1, Math.min(WEAPON_FLEET.SETS, count)); i++) {
     const w = i === 0 ? state.pinwheel : new PinwheelSchema();
@@ -22,25 +25,29 @@ export function initializeWeaponSets(state: GameState, count: number = WEAPON_FL
     w.spawnY = count === 1 ? state.worldHeight / 2 : classic
       ? state.worldHeight / 2 + (second ? 300 : -300)
       : state.worldHeight * (Math.floor(i / 4) + 1) / 4;
-    w.phase = 'waiting'; w.at = PINWHEEL.FIRST_MS + i * 150;
+    w.phase = 'waiting'; w.at = state.time + PINWHEEL.FIRST_MS + i * WEAPON_FLEET.PARTS_INTERVAL_MS;
     if (i > 0) state.weaponSets.push(w);
   }
 }
 
-export function spawnWeapon(state: GameState, x = state.worldWidth / 2, y = state.worldHeight / 2, kind: WeaponKind = 'pinwheel', w = state.pinwheel): void {
+export function spawnWeapon(state: GameState, x = state.worldWidth / 2, y = state.worldHeight / 2, kind: WeaponKind = 'pinwheel', w = state.pinwheel): boolean {
+  const layout = findPartLayout({
+    width: state.worldWidth, height: state.worldHeight, fans: state.turbines, holes: state.blackHoles,
+    parts: allWeapons(state).filter(other => other !== w && other.phase === 'parts').flatMap(other => other.parts.filter(p => !p.carriedBy)),
+  }, Math.max(400, Math.min(state.worldWidth - 400, x)), Math.max(400, Math.min(state.worldHeight - 400, y)));
+  if (!layout) return false;
   w.parts.clear(); w.bolts.clear(); w.hitAt.clear();
-  w.kind = kind; w.beatAt = w.pulseAt = 0; w.pulseHits.clear(); w.pulseGrazes.clear(); w.pulseDistances.clear();
+  w.kind = kind; w.beatAt = w.pulseAt = w.pulseFacing = w.pulseX = w.pulseY = 0; w.pulseHits.clear(); w.pulseGrazes.clear(); w.pulsePositions.clear();
   w.phase = 'parts'; w.at = state.time + PINWHEEL.PARTS_MS;
   w.owner = ''; w.claimUntil = 0; w.progress = 0;
   w.claimedAt = w.activatedAt = w.nextAimAt = 0; w.aimPoint = null;
-  w.x = Math.max(400, Math.min(state.worldWidth - 400, x));
-  w.y = Math.max(400, Math.min(state.worldHeight - 400, y));
+  w.x = layout.x; w.y = layout.y;
   for (let kind = 0; kind < 3; kind++) {
     const p = new WeaponPartSchema(); p.kind = kind;
-    const a = kind * Math.PI * 2 / 3;
-    p.x = w.x + Math.cos(a) * 145; p.y = w.y + Math.sin(a) * 145;
+    p.x = layout.parts[kind].x; p.y = layout.parts[kind].y;
     w.parts.push(p);
   }
+  return true;
 }
 
 /** First meaningful pickup owns the build; a final contribution cannot steal an active claim. */
@@ -88,15 +95,21 @@ export function deployWeapon(state: GameState, player: PlayerSchema): boolean {
 
 export function updateWeapons(state: GameState, dt: number, now: number): void {
   if (!state.weaponsOn) return;
+  if (state.players.size > 0 && !state.shiftsOn && state.time >= state.nextWeaponPartsAt) {
+    // Oldest eligible set first; a delayed tick/empty room never releases a catch-up pile.
+    const due = allWeapons(state).filter(w => w.phase === 'waiting' && state.time >= w.at).sort((a,b) => a.at - b.at);
+    const next = due[0];
+    if (next) {
+      const spawned = spawnWeapon(state, next.spawnX || undefined, next.spawnY || undefined, next.kind, next);
+      state.nextWeaponPartsAt = state.time + (spawned ? WEAPON_FLEET.PARTS_INTERVAL_MS : PLACEMENT.RETRY_MS);
+    }
+  }
   for (const w of allWeapons(state)) updateWeapon(state, w, dt, now);
 }
 
 function updateWeapon(state: GameState, w: PinwheelSchema, dt: number, now: number): void {
   const profile = weaponProfile(w.kind);
-  if (w.phase === 'waiting') {
-    if (state.time >= w.at && state.players.size > 0 && !state.shiftsOn) spawnWeapon(state, w.spawnX || undefined, w.spawnY || undefined, w.kind, w);
-    return;
-  }
+  if (w.phase === 'waiting') return;
   const owner = state.players.get(w.owner);
   if (w.phase === 'parts' && owner?.state === 'alive' && w.parts.some(p => p.carriedBy === w.owner)) w.claimUntil = state.time + PINWHEEL.CLAIM_MS;
   if (w.owner && (!owner || (owner.state !== 'alive' && (w.phase === 'parts' || w.phase === 'carried')) || (w.phase === 'parts' && state.time >= w.claimUntil))) {
@@ -203,10 +216,11 @@ function updateWeapon(state: GameState, w: PinwheelSchema, dt: number, now: numb
   if (w.phase === 'charging' && state.time >= w.at) {
     w.phase = 'active'; w.at = state.time + weaponProfile(w.kind).activeMs; w.activatedAt = state.time;
     w.nextShotAt = state.time + weaponProfile(w.kind).shotMs; w.beatAt = state.time + SHOCKWAVE.WINDUP_MS;
+    w.nextAimAt = profile.orbit ? w.nextShotAt - WEAPON_SHOTS.CHARGE_MS : state.time;
   }
   if (w.phase === 'active' && state.time >= w.at) { retireWeapon(state, w); return; }
   if (w.phase === 'active' && profile.orbit) {
-    const position = orbitalPosition(w.originX, w.originY, state.time - w.activatedAt, state.worldWidth, state.worldHeight);
+    const position = orbitalPosition(w.originX, w.originY, state.time - w.activatedAt, state.worldWidth, state.worldHeight, w.kind);
     w.x = position.x; w.y = position.y;
   }
   if (w.kind === 'pulsar') {
@@ -223,7 +237,7 @@ function updateWeapon(state: GameState, w: PinwheelSchema, dt: number, now: numb
         if (d < distance) { distance = d; w.aimPoint = { x: p.x + p.width / 2, y: p.y + p.height / 2 }; w.angle = Math.atan2(dy, dx); }
       }
       w.nextAimAt = Infinity;
-    } else if (!profile.aimed) w.angle = (w.angle + (w.kind === 'ion' ? .75 : PINWHEEL.SPIN) * dt) % (Math.PI * 2);
+    } else if (!profile.aimed && (!profile.orbit || w.kind === 'ion' || state.time < w.nextShotAt - WEAPON_SHOTS.CHARGE_MS)) w.angle = (w.angle + (w.kind === 'ion' ? .75 : PINWHEEL.SPIN) * dt) % (Math.PI * 2);
     // Keep the telegraph fixed in world space as a satellite moves. The target can dodge
     // that recorded point; its later position never changes this shot's aim.
     if (profile.aimed && profile.orbit && w.aimPoint) w.angle = Math.atan2(w.aimPoint.y - w.y, w.aimPoint.x - w.x);
@@ -237,14 +251,17 @@ function updateWeapon(state: GameState, w: PinwheelSchema, dt: number, now: numb
     if (state.time >= w.nextShotAt) {
       const bolt = new WeaponBoltSchema(); bolt.angle = w.angle; bolt.bornAt = state.time;
       bolt.x = w.x + Math.cos(w.angle) * 48; bolt.y = w.y + Math.sin(w.angle) * 48;
-      w.bolts.set(String(w.nextBolt++), bolt); w.nextShotAt = state.time + profile.shotMs;
-      if (profile.aimed) w.nextAimAt = state.time + 1;
+      w.bolts.set(String(w.nextBolt++), bolt);
+      w.nextShotAt += Math.max(1, Math.floor((state.time - w.nextShotAt) / profile.shotMs) + 1) * profile.shotMs;
+      if (profile.aimed) w.nextAimAt = profile.orbit ? w.nextShotAt - WEAPON_SHOTS.CHARGE_MS : state.time + 1;
     }
   }
   for (const [id, bolt] of w.bolts.entries()) {
     const x = bolt.x, y = bolt.y, travelAngle = bolt.angle;
-    bolt.x += Math.cos(bolt.angle) * profile.speed * dt; bolt.y += Math.sin(bolt.angle) * profile.speed * dt;
-    if ((state.time - bolt.bornAt) * profile.speed / 1000 > profile.range) { w.bolts.delete(id); continue; }
+    const travel = Math.min(profile.speed * Math.min(dt, Math.max(0, (state.time - bolt.bornAt) / 1000)), Math.max(0, profile.range - bolt.traveled));
+    const seconds = travel / profile.speed;
+    bolt.x += Math.cos(bolt.angle) * travel; bolt.y += Math.sin(bolt.angle) * travel;
+    bolt.traveled += travel;
     if (bolt.x < 0 || bolt.y < 0 || bolt.x > state.worldWidth || bolt.y > state.worldHeight) {
       if (w.kind !== 'ricochet' || bolt.bounces >= 2) { w.bolts.delete(id); continue; }
       const vx = Math.cos(bolt.angle) * (bolt.x < 0 || bolt.x > state.worldWidth ? -1 : 1);
@@ -253,10 +270,16 @@ function updateWeapon(state: GameState, w: PinwheelSchema, dt: number, now: numb
       bolt.x = Math.max(0, Math.min(state.worldWidth, bolt.x)); bolt.y = Math.max(0, Math.min(state.worldHeight, bolt.y));
     }
     for (const p of state.players.values()) {
-      if (!canHit(w, p, state.time, state.time < p.weaponSafeUntil)) continue;
+      if (!canHit(w, p, state.time, true)) continue;
       if (!sweptHit(x, y, bolt.x, bolt.y, p.x + p.width / 2, p.y + p.height / 2, p.width / 2 + profile.radius)) continue;
-      damagePlayer(state, w, p, now, travelAngle, x, y, profile.radius); w.bolts.delete(id); break;
+      const impact = firstImpact({ x: p.x + p.width / 2, y: p.y + p.height / 2, vx: 0, vy: 0, radius: p.width / 2 },
+        [{ id, x, y, vx: Math.cos(travelAngle) * profile.speed, vy: Math.sin(travelAngle) * profile.speed, radius: profile.radius, visible: false }], seconds);
+      const contactAge = state.time - bolt.bornAt - dt * 1000 + (impact?.seconds ?? 0) * 1000;
+      // The hollow charge is consumed on contact. It cannot become live inside a body.
+      if (contactAge >= WEAPON_SHOTS.ARM_MS && state.time >= (w.hitAt.get(p.sessionId) ?? 0)) damagePlayer(state, w, p, now, travelAngle, x, y, profile.radius);
+      w.bolts.delete(id); break;
     }
+    if (bolt.traveled >= profile.range) w.bolts.delete(id);
   }
 }
 
@@ -270,7 +293,8 @@ function damagePlayer(state: GameState, w: PinwheelSchema, p: PlayerSchema, now:
   const glancing = weaponGraze(size, x, y, fromX, fromY, angle, radius, w.kind === 'ion' ? WEAPON_FLEET.ION_RANGE : Infinity);
   const { lost, out, earned, blocked } = weaponDamage(state, p, w.owner, amount, now, glancing);
   if (blocked) return;
-  if (!out && !glancing) p.skid(Math.cos(angle), Math.sin(angle), PINWHEEL.HIT_PUSH);
+  // Keep the impact's initial push, but let the defender steer through its brief drift.
+  if (!out && !glancing) p.pushWithControl(Math.cos(angle), Math.sin(angle), PINWHEEL.HIT_PUSH * PUSH.FRICTION);
   const lateral = (x - fromX) * Math.sin(angle) - (y - fromY) * Math.cos(angle);
   const entry = Math.sqrt(Math.max(0, size * size / 4 - lateral * lateral));
   const hitX = glancing ? x - Math.sin(angle) * lateral - Math.cos(angle) * entry : x;
@@ -283,6 +307,6 @@ function retireWeapon(state: GameState, w: PinwheelSchema): void {
   if (!w.fixedRecipe) w.kind = w.kind === 'pulsar' ? 'pinwheel' : 'pulsar';
   w.phase = 'waiting'; w.at = state.time + (weaponProfile(w.kind).orbit ? WEAPON_FLEET.ORBIT_RESPAWN_MS : PINWHEEL.RESPAWN_MS);
   w.owner = ''; w.claimUntil = 0; w.progress = 0;
-  w.parts.clear(); w.bolts.clear(); w.pulseHits.clear(); w.pulseGrazes.clear(); w.pulseDistances.clear();
+  w.parts.clear(); w.bolts.clear(); w.pulseHits.clear(); w.pulseGrazes.clear(); w.pulsePositions.clear();
   w.pulseAt = w.beatAt = 0; w.aimPoint = null;
 }

@@ -1,0 +1,117 @@
+{
+  "sourceArchive": "C:\\Users\\aiand\\Downloads\\ascend-android-test-v12.zip",
+  "files": [
+    {
+      "path": "AndroidManifest-snippet.xml",
+      "sha256": "199045170acb108785a4f70d0358fe6856da62418f37e7998101018e60add4d4"
+    },
+    {
+      "path": "README.txt",
+      "sha256": "2f8c6ce11f941a53a338c9fc4e0f893d0d484ba67b177975a2fe611652aac2a7"
+    },
+    {
+      "path": "SHA256SUMS.txt",
+      "sha256": "50a9b00668ff59f33168f0df1eb4a00572fea7d1d455f7f7c75dbb0b0eb1e5d3"
+    },
+    {
+      "path": "validation.json",
+      "sha256": "28a094c1820f9315f1223a6919dc4e0df6eba53ebed675eceefdfbae2be32722"
+    },
+    {
+      "path": "play-store/ascend-test-512.png",
+      "sha256": "35dfeab25f48319dd235e0d5d82f35460c9eb12d6f1537d592799615514ae922"
+    },
+    {
+      "path": "previews/adaptive-circle.png",
+      "sha256": "b7e789f10c2b13ef02a90f44706c95045543fdf5f1c41940a0a86f656858ffb2"
+    },
+    {
+      "path": "previews/adaptive-rounded-square.png",
+      "sha256": "40f2d6b2dfb621ed11fa38e8a18b6704c63cd0f89fe78aad9c7121ae024726a6"
+    },
+    {
+      "path": "previews/adaptive-squircle.png",
+      "sha256": "42be256cd8e0c57c522406cabe5b791b4ebc8bdf0e7bef61ce998f7cedacc46f"
+    },
+    {
+      "path": "source/adaptive-foreground-extracted.png",
+      "sha256": "9e4aca2b8edb52c8dd9cd037b456e92fb15d7606e2b85fb645ac4b49f72df9ec"
+    },
+    {
+      "path": "source/ascend-test-master-1024.png",
+      "sha256": "b4095d66eccde2836c20a38c8aeef28e596a9d678c3e2c510e82038f7994c8f6"
+    },
+    {
+      "path": "res/drawable/ic_launcher_test_background.xml",
+      "sha256": "d47c96e88d023db314157a177291ec229c6f7db3191c3df62753203fb96ca008"
+    },
+    {
+      "path": "res/drawable-hdpi/ic_launcher_test_foreground.png",
+      "sha256": "0a71a25dd1255be4f1d3069a920d4f6e482e20d1c3e3b89e27db6d827bf736dc"
+    },
+    {
+      "path": "res/drawable-mdpi/ic_launcher_test_foreground.png",
+      "sha256": "30d3bb479e7a8bc7db49105bc35afe4e24c6e91689b9e467527af73332b8a80a"
+    },
+    {
+      "path": "res/drawable-xhdpi/ic_launcher_test_foreground.png",
+      "sha256": "7fbf60fd26638061e9259c5eadb2db4ca4edb5dcd5484ca836bd4de15794cbff"
+    },
+    {
+      "path": "res/drawable-xxhdpi/ic_launcher_test_foreground.png",
+      "sha256": "14437f5a0e49a739939a1366761898aa512306fee3088348373f1f5ff8ddbd63"
+    },
+    {
+      "path": "res/drawable-xxxhdpi/ic_launcher_test_foreground.png",
+      "sha256": "74df72ddd2099a7f6ffd81309c90e57af0a45df6b829864b1b3f992d12f59476"
+    },
+    {
+      "path": "res/mipmap-anydpi-v26/ic_launcher_test.xml",
+      "sha256": "f9f43657bfaffba869aa0ca872bd20c6c4d396b66030c4b66a1ce645e5cab4f8"
+    },
+    {
+      "path": "res/mipmap-anydpi-v26/ic_launcher_test_round.xml",
+      "sha256": "f9f43657bfaffba869aa0ca872bd20c6c4d396b66030c4b66a1ce645e5cab4f8"
+    },
+    {
+      "path": "res/mipmap-hdpi/ic_launcher_test.png",
+      "sha256": "ec7ac1fb4f9b8c244725af35667d1f9d07617a5af7bb7ffe14d7878bb21e57bb"
+    },
+    {
+      "path": "res/mipmap-hdpi/ic_launcher_test_round.png",
+      "sha256": "8e23339662d942a4334bc9855eeae0a4ab9f9e46f88071f414ab67df44ca8c73"
+    },
+    {
+      "path": "res/mipmap-mdpi/ic_launcher_test.png",
+      "sha256": "da3c5476469a14a0c0fbaae602e28c5c5ae0d5e4b8466ad2467737ecb2f49848"
+    },
+    {
+      "path": "res/mipmap-mdpi/ic_launcher_test_round.png",
+      "sha256": "2d42c5746dbbf67e41528cf89d8182c4f254dadb816084c38d1fcaa220d9eb61"
+    },
+    {
+      "path": "res/mipmap-xhdpi/ic_launcher_test.png",
+      "sha256": "f9253c57a0706e39bd734aef7ae89eb86386590ee282f32d64c5f2f810a2507a"
+    },
+    {
+      "path": "res/mipmap-xhdpi/ic_launcher_test_round.png",
+      "sha256": "a544c2903643b13ccfdbb2edaacc845ed99b332e723e6b54a479ce23aa5df89f"
+    },
+    {
+      "path": "res/mipmap-xxhdpi/ic_launcher_test.png",
+      "sha256": "ae18e290ca78eda4c4ce04960600cf0217ffd0c8147768c6ec7168c5f07c9679"
+    },
+    {
+      "path": "res/mipmap-xxhdpi/ic_launcher_test_round.png",
+      "sha256": "9caa321eaca43a3dc776b99c2d469c0c552d4f3d2da6e252393eea5bebc29e01"
+    },
+    {
+      "path": "res/mipmap-xxxhdpi/ic_launcher_test.png",
+      "sha256": "a73be9e99b3b119fc95f24aa91b0a2abd3ffc195fd38e0e53868655ff1fab1d5"
+    },
+    {
+      "path": "res/mipmap-xxxhdpi/ic_launcher_test_round.png",
+      "sha256": "7d8dc079e4a5ab9161f1c98f7c8ec0a3c63e24b015aaa45885d637eb04fcbf5d"
+    }
+  ]
+}

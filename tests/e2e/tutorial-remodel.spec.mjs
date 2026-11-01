@@ -30,7 +30,7 @@ test('old completions are retained while new combat and rear-cover mastery remai
   const picker=page.getByRole('dialog',{name:'Practice / Tutorials'});
   for(const id of ['basics','weapon','blackhole'])await expect(picker.locator(`[data-lesson="${id}"]`)).toContainText('Completed');
   await expect(picker.locator('[data-lesson="combat"]')).toContainText('Ready to try');
-  await expect(picker.locator('[data-lesson="defense"]')).toContainText('Updated — try rear cover');
+  await expect(picker.locator('[data-lesson="defense"]')).toContainText('Updated — try the escape gust');
   expect(await picker.locator('[data-lesson]').count()).toBe(5);
   await page.screenshot({path:test.info().outputPath('five-lesson-picker.png'),scale:'css'});
 });

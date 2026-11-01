@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { GameState } from '../schema/GameState.js';
-import { INHALE, CANNON, EXHALE } from '../constants/gameConstants.js';
+import { INHALE, CANNON } from '../constants/gameConstants.js';
 import { updateInhales, updateHolds, exhale } from '../systems/inhale.js';
 
 const NOW = 100_000;
@@ -87,9 +87,8 @@ for (const recovery of [CANNON.ESCAPE_SAFE_MS, CANNON.LAND_SAFE_MS]) {
   const { state, a, b } = world(40, 40, .1);
   b.facing = Math.PI; b.suctionSafeUntil = NOW + recovery; b.recaptureAfter = NOW + recovery;
   exhale(state, b, NOW);
-  assert(!a.inhaling && a.stunned, 'a protected defender can still gust and stun an attacker');
+  assert(a.puffVx < 0 && !a.stunned && !a.sliding, 'a protected defender can still push without stunning');
   assert.equal(b.suctionSafeUntil, NOW + recovery, 'gust preserves the longer recovery');
-  assert(b.suctionSafeUntil > NOW + EXHALE.BREAK_MS);
 }
 
 // Escaping from a huge body starts outside it, including at a wall, and cannot immediately recycle.

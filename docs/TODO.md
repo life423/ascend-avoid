@@ -2,7 +2,103 @@
 
 Updated November 1, 2026. This is the durable list of the user's requests and decisions. Current code and later feedback override historical tuning. The approved injury-only theft change supersedes ordinary healthy-player stealing and the earlier theft-allowance suggestion. The fifteen archived balance options remain proposals unless separately accepted.
 
+## Publishing workflow — November 1 release authorization
+
+The user now explicitly requests **commit, merge into main and push to GitHub**.
+This authorizes releasing the accumulated reviewed branch, including the default
+25% rival floor, tutorial/control work, combat/visual/spacing changes and saved
+Android launcher assets. It supersedes the previous local-only hold for this
+batch. Retain protected PR checks and the normal main deployment workflow; verify
+the release result. Google Play/store preparation is still on hold pending account
+approval. Earlier candidate notes preserve their local evidence and open balance
+questions rather than proving final fun or physical-device quality.
+
 ## Android build and website release
+
+November 1 clarification: Google developer approval is still pending. **Hold store
+preparation for now.** The user selected the complete gameplay-loop review next;
+keep that work local. V12 is only the supplied icon-bundle version, not a new app
+edition: regular and TEST launcher artwork are already installed locally.
+
+### Current local gameplay evaluation — November 1
+
+[GAME_LOOP_REVIEW.md](GAME_LOOP_REVIEW.md) records 36 seeded ordinary-world runs,
+216 controlled fight executions, four recorded normal-room desktop/phone browser
+sessions and two isolated breath-control diagnostics. It distinguishes mechanical
+opportunities from human fun, with raw results linked. This is a first measured
+review, not final balance or a claim that the game's replayability is solved.
+
+- [x] **Local starting candidate: meaningful large-rival missile hits.** The user confirmed that
+  current equal-width losses of about 12%/5%/2% at widths 200/300/500 are a major
+  problem. They explicitly want consequences evaluated before activation. Compare
+  physical-width-scaled 33% with preserving stronger early hits; account for
+  shrink/speed, the 20%-wider second-hit threshold, capture growth and ammo supply,
+  injury finishes, spills, bot targeting and long-run giants. A first hit should
+  feel satisfying; no universal two-shot-kill rule is agreed. The later approved
+  [25% floor candidate](RIVAL_DAMAGE_AND_BREATH.md) preserves stronger early hits,
+  standard 60-unit bullets and shared actor rules. It follows 2,160 reload fights,
+  450 shots allowed to miss, and nine ten-minute population controls. The user
+  approved this conservative local start; final feel/long-run balance remain open.
+  The loading experiment stays disabled, with no publishing.
+- [x] **Local: clearer exhausted-input feedback.** Holding through exhaustion
+  can leave full breath with no inhale until release/re-press, confirmed with real
+  desktop/touch input. Existing controls now show LET GO / HOLD AGAIN or the
+  keyboard release/re-press cue; compact landscape restores INHALE after LET GO.
+  No breathing rule, automatic firing/puff or pinned panel was added. Real-control
+  and label-layout checks pass on phone, landscape, tablet and desktop profiles.
+- [ ] **Improve discovery of ordinary-play opportunities.** Curious probes obtain
+  an agency event by two minutes in 11/12 runs; gatherers do so in 5/12. Check
+  readable capture/escape/physical-part opportunities, without forced fights,
+  bot handicaps or new rewards. Scripted opportunity counts are not newcomer data.
+
+### Fun and replayability — latest direction, November 1
+
+The user wants enjoyable fights, voluntary replay and moments worth telling
+friends about. Finish the remaining known fixes before the whole-loop review.
+The assistant will handle that review with gameplay/browser tests, recordings
+and pacing measurements; do not make the user replay again as a prerequisite.
+Use the user's three review criteria:
+
+1. **Reach a meaningful interaction quickly in ordinary play.** Initially test
+   an understandable capture, shot or successful escape within one or two minutes.
+   This is a proposed design target, not an industry benchmark or a forced-encounter
+   timer. Tutorial completion does not establish ordinary-play discovery.
+2. **Make the result understandable to both sides.** The attacker should see why
+   the move worked; the defender should have enough warning and control to identify
+   an escape opportunity or a decision to improve. Prioritize this over encounter
+   speed; unavoidable action is not a successful opening.
+3. **Make growth create useful choices.** Size should feel powerful while aim,
+   positioning, target selection and danger management still matter. Smaller
+   players need worthwhile opportunities without erasing earned giant dominance.
+
+Assess time to a decision that visibly matters, rewarding growth/knockouts and
+memorable capture/fan/black-hole interactions together. Automated correctness and
+bot survival are not proof of human enjoyment. This does not authorize additional
+weapons, rewards, analytics or publishing.
+
+### Tutorial countdown and control clearance — November 1 follow-up
+
+The user reported the mobile tutorial bar overlapping the joystick ring after
+PR #70. On `codex/tutorial-countdown-layout`, placement uses the actual canvas
+geometry, reserves the joystick's full knob travel, and avoids the action ring,
+safe areas, visible Place button and lesson instructions. Prefer shallow wrapping
+over tall side stacks; reflow when the viewport, controls or text changes.
+Verify actual drawn circles, not another set of assumed bottom offsets.
+
+The user also requested automatic progression in the full tutorial. Each new
+lesson, and the injured-escape preparation, uses a brief central **3–2–1**.
+**Start now** overrides the wait immediately; **Pause** provides reading time.
+Prepared movement survives both paths. Opening lesson selection, injury details
+or hiding/disconnecting during a countdown pauses it. Individual lessons retain
+their existing manual preparation, and missed attempts retry just that step.
+The server owns the deadline and keeps threats/input inactive until starting;
+held ammunition keeps its identity and remaining budget. Countdown readiness
+does not certify lesson success or change shared combat rules.
+
+This is a local candidate, not a production release; the user has explicitly
+paused publishing until they ask again. Review phone portrait,
+landscape, tablet, desktop, enlarged text and viewport/safe-area changes before
+rollout. The later local projectile/Pulsar/pacing changes are recorded below.
 
 ### Pixel playtest follow-up — November 1
 
@@ -10,46 +106,90 @@ Tracked in [GitHub #69](https://github.com/life423/ascend-avoid/issues/69), as p
 of the unfinished physical-device checks in #66. Preserve every point below;
 recording it does not mean it is fixed or that balance is settled.
 
-- [x] **Candidate: held joystick and reachable tutorial actions.** On
-  `codex/mobile-tutorial-readiness`, Ready and entry into its reading stage keep
+- [x] **Released in PR #70: held joystick and tutorial actions.** Ready and entry into its reading stage keep
   held movement while clearing stale action/aim. Mobile actions sit near the
   thumb controls with separate Place clearance. Local browser verification is
   recorded in [PRACTICE_TUTORIAL.md](PRACTICE_TUTORIAL.md). Real Pixel confirmation
-  and release remain pending; no global injury balance change is claimed.
-- [x] **Candidate: distinguish the two defense exercises.** The single “Escape
+  remains pending; the subsequent overlap report is addressed by the local
+  measured-clearance follow-up above. No global injury balance change is claimed.
+- [x] **Released in PR #70: distinguish the two defense exercises.** The single “Escape
   & recover” lesson now names **Puff & flee** and **Escape while injured** in
   its picker description and corresponding instructions. Both remain reachable
   in the full sequence; completion and unlocked selection are preserved.
-- [ ] **Measure injured escape after fixing input.** The user finds it far too
-  difficult. Test movement directions, starting gaps, thumb preparation,
-  reaction time and latency before deciding shared injury/suction/speed tuning.
-  A tutorial input failure alone is not evidence that global balance is wrong.
-  The preliminary 20-case probe in PRACTICE_TUTORIAL.md does expose a narrow
-  escape window: sideways fails, and a one-second delayed retreat loses at the
-  current tutorial sizes/gap. Keep this balance follow-up high priority.
-- [ ] **Fair warning and counterplay for surprise shots.** The user reports
-  offscreen projectiles and moving satellites arriving/firing point blank with
-  no reasonable dodge opportunity. The current edge arrow covers only
-  player-fired cannonballs within 0.5 seconds, not weapon bolts. Assess lead
-  time, camera framing, muzzle proximity, visible approach and defensive options.
-- [ ] **Trace perceived clash stun.** Ordinary body contact already squishes
-  and slides without calling stun. Gameplay stun remains on cannonball/turbine
-  impacts (450 ms) and gust hits (800 ms). Identify the actual source before
-  removing effects indiscriminately; gust interruption supports escape from
-  suction. Keep control during ordinary similar-size contact.
-- [ ] **Overhaul injured-creature styling.** The user rejects the current
-  appearance as ugly and insufficiently damaged, especially at the back (Pixel
-  screenshot, November 1). Treat the existing split-shell treatment as needing
-  redesign, not an accepted finished look. Make damage read around the whole
-  shell, including rear/sides and every facing, while keeping eyes readable and
-  matching the creature's space-themed style. Healing and knockout should follow
-  the same damage language. Do not rely on face-only lines, sparse rear scratches
-  or rapid blinking. Record concepts and inspect actual phone/desktop rotations
-  before claiming the visual problem is resolved. This is requested backlog work;
-  no injury-art overhaul is implemented in the tutorial-input candidate.
-- [ ] **Spawn weapon parts clear of fans.** Fixed triangular part placement has
-  no obstacle clearance. Parts remain inhalable but should not initially overlap
-  fan/turbine artwork or intake footprints. Preserve pickup/cargo behavior.
+- [x] **Local first pass: injured escape.** Shared outer suction now preserves part
+  of a faster runner's deliberate outward speed advantage, fading smoothly with
+  distance, size and analog input. Strong mouth pull, damage, injury timing and
+  breathing restrictions remain. Faster injured bots favor outward retreat.
+  The lesson starts 600 units apart in a roomy arena, with 250ms pursuer decisions.
+  [INJURED_ESCAPE.md](INJURED_ESCAPE.md) records 21,536 executions and limits.
+  Actual phone feel, multi-attacker pressure and final balance remain open.
+- [x] **Local: distinguish weapon shots and add escape opportunities.** The user
+  clarified that satellite and spinning-cannon bullets look like gems, can fire
+  point blank and are too tightly spaced. Directional capsules/tracers replace
+  the diamonds; a visible 550ms launch phase fizzles on early contact. Slower,
+  shorter-range bolts and 320ms Pinwheel spacing retain live-hit damage/rewards.
+  Bullet satellites settle for a 650ms charge, visibly fill their barrel, then
+  fire a committed direction. Use compact muzzle animation, not dotted bullet
+  lanes; keep Ion's laser warning. Actual offscreen collision threats get a brief
+  edge cue. Bots read the same public warnings, react with delay and steer at
+  ordinary speed; all shared gameplay rules remain equal. Exact parameters,
+  2,196 staged executions and verification are in PROJECTILE_COUNTERPLAY.md.
+  Physical-phone feel, multi-weapon pressure and long-run balance remain review
+  tasks. No push, merge or deployment is authorized.
+- [x] **Local Pulsar crescent.** Rotate only in recovery, then lock for charge and
+  release. Start weaker: 90 degrees / 1s charge / 30-degree turn / 15% hit, retaining
+  the six-gem minimum. No stun, steering lock or projectile barrier. Released waves
+  retain their own path. Bots read public cues; the lesson follows placed heading.
+  See [PULSAR_CRESCENT.md](PULSAR_CRESCENT.md) for 2,700 executions and browser checks.
+  Multi-weapon pressure and physical human feel remain work.
+- [x] **Local staggered weapon availability.** First build at 5s, then one new or
+  replacement set per shared 12s interval, after existing retirement delays.
+  Oldest eligible first; no empty-room/late-tick catch-up pile. All recipes and
+  actor access remain. [WEAPON_PACING.md](WEAPON_PACING.md) records 24 three/ten-minute
+  comparisons: peaks fall from 7–8 to 2–3 / 3–4. Saved cargo can still deploy
+  together. Human multi-weapon readability and final pacing remain review tasks.
+- [x] **Local: keep the wrap animation, remove gust stun and lasting barrier.**
+  The user's latest instruction approves the change after discussion. Preserve
+  the mouth-origin pulse and 220ms two-sided sweep; rear airflow opens/thins into
+  wisps over 480ms. One 140ms passing pulse can shove each creature only once,
+  sharing the front/rear impulse budget. Remove continuous suction blocking,
+  global one-second suction safety and the 800ms gust stun. Retain only the
+  existing 350ms restart delay on an inhale actually broken by the gust. Use a
+  short additive air drift rather than a hidden control-locking skid: movement,
+  turning and prepared ammunition remain available. Keep 35% breath/1.8s cooldown
+  and bot/human parity. Teach the real rear shove plus movement in defense;
+  update Help and bot decisions in the same pass. This is implemented locally,
+  not merged/deployed. Real-phone/human feel review remains pending.
+- [x] **Local: trace perceived clash stun and remove a hidden weapon control lock.**
+  Ordinary contact has no stun or skid; full-tick tests confirm immediate sideways
+  and outward steering. The shared Pinwheel/Sentinel/Ricochet/Comet/Ion damage path
+  still started a roughly 0.35s slide that disabled movement/turning even with
+  `stunned=false`. It now adds a brief steerable push, preserving damage/rewards
+  and actor parity. Cannonball/turbine-flight impact stun (450ms), living-captive
+  release separation and dormant traffic/bomb/shift behavior remain.
+  [CONTROL_LOCK_AUDIT.md](CONTROL_LOCK_AUDIT.md) records sources, 48 contact/30 hit
+  cases, 43 unit scripts, 18 network scenarios and 20 browser cases. Actual phone
+  feel and whether this explains every previously perceived clash remain open.
+- [x] **Local injured-creature artwork pass.** The user explicitly requires
+  an aesthetically appealing damaged creature, as well as readable rear damage.
+  The new shell has a quiet front plate, five related rear/side fractures, warm
+  recessed seams and restrained worried eyes. Eye size and cracks ease back
+  together on healing; finishes use the same fragments. Puffed cheeks and clear
+  pupils remain while holding ammunition, with no body blinking or new HUD.
+  [INJURY_ART.md](INJURY_ART.md) records 61 distinct browser cases and screenshot
+  review at four sizes/eight facings plus actual game views on phone/tablet/
+  desktop profiles. The appearance is reviewable, not declared aesthetically
+  perfect or accepted by the user. Physical-phone recognition/performance remain
+  open. Shared gameplay rules are unchanged and publishing remains paused.
+- [x] **Local: spawn parts clear of fans and space fans away from black holes.**
+  Relocate blocked three-part sets together, clear of fan housing/inner intake,
+  hole rings and other loose parts. Later fans avoid loose parts and reserve
+  about 450 world units from black-hole centers, including a 260-unit visual gap.
+  Failed searches wait and retry rather than force overlaps. Shared pickup/cargo,
+  bot assembly, fan counts and weapon pacing remain. [ARENA_SPACING.md](ARENA_SPACING.md)
+  records 128 crowded layouts, 44 unit scripts plus progress, 18 multiplayer
+  scenarios, ten spacing browser cases and the Android weapon lesson. Actual
+  phone feel and whole-loop clutter review remain; everything stays local.
 - [ ] **Refine weapon assembly and evaluate expansion.** The user likes building
   weapons from three parts but wants the current weapons refined, with possibly
   more types. Run-over power-ups are a design idea to explore, not approval for
@@ -57,23 +197,41 @@ recording it does not mean it is fixed or that balance is settled.
 
 Finish the Android readiness work alongside this feedback: Test app staging,
 physical touch/lifecycle/performance checks, release traceability, off-PC signing
-backup and store preparation. Icons remain deferred below. Bots and humans keep
+backup and store preparation. V12 icons are now installed as recorded below. Bots and humans keep
 identical mechanics; the 20%-wider finish and disabled 33% damage/loading trials
 are unchanged by this report.
 
-### Deferred app icons — requested November 1
+### Supplied app icons — November 1, local integration
 
-Work on these after the current active implementation, deployment and testing
-tasks are finished:
+- [x] Save the current **V12** production and TEST-marked bundles unchanged in
+  `android/branding/ascend-android-main-v12/` and `ascend-android-test-v12/`, with
+  their 28 source files each. Earlier V10 bundles remain archived.
+- [x] Use the supplied adaptive layers and regular/round resources for each target;
+  remove the temporary flattened-art wrapper. Signed APK/AAB, identity/origin,
+  signature and bundle checks pass. All 15 density exports per app preserve
+  source visible pixels/alpha in the APK; both verified APKs were installed and
+  launched on the Pixel over Wi-Fi.
+- [x] Replace the reported white legacy wrapper with dark adaptive launcher
+  resources and install both apps on the Pixel over Wi-Fi. The regular icon was
+  visually confirmed on the actual launcher, without the white surround.
+- [ ] Review both V12 icons on the Pixel launcher, other masks and themed icons.
+  Supplied mask previews were inspected; actual V12 launcher review remains.
+- [ ] Use the unmarked 512px production image for the eventual Play listing.
 
-- [ ] Design the final **Ascend Avoid** production app icon.
-- [ ] Create a matching **Ascend Avoid Test** icon clearly marked **TEST**, readable
-  at small launcher sizes so the two installed apps are easy to distinguish.
-
-Keep the existing arrow icons during the current work; this request schedules
-the artwork rather than changing either app now.
+Both corrected apps are installed; neither was published. Website/PWA artwork
+remains separate. See the bundle IMPORT.md files and [ANDROID_RELEASE.md](ANDROID_RELEASE.md).
 
 ### Current release — November 1
+
+PR #70 merged as `5d56c42ef34ef62793e1b4089cdb8c31934ef549`. Production workflow
+`41329133024` passed and deployed ready revision `ascend-avoid--0000109` with
+100% traffic. Its public client exactly matches the staging-tested bundle;
+all 24 hosted desktop/Android/iPhone browser integration/readiness cases passed.
+The later user screenshot exposed joystick overlap outside the prior assertions;
+the follow-up above adds actual canvas-circle clearance checks. Injury styling
+and shared escape/projectile balance remain open.
+
+The earlier Android infrastructure release follows for historical reference.
 
 PR #67 merged as `884357e826a6e6d3b9e42a965fa1bc1a1cce2c79`. Production workflow
 `41325948278` passed its build/gameplay/multiplayer checks and deployed that exact

@@ -1,5 +1,133 @@
 # Ascend Avoid
 
+## November 1 release authorization
+
+The user has now explicitly requested committing the accumulated changes, merging
+to main and pushing to GitHub. This supersedes the earlier local-only hold for
+this reviewed batch, including the 25% rival floor. Use the protected pull-request
+checks and existing deployment workflow; verify the deployed revision. Candidate
+notes below record their earlier local validation, not a claim of final balance.
+Google Play publication/store preparation remains on hold pending account approval.
+
+## Gameplay-loop evaluation — November 1 local review
+
+The later approved [rival-hit and breath candidate](RIVAL_DAMAGE_AND_BREATH.md)
+now runs locally: a physical-width-scaled 25% rival damage floor, preserving
+stronger early impacts and standard 60-unit bullets. It was selected below 33%
+after reload, actual-hit-area and populated-world comparisons. Existing 20%-wider
+finishes, injury, capture growth and the disabled loading experiment remain.
+The existing inhale control now explains release/re-press after exhaustion.
+Bots, humans and tutorials share the candidate. This supersedes the no-activation
+status of the initial review below, without declaring final balance or publishing.
+
+The user selected the [complete loop review](GAME_LOOP_REVIEW.md), with store work
+on hold pending developer approval. It measures opening agency and reviews
+current normal damage versus isolated 33% candidates. Weak large-rival hits are
+confirmed as a priority problem, but the user explicitly retains evaluation
+before activation. Shrink/escape speed, capture growth, the 20%-wider finish,
+injury, spills and repeated ammunition must be considered together. A first hit
+should be rewarding; no universal two-shot-kill rule is agreed. This research
+does not alter running-game constants, add a mechanic or establish human fun.
+
+## Parts and large-hazard spacing — November 1 local follow-up
+
+The later [arena-spacing pass](ARENA_SPACING.md) moves blocked three-part sets
+together, clear of fan housing/inner intake, hole rings and loose parts. Later
+fans also avoid existing parts and keep about 450 world units from black-hole
+centers, including a 260-unit visual gap. Bounded searches retry without forcing
+overlaps. Counts, collection, cargo and shared actor physics remain. The user
+explicitly wants breathing room between large landmarks; whole-loop clutter and
+physical-phone review remain open. This is implemented and tested locally only.
+
+## Readable satellite and Pinwheel shots — November 1 local follow-up
+
+The later [injury-art pass](INJURY_ART.md) replaces the face-crossing three-plate
+pattern with rear/side fractures, a clear front plate, warm recessed seams and
+gentle worried eyes. The eyes and seams ease back together on recovery; finishes
+use the same five shell fragments. Reduced motion stays static. This changes
+presentation only, with the same render functions for human/bot/tutorial play.
+The user explicitly requires an appealing creature as well as readable damage.
+
+The later [control-lock audit](CONTROL_LOCK_AUDIT.md) also removes the shared
+assembled-weapon impact skid. Direct hits add a brief steerable push; ordinary
+contact, gusts and Pulsar waves retain movement and turning. Damage/rewards and
+bot/human/tutorial parity remain. The separate 450ms player-missile/turbine-flight
+impact stun is preserved. No hosted publication has occurred.
+
+The later [injured-escape first pass](INJURED_ESCAPE.md) preserves part of a faster
+runner's deliberate radial speed advantage against outer body suction. It fades
+in smoothly with distance, size and analog input; close mouth pull and damage/
+injury/breathing rules remain. Bots share the rule and choose appropriate retreat.
+The defense lesson uses 600-unit separation, more room and 250ms pursuit decisions.
+Measured outcomes improve, while close mistakes remain dangerous. It is local,
+not a final balance or human-fun claim.
+
+The approved [projectile follow-up](PROJECTILE_COUNTERPLAY.md) replaces gem-like
+diamond bolts with directional capsules/tracers, adds a harmless visible launch
+phase and predicted offscreen threat cues, shortens/slows the reported weapons,
+and spaces Pinwheel shots at 320ms. Bullet satellites settle for a 650ms muzzle
+charge and commit their heading before firing. Use compact barrel animation,
+not dotted bullet lanes across the arena; Ion keeps its existing laser warning.
+Bots read the same public threats, react with delay and use ordinary movement.
+Damage/reward rules and bot/human parity are preserved. This is local work only;
+staged tests do not establish final fun, physical-phone performance or universal
+escape fairness. The later approved [Pulsar crescent](PULSAR_CRESCENT.md) replaces
+the ring locally: 90 degrees, 1s locked charge, 30-degree recovery turn and 15%
+central damage with six-gem minimum. Released waves retain their origin/heading;
+movement and turning remain available on hits. Bots use the same public charge
+and delayed ordinary steering. Balance is provisional; publishing remains paused.
+
+## Staggered weapon availability — November 1 local follow-up
+
+The later [weapon-pacing candidate](WEAPON_PACING.md) releases initial/replacement
+component sets one at a time with 12-second shared spacing, starting at 5s. Nine
+builds and six recipes remain; actor rules and deployment freedom are unchanged.
+It reduces measured overlap, without promising a hard active-weapon limit.
+
+## Steerable escape gust — November 1 local follow-up
+
+The user now approves retaining the front-to-back gust animation, at the same
+quality or better, while removing stun and an impenetrable barrier. This
+supersedes the earlier discussion hold and rear-wall behavior below. The local
+candidate keeps the 220ms two-sided wrap, then opens/thins the rear arc into
+fading wisps over 480ms. Only the first 140ms after wrapping can affect bodies;
+each creature receives at most one finite, mass-aware push per cast, including
+front hits. There is no continuing suction obstruction or new suction immunity.
+A connected inhale can be broken once with its existing 350ms restart delay;
+movement and turning remain available throughout. Gusts no longer stun, eject
+held ammunition, or use the impact skid that also prevented steering. The short
+air drift is shared by server movement and client prediction. Cost remains 35%
+breath and cooldown 1.8s, with the same rules for bots and humans.
+
+The defense lesson now requires an actual rear push followed by escape movement,
+not a persistent wall or a still-interrupted pursuer. Projectile stuns and the
+separately recorded injury-art/projectile/spawn feedback are unchanged. This is
+local work only; publishing remains paused. Human feel and real-phone timing
+still need review; automated success is not proof of final combat balance.
+
+## Tutorial preparation and mobile control clearance — November 1 local follow-up
+
+The user's joystick-overlap screenshot supersedes the fixed-offset layout from
+PR #70. Reserve the actual full movement of the canvas joystick and action ring,
+including safe areas and viewport resizing, when placing the tutorial action bar.
+Keep Place usable and avoid tall, awkward stacks where shallow wrapping fits.
+
+The full tutorial now prepares each next lesson with a central three-second
+countdown. **Start now** skips it immediately; **Pause** keeps the prepared scene
+safe for reading. Preserve held movement and real ammunition across preparation;
+individual lessons keep manual Ready where previously used. The countdown is
+server-owned and does not advance skill progress. Shared combat and deferred
+satellite/spinning-cannon projectile tuning are unchanged by this local candidate.
+
+Historical discussion, superseded by the approved steerable gust above: the user
+separately questioned whether the defensive wave/rear cover is too
+strong and explicitly required discussion before any change. Preserve its
+current mechanics/visuals: 35% breath, 1.8s cooldown, 800ms hit stun, 1s suction
+break, 220ms wrap and 900ms rear cover. These protections overlap; do not add
+their durations into a claimed total stun. Review timing/repeat-use and escape
+evidence with the user before proposing tuning. This tutorial pass does not
+change defensive-ability strength.
+
 ## November 1 physical-phone feedback and priorities
 
 The user's Pixel playtest reports unfair surprise projectile/satellite hits,

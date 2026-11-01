@@ -1,0 +1,350 @@
+{
+  "variant": "main",
+  "adaptive_layers": true,
+  "custom_monochrome": false,
+  "essential_alpha_threshold": 128,
+  "safe_disk_diameter_dp": 64,
+  "app_build_tested": false,
+  "files": [
+    {
+      "path": "AndroidManifest-snippet.xml",
+      "bytes": 252,
+      "sha256": "c13c3e688befe94201fa7070d7bcde2ffe2ee812d31aae7a9d83d172c06c8ca9"
+    },
+    {
+      "path": "README.txt",
+      "bytes": 2874,
+      "sha256": "faa41113838dcefbf7d768d109458475cdc27c14ede5af187406b1eb1a6018ef"
+    },
+    {
+      "path": "play-store/ascend-main-512.png",
+      "bytes": 283663,
+      "sha256": "ee398dcb4db470f7b1128ad9fa9a483627c56643037b45fb14b4c5f7b0ea20ee",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        255,
+        255
+      ],
+      "srgb_profile": true
+    },
+    {
+      "path": "previews/adaptive-circle.png",
+      "bytes": 256057,
+      "sha256": "26a120b0b5b75020bf13599a907e747e2572ef5d6f3723273813cc54091709bd",
+      "size": [
+        720,
+        720
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "srgb_profile": true
+    },
+    {
+      "path": "previews/adaptive-rounded-square.png",
+      "bytes": 253139,
+      "sha256": "0e6c20ad365039cb1b50f0b2e44b2d8890225732a035f484f0f8f746f7ff0a27",
+      "size": [
+        720,
+        720
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "srgb_profile": true
+    },
+    {
+      "path": "previews/adaptive-squircle.png",
+      "bytes": 255222,
+      "sha256": "cec0ef23add92a88f1c009b14ff860aa862b63e1f1591606865972a420b70f12",
+      "size": [
+        720,
+        720
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "srgb_profile": true
+    },
+    {
+      "path": "res/drawable/ic_launcher_background.xml",
+      "bytes": 289,
+      "sha256": "d47c96e88d023db314157a177291ec229c6f7db3191c3df62753203fb96ca008"
+    },
+    {
+      "path": "res/drawable-hdpi/ic_launcher_foreground.png",
+      "bytes": 12464,
+      "sha256": "627bb8c01f3920f565db273ea51574ee6c295e8d4eaf1af44ebe0967d2d02c5b",
+      "size": [
+        162,
+        162
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "srgb_profile": true
+    },
+    {
+      "path": "res/drawable-mdpi/ic_launcher_foreground.png",
+      "bytes": 6513,
+      "sha256": "525345eeba17aa5a556168f9ddacbbc09581f41725ce61c2292c9f3f46f693c4",
+      "size": [
+        108,
+        108
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "srgb_profile": true
+    },
+    {
+      "path": "res/drawable-xhdpi/ic_launcher_foreground.png",
+      "bytes": 19789,
+      "sha256": "a413034f6c1a6d65e049cef951a32f37a0073d6adb8e7c27a3afea04efc467c4",
+      "size": [
+        216,
+        216
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "srgb_profile": true
+    },
+    {
+      "path": "res/drawable-xxhdpi/ic_launcher_foreground.png",
+      "bytes": 39119,
+      "sha256": "187a622beb3adc0a5cfab7c8b6991402546f6072314b9ad83c54a009f21ee2bf",
+      "size": [
+        324,
+        324
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "srgb_profile": true
+    },
+    {
+      "path": "res/drawable-xxxhdpi/ic_launcher_foreground.png",
+      "bytes": 62734,
+      "sha256": "2b3f9d7a1355c3d6279f592dbf1cf18aa8d0a7eb71dae2a1997a39d1f622e278",
+      "size": [
+        432,
+        432
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "srgb_profile": true
+    },
+    {
+      "path": "res/mipmap-anydpi-v26/ic_launcher.xml",
+      "bytes": 269,
+      "sha256": "ac2c608e7f2f839101c19e74f6e7a4e28c8ca0bdd8e560873be9f02f798213d3"
+    },
+    {
+      "path": "res/mipmap-anydpi-v26/ic_launcher_round.xml",
+      "bytes": 269,
+      "sha256": "ac2c608e7f2f839101c19e74f6e7a4e28c8ca0bdd8e560873be9f02f798213d3"
+    },
+    {
+      "path": "res/mipmap-hdpi/ic_launcher.png",
+      "bytes": 9582,
+      "sha256": "4873b2c89ee44e9628b96fabf5eb3a937547bf18e112abb45c9bef9c05cc16eb",
+      "size": [
+        72,
+        72
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        255,
+        255
+      ],
+      "srgb_profile": true
+    },
+    {
+      "path": "res/mipmap-hdpi/ic_launcher_round.png",
+      "bytes": 7528,
+      "sha256": "703439ad56e711118abe7d96611cad586aca2c4b304c16a1c783ce36c1b3ac7f",
+      "size": [
+        72,
+        72
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "srgb_profile": true
+    },
+    {
+      "path": "res/mipmap-mdpi/ic_launcher.png",
+      "bytes": 5174,
+      "sha256": "e1bf44996a2c280c52d9057067e20a2b31f83c32594518f2cc6f7ef53d77528b",
+      "size": [
+        48,
+        48
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        255,
+        255
+      ],
+      "srgb_profile": true
+    },
+    {
+      "path": "res/mipmap-mdpi/ic_launcher_round.png",
+      "bytes": 4452,
+      "sha256": "87b0fa0123ca59f26dadbe870d4b91916d168d55317eb22dbccd6e739dd860df",
+      "size": [
+        48,
+        48
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "srgb_profile": true
+    },
+    {
+      "path": "res/mipmap-xhdpi/ic_launcher.png",
+      "bytes": 15062,
+      "sha256": "95209f4c334bff0159c347f1758222f7767af94f412b5dd3c30951ce0be9dd09",
+      "size": [
+        96,
+        96
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        255,
+        255
+      ],
+      "srgb_profile": true
+    },
+    {
+      "path": "res/mipmap-xhdpi/ic_launcher_round.png",
+      "bytes": 11659,
+      "sha256": "bbb995b4af7e1dd5abeda6c1926981834288926e8ffc404fffa233251a763741",
+      "size": [
+        96,
+        96
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "srgb_profile": true
+    },
+    {
+      "path": "res/mipmap-xxhdpi/ic_launcher.png",
+      "bytes": 28841,
+      "sha256": "0d82f30e934c2be57978e20e81aa97b3a8270dedd9f4422212eff4bd1e963cdf",
+      "size": [
+        144,
+        144
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        255,
+        255
+      ],
+      "srgb_profile": true
+    },
+    {
+      "path": "res/mipmap-xxhdpi/ic_launcher_round.png",
+      "bytes": 20964,
+      "sha256": "bbf70bf32bd690696482d9aa72fab6b058999008afad5c4f8337de05c8d730a6",
+      "size": [
+        144,
+        144
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "srgb_profile": true
+    },
+    {
+      "path": "res/mipmap-xxxhdpi/ic_launcher.png",
+      "bytes": 47006,
+      "sha256": "2a895d6e95aecb17a7ce1fa40d5605113b5dc1ca1ae68caf49657a780e5a901b",
+      "size": [
+        192,
+        192
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        255,
+        255
+      ],
+      "srgb_profile": true
+    },
+    {
+      "path": "res/mipmap-xxxhdpi/ic_launcher_round.png",
+      "bytes": 32731,
+      "sha256": "fad9bdc817bf0249c53a37436383b1682fe8ea3cc72e087b7a9dd3c0201c5d37",
+      "size": [
+        192,
+        192
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "srgb_profile": true
+    },
+    {
+      "path": "source/adaptive-foreground-extracted.png",
+      "bytes": 963375,
+      "sha256": "035b59238dc2efa5693bf8cd210793feba0e74fa021f1c9aae61cb2b1122bd8d",
+      "size": [
+        1254,
+        1254
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "srgb_profile": true
+    },
+    {
+      "path": "source/ascend-main-master-1024.png",
+      "bytes": 1010848,
+      "sha256": "bb6e619083b0a5ef3854b1bcb1accde4b960a6050aa73c2dcc6e42a47423e7db",
+      "size": [
+        1024,
+        1024
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        255,
+        255
+      ],
+      "srgb_profile": true
+    }
+  ]
+}

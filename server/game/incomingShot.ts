@@ -1,5 +1,5 @@
 export interface MovingCircle { x: number; y: number; vx: number; vy: number; radius: number }
-export interface IncomingShot extends MovingCircle { id: string; visible: boolean; remaining?: number }
+export interface IncomingShot extends MovingCircle { id: string; visible: boolean; remaining?: number; arming?: number }
 export interface IncomingImpact { id: string; seconds: number; x: number; y: number }
 
 /** Constant-current-velocity circle intersection, in relative coordinates. No balance effects. */
@@ -17,7 +17,7 @@ export function firstImpact(target: MovingCircle, shots: readonly IncomingShot[]
       if (disc < 0) continue;
       seconds = (-b - Math.sqrt(disc)) / (2 * a);
     }
-    if (seconds < 0 || seconds > Math.min(horizon, shot.remaining ?? horizon)) continue;
+    if (seconds < Math.max(0, shot.arming ?? 0) || seconds > Math.min(horizon, shot.remaining ?? horizon)) continue;
     if (!nearest || seconds < nearest.seconds - 1e-7 || Math.abs(seconds - nearest.seconds) < 1e-7 && shot.id < nearest.id)
       nearest = { id: shot.id, seconds, x: shot.x, y: shot.y };
   }

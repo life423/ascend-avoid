@@ -1,12 +1,13 @@
 import type { MultiplayerMode } from '../core/GameModes';
 import type { SyncedGameState, SyncedWeaponPart, SyncedPinwheel } from '../types/synced';
-import { PINWHEEL, WEAPON_FLEET } from '../../server/constants/gameConstants';
+import { PINWHEEL, WEAPON_FLEET, WEAPON_SHOTS } from '../../server/constants/gameConstants';
 import { COMPACT, FONT, roundedRect } from './style';
 import { PART_COLORS, weaponRecipe } from './weaponStyle';
 import { drawPulsarArray, pulsarPartIcon } from './shockwave';
 
 import { allWeapons, weaponProfile, orbitalPosition, ionFiring } from '../../server/game/weaponKit';
 import { inView } from './shared';
+import { drawWeaponBolts } from './weaponShots';
 
 const COLORS = PART_COLORS;
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -76,11 +77,6 @@ function drawPart(ctx: CanvasRenderingContext2D, part: SyncedWeaponPart, remaini
 
 export function drawWeapons(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state: SyncedGameState, timestamp: number): void {
     const weapons = allWeapons(state);
-    // All satellites share this arena orbit. Draw its path once, rather than once per satellite.
-    if (weapons.some(w => w.phase === 'active' && weaponProfile(w.kind).orbit)) {
-        ctx.save(); ctx.strokeStyle = '#83c9ff'; ctx.globalAlpha = .18; ctx.lineWidth = 2; ctx.setLineDash([8, 18]);
-        ctx.beginPath(); ctx.ellipse(state.worldWidth / 2, state.worldHeight / 2, state.worldWidth * .35, state.worldHeight * .32, 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
-    }
     for (const w of weapons) drawWeapon(mode, ctx, state, timestamp, w);
 }
 
@@ -124,7 +120,7 @@ function drawWeapon(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state:
     let drawX = w.x, drawY = w.y;
     const profile = weaponProfile(w.kind);
     if (w.phase === 'active' && profile.orbit) {
-        const at = orbitalPosition(w.originX, w.originY, now - w.activatedAt, state.worldWidth, state.worldHeight);
+        const at = orbitalPosition(w.originX, w.originY, now - w.activatedAt, state.worldWidth, state.worldHeight, w.kind);
         drawX = at.x; drawY = at.y;
     }
     const carried = w.phase === 'carried';
@@ -142,21 +138,14 @@ function drawWeapon(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state:
     if (w.kind === 'pulsar') drawPulsarArray(ctx, w, now);
     else if (w.kind !== 'pinwheel') drawSatellite(ctx, w, now);
     else {
-    // A visible barrel and faint aim ray show the next shot before it fires.
+    // Barrel-local preparation, with no arena-spanning dotted firing lanes.
     ctx.save(); ctx.rotate(w.angle);
-    if (!carried) { ctx.strokeStyle = 'rgba(255, 212, 125, 0.23)'; ctx.setLineDash([9, 12]); ctx.beginPath(); ctx.moveTo(54, 0); ctx.lineTo(210, 0); ctx.stroke(); ctx.setLineDash([]); }
     partIcon(ctx, 2, 31, 0, 0); ctx.restore();
     ctx.save(); ctx.scale(1.3, 1.3); partIcon(ctx, 1, 0, 0, charging ? timestamp / 160 : w.angle * 2); partIcon(ctx, 0, 0, 0, w.angle); ctx.restore();
+    if (w.phase === 'active') { ctx.save(); ctx.rotate(w.angle); drawMuzzleCharge(ctx, 1 - (w.nextShotAt - now) / profile.shotMs); ctx.restore(); }
     }
     ctx.restore();
-    w.bolts.forEach(bolt => {
-        if (!inView(mode.renderView, bolt.x, bolt.y, 45)) return;
-        ctx.save(); ctx.translate(bolt.x, bolt.y); ctx.rotate(bolt.angle);
-        ctx.strokeStyle = 'rgba(255, 212, 125, 0.45)'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(-26, 0); ctx.lineTo(-8, 0); ctx.stroke();
-        if (w.kind === 'comet') ctx.scale(1.7, 1.7);
-        ctx.fillStyle = profile.color; ctx.strokeStyle = '#fff7df'; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.moveTo(11, 0); ctx.lineTo(0, -7); ctx.lineTo(-8, 0); ctx.lineTo(0, 7); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
-    });
+    drawWeaponBolts(mode, ctx, w, now, timestamp);
 }
 
 /** Three functional silhouettes: power source, aiming assembly, and emitter. */
@@ -181,14 +170,15 @@ function drawSatellite(ctx: CanvasRenderingContext2D, w: SyncedPinwheel, now: nu
     const profile = weaponProfile(w.kind), active = w.phase === 'active', carried = w.phase === 'carried';
     const phase = Math.max(0, now - w.activatedAt) % WEAPON_FLEET.ION_PERIOD_MS;
     ctx.save(); ctx.rotate(w.angle);
-    if (!carried) {
+    const chargingShot = active && now >= w.nextShotAt - WEAPON_SHOTS.CHARGE_MS;
+    if (!carried && w.kind === 'ion') {
         const firing = active && w.kind === 'ion' && ionFiring(now - w.activatedAt);
         ctx.strokeStyle = profile.color; ctx.globalAlpha = firing ? .85 : .3;
         ctx.lineWidth = firing ? 18 : 2;
         if (!firing) ctx.setLineDash([9, 12]);
-        const reach = w.kind === 'ion' ? WEAPON_FLEET.ION_RANGE : 260;
+        const reach = WEAPON_FLEET.ION_RANGE;
         // Ion's warning line is always visible before its firing interval.
-        if (w.kind !== 'ion' || !active || phase < WEAPON_FLEET.ION_WARNING_MS || firing) {
+        if (!active || phase < WEAPON_FLEET.ION_WARNING_MS || firing) {
             ctx.beginPath(); ctx.moveTo(48, 0); ctx.lineTo(reach, 0); ctx.stroke();
             if (firing) { ctx.globalAlpha = 1; ctx.strokeStyle = '#eaffff'; ctx.lineWidth = 4; ctx.stroke(); }
         }
@@ -206,8 +196,25 @@ function drawSatellite(ctx: CanvasRenderingContext2D, w: SyncedPinwheel, now: nu
         for (const side of [-1, 1]) { ctx.beginPath(); ctx.moveTo(-22, side * 13); ctx.lineTo(-40, side * 35); ctx.stroke(); }
     }
     satellitePart(ctx, w.kind, 1);
-    ctx.translate(27, 0); satellitePart(ctx, w.kind, 2); ctx.restore();
+    ctx.save(); ctx.translate(27, 0); satellitePart(ctx, w.kind, 2); ctx.restore();
+    if (chargingShot && w.kind !== 'ion') drawMuzzleCharge(ctx, 1 - (w.nextShotAt - now) / WEAPON_SHOTS.CHARGE_MS);
+    ctx.restore();
     ctx.fillStyle = profile.color; ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI * 2); ctx.fill();
+}
+
+/** A chamber filling with light and a tightening flare show commitment without drawing a lane. */
+function drawMuzzleCharge(ctx: CanvasRenderingContext2D, progress: number): void {
+    const t = Math.max(0, Math.min(1, progress));
+    ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.fillStyle = `rgba(255,137,111,${.35 + .6 * t})`;
+    ctx.fillRect(22, -4, 26 * t, 8);
+    ctx.fillStyle = `rgba(255,137,111,${.08 + .12 * t})`;
+    ctx.beginPath(); ctx.arc(50, 0, 9 + (reducedMotion.matches ? 0 : 4 * t), 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff3e9'; ctx.beginPath(); ctx.arc(50, 0, 2 + 3 * t, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#ffad94'; ctx.lineWidth = 2;
+    const x = reducedMotion.matches ? 64 : 64 - 7 * t, height = 9 - 3 * t;
+    ctx.beginPath(); ctx.moveTo(x - 5, -height); ctx.lineTo(x + 2, 0); ctx.lineTo(x - 5, height); ctx.stroke();
+    ctx.restore();
 }
 
 function drawGuidance(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state: SyncedGameState, w: SyncedPinwheel, id: string): void {

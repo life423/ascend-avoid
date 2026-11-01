@@ -61,12 +61,21 @@ android {
     compileSdkVersion 36
     buildToolsVersion '36.1.0'
     namespace "io.drewclark.ascendavoid"
+    sourceSets {
+        main {
+            res.srcDir targetName == 'test' ? 'src/testApp/res' : 'src/production/res'
+        }
+    }
     defaultConfig {
         applicationId twaManifest.applicationId
         minSdkVersion 24
         targetSdkVersion 36
         versionCode 1
         versionName "1.0.0"
+        manifestPlaceholders = [
+            ascendLauncherIcon: targetName == 'test' ? '@mipmap/ic_launcher_test' : '@mipmap/ic_launcher_production',
+            ascendLauncherRoundIcon: targetName == 'test' ? '@mipmap/ic_launcher_test_round' : '@mipmap/ic_launcher_production_round'
+        ]
 
         // The name for the application
         resValue "string", "appName", twaManifest.name

@@ -37,7 +37,7 @@ for(const change of ['grow','shrink','death','disconnect'] as const){
  assert.equal(b.shotShooterWidth,shooterWidth,'size-based lethality uses launch width even after growth, damage, death or disconnect');
  const target=s.addPlayer('target','Target',NOW);target.setGems(1000,4200,4200);target.spawnProtected=false;
  const cx=b.x+b.width/2+180,cy=b.y+b.height/2;target.placeAt(cx-target.width/2,cy-target.height/2);
- const speed=Math.hypot(b.flightVx,b.flightVy)*Math.exp(-CANNON.DRAG*.1),expectedLost=impactGems(1000,speed,b.width,target.width,expected);
+ const speed=Math.hypot(b.flightVx,b.flightVy)*Math.exp(-CANNON.DRAG*.1),expectedLost=impactGems(1000,speed,b.width,target.width,expected,'missile',shooterWidth);
  const events:Record<string,unknown>[]=[];s.onEvent=(type,data)=>{if(type==='credit')events.push(data);};
  updateFlights(s,NOW+100,.1);assert.equal(target.gems,1000-expectedLost);
  assert(events.some(e=>e.byId==='shooter'&&e.targetId===target.sessionId&&e.how==='cannon'),'original shooter keeps attribution');

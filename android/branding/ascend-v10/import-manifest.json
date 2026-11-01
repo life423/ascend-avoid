@@ -1,0 +1,52 @@
+[
+  {
+    "path": "README.txt",
+    "bytes": 1917,
+    "sha256": "9d78d5f11d06ab4343d426f1fef965adc715784fa6ee644c27f4e034e6a0bbc8"
+  },
+  {
+    "path": "validation.json",
+    "bytes": 1717,
+    "sha256": "c9e5e99628b9c9033459e5c3a927fd7e58b19a59503c1d43d47400fb1737142a"
+  },
+  {
+    "path": "licenses/Fredoka-OFL.txt",
+    "bytes": 4388,
+    "sha256": "5c9e7eee5c6b25f4b05b8d53b2e470ea4962f9ced742d044a98f7d95d1375bab"
+  },
+  {
+    "path": "play-store/ascend-play-512.png",
+    "bytes": 235250,
+    "sha256": "de3c5b553fcc58b855ffc9e56471a76dfa585d2566b183b5bf51b0c9b4e0805e"
+  },
+  {
+    "path": "res/mipmap-hdpi/ic_launcher.png",
+    "bytes": 8308,
+    "sha256": "bf3f3d053ba886a33c2249e443661bccc41b99cfbeafbff3751165aad22c2158"
+  },
+  {
+    "path": "res/mipmap-mdpi/ic_launcher.png",
+    "bytes": 4467,
+    "sha256": "6a1370ede723e826a1bcebd376667497fb710d0f80f025c8412df3f980c85a16"
+  },
+  {
+    "path": "res/mipmap-xhdpi/ic_launcher.png",
+    "bytes": 13171,
+    "sha256": "01f62a43547bdf7ab4e9af4114984db5978ad38bdbebc8fb5cddb006fd98ad21"
+  },
+  {
+    "path": "res/mipmap-xxhdpi/ic_launcher.png",
+    "bytes": 25393,
+    "sha256": "93eb7405ab940176565a58d7326ebc8296f518870a9ad7c0308b0e5ccddd4b96"
+  },
+  {
+    "path": "res/mipmap-xxxhdpi/ic_launcher.png",
+    "bytes": 40963,
+    "sha256": "a772e1147adf49e0274b69a3bfd8a9834450d43a50f87f413fac83a32c06a669"
+  },
+  {
+    "path": "source/ascend-master-1024.png",
+    "bytes": 827243,
+    "sha256": "c29d6e9ad8932724a06c31bae5d80baf75ab68bebd627b7436d4cbafd82f16dd"
+  }
+]

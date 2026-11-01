@@ -1,0 +1,4 @@
+# Keep supplied branding bytes intact so their validation hashes survive checkout.
+android/branding/** -text whitespace=cr-at-eol
+# Preserve third-party licenses verbatim, including their original trailing spaces.
+android/branding/**/licenses/* whitespace=cr-at-eol,-blank-at-eol

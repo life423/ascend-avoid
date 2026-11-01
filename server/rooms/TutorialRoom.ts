@@ -14,7 +14,7 @@ export class TutorialRoom extends GameRoom {
   private sequence = false;
   private controller!: PracticeController;
   protected get testHooksEnabled(): boolean { return false; }
-  protected get gameplayReady(): boolean { return this.state.practice.phase !== 'ready'; }
+  protected get gameplayReady(): boolean { return !['ready', 'countdown'].includes(this.state.practice.phase); }
 
   protected async configureArena(options: Record<string, unknown>): Promise<void> {
     if (typeof options.token !== 'string' || !/^[a-f0-9]{64}$/.test(options.token)) throw new Error('Practice requires a private capability');
@@ -41,6 +41,9 @@ export class TutorialRoom extends GameRoom {
     });
     this.onMessage('practice:ready', (client, data) => {
       if (this.allowMessage(client) && client.sessionId === this.owner) this.controller.ready(data?.attempt, Date.now());
+    });
+    this.onMessage('practice:pause', (client, data) => {
+      if (this.allowMessage(client) && client.sessionId === this.owner) this.controller.pauseCountdown(data?.attempt, Date.now());
     });
   }
   onAuth(client: Client, options: Record<string, unknown>): boolean {
@@ -76,6 +79,7 @@ export class TutorialRoom extends GameRoom {
   async onLeave(client: Client, consented = false): Promise<void> {
     const p = this.state.players.get(client.sessionId);
     p?.stopInhale(); p?.steer(0, 0); p?.aimAt(0, 0);
+    this.controller.pauseCountdown(this.state.practice.attempt, Date.now());
     this.controller.connected = false;
     if (!consented) {
       try { await this.allowReconnection(client, 10); this.controller.connected = true; return; }

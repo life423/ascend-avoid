@@ -8,7 +8,7 @@ async function start(page) {
     window.crackStrokes = 0; window.injuryRipples = 0;
     const stroke = CanvasRenderingContext2D.prototype.stroke;
     CanvasRenderingContext2D.prototype.stroke = function(...args) {
-      if (String(this.strokeStyle).replace(/\s/g, '') === 'rgba(65,47,48,0.55)') window.crackStrokes++;
+      if (String(this.strokeStyle) === '#6b3e4b') window.crackStrokes++;
       if (String(this.strokeStyle).startsWith('rgba(255, 189, 119,')) window.injuryRipples++;
       return stroke.apply(this, args);
     };
@@ -69,6 +69,34 @@ test('reduced motion keeps the injury shape readable without an impact ripple', 
   await expect.poll(() => page.evaluate(() => window.crackStrokes)).toBeGreaterThan(0);
   await page.screenshot({ path: test.info().outputPath('injury-reduced-motion.png') });
   expect(await page.evaluate(() => window.injuryRipples)).toBe(0);
+});
+
+test('an injured creature keeps its puffed cheeks and can fire its already-held captive', async ({ page, baseURL }) => {
+  await start(page);
+  const room = await page.evaluate(() => window.game.currentGameMode.multiplayerManager.room.id);
+  const captive = await new Client(baseURL.replace(/^http/, 'ws')).joinById(room, { name: 'Held before injury' });
+  captive.onMessage('*', () => {});
+  try {
+    await send(page, 'test:setGems', { count: 100 }); await send(page, 'test:moveTo', { x: 2100, y: 2100 });
+    await send(page, 'test:face', { angle: 0 }); await send(page, 'test:protect', { ms: 0 });
+    captive.send('test:setGems', { count: 4 }); captive.send('test:protect', { ms: 0 });
+    await expect.poll(() => captive.state.players.get(captive.sessionId)?.gems).toBe(4);
+    const widths = await page.evaluate(id => {
+      const m = window.game.currentGameMode, p = m.multiplayerManager.getLocalPlayer(), c = m.multiplayerManager.getState().players.get(id);
+      return { player: p.width, captive: c.width };
+    }, captive.sessionId);
+    captive.send('test:moveTo', { x: 2100 + widths.player * .8 - widths.captive / 2 + 1, y: 2100 + (widths.player - widths.captive) / 2 });
+    await page.waitForTimeout(80); await send(page, 'inhale');
+    await page.waitForFunction(id => window.game.currentGameMode.multiplayerManager.getLocalPlayer().gulping === id, captive.sessionId);
+    await send(page, 'exhale'); await send(page, 'test:injure');
+    await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getLocalPlayer().breathingBlocked);
+    await expect.poll(() => page.evaluate(() => window.crackStrokes)).toBeGreaterThan(0);
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: test.info().outputPath('injured-loaded-shell.png'), scale: 'css' });
+    expect(await page.evaluate(() => window.game.currentGameMode.multiplayerManager.getLocalPlayer().gulping)).toBe(captive.sessionId);
+    await send(page, 'tap');
+    await expect.poll(() => captive.state.players.get(captive.sessionId)?.flying).toBe(true);
+  } finally { await captive.leave(); }
 });
 
 test('rapid theft visibly shrinks an injured rival without extending its deadline', async ({ page, baseURL }) => {
@@ -135,7 +163,7 @@ test('a real small shot wounds a giant while retaining earned size and a clear v
     if (await desktopHelp.isVisible()) await desktopHelp.click();
     else await page.getByRole('button', { name: 'Toggle menu', exact: true }).click();
     await expect(page.getByRole('dialog')).toBeVisible();
-    await expect(page.locator('.instructions')).toContainText('Bigger ammunition hits harder');
+    await expect(page.locator('.instructions')).toContainText('Bullets share one size');
     expect((await page.locator('.instructions').innerText()).trim().split(/\s+/).length).toBeLessThanOrEqual(129);
     await page.getByRole('button', { name: 'Close', exact: true }).click();
   } finally { await missile.leave(); await captor.leave(); }

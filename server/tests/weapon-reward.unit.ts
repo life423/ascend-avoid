@@ -28,7 +28,7 @@ for(const kind of weaponKinds) {
     target.placeAt(at.x+200-target.width/2,at.y-target.height/2);updateWeapons(s,0,NOW);
   } else {
     target.placeAt(2300-target.width/2,2100-target.height/2);
-    const bolt=new WeaponBoltSchema();bolt.x=2140;bolt.y=2100;bolt.angle=0;bolt.bornAt=s.time;w.bolts.set('hit',bolt);
+    const bolt=new WeaponBoltSchema();bolt.x=2140;bolt.y=2100;bolt.angle=0;bolt.bornAt=s.time-3000;w.bolts.set('hit',bolt);
     updateWeapons(s,200/profile.speed,NOW);
   }
   const lost=100-target.gems;

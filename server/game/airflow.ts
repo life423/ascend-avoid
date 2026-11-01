@@ -35,6 +35,23 @@ export function innerBodyPullBoost(attackerWidth: number, targetWidth: number): 
   return sizeAdvantage(attackerWidth, targetWidth, INHALE.EAT_RATIO);
 }
 
+/** A deliberate faster retreat can open distance outside the strong mouth zone. No speed boost or immunity. */
+export function retreatPull(pull: number, attackerWidth: number, targetWidth: number, gap: number, reach: number, intentAway: number): number {
+  if (INHALE.RETREAT_SPEED_KEEP <= 0) return pull;
+  const runnerSpeed = moveSpeed(targetWidth), hunterSpeed = moveSpeed(attackerWidth);
+  const advantage = runnerSpeed * clamp01(intentAway) - hunterSpeed;
+  if (advantage <= 0) return pull;
+  const close = reach * INHALE.CLOSE_RANGE;
+  const fade = clamp01((gap - close) / Math.max(1, close));
+  // Ease into the benefit between equal size and the normal capture ratio: no jump
+  // from one half-unit of size or a barely positive speed advantage.
+  const size = clamp01((attackerWidth / Math.max(1, targetWidth) - 1) / (INHALE.EAT_RATIO - 1));
+  const intent = clamp01(advantage / Math.max(1e-6, runnerSpeed - hunterSpeed));
+  const clear = fade * fade * (3 - 2 * fade) * size * size * (3 - 2 * size) * intent * intent * (3 - 2 * intent);
+  const cap = advantage * (1 - INHALE.RETREAT_SPEED_KEEP);
+  return pull + (Math.min(pull, cap) - pull) * clear;
+}
+
 /** How clear the air between two bodies is: 1 apart, falling to 0 as they overlap deeply (LATCH.OVERLAP_SMOTHER) */
 export function cleanAir(a: Body, b: Body): number {
   const overlap = (a.width + b.width) / 2 - Math.hypot(b.x - a.x, b.y - a.y);

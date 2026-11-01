@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { GameState } from '../schema/GameState.js';
-import { INHALE, EXHALE, WORLD } from '../constants/gameConstants.js';
+import { INHALE, WORLD } from '../constants/gameConstants.js';
 import { steal, exhale, planTheft } from '../systems/inhale.js';
 import { updateFlights } from '../systems/flights.js';
 
@@ -49,13 +49,13 @@ function setup() {
   steal(s, a, NOW, .2); const before = b.gems;
   exhale(s, b, NOW);
   assert(!a.stunned && a.inhaling, 'injury blocks the defender puff');
-  b.suctionSafeUntil = NOW + EXHALE.STUN_MS + 1000; // independently verify existing suction protection
-  assert.equal(a.injuredUntil, 0, 'a defensive gust causes stun, not injury');
+  b.suctionSafeUntil = NOW + 1800; // independently verify non-gust recovery protection
+  assert.equal(a.injuredUntil, 0, 'a blocked defensive gust causes no injury');
   a.placeAt(1000, 1000); b.placeAt(1120, 1000);
-  a.updateMovement(s.worldWidth, s.worldHeight, NOW + EXHALE.STUN_MS, .001);
-  a.startInhale(NOW + EXHALE.STUN_MS); s.now = NOW + EXHALE.STUN_MS; s.time = EXHALE.STUN_MS;
+  a.updateMovement(s.worldWidth, s.worldHeight, NOW + 800, .001);
+  a.startInhale(NOW + 800); s.now = NOW + 800; s.time = 800;
   steal(s, a, s.now, .2);
-  assert.equal(b.gems, before, 'the gust suction shield still blocks injury theft');
+  assert.equal(b.gems, before, 'existing non-gust suction recovery still blocks injury theft');
   assert.equal(b.injuredUntil, until);
   b.protectFor(1000, NOW); steal(s, a, s.now, 1); assert.equal(b.gems, before, 'spawn protection wins over injury');
   b.injure(2000); assert.equal(b.injuredUntil, until, 'protected hits cannot refresh injury');

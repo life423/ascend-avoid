@@ -20,6 +20,7 @@ export class PracticeSchema extends Schema {
   cue = "";
   completed = "";
   feedback = "";
+  countdownEndsAt = 0;
 }
 type("boolean")(PracticeSchema.prototype, "enabled");
 type("string")(PracticeSchema.prototype, "lesson");
@@ -39,3 +40,4 @@ type("string")(PracticeSchema.prototype, "completed");
 type("number")(PracticeSchema.prototype, "resetSerial");
 type("boolean")(PracticeSchema.prototype, "sequence");
 type("string")(PracticeSchema.prototype, "feedback");
+type("number")(PracticeSchema.prototype, "countdownEndsAt");

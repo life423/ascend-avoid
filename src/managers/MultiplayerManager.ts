@@ -123,7 +123,7 @@ export class MultiplayerManager {
         });
         this.startPinging();
 
-        for (const type of ['capture', 'partCollected', 'weaponAssembled', 'weaponPlaced']) onMessage(type, () => {});
+        for (const type of ['capture', 'partCollected', 'weaponAssembled', 'weaponPlaced', 'gustHit']) onMessage(type, () => {});
 
         // Moments worth showing everyone: who shoved whom off the edge, who took the jackpot
         onMessage('combatReward', (data) => this.eventBus.emit('multiplayer:combatReward', data));

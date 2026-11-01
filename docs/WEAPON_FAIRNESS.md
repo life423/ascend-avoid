@@ -1,5 +1,13 @@
 # Assembled weapons and large-player counterplay — October 26, 2026
 
+November 1 local follow-up: [PROJECTILE_COUNTERPLAY.md](PROJECTILE_COUNTERPLAY.md)
+supersedes the unchanged bolt speed/range/cadence statements in this historical
+record. The direct/graze damage and shared guard described here remain intact.
+The later approved [Pulsar crescent](PULSAR_CRESCENT.md) supersedes the full-ring
+and 25%-share pulse statements below: 90-degree front, 1s locked charge, 30-degree
+recovery turn, 15% central hit, no stun/steering lock. Shell grazes, guards and
+once-only rewards remain. The newer candidates are not merged or deployed.
+
 Developed from live/main `fcd7bf6` on `fix/large-player-weapon-fairness` and included in the `feat/group-pressure-arena-polish` release batch. GitHub main and the associated production workflow identify the published revision. Normal [localhost:3001](http://localhost:3001/) includes the change. These initial settings require human playtesting.
 
 ## What changed

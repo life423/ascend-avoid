@@ -31,9 +31,22 @@ notifications or analytics SDKs.
 The package ID must be finalized before the first Play upload. Future updates
 must keep it and increment `versionCode` in `android/app/build.gradle`.
 
-The icons reuse the current website mark, with a separate maskable icon and an
-Android monochrome icon. `node scripts/android-icons.mjs` regenerates the web PNGs
-using the existing Playwright dependency. Native icon resources are checked in.
+November 1 selected artwork is now **V12**: supplied native adaptive foregrounds
+and backgrounds, regular/round entry points, and legacy density exports for both
+apps. All 28 original files per bundle are saved unchanged under
+`android/branding/ascend-android-main-v12/` and `ascend-android-test-v12/`, including
+store images and mask previews. The Test artwork has the red TEST ribbon.
+V10 sources remain archived; its temporary flattened-art inset wrapper is removed.
+
+Both V12 signed APK/AAB builds, package/origin/signature/bundle checks and modern
+normal/round resource checks pass. All 15 packaged density images per target match
+visible RGB and exact alpha; PNG crunch only normalizes invisible RGB. Both APKs
+were installed and launched on the Pixel over Wi-Fi with installed hashes matching
+the verified artifacts. Proof is in each local artifact folder (`verification.json`,
+`icon-verification.json`, `device-installation.json`). Supplied mask previews were
+inspected; actual V12 launcher/theme review remains. No hosted publication was made.
+Web/PWA icons remain the existing website mark;
+`node scripts/android-icons.mjs` regenerates those web PNGs.
 The repository's web manifest adds install metadata without a service worker or
 new game caching behavior.
 

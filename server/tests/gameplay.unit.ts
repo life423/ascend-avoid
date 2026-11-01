@@ -99,6 +99,31 @@ for (const gems of [0, 4, 11, 12, 80]) for (const kind of ['missile', 'turbine']
   const before=a.y; a.updateMovement(s.worldWidth,s.worldHeight,NOW+100,.1);keepApart(s,a);
   assert(a.y>before, 'pressed bodies can slide sideways');
 }
+// Exercise the complete tick: turning/peeling off a clash must not wait for a hidden timer.
+for (const bot of [false, true]) for (const gems of [0, 100, 1000]) for (const ratio of [1, 1.5]) for (const angle of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) {
+  const s = world(); s.weaponsOn = s.trafficOn = s.surgesOn = false; s.blackHoles.clear();
+  const a = player(s, 'contact-a', gems), b = player(s, 'contact-b', Math.round(gems * ratio));
+  a.isBot = bot; b.isBot = !bot;
+  const nx = Math.cos(angle), ny = Math.sin(angle), tx = -ny, ty = nx;
+  const gap = (a.width + b.width) / 2 * .9;
+  a.placeAt(2100 - a.width / 2, 2100 - a.height / 2);
+  b.placeAt(2100 + nx * gap - b.width / 2, 2100 + ny * gap - b.height / 2);
+  a.facing = angle; b.facing = angle + Math.PI;
+  a.steer(nx, ny); b.steer(-nx, -ny);
+  for (let tick = 1; tick <= 8; tick++) {
+    s.update(1 / 30, NOW + tick * 1000 / 30);
+    assert(!a.stunned && !b.stunned && !a.sliding && !b.sliding && !a.recovering && !b.recovering, 'ordinary contact never starts a control lock');
+    assert.equal(a.injuredUntil + b.injuredUntil, 0, 'a clash causes no damage');
+  }
+  const x = a.x, y = a.y;
+  a.steer(tx, ty); b.steer(-tx, -ty);
+  s.update(1 / 30, NOW + 300);
+  assert((a.x - x) * tx + (a.y - y) * ty > .1, 'sideways movement responds on the first tick');
+  const separation = Math.hypot(b.x + b.width / 2 - a.x - a.width / 2, b.y + b.height / 2 - a.y - a.height / 2);
+  a.steer(-nx, -ny); b.steer(nx, ny);
+  s.update(.1, NOW + 400);
+  assert(Math.hypot(b.x + b.width / 2 - a.x - a.width / 2, b.y + b.height / 2 - a.y - a.height / 2) > separation + 1, 'both bodies can immediately peel away');
+}
 for (const targetGems of [12, 40, 100]) for (const protectedTarget of [false, true]) {
   const s = world(), flier = player(s, 'missile', 4), target = player(s, 'small-target', targetGems, 1100, 1000);
   target.spawnProtected = protectedTarget;
@@ -196,22 +221,20 @@ for (const facing of [0, Math.PI / 3, -Math.PI / 2]) {
   assert(stealWeight(state, big, small) > 0);
   exhale(state, small, NOW);
   assert.equal(big.inhaling, false, 'a puff into an incoming inhale breaks it');
-  assert.equal(big.stunned, true, 'a gust stuns its target');
+  assert.equal(big.stunned, false, 'a gust never stuns its target');
+  assert.equal(big.sliding, false, 'a gust does not hide a control lock in an impact skid');
+  assert.equal(small.suctionSafeUntil, 0, 'a puff grants no lasting suction immunity');
   assert.equal(small.puffReadyAt, EXHALE.COOLDOWN_MS);
-  big.placeAt(1080, 938.5); // end the puff's skid before testing the inhale restart timer
-  big.steer(1, 0);
-  const x = big.x;
-  big.updateMovement(state.worldWidth, state.worldHeight, NOW + EXHALE.STUN_MS - 1, 0.1);
-  assert.equal(big.x, x, 'steering cannot move a stunned target after its skid ends');
-  big.startInhale(NOW + EXHALE.STUN_MS - 1);
-  assert.equal(big.inhaling, false, 'cannot inhale while stunned');
-  big.updateMovement(state.worldWidth, state.worldHeight, NOW + EXHALE.STUN_MS, 0.001);
-  assert.equal(big.stunned, false, 'the stun expires at its deadline');
-  big.startInhale(NOW + EXHALE.STUN_MS);
-  assert(big.inhaling, 'inhaling returns after the stun');
-  assert.equal(stealWeight(state, big, small), 0, 'the defender has an escape window');
-  state.now = NOW + EXHALE.BREAK_MS;
-  assert(stealWeight(state, big, small) > 0, 'the escape window ends');
+  big.steer(0, 1);
+  const y = big.y;
+  big.updateMovement(state.worldWidth, state.worldHeight, NOW + 17, .017);
+  assert(big.y > y, 'steering works during the shove itself');
+  big.startInhale(NOW + EXHALE.PARRY_MS - 1);
+  assert.equal(big.inhaling, false, 'only the broken inhale has a brief restart delay');
+  big.placeAt(1080, 938.5);
+  big.startInhale(NOW + EXHALE.PARRY_MS);
+  assert(big.inhaling, 'inhaling resumes without waiting on a stun or fading artwork');
+  assert(stealWeight(state, big, small) > 0, 'airflow is not blocked by a lasting shield');
   const ready = small.exhaleReadyAt;
   exhale(state, small, NOW + 100);
   assert.equal(small.exhaleReadyAt, ready, 'puffs cannot be spammed');
@@ -225,16 +248,15 @@ for (const facing of [0, Math.PI / 3, -Math.PI / 2]) {
   const behind = player(state, 'behind', 16, 800, 1000);
   protectedPlayer.protectFor(2000, NOW);
   exhale(state, source, NOW);
-  assert(target.stunned && target.sliding, 'a non-inhaling target is stunned and knocked back too');
-  assert(!protectedPlayer.stunned && !behind.stunned, 'protection and the gust cone still apply');
-  target.steer(-1, 0);
-  target.updateMovement(state.worldWidth, state.worldHeight, NOW + EXHALE.STUN_MS, 0.01);
-  assert.equal(target.stunned, false, 'stun expires even while knockback is still sliding');
-  const endsAt = target.stunEndsAt;
-  target.placeAt(1100, 1000);
-  source.exhaleReadyAt = 0;
-  exhale(state, source, NOW + EXHALE.STUN_MS + 100);
-  assert.equal(target.stunEndsAt, endsAt, 'brief immunity prevents repeated stun extensions');
+  assert(!target.stunned && !target.sliding && target.puffVx > 0, 'a non-inhaling target gets only a steerable push');
+  assert.equal(protectedPlayer.puffVx, 0, 'spawn protection still applies');
+  assert.equal(behind.puffVx, 0, 'the immediate front puff does not hit behind');
+  target.steer(0, 1);
+  const y = target.y;
+  target.updateMovement(state.worldWidth, state.worldHeight, NOW + 17, .017);
+  assert(target.y > y && target.facing !== 0, 'the target can walk and turn during the push');
+  target.startInhale(NOW + 17);
+  assert(target.inhaling, 'an unrelated inhale is not locked by knockback');
 }
 for (const ending of ['impact', 'wall', 'timeout']) {
   const state = world();

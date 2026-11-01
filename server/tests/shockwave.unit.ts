@@ -7,7 +7,7 @@ const NOW = 100000;
 function setup() {
   const s = new GameState(0); s.botFill = 0; s.surgesOn = false; s.setTurbines('off'); s.time = 1000;
   const owner = s.addPlayer('builder', 'Builder', NOW);
-  owner.placeAt(2000, 2000); owner.spawnProtected = false;
+  owner.placeAt(2000, 2000); owner.spawnProtected = false; owner.facing = 0;
   spawnWeapon(s, 2100, 2100, 'pulsar');
   return { s, w: s.pinwheel, owner };
 }
@@ -35,24 +35,25 @@ function target(s: GameState, id: string, dx: number, dy = 0, gems = 100) {
   const flying = target(s, 'flying', 100); flying.flying = true;
   const huge = target(s, 'huge', 180, 0, 1000);
   const center = target(s, 'center', 0), edge = target(s, 'edge', 0), outside = target(s, 'outside', 0);
+  const behind = target(s, 'behind', -180), flank = target(s, 'flank', 0, 180);
   // Place body edges relative to the final wave front, independently of growth tuning.
   const reach = SHOCKWAVE.START_RADIUS + SHOCKWAVE.RANGE;
   edge.placeAt(w.x + reach - 2, w.y - edge.height / 2);
-  outside.placeAt(w.x + reach + 2, w.y - outside.height / 2);
+  outside.placeAt(w.x + reach + SHOCKWAVE.FRONT_HALF_WIDTH + 2, w.y - outside.height / 2);
   const firstBeat = w.beatAt;
   s.time = firstBeat - 1; updateWeapons(s, 0.01, NOW + s.time);
-  assert(!near.sliding && !huge.sliding, 'the warning does not push anyone');
+  assert(near.puffVx === 0 && huge.puffVx === 0, 'the warning does not push anyone');
   s.time = firstBeat; updateWeapons(s, 0.001, NOW + s.time);
-  assert(center.sliding, 'the initial pulse also pushes someone directly under the array');
-  assert(!near.sliding, 'a distant player is not hit before the ring reaches them');
+  assert(center.puffVx > 0 && !center.sliding, 'initial front contact uses an additive push');
+  assert.equal(near.puffVx, 0, 'a distant player is not hit before the crescent reaches them');
   s.time += 200; updateWeapons(s, 0.2, NOW + s.time);
-  assert(near.sliding && huge.sliding, 'the expanding wave separates both small players and giants');
+  assert(near.puffVx > 0 && huge.puffVx > 0 && !near.sliding && !huge.sliding, 'small players and giants retain control during the push');
   assert(near.injuredUntil > s.time && huge.injuredUntil > s.time, 'Pulsar damage exposes gems');
   assert.equal(safe.injuredUntil, 0, 'a protected target cannot be injured by a wave');
   assert(near.velocity().x > huge.velocity().x && huge.velocity().x > 0, 'giants resist more but still get a useful shove');
-  assert(!near.stunned && near.gems === 14 && huge.gems === 750, 'pulses remove a quarter of mass with a six-gem minimum, without locking movement');
-  assert(huge.velocity().x >= 220 * 7, 'even a giant gets at least 220 units of intended knockback');
-  assert(!owner.sliding && !far.sliding && !safe.sliding && !held.sliding && !flying.sliding, 'owner, protected, held, flying and out-of-range players are excluded');
+  assert(!near.stunned && near.gems === 14 && huge.gems === 850, 'conservative pulses remove 15% with a six-gem minimum, without locking movement');
+  assert(huge.velocity().x >= SHOCKWAVE.MIN_PUSH_SPEED, 'giants receive a short, bounded impulse');
+  assert([owner, far, safe, held, flying, behind, flank].every(p => p.puffVx === 0 && p.puffVy === 0), 'rear, flanks, owner, protected, held, flying and out-of-range targets are excluded');
   const velocity = near.velocity().x;
   s.time += 10; updateWeapons(s, 0.01, NOW + s.time);
   assert.equal(near.velocity().x, velocity, 'remaining on a wave cannot stack its shove');
@@ -62,14 +63,14 @@ function target(s: GameState, id: string, dx: number, dy = 0, gems = 100) {
   s.time += 10; updateWeapons(s, 0.01, NOW + s.time);
   crossed.placeAt(w.x + 45, w.y - crossed.height / 2);
   s.time += 20; updateWeapons(s, 0.02, NOW + s.time);
-  assert(crossed.sliding, 'crossing the front between ticks still registers a hit');
+  assert(crossed.puffVx > 0, 'crossing the front between ticks still registers a hit');
   s.time = firstBeat + 880; updateWeapons(s, 0.64, NOW + s.time);
   s.time = firstBeat + 920; updateWeapons(s, 0.04, NOW + s.time);
-  assert(edge.sliding && !outside.sliding, 'the final wave segment is swept even when a tick crosses its expiry');
+  assert(edge.puffVx > 0 && outside.puffVx === 0, 'the final wave segment is swept even when a tick crosses its expiry');
   near.placeAt(near.x, near.y); s.time = firstBeat + SHOCKWAVE.BEAT_MS;
   updateWeapons(s, 0.01, NOW + s.time);
   s.time += 200; updateWeapons(s, 0.2, NOW + s.time);
-  assert(near.sliding, 'a later distinct pulse can push the same player again');
+  assert(near.puffVx > 0, 'a later distinct pulse can push the same player again');
   assert.equal(w.bolts.size, 0, 'the array never fires pinwheel bolts');
   s.time = w.at; updateWeapons(s, 0.01, NOW + s.time);
   assert.equal(w.phase, 'waiting'); assert.equal(w.kind, 'pinwheel'); assert.equal(w.pulseAt, 0);
@@ -86,7 +87,7 @@ for (const gems of [0, 3, 8, 9, 13, 14, 100, 1000]) {
   s.time += 250; updateWeapons(s, .25, NOW + 250);
   const out = gems < 14;
   assert.equal(p.state, out ? 'dead' : 'alive');
-  assert.equal(p.gems, out ? 0 : gems - Math.max(6, Math.ceil(gems * .25)));
+  assert.equal(p.gems, out ? 0 : gems - Math.max(6, Math.ceil(gems * .15)));
   assert(events.some(e => e.type === 'credit' && e.data.how === 'pulsar' && e.data.byId === owner.sessionId && e.data.out === out), 'wave damage/knockout credits its builder');
   assert.equal(s.players.get(w.owner)?.gems, gems - p.gems, 'all lost gems reward the wave assembler');
   assert.equal([...s.gems.values()].reduce((sum, gem) => sum + gem.value, 0), 0, 'awarded gems are not duplicated as spills');
@@ -97,7 +98,7 @@ for (const gems of [0, 3, 8, 9, 13, 14, 100, 1000]) {
 }
 {
   const { s, w, owner } = setup();
-  w.owner = owner.sessionId; w.phase = 'active'; w.at = s.time + SHOCKWAVE.ACTIVE_MS; w.beatAt = s.time + 700;
+  w.owner = owner.sessionId; w.phase = 'active'; w.at = s.time + SHOCKWAVE.ACTIVE_MS; w.beatAt = s.time + SHOCKWAVE.WINDUP_MS;
   let beats = 0, previous = 0;
   const end = w.at;
   while (s.time < end) {
