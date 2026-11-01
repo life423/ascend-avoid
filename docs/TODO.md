@@ -4,6 +4,14 @@ Updated October 31, 2026. This is the durable list of the user's requests and de
 
 ## Android build and website release
 
+November 1 follow-up: the user explicitly authorized merging PR #65, building
+the separate Test app and installing it on their Pixel. PR #65 merged as
+`97c9a35`. The staging app uses package `io.drewclark.ascendavoid.staging`, name
+Ascend Avoid Test and a separate staging origin/output folder. Local identity,
+signature/bundle and two-mode website checks pass; hosted deployment and device
+installation are being verified in this task. The saved regular-app command is
+preserved; `npm run android:test:phone` handles the Test app.
+
 November 1 checklist work: [ANDROID_TESTING_WORKFLOW.md](ANDROID_TESTING_WORKFLOW.md)
 tracks five work areas. The user confirmed feature branches should be tested in
 isolation and merging main should deploy the live web game everywhere, including

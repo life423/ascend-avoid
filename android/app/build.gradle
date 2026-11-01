@@ -15,17 +15,24 @@
  */
 
 import groovy.xml.MarkupBuilder
+import groovy.json.JsonSlurper
+import groovy.json.JsonOutput
 
 plugins {
     id 'com.android.application'
 }
 
+def targetName = providers.gradleProperty('ascendTarget').getOrElse('production')
+def targets = new JsonSlurper().parse(rootProject.file('targets.json'))
+def target = targets[targetName]
+if (!(targetName in ['production', 'test']) || !target) throw new GradleException('Unknown Ascend Avoid target')
+if (targetName == 'test' && (target.packageId == targets.production.packageId || target.origin == targets.production.origin)) throw new GradleException('Test target must be isolated')
 def twaManifest = [
-    applicationId: 'io.drewclark.ascendavoid',
-    hostName: 'ascend.drewclark.io', // The domain being opened in the TWA.
+    applicationId: target.packageId,
+    hostName: new URI(target.origin).host,
     launchUrl: '/', // The start path for the TWA. Must be relative to the domain.
-    name: 'Ascend Avoid', // The application name.
-    launcherName: 'Ascend Avoid', // The name shown on the Android Launcher.
+    name: target.name,
+    launcherName: target.name,
     themeColor: '#0A192F', // The color used for the status bar.
     themeColorDark: '#0A192F', // The color used for the dark status bar.
     navigationColor: '#001B34', // The color used for the navigation bar.
@@ -55,7 +62,7 @@ android {
     buildToolsVersion '36.1.0'
     namespace "io.drewclark.ascendavoid"
     defaultConfig {
-        applicationId "io.drewclark.ascendavoid"
+        applicationId twaManifest.applicationId
         minSdkVersion 24
         targetSdkVersion 36
         versionCode 1
@@ -70,6 +77,7 @@ android {
         // The URL that will be used when launching the TWA from the Android Launcher
         def launchUrl = "https://" + twaManifest.hostName + twaManifest.launchUrl
         resValue "string", "launchUrl", launchUrl
+        resValue "string", "assetStatements", JsonOutput.toJson([[relation: ['delegate_permission/common.handle_all_urls'], target: [namespace: 'web', site: target.origin]]]).replace('"', '\\"')
 
 
 
@@ -77,7 +85,7 @@ android {
             // The URL the Web Manifest for the Progressive Web App that the TWA points to. This
             // is used by Chrome OS and Meta Quest to open the Web version of the PWA instead of
             // the TWA, as it will probably give a better user experience for non-mobile devices.
-            resValue "string", "webManifestUrl", 'https://ascend.drewclark.io/manifest.webmanifest'
+            resValue "string", "webManifestUrl", target.origin + '/manifest.webmanifest'
 
 
 

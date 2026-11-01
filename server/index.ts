@@ -82,8 +82,11 @@ app.use(express.json());
 // Express ignores dot-directories by default. Expose only this public verification file.
 app.get('/.well-known/assetlinks.json', (_req, res) => {
   res.setHeader('Cache-Control', 'no-cache');
-  res.sendFile(path.join(distPath, '.well-known', 'assetlinks.json'), { dotfiles: 'allow' });
+  const association = process.env.APP_ENV === 'staging' ? 'assetlinks-test.json' : 'assetlinks.json';
+  res.sendFile(path.join(distPath, '.well-known', association), { dotfiles: 'allow' });
 });
+// Do not let static serving expose the other environment's association file.
+app.use('/.well-known', (_req, res) => { res.sendStatus(404); });
 
 // In Docker, the dist folder is at /app/dist, in dev it's at ../dist
 // Vite's content-hashed bundles never change, so browsers keep them a year; everything else

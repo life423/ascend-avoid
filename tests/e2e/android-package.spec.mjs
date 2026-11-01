@@ -17,10 +17,13 @@ test('install metadata and correctly sized icons are served from the game origin
 test('only the public Digital Asset Links file is exposed from the dot directory',async({request})=>{
   const response=await request.get('/.well-known/assetlinks.json');expect(response.status()).toBe(200);expect(response.headers()['content-type']).toContain('application/json');
   const entries=await response.json();expect(Array.isArray(entries)).toBe(true);
-  const entry=entries.find(item=>item.target.package_name==='io.drewclark.ascendavoid');
+  const packageId=process.env.ANDROID_PACKAGE_ID || 'io.drewclark.ascendavoid';
+  const entry=entries.find(item=>item.target.package_name===packageId);
+  expect(entry).toBeTruthy();
+  expect(entries.filter(item=>item.target.package_name.startsWith('io.drewclark.ascendavoid')).map(item=>item.target.package_name)).toEqual([packageId]);
   expect(entry.relation).toContain('delegate_permission/common.handle_all_urls');
   for(const fingerprint of entry.target.sha256_cert_fingerprints)expect(fingerprint).toMatch(/^([A-F0-9]{2}:){31}[A-F0-9]{2}$/);
-  for(const path of ['/.env','/.well-known/not-a-public-file','/android/local.properties'])expect((await request.get(path)).status()).toBe(404);
+  for(const path of ['/.env','/.well-known/not-a-public-file','/.well-known/assetlinks-test.json','/android/local.properties'])expect((await request.get(path)).status()).toBe(404);
 });
 
 test('the app launch page keeps normal gameplay and the tutorial available',async({page})=>{

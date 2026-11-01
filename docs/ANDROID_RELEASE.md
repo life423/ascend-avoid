@@ -69,6 +69,42 @@ and does not inherit the release APK's website trust.
 
 ## Wireless phone installation
 
+### Separate staging app
+
+PR #65 was merged on November 1 as `97c9a35`. The follow-up adds a second signed
+app, **Ascend Avoid Test** (`io.drewclark.ascendavoid.staging`), opening only
+`https://ascend-avoid-staging.livelyisland-db4ad2db.eastus.azurecontainerapps.io/`.
+It can coexist with the regular production app. Build and install from PC
+PowerShell after deploying the corresponding feature commit to staging:
+
+```powershell
+npm run android:test:build
+npm run android:test:verify
+npm run android:test:phone
+```
+
+The phone command also builds and verifies; `-SkipBuild` installs an already
+verified artifact. Output is isolated under `artifacts/android/test/` as
+`Ascend-Avoid-Test.apk` and `.aab`. `android/targets.json` supplies each app's
+package ID, name and exact origin to Gradle and the PowerShell tools. The verifier
+checks compiled launch URL, label, package IDs, signatures and SDK bounds.
+Existing `npm run android:phone` still targets production.
+
+Staging serves the Test package's certificate at `/.well-known/assetlinks.json`
+when `APP_ENV=staging`; production serves only its own package. Alternate files
+inside that directory are explicitly blocked. Both run with `NODE_ENV=production`
+so staging does not enable development monitors or test hooks. Local checks passed
+for both modes: nine integration cases each, across desktop Chrome, Android Chrome
+emulation and iPhone Safari emulation. Initial sandbox socket failures were resolved
+by running previews and browsers in the same permitted context. The additional
+alternate-file check exposed and fixed static serving of that file.
+
+Android Wi-Fi can list one phone twice (IP and mDNS). The installer recognizes
+duplicate transports only when both report the same nonempty hardware serial;
+different/unknown phones still require explicit selection.
+
+### Regular app shortcut
+
 **Saved at the user's request, November 1, 2026:** when they ask for the command
 to update Ascend Avoid on their Pixel over Wi-Fi, use this in **PowerShell on
 their PC**, not on the phone:
