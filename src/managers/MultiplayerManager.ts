@@ -3,7 +3,7 @@ import { Client, Room } from 'colyseus.js';
 import { EventBus } from '../core/EventBus';
 import { GameEvents } from '../constants/client-constants';
 import { GAME } from '../../server/constants/gameConstants';
-import { NAME_EVENT, playerName, setPlayerName } from '../core/PlayerName';
+import { NAME_EVENT, playerName } from '../core/PlayerName';
 
 export type OnlineSession = { kind: 'play' } | { kind: 'practice'; lesson: PracticeLesson; token: string; sequence?: boolean };
 
@@ -163,18 +163,6 @@ export class MultiplayerManager {
     }
 
     /**
-     * Send player input to server
-     */
-    sendInput(input: any): void {
-        if (!this.room) {
-            console.warn('Not connected to room');
-            return;
-        }
-
-        this.room.send('input', input);
-    }
-
-    /**
      * Send custom message to server
      */
     sendMessage(type: string, data: any): void {
@@ -205,29 +193,6 @@ export class MultiplayerManager {
         }
         
         return null;
-    }
-
-    /**
-     * Get remote players (all players except local)
-     */
-    getRemotePlayers(): Record<string, any> {
-        const remotePlayers: Record<string, any> = {};
-        
-        if (!this.room || !this.room.state) {
-            return remotePlayers;
-        }
-        
-        const players = this.room.state.players;
-        if (players) {
-            players.forEach((player: any, sessionId: string) => {
-                // Exclude our own player
-                if (sessionId !== this.room?.sessionId) {
-                    remotePlayers[sessionId] = player;
-                }
-            });
-        }
-        
-        return remotePlayers;
     }
 
     /**
@@ -290,11 +255,6 @@ export class MultiplayerManager {
     /** This client's session id in the room, or null when not connected */
     get localSessionId(): string | null {
         return this.room ? this.room.sessionId : null;
-    }
-
-    /** Rename yourself: saved on this device, and the server tells everyone (see onNameChange) */
-    updatePlayerName(name: string): void {
-        setPlayerName(name);
     }
 
     /** You picked a new name (in the drawer, say): everyone sees it right away */

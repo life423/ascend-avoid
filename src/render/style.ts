@@ -31,24 +31,6 @@ export function hudPanel(ctx: CanvasRenderingContext2D, x: number, y: number, w:
     ctx.stroke()
 }
 
-/** Two people: the players icon */
-export function drawPeople(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string): void {
-    ctx.strokeStyle = color
-    ctx.lineWidth = Math.max(1, size * 0.11)
-    ctx.beginPath()
-    ctx.arc(x - size * 0.16, y - size * 0.16, size * 0.19, 0, Math.PI * 2)
-    ctx.stroke()
-    ctx.beginPath()
-    ctx.arc(x - size * 0.16, y + size * 0.44, size * 0.36, Math.PI * 1.12, Math.PI * 1.88)
-    ctx.stroke()
-    ctx.beginPath()
-    ctx.arc(x + size * 0.22, y - size * 0.1, size * 0.15, 0, Math.PI * 2)
-    ctx.stroke()
-    ctx.beginPath()
-    ctx.arc(x + size * 0.26, y + size * 0.44, size * 0.28, Math.PI * 1.2, Math.PI * 1.85)
-    ctx.stroke()
-}
-
 /** A little robot head, marking bots, centered on (centerX, centerY) */
 export function drawRobot(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, size: number): void {
     const width = size

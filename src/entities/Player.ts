@@ -5,7 +5,7 @@
 import { GAME, PLAYER } from '../../server/constants/gameConstants';
 import { getSprite } from '../utils/sprites';
 import { SCALE_FACTOR, BASE_CANVAS_WIDTH, BASE_CANVAS_HEIGHT } from '../utils/utils';
-import { GameObject, InputState } from '../types';
+import { GameObject } from '../types';
 
 export default class Player implements GameObject {
   // Canvas and context
@@ -118,17 +118,6 @@ export default class Player implements GameObject {
     if (key in this.movementKeys) {
       this.movementKeys[key] = value;
     }
-  }
-  
-  /**
-   * Update player movement state
-   * @param inputState - Current input state
-   */
-  updateFromInputState(inputState: InputState): void {
-    this.setMovementKey('up', inputState.up);
-    this.setMovementKey('down', inputState.down);
-    this.setMovementKey('left', inputState.left);
-    this.setMovementKey('right', inputState.right);
   }
   
   /**

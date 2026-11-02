@@ -278,14 +278,6 @@ export default class InputManager {
     }
 
     /**
-     * Check if the shoot key is currently pressed
-     * @returns True if shoot key is pressed
-     */
-    isShootPressed(): boolean {
-        return this.keys.shoot
-    }
-
-    /**
      * Register a custom touch button
      * @param element - The button element
      * @param inputName - The input to activate ('up', 'down', etc.)
