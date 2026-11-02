@@ -107,7 +107,7 @@ function arena(seed, scenario) {
     const deaths = {}, damage = {}, last = new Map(), milestones = {}, activeSeconds = {}, deployments = {}, samples = [];
     const lives = [], living = new Map(), deathsByWidth = { below150: 0, from150To500: 0, atLeast500: 0 };
     const previousWeaponPhase = new Map();
-    const captureOutcomes = { timedEjections: 0, fires: 0, capturedPostTransferGems: 0, continuedTheftSeconds: 0 };
+    const captureOutcomes = { timedEjections: 0, fires: 0, capturedPostTransferGems: 0 };
     const holds = [];
     const leaders = []; let currentLeader = '', tenure = 0, maxTenure = 0, decay = 0, giantSeconds = 0, mostGiants = 0;
     let captures = 0, launches = 0, probeLeaderSeconds = 0, above750 = 0, max = initial, firstBelow750 = null;
@@ -150,7 +150,6 @@ function arena(seed, scenario) {
           if (p.flying) { captureOutcomes.fires++; }
           else if (p.state === 'alive') captureOutcomes.timedEjections++;
         }
-        if (p.continuedTheft) captureOutcomes.continuedTheftSeconds += DT;
         if (p.flying && !was.flying) launches++;
         last.set(id, { state: p.state, captured: Boolean(p.capturedBy), flying: p.flying, width: p.width, gems: p.gems });
       });

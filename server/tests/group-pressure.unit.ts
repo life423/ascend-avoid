@@ -46,15 +46,11 @@ assert.deepEqual(payout(false),payout(true),'frozen rates avoid actor-order grow
 {
  const {s,v,thieves:t}=setup(3);t[2].stopInhale(NOW);
  const before=planTheft(s,NOW);for(const p of t)steal(s,p,NOW,.001,before);
- assert(t[0].theftContinuations.has(v.sessionId)&&t[1].theftContinuations.has(v.sessionId));
- s.time=7100;s.now=NOW+6100;t[2].startInhale(s.now);
- let plan=planTheft(s,s.now);assert.equal(plan.get(t[2])!.length,0,'late newcomer cannot join expired theft');
- assert(plan.get(t[0])!.length&&plan.get(t[1])!.length,'both established connections can continue');
- t[1].placeAt(500,500);plan=planTheft(s,s.now);steal(s,t[1],s.now,.01,plan);
- assert(!t[1].theftContinuations.has(v.sessionId),'breaking range removes expired continuation');
- const alone=planTheft(s,s.now).get(t[0])![0].rate;
- t[1].placeAt(2100+Math.cos(2*Math.PI/3)*(v.width+t[1].width)/2-t[1].width/2,2100+Math.sin(2*Math.PI/3)*(v.width+t[1].width)/2-t[1].width/2);
- plan=planTheft(s,s.now);assert.equal(plan.get(t[1])!.length,0);assert.equal(plan.get(t[0])![0].rate,alone,'reconnection cannot dilute remaining valid continuation');
+ assert(before.get(t[0])!.length&&before.get(t[1])!.length);
+ s.time=7000;s.now=NOW+6000;t[2].startInhale(s.now);
+ const plan=planTheft(s,s.now),left=v.gems;
+ for(const p of t){assert.equal(plan.get(p)!.length,0,'expiry ends both established and newly arriving theft');steal(s,p,s.now,.1,before);}
+ assert.equal(v.gems,left,'a group cannot prolong injury or apply an expired frozen plan');
  v.suctionSafeUntil=s.now+1000;assert.equal(planTheft(s,s.now).get(t[0])!.length,0,'recovery protection interrupts the whole group');
 }
 

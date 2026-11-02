@@ -44,7 +44,7 @@ test('the full tutorial advances through all five lessons and preserves the capt
   try{
     const result=await playPractice(page,input,{maxMs:140000,until:v=>v.lesson==='weapon'&&v.phase==='complete',onStage:async v=>{
       if(order.at(-1)!==v.lesson)order.push(v.lesson);
-      if(v.lesson==='combat'&&v.stage==='aim')captive=v.me.gulping;
+      if(!captive&&v.lesson==='combat'&&v.stage==='aim')captive=v.me.gulping;
     }});
     expect(order).toEqual(LESSONS);expect(result.completed.split(',')).toEqual(LESSONS);expect(captive).toMatch(/^practice-basics-ammo-/);
     await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('ascend.practice.v2')).status)).toBe('completed');

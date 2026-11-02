@@ -509,7 +509,6 @@ export class MultiplayerMode extends GameMode {
     constructor(game: Game, readonly session: OnlineSession = { kind: 'play' }) { super(game) }
     get isPractice(): boolean { return this.session.kind === 'practice' }
     private practiceReset = -1
-    private practicePhase = ''
     cancelInput(preserveMovement = false): void {
         if (!preserveMovement) this.game.inputManager?.reset()
         this.clearControls(preserveMovement)
@@ -760,13 +759,11 @@ export class MultiplayerMode extends GameMode {
     update(inputState: InputState, _deltaTime: number, _timestamp: number): void {
         const practice = this.multiplayerManager?.getState()?.practice
         if (this.isPractice && practice?.enabled) {
-            if (this.practicePhase === 'countdown' && practice.phase === 'waiting') this.cancelInput(true)
-            this.practicePhase = practice.phase
             const session = this.multiplayerManager?.session
             if (session?.kind === 'practice' && isPracticeLesson(practice.lesson)) { session.lesson = practice.lesson; session.sequence = practice.sequence }
-            if (practice.resetSerial !== this.practiceReset) { this.cancelInput(['ready', 'countdown'].includes(practice.phase)); this.predicted = null; this.practiceReset = practice.resetSerial
+            if (practice.resetSerial !== this.practiceReset) { this.cancelInput(true); this.predicted = null; this.practiceReset = practice.resetSerial
                 // Reading freezes motion, but a thumb still held from the previous step stays prepared.
-                // Real retries, lesson selection, blur and exit still discard all movement input.
+                // Explicit lesson selection, blur, pointer cancellation and exit still discard movement input.
                 // Scenario inventories are setup, not pickups. Genuine in-attempt gains still animate.
                 this.lastSeen.clear(); this.pickups = []; this.gemPops.clear(); this.drawnSizes.clear()
                 this.stamina = 1; this.staminaAt = performance.now(); this.breath = { phase: 'ready' }
@@ -847,7 +844,7 @@ export class MultiplayerMode extends GameMode {
             this.predicted = null
             return
         }
-        const readingPractice = this.isPractice && ['ready', 'countdown'].includes(state.practice?.phase ?? '')
+        const readingPractice = this.isPractice && ['ready'].includes(state.practice?.phase ?? '')
         if (readingPractice) {
             this.sendSteer({ x: 0, y: 0 })
             this.predicted = { x: me.x, y: me.y }
@@ -1053,7 +1050,6 @@ export class MultiplayerMode extends GameMode {
         const me = localId ? state.players.get(localId) : undefined
         this.trackKnockout(me)
         this.trackEvents(state, localId, timestamp)
-        if (this.isPractice) this.game.practiceUI?.tickCountdown(this.worldNow(state, timestamp))
         const canvasBox = canvas.getBoundingClientRect(), safe = this.game.responsiveManager.safeArea
         this.cssScale = canvas.width / Math.max(1, canvasBox.width)
         for (const side of ['top', 'right', 'bottom', 'left'] as const) this.hudInsets[side] = safe[side] * this.cssScale
@@ -1208,11 +1204,11 @@ export class MultiplayerMode extends GameMode {
                 this.controls.action = me?.capturedBy ? 'CAPTURED' : me?.gulping ? 'FIRE' : me?.breathingBlocked ? 'INJURED' : me?.mouth ? 'SPIT' : 'INHALE'
                 this.controls.puffCooldown = Math.max(0, ((me?.puffReadyAt ?? 0) - this.worldNow(state, timestamp)) / 1000)
                 this.controls.puffNeedsBreath = this.stamina < EXHALE.BREATH_COST
-                this.controls.observeInhale(!!me?.inhaling, !!me && me.state === 'alive' && !me.stunned && !me.flying && !me.capturedBy && !me.breathingBlocked && !this.introPlaying && !(this.isPractice && ['ready', 'countdown'].includes(state.practice?.phase ?? '')))
+                this.controls.observeInhale(!!me?.inhaling, !!me && me.state === 'alive' && !me.stunned && !me.flying && !me.capturedBy && !me.breathingBlocked && !this.introPlaying && !(this.isPractice && ['ready'].includes(state.practice?.phase ?? '')))
             }
             if (!this.isPractice && !this.introPlaying) this.game.practiceUI?.offerIfReady()
             ctx.save()
-            if (this.isPractice && ['ready', 'countdown'].includes(state.practice?.phase ?? '')) ctx.globalAlpha *= .4
+            if (this.isPractice && ['ready'].includes(state.practice?.phase ?? '')) ctx.globalAlpha *= .4
             this.controls?.draw(ctx, timestamp, this.breath)
             ctx.restore()
             drawIncoming(this, ctx, canvas, state, me, timestamp)
@@ -1250,11 +1246,11 @@ export class MultiplayerMode extends GameMode {
         this.camera = this.cameraRig.short ? { x: this.cameraRig.x, y: this.cameraRig.y } : (this.camera ?? { x: state.worldWidth / 2, y: state.worldHeight / 2 })
         let framing = this.camera
         if (this.isPractice && state.practice?.objectiveKind && state.practice.objectiveKind !== 'placement') {
-            const objective = state.practice, target = state.players.get(objective.targetId)
+            const objective = state.practice, target = state.players.get(objective.framingTargetId || objective.targetId)
             const x = target ? target.x + target.width / 2 : objective.objectiveX
             const y = target ? target.y + target.height / 2 : objective.objectiveY
             const radius = target ? target.width / 2 + 30 : objective.objectiveKind === 'hole' ? 96 : 44
-            if (objective.objectiveKind === 'hole' || objective.lesson === 'combat' || objective.lesson === 'defense') {
+            if (objective.objectiveKind === 'hole' || objective.lesson === 'combat' || objective.lesson === 'defense' || objective.lesson === 'basics' && objective.stage === 'capture') {
                 // Fit both subjects in the visible arena below the lesson, not behind its panel.
                 const playerX = me.x + me.width / 2, playerY = me.y + me.height / 2, playerRadius = me.width / 2 + 24
                 const left = Math.min(playerX - playerRadius, x - radius), right = Math.max(playerX + playerRadius, x + radius)

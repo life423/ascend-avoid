@@ -56,21 +56,19 @@ export function knockOutWithGems(state: GameState, player: PlayerSchema, now: nu
  * narrower or more is caught there (see CANNON: escape, launch).
  */
 export function updateInhales(state: GameState, now: number, deltaTime: number) : void {
-  // Resolve continuation validity before outgoing effects: player iteration order must
-  // not let an expired-but-continuously-drained giant counter-capture for one tick.
-  pruneTheftContinuations(state, now);
+  // Restore breathing at the fixed deadline before either player's outgoing effects.
+  syncInjuryState(state);
   const cone = Math.cos((INHALE.ARC * Math.PI) / 180);
   updateHolds(state, now);
   const pulls = new Map<PlayerSchema, { eater: PlayerSchema; x: number; y: number; speed: number }[]>();
   state.players.forEach((eater) => {
     if (!eater.inhaling || eater.state !== PLAYER_STATE.ALIVE) {
-      eater.theftContinuations.clear();
       if (eater.stealingFrom) endTheft(state, eater, now);
       if (eater.robbing) eater.robbing = "";
       fadeLocks(state, eater, null, deltaTime);
       return;
     }
-    if (injuryVulnerable(state, eater, now)) { eater.stopInhale(now); eater.dropLatch(); return; }
+    if (injuryVulnerable(state, eater)) { eater.stopInhale(now); eater.dropLatch(); return; }
     const fx = Math.cos(eater.facing);
     const fy = Math.sin(eater.facing);
     const mouthX = eater.x + eater.width / 2 + fx * eater.width * 0.3;
@@ -134,7 +132,7 @@ export function updateInhales(state: GameState, now: number, deltaTime: number) 
       const d = Math.hypot(px - mouthX, py - mouthY);
       // A capture needs the size and the prey at the mouth, in front of it: pressed against the mouth counts
       // (body contact smothers the airflow, but it mustn't stop a catch)
-      if (!injuryVulnerable(state, eater, now) && now >= prey.recaptureAfter && canCatch(eater.width, prey.width) && d <= eater.width * (injuryVulnerable(state, prey, now) ? INHALE.FINISH_MOUTH_REACH : INHALE.CAPTURE_REACH) + prey.width / 2 && d < heldAt && inFrontOf(eater, px, py)) {
+      if (!injuryVulnerable(state, eater) && now >= prey.recaptureAfter && canCatch(eater.width, prey.width) && d <= eater.width * (injuryVulnerable(state, prey) ? INHALE.FINISH_MOUTH_REACH : INHALE.CAPTURE_REACH) + prey.width / 2 && d < heldAt && inFrontOf(eater, px, py)) {
         held = prey;
         heldAt = d;
       }
@@ -176,8 +174,8 @@ export function updateInhales(state: GameState, now: number, deltaTime: number) 
     fadeLocks(state, eater, locked, deltaTime);
     // Snapshot before growth changes: capture remains valid until firing or release.
     const caught = held as PlayerSchema | null;
-    if (caught && !eater.gulping && !injuryVulnerable(state, eater, now)) {
-      if (injuryVulnerable(state, caught, now)) {
+    if (caught && !eater.gulping && !injuryVulnerable(state, eater)) {
+      if (injuryVulnerable(state, caught)) {
         const gems = caught.gems;
         finishWithReward(state, caught, eater.sessionId, now, 'mouth');
         state.credit(caught, 'mouth', now, eater.sessionId, { out: true, gems });
@@ -220,7 +218,7 @@ export function updateInhales(state: GameState, now: number, deltaTime: number) 
   // Freeze valid rates before transfers change body sizes; every actor shares the same snapshot.
   const plan = planTheft(state, now);
   state.players.forEach(eater => steal(state, eater, now, deltaTime, plan));
-  syncContinuedTheft(state, now);
+  syncInjuryState(state);
 }
 
 /** Locks on creatures no longer held (or every lock, when `keep` is null) fade fast: out of the cone, out of danger */
@@ -323,7 +321,7 @@ export function planTheft(state: GameState, _now: number): TheftPlan {
     if (injuryVulnerable(state, thief)) continue;
     const candidates: { victim: PlayerSchema; weight: number }[] = [];
     for (const victim of state.players.values()) {
-      if (victim === thief || victim.gems <= INHALE.DRAIN_FLOOR || !theftWindowAllows(thief, victim, state.time) || victim.capturedBy || victim.flying) continue;
+      if (victim === thief || victim.gems <= INHALE.DRAIN_FLOOR || !theftWindowAllows(victim, state.time) || victim.capturedBy || victim.flying) continue;
       const weight = stealWeight(state, thief, victim);
       if (weight > 0) candidates.push({ victim, weight });
     }
@@ -348,9 +346,8 @@ export function planTheft(state: GameState, _now: number): TheftPlan {
 
 export function steal(state: GameState, thief: PlayerSchema, now: number, deltaTime: number, prepared?: TheftPlan) : void {
   if (thief.breathingBlocked || !thief.inhaling || thief.state !== PLAYER_STATE.ALIVE || thief.stunned || thief.flying || thief.capturedBy || thief.gulping) {
-    thief.theftContinuations.clear(); thief.robbing = ''; return;
+    thief.robbing = ''; return;
   }
-  const connected = new Set<string>();
   const victims = (prepared ?? planTheft(state, now)).get(thief) ?? [];
   victims.sort((a, b) => b.weight - a.weight);
   const primary = victims[0]?.victim.sessionId ?? "";
@@ -360,13 +357,10 @@ export function steal(state: GameState, thief: PlayerSchema, now: number, deltaT
   // Progress toward the next gem is kept between inhales, and while someone slips out of the cone for a moment
   for (const id of [...thief.stealShares.keys()]) {
     const known = state.players.get(id);
-    if (!known || known.state !== PLAYER_STATE.ALIVE || !theftWindowAllows(thief, known, state.time)) thief.stealShares.delete(id);
+    if (!known || known.state !== PLAYER_STATE.ALIVE || !theftWindowAllows(known, state.time)) thief.stealShares.delete(id);
   }
   for (const { victim, rate } of victims) {
-    if (victim.state !== PLAYER_STATE.ALIVE || victim.capturedBy || victim.flying || victim.gems <= INHALE.DRAIN_FLOOR || deltaTime <= 0) continue;
-    connected.add(victim.sessionId);
-    if (state.time < victim.injuredUntil) thief.theftContinuations.set(victim.sessionId, victim.injuredUntil);
-    if (state.time >= victim.injuredUntil) victim.continuedTheft = true;
+    if (!theftWindowAllows(victim, state.time) || victim.state !== PLAYER_STATE.ALIVE || victim.capturedBy || victim.flying || victim.gems <= INHALE.DRAIN_FLOOR || deltaTime <= 0) continue;
     let progress = (thief.stealShares.get(victim.sessionId) ?? 0) + deltaTime * rate;
     // Transfer the tick's whole gems together: uncapped scores must not mean one loop per gem.
     const amount = Math.min(Math.floor(progress), victim.gems - INHALE.DRAIN_FLOOR);
@@ -385,20 +379,11 @@ export function steal(state: GameState, thief: PlayerSchema, now: number, deltaT
       thief.stealShares.delete(victim.sessionId);
     } else thief.stealShares.set(victim.sessionId, Math.min(progress, 1));
   }
-  for (const id of [...thief.theftContinuations.keys()]) if (!connected.has(id)) {
-    thief.theftContinuations.delete(id);
-    const victim = state.players.get(id);
-    if (!victim || state.time >= victim.injuredUntil) thief.stealShares.delete(id);
-  }
 }
 
-/** Only existing injury/continuation state confers vulnerability; no second timer. */
-export function injuryVulnerable(state: GameState, player: PlayerSchema, now = state.now): boolean {
-  if (player.state !== PLAYER_STATE.ALIVE) return false;
-  if (player.injuredUntil > state.time) return true;
-  if (!player.injuredUntil) return false;
-  return [...state.players.values()].some(thief =>
-    thief.theftContinuations.get(player.sessionId) === player.injuredUntil && validTheftConnection(state, thief, player, now));
+/** Injury ends at its deadline, independently of incoming suction or theft. */
+export function injuryVulnerable(state: GameState, player: PlayerSchema): boolean {
+  return player.state === PLAYER_STATE.ALIVE && theftWindowAllows(player, state.time);
 }
 
 function connectionPower(state: GameState, thief: PlayerSchema, victim: PlayerSchema): number {
@@ -412,29 +397,16 @@ function winsTheftClash(state: GameState, thief: PlayerSchema, victim: PlayerSch
   const lead = held > theirHeld || (held === theirHeld && thief.sessionId < victim.sessionId), margin = 1 + INHALE.CLASH_MARGIN;
   return mine > theirs * margin || (mine * margin >= theirs && lead);
 }
-function validTheftConnection(state: GameState, thief: PlayerSchema, victim: PlayerSchema, now: number): boolean {
-  return thief.inhaling && thief.state === PLAYER_STATE.ALIVE && !thief.stunned && !thief.flying && !thief.capturedBy && !thief.gulping
-    && victim.state === PLAYER_STATE.ALIVE && !victim.spawnProtected && now >= victim.suctionSafeUntil && !victim.flying && !victim.capturedBy
-    && victim.gems > INHALE.DRAIN_FLOOR && theftWindowAllows(thief, victim, state.time)
-    && stealWeight(state, thief, victim) > 0 && winsTheftClash(state, thief, victim) && connectionPower(state, thief, victim) > 0;
-}
-export function syncContinuedTheft(state: GameState, now = state.now): void {
-  const active = [...state.players.values()].map(p => [p, injuryVulnerable(state, p, now)] as const);
-  for (const [p, vulnerable] of active) {
-    p.continuedTheft = vulnerable && state.time >= p.injuredUntil;
+export function syncInjuryState(state: GameState): void {
+  for (const p of state.players.values()) {
+    const vulnerable = injuryVulnerable(state, p);
     p.breathingBlocked = vulnerable;
-    if (vulnerable && p.inhaling) { p.stopInhale(now); p.dropLatch(); }
-  }
-}
-function pruneTheftContinuations(state: GameState, now: number): void {
-  for (const thief of state.players.values()) for (const id of [...thief.theftContinuations.keys()]) {
-    const victim = state.players.get(id);
-    if (!victim || thief.theftContinuations.get(id) !== victim.injuredUntil || !validTheftConnection(state, thief, victim, now)) {
-      thief.theftContinuations.delete(id);
-      if (!victim || state.time >= victim.injuredUntil) thief.stealShares.delete(id);
+    if (vulnerable && p.inhaling) { p.stopInhale(state.now); p.dropLatch(); }
+    for (const id of p.stealShares.keys()) {
+      const victim = state.players.get(id);
+      if (!victim || !injuryVulnerable(state, victim)) p.stealShares.delete(id);
     }
   }
-  syncContinuedTheft(state, now);
 }
 
 /**
@@ -457,7 +429,7 @@ function clashStrength(state: GameState, thief: PlayerSchema, victim: PlayerSche
  * breath meter, with a pause before the next one (EXHALE.COOLDOWN_MS).
  */
 export function exhale(state: GameState, player: PlayerSchema, now: number) : void {
-  if (injuryVulnerable(state, player, now) || player.state !== PLAYER_STATE.ALIVE || player.stunned || player.sliding || player.recovering || player.flying || player.capturedBy || player.inhaling || now < player.exhaleReadyAt) return;
+  if (injuryVulnerable(state, player) || player.state !== PLAYER_STATE.ALIVE || player.stunned || player.sliding || player.recovering || player.flying || player.capturedBy || player.inhaling || now < player.exhaleReadyAt) return;
   if (!player.spendBreath(now, EXHALE.BREATH_COST)) return;
   player.exhaleReadyAt = now + EXHALE.COOLDOWN_MS;
   player.puffReadyAt = state.time + EXHALE.COOLDOWN_MS;

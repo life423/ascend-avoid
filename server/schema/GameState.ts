@@ -22,7 +22,7 @@ import type { Direction } from "../game/movement.js";
 import { updateLatches } from "../systems/latches.js";
 import { updateTurbines } from "../systems/turbines.js";
 import { updateTraffic, reshuffleLanes, launchObstacle } from "../systems/traffic.js";
-import { updateInhales, knockOutWithGems, clearCapture, syncContinuedTheft } from "../systems/inhale.js";
+import { updateInhales, knockOutWithGems, clearCapture, syncInjuryState } from "../systems/inhale.js";
 import { slideBlackHoleRims } from "../game/blackHole.js";
 import { updateFlights } from "../systems/flights.js";
 import { botMouth, bombDanger, balanceBots } from "../systems/bots.js";
@@ -218,13 +218,12 @@ class GameState extends Schema {
   }
 
   clearTheftFor(id: string): void {
-    this.players.get(id)?.theftContinuations.clear();
     this.players.forEach(p => {
-      p.theftContinuations.delete(id); p.stealShares.delete(id);
+      p.stealShares.delete(id);
       if (p.stealingFrom === id) { p.stealingFrom = ''; p.stolenRun = 0; }
       p.robbing = p.robbing.split(',').filter(key => key !== id).join(',');
     });
-    syncContinuedTheft(this);
+    syncInjuryState(this);
   }
 
   /** One server tick: move traffic, gems and players, collect gems, decide hits, bring players back */
@@ -279,7 +278,7 @@ class GameState extends Schema {
       this.gemSpreadAt = this.time + 250;
     }
 
-    syncContinuedTheft(this, now);
+    syncInjuryState(this);
 
     // Bots decide on their hops, which then go through the same rules as everyone's
     this.brains.forEach((brain, id) => {
@@ -371,6 +370,7 @@ class GameState extends Schema {
       p.movementVx = v.x + (deltaTime > 0 ? p.tickNudgeX / deltaTime : 0);
       p.movementVy = v.y + (deltaTime > 0 ? p.tickNudgeY / deltaTime : 0);
       p.flightRemainingMs = p.flying ? Math.max(0, p.flightEndsAt - now) : 0;
+      p.flightAgeMs = p.flying ? Math.max(0, now - p.flightStartedAt) : 0;
     });
     topUpField(this);
   }

@@ -1,5 +1,45 @@
 # Ascend Avoid
 
+## November 2 playtest follow-up
+
+The user now authorizes committing this follow-up, pushing its branch, merging
+through the required pull-request checks, and deploying main. This supersedes
+the earlier local-only hold for this batch. The stronger gust candidates remain
+offline experiments; no runtime gust buff is included. Physical-phone feel and
+performance validation remain open after the automated/browser checks.
+
+Latest decisions supersede the investigation below: inhale must not extend injury.
+The local follow-up removes continuation; the seven-second deadline restores
+breathing and ends injury-only theft/finishes, while a new damaging hit can open
+a fresh injury and ordinary size-based capture remains. Player-bullet warnings
+now have a deceleration-aware 1.2s horizon and a temporary edge-to-projectile
+visual handoff. Bots use the same public trajectories with delayed normal inputs.
+These warnings do not change missile physics or make every short-range shot
+avoidable. Source and browser checks are recorded in the latest TODO entry.
+
+The user also removes lesson countdowns for now. Prepared scenes wait for Ready;
+full-sequence lessons still load in order. Held movement survives automatic
+transitions. A stable arena and an already-visible shooting rival preserve the
+capture-to-aim context and the actual captive. Gust candidates remain isolated
+experiments, with no runtime gust balance tuning included in this release.
+
+The November 1 batch shipped in PR #71, main
+`d5a03d6b13a8c83323a37cf5a4efaf55fb97cd3c`. Earlier local-candidate paragraphs
+below preserve their historical evidence; they do not mean that batch is still
+unpublished. The user's morning playtest now reports a nearly ineffective gust,
+injury that seems prolonged by inhale, and insufficient off-screen warnings for
+living cannonballs. Keep **no gust stun and no solid wind barrier**; a stronger,
+readable wind arc is a possible direction, with tuning still to evaluate.
+
+Source/tests confirm that the seven-second base injury deadline can be exceeded
+by an established, valid theft continuation, keeping breathing blocked and finish
+eligibility active. Player-missile warnings currently have at most half a second
+of predicted lead and disappear on viewport overlap. Gust air drift is especially
+small against wider pursuers. These findings and acceptance work are saved in
+[TODO.md](TODO.md#november-2-morning-playtest--defense-injury-recovery-and-player-bullets).
+The exact phone warning failure remains to reproduce. This follow-up records an
+investigation, not new combat rules or authorization to publish another release.
+
 ## November 1 release authorization
 
 The user has now explicitly requested committing the accumulated changes, merging

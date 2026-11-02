@@ -17,7 +17,7 @@ export async function openLesson(page, lesson = 'basics', sequence = false) {
   await page.getByRole('button', { name: 'Practice / Tutorials', exact: true }).click();
   if (sequence) await page.getByRole('button', { name: 'Start full tutorial', exact: true }).click();
   else await page.locator(`[data-lesson="${lesson}"]`).click();
-  await page.waitForFunction(id => window.game?.currentGameMode?.multiplayerManager?.getState()?.practice?.lesson === id && ['ready','countdown','waiting'].includes(window.game.currentGameMode.multiplayerManager.getState().practice.phase), lesson);
+  await page.waitForFunction(id => window.game?.currentGameMode?.multiplayerManager?.getState()?.practice?.lesson === id && ['ready','waiting'].includes(window.game.currentGameMode.multiplayerManager.getState().practice.phase), lesson);
   await settled(page);
   await expect(page.locator('.practice-instruction')).toBeVisible();
   // Wait for the closing menu/backdrop to release the actual play surface before a gesture starts.
@@ -83,7 +83,8 @@ export async function practiceInput(page, browserName, hasTouch) {
     } else await locator.dispatchEvent('pointerdown', { pointerType: 'touch', pointerId: 3, clientX: x, clientY: y });
   };
   const stop = async () => { await move(); await releaseAction(); };
-  return { move, hold, aim, tap, tapButton, releaseAction, stop, touch: hasTouch, close: async () => { await stop(); if (cdp) await cdp.detach(); } };
+  const prepareMovement = async () => { if (hasTouch && !points.has(1)) await touch('touchStart', 1, 96, page.viewportSize().height - 100); };
+  return { move, prepareMovement, hold, aim, tap, tapButton, releaseAction, stop, touch: hasTouch, close: async () => { await stop(); if (cdp) await cdp.detach(); } };
 }
 
 /** Read state to select human inputs; never send lesson completion, teleport or reward commands. */

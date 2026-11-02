@@ -213,7 +213,9 @@ export interface SyncedPlayer {
     flightVy: number
     flightKind: string
     flightRemainingMs: number
-    continuedTheft: boolean
+    flightAgeMs: number
+    flightHit: boolean
+    launchedBy: string
     captureRatio: number
     captureHoldMs: number
     weaponSafeUntil: number
@@ -233,6 +235,7 @@ export interface SyncedPractice {
     passed: number
     total: number
     targetId: string
+    framingTargetId: string
     objectiveKind: string
     objectiveX: number
     objectiveY: number
@@ -241,7 +244,6 @@ export interface SyncedPractice {
     resetSerial: number
     sequence: boolean
     feedback: string
-    countdownEndsAt: number
 }
 
 /** TurbineSchema, as synced to the browser */

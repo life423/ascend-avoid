@@ -52,7 +52,7 @@ export function drawAirflow(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
     const spread = arc * (1 - 0.35 * ahead) * (1 - 0.4 * tight) * (1 - 0.6 * Math.max(0, Math.min(1, (flow.coherence - LATCH.BEAM_FOCUS_FROM) / (LATCH.BEAM_FULL_AT - LATCH.BEAM_FOCUS_FROM))))
     // It leans toward whoever it's draining
     const world = mode.multiplayerManager?.getState()
-    const weakened = Boolean(player.continuedTheft || world && player.injuredUntil > mode.worldNow(world, timestamp))
+    const weakened = Boolean(world && player.injuredUntil > mode.worldNow(world, timestamp))
     // Focused on its latched creature if it has one, else whoever it's robbing
     const target = player.latchTarget ? world?.players?.get(player.latchTarget) : player.stealingFrom ? world?.players?.get(player.stealingFrom) : null
     const mouthX = x + Math.cos(facing) * size * 0.3
