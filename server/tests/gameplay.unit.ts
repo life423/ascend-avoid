@@ -77,14 +77,14 @@ for (const gems of [0, 4, 11, 12, 80]) for (const kind of ['missile', 'turbine']
   const s = world(), p = player(s, 'breath');
   p.stamina = 1; p.staminaAt = NOW;
   exhale(s, p, NOW);
-  assert(Math.abs(p.stamina - 0.65) < 1e-9, 'a gust costs 35 percentage points');
-  p.exhaleReadyAt = 0; p.stamina = 0.34; p.staminaAt = NOW;
+  assert(Math.abs(p.stamina - 0.25) < 1e-9, 'a gust costs 75 percentage points');
+  p.exhaleReadyAt = 0; p.stamina = 0.74; p.staminaAt = NOW;
   exhale(s, p, NOW);
   assert.equal(p.exhaleReadyAt, 0, 'not enough breath: no gust or cooldown is spent');
-  assert.equal(p.stamina, 0.34);
-  p.stamina = 0.35;
+  assert.equal(p.stamina, 0.74);
+  p.stamina = 0.75;
   exhale(s, p, NOW);
-  assert.equal(p.stamina, 0, 'exactly 35% breath can produce one gust');
+  assert.equal(p.stamina, 0, 'exactly 75% breath can produce one gust');
   p.startInhale(NOW); assert(!p.inhaling, 'a depleted meter cannot immediately inhale');
 }
 {
@@ -220,7 +220,7 @@ for (const facing of [0, Math.PI / 3, -Math.PI / 2]) {
   big.startInhale(NOW);
   assert(stealWeight(state, big, small) > 0);
   exhale(state, small, NOW);
-  assert.equal(big.inhaling, false, 'a puff into an incoming inhale breaks it');
+  assert.equal(big.inhaling, true, 'a puff physically pushes without cancelling inhale');
   assert.equal(big.stunned, false, 'a gust never stuns its target');
   assert.equal(big.sliding, false, 'a gust does not hide a control lock in an impact skid');
   assert.equal(small.suctionSafeUntil, 0, 'a puff grants no lasting suction immunity');
@@ -229,15 +229,16 @@ for (const facing of [0, Math.PI / 3, -Math.PI / 2]) {
   const y = big.y;
   big.updateMovement(state.worldWidth, state.worldHeight, NOW + 17, .017);
   assert(big.y > y, 'steering works during the shove itself');
-  big.startInhale(NOW + EXHALE.PARRY_MS - 1);
-  assert.equal(big.inhaling, false, 'only the broken inhale has a brief restart delay');
+  big.stopInhale(NOW + 18);
+  big.startInhale(NOW + 19);
+  assert.equal(big.inhaling, true, 'puff adds no inhale restart delay');
   big.placeAt(1080, 938.5);
-  big.startInhale(NOW + EXHALE.PARRY_MS);
+  big.startInhale(NOW + 20);
   assert(big.inhaling, 'inhaling resumes without waiting on a stun or fading artwork');
   assert(stealWeight(state, big, small) > 0, 'airflow is not blocked by a lasting shield');
   const ready = small.exhaleReadyAt;
   exhale(state, small, NOW + 100);
-  assert.equal(small.exhaleReadyAt, ready, 'puffs cannot be spammed');
+  assert.equal(small.exhaleReadyAt, ready, 'insufficient breath blocks another puff');
 }
 {
   const state = world();

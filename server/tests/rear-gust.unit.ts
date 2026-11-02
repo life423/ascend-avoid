@@ -63,7 +63,8 @@ for (const bot of [false, true]) {
   assert(wave.remainingImpulse >= 0 && wave.remainingImpulse <= left);
   assert(Math.abs(targets[2].gustVx) * bodyMass(targets[2].width) <= left + 1e-6, 'later arrivals cannot reuse the spent budget');
   const count = s.gustWaves.size, breath = p.stamina;
-  exhale(s, p, NOW + 100); assert.equal(s.gustWaves.size, count); assert.equal(p.stamina, breath);
+  exhale(s, p, NOW + 100); assert.equal(s.gustWaves.size, count);
+  assert(p.stamina >= breath && p.stamina < EXHALE.BREATH_COST, 'rejected attempts preserve normal refill without spending breath');
 }
 // The prediction helper and server use the same short exponential displacement.
 for (const dt of [1 / 120, 1 / 60, 1 / 30, .1]) {

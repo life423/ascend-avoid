@@ -22,6 +22,6 @@ for(const [a,b] of [[20,400],[400,20],[80,80],[400,400]] as const){const p=puffI
  const stamina=a.stamina;exhale(s,a,NOW);assert.equal(a.stamina,stamina-EXHALE.BREATH_COST);assert(a.velocity().x<0&&b.velocity().x>0);
  assert(a.suctionSafeUntil===0&&!b.stunned&&!b.sliding,'air drift grants neither suction shield nor movement lock');
  a.updateMovement(4200,4200,NOW+100,.1);assert(a.x>=8,'boundary collisions clamp recoil');assert.equal(a.gems+b.gems,0,'puff does no damage');
- const before=a.velocity().x;exhale(s,a,NOW+1);assert.equal(a.velocity().x,before,'cooldown cannot multiply recoil');
+ const before=a.velocity().x;exhale(s,a,NOW+1);assert.equal(a.velocity().x,before,'breath cost cannot be bypassed to multiply recoil');
 }
-console.log('Puff impulses passed: small/large/equal masses, conservation, multi-hit budget, speed caps, empty puff, boundaries, brief inhale interruption, no stun/shield and unchanged cost.');
+console.log('Puff impulses passed: small/large/equal masses, conservation, multi-hit budget, speed caps, empty puff, boundaries, no stun/shield and unchanged cost.');

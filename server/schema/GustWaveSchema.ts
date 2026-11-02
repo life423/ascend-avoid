@@ -9,7 +9,6 @@ export class GustWaveSchema extends Schema {
   at = 0;
   /** Server-only: one finite push budget and one response per body. */
   pushed = new Set<string>();
-  parried = new Set<string>();
   remainingImpulse = 0;
 }
 type("string")(GustWaveSchema.prototype, "owner");

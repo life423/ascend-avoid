@@ -618,7 +618,7 @@ export class MultiplayerMode extends GameMode {
     /** Bomb blasts going off: a flash and a ring racing out to the blast's edge */
     blasts: { x: number; y: number; radius: number; at: number }[] = []
     /** Exhales: a puff of air out of a mouth, arcs rolling out through its cone */
-    puffs: { by: string; x: number; y: number; facing: number; reach: number; recoil: number; at: number }[] = []
+    puffs: { by: string; x: number; y: number; facing: number; reach: number; recoil: number; slideX: number; slideY: number; at: number }[] = []
     /** Gravity theft on screen: each victim's gems last frame, and the stolen gems in flight */
     theftGems = new Map<string, number>()
     theftParticles: { from: string; to: string; at: number; angle: number; flight: number; power: number }[] = []
@@ -699,8 +699,8 @@ export class MultiplayerMode extends GameMode {
             this.publishActivity(data?.phase === 'warning' ? 'Gem surge incoming — follow the gold marker!' : 'Gem surge! Jackpot in the final seconds.')
         })
         eventBus.on('multiplayer:blast', (data: any) => this.blasts.push({ x: Number(data?.x) || 0, y: Number(data?.y) || 0, radius: Number(data?.radius) || BOMBS.BLAST_RADIUS, at: performance.now() }))
-        eventBus.on('multiplayer:exhale', (data: { id?: string; x?: number; y?: number; facing?: number; reach?: number; recoil?: number; breathLeft?: number }) => {
-            this.puffs.push({ by: String(data.id ?? ''), x: Number(data.x) || 0, y: Number(data.y) || 0, facing: Number(data.facing) || 0, reach: Number(data.reach) || 200, recoil: Number(data.recoil) || 0, at: performance.now() })
+        eventBus.on('multiplayer:exhale', (data: { id?: string; x?: number; y?: number; facing?: number; reach?: number; recoil?: number; breathLeft?: number; wallSlideX?: number; wallSlideY?: number }) => {
+            this.puffs.push({ by: String(data.id ?? ''), x: Number(data.x) || 0, y: Number(data.y) || 0, facing: Number(data.facing) || 0, reach: Number(data.reach) || 200, recoil: Number(data.recoil) || 0, slideX: Number(data.wallSlideX) || 0, slideY: Number(data.wallSlideY) || 0, at: performance.now() })
             if (data.id === this.multiplayerManager?.localSessionId && typeof data.breathLeft === 'number') {
                 this.stamina = Math.max(0, Math.min(1, data.breathLeft))
                 this.staminaAt = performance.now()
@@ -1006,7 +1006,7 @@ export class MultiplayerMode extends GameMode {
         this.predicted = { x: box.x, y: box.y }
     }
 
-    /** Where your breath is: draining over INHALE.MAX_MS while you inhale, refilling over INHALE.REFILL_MS from wherever it is */
+    /** Mirror ordinary server breath drain and refill, including the accepted puff's cost. */
     breathOf(inhaling: boolean, now: number, beamQuality = 0): Breath {
         // A step at most a quarter second long, so coming back to a paused tab does not empty (or fill) it at once
         const elapsed = Math.min(250, Math.max(0, now - this.staminaAt))

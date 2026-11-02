@@ -1,5 +1,18 @@
 # Ascend Avoid
 
+## Current local puff-pressure trial
+
+The latest local trial supersedes automatic gust parries: front and rear wind
+push with the existing force but preserve the pursuer's inhale/latch/pressure.
+Only ordinary loss of valid contact causes connection decay. The rear arc is
+140 degrees with matching wrap artwork; the instantaneous forward cone and
+shove strength remain unchanged. Puff now costs a provisional 75% of a full
+breath, with ordinary refill and no fixed gameplay cooldown or added refill pause.
+This replaces the rejected three-puff burst and four-second timer proposals.
+Valid-hit recoil that would hit a wall can redirect along that wall toward
+movement input, without extra impulse, a free empty-puff dash or capture immunity.
+This is local-only tuning; see [GUST_DEFENSE.md](GUST_DEFENSE.md).
+
 ## November 2 stronger rear gust follow-up
 
 The user expected the stronger gust to ship with PR #72. That release only

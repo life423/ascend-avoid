@@ -50,6 +50,30 @@ const read = page => page.evaluate(() => {
     squash: m.contactShapes.get(p.sessionId)?.amount ?? 0 };
 });
 
+test('the 140-degree rear arc reaches an off-axis pursuer without cancelling inhale', async ({ page, baseURL, hasTouch, browserName }) => {
+  const { peer, send, errors } = await scene(page, baseURL);
+  const input = await practiceInput(page, browserName, hasTouch);
+  try {
+    await send('test:setGems', { count: 100000 }); peer.send('test:setGems', { count: 0 });
+    // A giant's normal upkeep can spend gems before the next state patch arrives.
+    await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getLocalPlayer().width > 600);
+    await expect.poll(() => peer.state.players.get(peer.sessionId).gems).toBe(0);
+    const size = await page.evaluate(() => window.game.currentGameMode.multiplayerManager.getLocalPlayer().width);
+    const radius = Math.max(42, size / 2 + Math.min(40, 12 + size * .1)), angle = Math.PI + 65 * Math.PI / 180;
+    await send('test:moveTo', { x: 2100 - size / 2, y: 2100 - size / 2 });
+    peer.send('test:moveTo', { x: 2100 + Math.cos(angle) * radius - 10, y: 2100 + Math.sin(angle) * radius - 10 });
+    peer.send('test:face', { angle: angle + Math.PI }); peer.send('inhale');
+    await expect.poll(() => peer.state.players.get(peer.sessionId).inhaling).toBe(true);
+    await input.tap();
+    await expect.poll(() => peer.state.players.get(peer.sessionId).gustVx, { intervals: [20, 30] }).toBeLessThan(-20);
+    expect(peer.state.players.get(peer.sessionId).inhaling).toBe(true);
+    expect(peer.state.players.get(peer.sessionId).stunned).toBe(false);
+    expect(Math.abs(peer.state.players.get(peer.sessionId).gustVx)).toBeLessThanOrEqual(280);
+    await page.screenshot({ path: test.info().outputPath('140-degree-off-axis-gust.png'), scale: 'css' });
+    expect(errors).toEqual([]);
+  } finally { await input.close(); await peer.leave(); }
+});
+
 test('a forward puff wraps behind and shoves once without a stun or barrier', async ({ page, baseURL, hasTouch, browserName }) => {
   const { peer, errors } = await scene(page, baseURL);
   let cdp;
@@ -80,8 +104,9 @@ test('a forward puff wraps behind and shoves once without a stun or barrier', as
     }
     await expect.poll(async () => (await read(page)).wave).not.toBeNull();
     const cast = (await read(page)).wave;
-    await expect.poll(() => peer.state.players.get(peer.sessionId).inhaling, { intervals: [20, 30, 50] }).toBe(false);
-    // The peer's interruption patch may arrive before this browser's world clock patch.
+    await expect.poll(() => peer.state.players.get(peer.sessionId).gustVx, { intervals: [20, 30, 50] }).toBeLessThan(0);
+    expect(peer.state.players.get(peer.sessionId).inhaling).toBe(true);
+    // The peer's wind patch may arrive before this browser's world clock patch.
     await expect.poll(async () => (await read(page)).wave?.age ?? -1, { intervals: [20, 30] }).toBeGreaterThanOrEqual(220);
     const covered = await read(page);
     expect(covered.wave).not.toBeNull();
@@ -125,6 +150,37 @@ test('the receiving player feels separate rear wind and can keep moving with key
     await expect.poll(()=>page.evaluate(()=>window.game.currentGameMode.multiplayerManager.getLocalPlayer().gustVx)).toBe(0);
     expect(errors).toEqual([]);
   }finally{await input.close();await peer.leave();}
+});
+
+test('puffs spend 75% of full breath, reject rapid repeats and refill normally without a timer', async ({ page, baseURL, hasTouch, browserName }) => {
+  const { peer } = await scene(page, baseURL), input = await practiceInput(page, browserName, hasTouch);
+  await page.evaluate(() => {
+    const room = window.game.currentGameMode.multiplayerManager.room;
+    window.puffReceipts = [];
+    room.onMessage('exhale', data => { if (data.id === room.sessionId) window.puffReceipts.push({ breath: data.breathLeft, at: performance.now() }); });
+  });
+  const meter = () => page.evaluate(() => {
+    const m = window.game.currentGameMode;
+    return { breath: m.stamina, cooldown: m.controls.puffCooldown, receipts: window.puffReceipts, now: performance.now() };
+  });
+  try {
+    await peer.leave(); await input.tap();
+    await expect.poll(async () => (await meter()).receipts.length).toBe(1);
+    const first = await meter(); expect(first.receipts[0].breath).toBeCloseTo(.25, 5);
+    expect(first.cooldown).toBe(0);
+    await input.tap(); await input.tap();
+    expect((await meter()).receipts.length).toBe(1);
+    await page.waitForTimeout(750);
+    expect((await meter()).breath).toBeGreaterThan(.4);
+    await expect.poll(async () => (await meter()).breath, { intervals: [20, 40] }).toBeGreaterThan(.83);
+    await input.tap();
+    await expect.poll(async () => (await meter()).receipts.length).toBe(2);
+    const next = await meter(), receipt = next.receipts.at(-1);
+    expect(receipt.breath).toBeLessThanOrEqual(.25 + 1e-6);
+    expect(Math.abs(next.breath - Math.min(1, receipt.breath + (next.now - receipt.at) / 3000))).toBeLessThan(.03);
+    expect(next.cooldown).toBe(0);
+    await page.screenshot({ path: test.info().outputPath('75-percent-puff-breath.png'), scale: 'css' });
+  } finally { await input.close(); }
 });
 
 test('body contact compresses smoothly while the player keeps steering', async ({ page, baseURL }) => {

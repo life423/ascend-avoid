@@ -53,7 +53,7 @@ export function botMouth(state: GameState, bot: PlayerSchema, now: number) : voi
   }
   const brain = state.brains.get(bot.sessionId);
   const robber = botSuctionThreat(state, bot, now);
-  if (brain?.gustDefense.ready(robber?.sessionId ?? '', now) && robber && now >= bot.exhaleReadyAt) {
+  if (brain?.gustDefense.ready(robber?.sessionId ?? '', now) && robber && now >= bot.exhaleReadyAt && bot.stamina + 1e-9 >= EXHALE.BREATH_COST) {
     const dx = robber.x + robber.width / 2 - cx, dy = robber.y + robber.height / 2 - cy;
     const robberMouth={x:robber.x+robber.width/2+Math.cos(robber.facing)*robber.width*.3,y:robber.y+robber.height/2+Math.sin(robber.facing)*robber.width*.3};
     const rearWave={x:cx,y:cy,width:bot.width,facing:bot.facing,at:state.time-EXHALE.WAVE_WRAP_MS};

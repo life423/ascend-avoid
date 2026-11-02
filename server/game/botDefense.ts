@@ -1,4 +1,4 @@
-import { BOTS, EXHALE } from '../constants/gameConstants.js';
+import { BOTS } from '../constants/gameConstants.js';
 
 /** Human-scale reaction and missed opportunities; cooldown/breath/turning still belong to the player. */
 export class BotGustDefense {
@@ -24,5 +24,5 @@ export class BotGustDefense {
     return true;
   }
 
-  attempted(now: number): void { this.reactAt = now + EXHALE.COOLDOWN_MS; this.willing = this.random() < BOTS.GUST_SKILL; }
+  attempted(now: number): void { this.reactAt = now + BOTS.GUST_REACT_MIN_MS; this.willing = this.random() < BOTS.GUST_SKILL; }
 }

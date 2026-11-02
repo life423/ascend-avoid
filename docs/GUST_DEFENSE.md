@@ -1,5 +1,50 @@
 # Rear gust follow-up — November 2, 2026
 
+## Approved defense update: push without cancelling pressure
+
+The local build now keeps incoming inhale, latch and accumulated pressure intact
+when a front or rear puff hits. Physical separation can still break range or aim;
+the ordinary latch grace and pressure-decay rules then apply. No automatic parry,
+restart delay or pressure wipe is applied. The rear sweep and its wrap artwork
+now span 140 degrees (70 degrees to either side of the rear heading). All shove
+impulses, mass resistance, speed caps and reach retain their released values.
+The instantaneous forward puff still uses its existing 110-degree hit cone.
+
+The latest resource-only trial costs 75% of a full breath per accepted puff,
+with normal idle refill (three seconds from empty), no fixed gameplay cooldown
+and no added refill pause. One full-meter puff leaves 25%; the earliest second
+is about 1.5 seconds later and subsequent empty-meter puffs need about 2.25 seconds.
+The user requested this 75% comparison after the initial 80% trial.
+Normal inhale still shares this meter. This supersedes the earlier 35%-cost,
+1.5-second refill-pause trial and the rejected four-second cooldown proposal.
+Button and help percentages derive from the same tuning constant.
+
+The approved wall-slip prototype redirects the part of valid-hit recoil that
+would otherwise be lost at a boundary, toward deliberate movement along that
+boundary. It uses the ordinary recoil's existing drag and total travel to find
+that blocked portion, preserves any portion that fits before the wall, and
+never increases recoil magnitude. At a corner it selects a viable boundary
+tangent, not a path through a wall. Empty/invalid hits, no tangent input, and
+recoil that fits in open space do not gain movement. No stun, suction shield,
+pressure wipe or capture exception is added. Humans and bots use the same rule.
+Two brief airflow wisps show the redirected movement. This is the wall-slip
+experiment only; arena corners have not been rounded.
+
+After local testing, the user reported that the 75% trial feels good and
+authorized committing, merging and deployment on November 2, 2026. The wider
+140-degree rear arc, pressure retention and wall slip are included, with unchanged
+shove strength. This feedback does not establish broad human balance. The earlier
+release and its measurements below are historical.
+
+The 75% local comparison passes the production build, type checks, all 47 unit
+suites plus practice-progress checks, and 45 browser cases across desktop Chrome,
+emulated Android Chrome and emulated iPhone Safari. Checks include exact 75%
+spending, repeat-request rejection, 1.5-second first refill availability, normal
+refill, pressure retention, wall recoil and keyboard/touch routing. Short manual
+local drills also confirmed one puff from rapid taps and working wall slip.
+These checks do not establish physical-phone feel or human chase balance.
+Network results below belong to earlier runs, not a fresh 75% network run.
+
 PR #72 shipped fixed injury recovery, player-bullet warnings and tutorial fixes.
 It did not strengthen the gust. The user expected that work to ship too; this
 follow-up completes it while retaining the requested no-stun/no-barrier rules.

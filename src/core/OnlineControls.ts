@@ -2,6 +2,7 @@
 /** What the button (or space) asks for: an inhale starting (pressed) and stopping (let go) */
 /** inhale: hold begins; exhale: release stops inhaling; cancel: interrupted press; tap: puff, spit or fire. */
 import { sound } from './Sound'
+import { EXHALE } from '../../server/constants/gameConstants'
 import { mouseControlEnabled, MOUSE_CONTROL_EVENT } from './MouseControl'
 import type { Bounds } from '../practice/layout'
 export type ControlEvent = 'inhale' | 'exhale' | 'cancel' | 'tap'
@@ -12,6 +13,7 @@ export type ControlEvent = 'inhale' | 'exhale' | 'cancel' | 'tap'
  * past it and the inhale starts
  */
 const TAP_MS = 180
+const PUFF_COST = `${Math.round(EXHALE.BREATH_COST * 100)}%`
 
 /** Your breath, for the button and the ring around your creature: draining while you inhale, refilling while you catch it */
 export type Breath = { phase: 'ready' } | { phase: 'inhaling'; left: number } | { phase: 'recovering'; back: number }
@@ -212,7 +214,7 @@ export class OnlineControls {
             ctx.textAlign = 'left'
             ctx.font = `700 12px ${FONT}`
             ctx.fillStyle = inhaling ? breathColor : `rgba(255, 255, 255, ${recovering ? 0.35 : 0.65})`
-            const hint = this.action === 'CAPTURED' ? 'Captured' : this.action === 'INJURED' ? 'Injured · move to escape' : this.action === 'FIRE' ? 'SPACE  tap to FIRE' : this.action === 'SPIT' ? 'SPACE  tap to SPIT' : release ? 'SPACE  release, then hold again' : inhaling ? 'SPACE  inhaling' : `SPACE  hold to inhale · ${this.puffCooldown > 0 ? `puff in ${this.puffCooldown.toFixed(1)}s` : this.puffNeedsBreath ? 'puff needs 35% breath' : 'puff costs 35% breath'}`
+            const hint = this.action === 'CAPTURED' ? 'Captured' : this.action === 'INJURED' ? 'Injured · move to escape' : this.action === 'FIRE' ? 'SPACE  tap to FIRE' : this.action === 'SPIT' ? 'SPACE  tap to SPIT' : release ? 'SPACE  release, then hold again' : inhaling ? 'SPACE  inhaling' : `SPACE  hold to inhale · ${this.puffCooldown > 0 ? `puff in ${this.puffCooldown.toFixed(1)}s` : this.puffNeedsBreath ? `puff needs ${PUFF_COST} breath` : `puff costs ${PUFF_COST} breath`}`
             if (release) ctx.fillStyle = breathColor
             ctx.fillText(hint, 14 + this.insets.left, height - this.insets.bottom - 16)
             if (inhaling || recovering) {
@@ -254,7 +256,7 @@ export class OnlineControls {
         // Center the complete label block, including its helper, rather than centering only INHALE.
         ctx.fillStyle = release ? '#ffd47d' : recovering ? 'rgba(255, 255, 255, 0.4)' : low ? breathColor : '#ffffff'
         ctx.textBaseline = 'alphabetic'
-        const helper = r < 40 ? '' : release ? 'HOLD AGAIN' : this.action === 'INJURED' ? 'MOVE TO ESCAPE' : this.action === 'CAPTURED' ? '' : this.action === 'INHALE' ? this.puffCooldown > 0 ? `PUFF ${this.puffCooldown.toFixed(1)}s` : this.puffNeedsBreath ? 'NEED 35% BREATH' : 'PUFF −35%' : ''
+        const helper = r < 40 ? '' : release ? 'HOLD AGAIN' : this.action === 'INJURED' ? 'MOVE TO ESCAPE' : this.action === 'CAPTURED' ? '' : this.action === 'INHALE' ? this.puffCooldown > 0 ? `PUFF ${this.puffCooldown.toFixed(1)}s` : this.puffNeedsBreath ? `NEED ${PUFF_COST} BREATH` : `PUFF −${PUFF_COST}` : ''
         const lines = [{ text: release ? 'LET GO' : this.action, weight: 800, size: 17 }, ...(helper ? [{ text: helper, weight: 600, size: 10 }] : [])]
         const measured = lines.map(line => {
             ctx.font = `${line.weight} ${line.size}px ${FONT}`
