@@ -54,7 +54,7 @@ function setup(lesson: PracticeLesson) {
   };
   const play = (condition: () => boolean, max = 7000) => {
     for (let i = 0; i < max && !condition(); i++) { drive(); step(); }
-    assert(condition(), `Play stalled: ${s.practice.lesson}/${s.practice.stage}/${s.practice.phase} ${s.practice.feedback}`);
+    assert(condition(), `Play stalled: ${s.practice.lesson}/${s.practice.stage}/${s.practice.phase} ${s.practice.feedback} ${JSON.stringify({player:{x:p.x,y:p.y,gems:p.gems,held:p.gulping},weapon:{enabled:s.weaponsOn,length:s.pinwheel.parts.length,hub:s.pinwheel.parts[0]?.carriedBy,every:s.pinwheel.parts.every(part=>part.carriedBy===p.sessionId),events:events.slice(-3),phase:s.pinwheel.phase,owner:s.pinwheel.owner,progress:s.pinwheel.progress,parts:s.pinwheel.parts.map(part=>({x:part.x,y:part.y,carriedBy:part.carriedBy}))}})}`);
   };
   return { s, p, c, events, step, until, drive, play, now: () => now };
 }
@@ -132,7 +132,9 @@ for (const lesson of PRACTICE_LESSONS) {
   p.stopInhale(now()); p.captureNeedsRelease = false; p.facing = Math.PI / 2;
   assert(fireCaptive(s, p, now())); until(() => s.practice.attempt > attempt);
   assert.equal(s.practice.stage, 'shatter'); assert.equal(s.practice.passed, 1);
-  assert(p.gulping); assert(Math.abs(p.facing + Math.PI / 4) < .01, 'retry restores the already-proven aim as well as ammunition');
+  const rival = s.players.get(s.practice.targetId)!;
+  const targetAngle = Math.atan2(rival.y + rival.height / 2 - p.y - p.height / 2, rival.x + rival.width / 2 - p.x - p.width / 2);
+  assert(p.gulping); assert(Math.abs(p.facing - targetAngle) < .01, 'retry restores the already-proven aim as well as ammunition');
 }
 {
   const { s, p, c, step, until, now } = setup('defense');
@@ -194,6 +196,7 @@ for (const holding of [false, true]) {
   for (let i = 0; i < 2500 && s.practice.lesson === 'basics'; i++) {
     if (s.practice.stage === 'capture' && p.gulping) actualCaptive = p.gulping;
     const v = s.practice;
+    if (v.phase === 'ready') c.ready(v.attempt, now());
     if (v.phase === 'waiting') { if (v.stage === 'grow') p.steer(1, 0); else p.startInhale(now()); }
     else p.steer(v.phase === 'complete' ? 1 : 0, 0);
     step();
@@ -212,24 +215,19 @@ for (const holding of [false, true]) {
   const { s, p, c, step, now } = setup('combat');
   c.select('combat', true, now(), true);
   const attempt = s.practice.attempt, ammo = p.gulping, budget = p.gulpEndsAt - s.time;
-  assert.equal(s.practice.phase, 'countdown');
-  assert.equal(s.practice.countdownEndsAt - s.time, 3000);
-  c.ready(attempt - 1, now()); c.pauseCountdown(attempt - 1, now());
-  assert.equal(s.practice.phase, 'countdown', 'stale commands cannot alter the countdown');
-  step(1000); assert.equal(s.practice.phase, 'countdown');
+  assert.equal(s.practice.phase, 'ready');
+  c.ready(attempt - 1, now());
+  step(7000); assert.equal(s.practice.phase, 'ready', 'no countdown or automatic start advances a prepared lesson');
   assert.equal(p.gulping, ammo); assert(Math.abs(p.gulpEndsAt - s.time - budget) <= 1);
-  c.pauseCountdown(attempt, now()); step(6000);
-  assert.equal(s.practice.phase, 'ready', 'Pause gives unlimited reading within the ordinary session lifetime');
-  assert.equal(p.gulping, ammo); assert(Math.abs(p.gulpEndsAt - s.time - budget) <= 1);
-  c.ready(attempt, now()); assert.equal(s.practice.phase, 'waiting', 'Start now skips the remaining wait');
-  assert.equal(s.practice.countdownEndsAt, 0); assert.equal(s.practice.attempt, attempt);
-  c.select('defense', true, now(), true); step(2999);
-  assert.equal(s.practice.phase, 'countdown');
-  assert(!s.players.get(s.practice.targetId)?.inhaling, 'threats remain inactive during countdown');
-  step(1); assert.equal(s.practice.phase, 'waiting', 'the server starts automatically at the deadline');
+  c.ready(attempt, now()); assert.equal(s.practice.phase, 'waiting', 'Ready starts this attempt');
+  assert.equal(s.practice.attempt, attempt);
+  c.select('defense', true, now(), true); step(5000);
+  assert.equal(s.practice.phase, 'ready');
+  assert(!s.players.get(s.practice.targetId)?.inhaling, 'threats remain inactive until Ready');
+  c.ready(s.practice.attempt, now()); assert.equal(s.practice.phase, 'waiting');
   c.select('basics', true, now(), true); c.skip(s.practice.attempt, now());
-  assert.equal(s.practice.lesson, 'combat'); assert.equal(s.practice.phase, 'countdown');
+  assert.equal(s.practice.lesson, 'combat'); assert.equal(s.practice.phase, 'ready');
   assert.equal(s.practice.completed, '', 'skipped lessons remain unfinished');
   c.select('defense', true, now()); assert.equal(s.practice.phase, 'ready', 'individual lessons retain manual preparation');
 }
-console.log('Five practice lessons, honest progress/retries, countdown timing, pause/start-now, preserved ammunition, stale commands and selectable readiness pass.');
+console.log('Five practice lessons, honest progress/retries, manual readiness without countdowns, preserved ammunition, stale commands and selectable readiness pass.');

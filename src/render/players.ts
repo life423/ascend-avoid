@@ -186,7 +186,7 @@ export function drawPlayer(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
     // Exhaling: the body puffs out as the air goes, then settles
     const puff = mode.puffs.find((p) => p.by === sessionId)
     const puffed = puff && !REDUCED_MOTION.matches ? 1 + 0.14 * Math.sin(Math.PI * Math.min(1, (timestamp - puff.at) / 260)) : 1
-    const injuryRemaining = player.continuedTheft ? 1000 : (player.injuredUntil ?? 0) - (world ? mode.worldNow(world, timestamp) : 0)
+    const injuryRemaining = (player.injuredUntil ?? 0) - (world ? mode.worldNow(world, timestamp) : 0)
     const injuryAge = INHALE.INJURY_MS - injuryRemaining
     const impactPop = !REDUCED_MOTION.matches && player.injuredUntil > 0 && injuryAge >= 0 && injuryAge < 220 ? Math.sin(Math.PI * injuryAge / 220) : 0
     const bulge = quiver * puffed

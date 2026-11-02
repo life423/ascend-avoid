@@ -51,8 +51,7 @@ class PlayerSchema extends Schema {
   puffVx = 0;
   puffVy = 0;
   flightRemainingMs = 0;
-  continuedTheft = false;
-  theftContinuations = new Map<string, number>();
+  flightAgeMs = 0;
 
   /** Server-only: when a knocked-out player comes back */
   respawnAt = 0;
@@ -244,7 +243,6 @@ class PlayerSchema extends Schema {
     this.land();
     this.shotMassBonus = 0; this.shotShooterWidth = 0; this.shotOwner = "";
     this.capturedBy = this.gulping = ""; this.captureNeedsRelease = false;
-    this.theftContinuations.clear(); this.continuedTheft = false;
     this.x = x;
     this.y = y;
     this.state = PLAYER_STATE.ALIVE;
@@ -275,7 +273,6 @@ class PlayerSchema extends Schema {
     this.injuredUntil = worldTime + INHALE.INJURY_MS;
     this.breathingBlocked = true;
     this.inhaling = false;
-    this.theftContinuations.clear();
     this.dropLatch();
     this.injuryGems = this.gems;
   }
@@ -295,7 +292,6 @@ class PlayerSchema extends Schema {
   knockOut(now: number): void {
     this.shotMassBonus = 0; this.shotShooterWidth = 0; this.shotOwner = "";
     this.capturedBy = this.gulping = ""; this.captureNeedsRelease = false;
-    this.theftContinuations.clear(); this.continuedTheft = false;
     this.state = PLAYER_STATE.DEAD;
     this.holdThroughStun = false;
     this.weaponSafeUntil = 0;
@@ -558,7 +554,6 @@ class PlayerSchema extends Schema {
 
   /** Stop inhaling: your breath starts refilling from what's left */
   stopInhale(now = Date.now()): void {
-    this.theftContinuations.clear();
     if (!this.inhaling) return;
     this.breathe(now);
     this.inhaling = false;
@@ -725,7 +720,9 @@ type("number")(PlayerSchema.prototype, "flightVx");
 type("number")(PlayerSchema.prototype, "flightVy");
 type("string")(PlayerSchema.prototype, "flightKind");
 type("number")(PlayerSchema.prototype, "flightRemainingMs");
-type("boolean")(PlayerSchema.prototype, "continuedTheft");
+type("number")(PlayerSchema.prototype, "flightAgeMs");
+type("boolean")(PlayerSchema.prototype, "flightHit");
+type("string")(PlayerSchema.prototype, "launchedBy");
 
 export { PlayerSchema };
 

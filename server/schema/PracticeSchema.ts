@@ -14,13 +14,13 @@ export class PracticeSchema extends Schema {
   passed = 0;
   total = 0;
   targetId = "";
+  framingTargetId = "";
   objectiveKind = "";
   objectiveX = 0;
   objectiveY = 0;
   cue = "";
   completed = "";
   feedback = "";
-  countdownEndsAt = 0;
 }
 type("boolean")(PracticeSchema.prototype, "enabled");
 type("string")(PracticeSchema.prototype, "lesson");
@@ -31,6 +31,7 @@ type("number")(PracticeSchema.prototype, "failures");
 type("number")(PracticeSchema.prototype, "passed");
 type("number")(PracticeSchema.prototype, "total");
 type("string")(PracticeSchema.prototype, "targetId");
+type("string")(PracticeSchema.prototype, "framingTargetId");
 type("string")(PracticeSchema.prototype, "objectiveKind");
 type("number")(PracticeSchema.prototype, "objectiveX");
 type("number")(PracticeSchema.prototype, "objectiveY");
@@ -40,4 +41,3 @@ type("string")(PracticeSchema.prototype, "completed");
 type("number")(PracticeSchema.prototype, "resetSerial");
 type("boolean")(PracticeSchema.prototype, "sequence");
 type("string")(PracticeSchema.prototype, "feedback");
-type("number")(PracticeSchema.prototype, "countdownEndsAt");

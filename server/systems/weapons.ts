@@ -171,7 +171,7 @@ function updateWeapon(state: GameState, w: PinwheelSchema, dt: number, now: numb
         else part.carriedBy = puller.sessionId;
       }
     }
-    const hub = w.parts[0];
+    const hub = w.parts.find(part => part.kind === 0);
     if (w.parts.length === 3 && w.owner && hub) {
       // Delivering a new component to the claimed hub is meaningful build progress, even if a rival
       // supplied it. Transfer that component into the existing build without changing its builder.

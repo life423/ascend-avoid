@@ -1,4 +1,4 @@
-import { syncContinuedTheft } from '../systems/inhale.js';
+import { syncInjuryState } from '../systems/inhale.js';
 import { Room, Client } from "colyseus";
 import { GAME_CONSTANTS } from "../constants/serverConstants";
 import logger from "../utils/logger";
@@ -72,7 +72,7 @@ export class GameRoom extends Room<GameState> {
       const player = this.state.players.get(client.sessionId);
       if (!player) return;
       if (player.gulping) fireCaptive(this.state, player, Date.now());
-      else { syncContinuedTheft(this.state, Date.now()); player.startInhale(Date.now()); }
+      else { syncInjuryState(this.state); player.startInhale(Date.now()); }
     });
     // A quick tap (the button let go within the browser's tap window, so never an inhale): fires a
     // captive, spits a bomb, or, with an empty mouth, exhales a puff, all along the creature's facing

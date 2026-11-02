@@ -100,7 +100,7 @@ export function botMouth(state: GameState, bot: PlayerSchema, now: number) : voi
   let captureAppeal = 0;
   // An injured rival cannot counter-inhale. Exploit that finite real opening before collecting ammo.
   state.players.forEach(other => {
-    if (!botPreyAvailable(state, bot, other, now) || !injuryVulnerable(state, other, now) || other.gems < 1 || robbersOf(state, other.sessionId) >= BOTS.MAX_ROBBERS) return;
+    if (!botPreyAvailable(state, bot, other, now) || !injuryVulnerable(state, other) || other.gems < 1 || robbersOf(state, other.sessionId) >= BOTS.MAX_ROBBERS) return;
     const ox = other.x + other.width / 2, oy = other.y + other.height / 2, d = Math.hypot(ox - cx, oy - cy);
     if (d - other.width / 2 > reach + bot.width * .3) return;
     const appeal = (other.gems + 2) / (d + 60);

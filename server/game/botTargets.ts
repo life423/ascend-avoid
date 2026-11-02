@@ -7,9 +7,9 @@ import type { PlayerSchema } from '../schema/PlayerSchema.js';
 /** Shared by movement and mouth decisions: healthy targets are useful only if capturable. */
 export function botPreyAvailable(world: GameState, bot: PlayerSchema, other: PlayerSchema, now: number): boolean {
   if (other === bot || other.state !== PLAYER_STATE.ALIVE || other.spawnProtected || other.capturedBy || other.flying || now < other.suctionSafeUntil) return false;
-  if (injuryVulnerable(world, bot, now)) return false;
+  if (injuryVulnerable(world, bot)) return false;
   return (other.width * INHALE.EAT_RATIO <= bot.width && now >= other.recaptureAfter)
-    || (other.gems > 0 && theftWindowAllows(bot, other, world.time));
+    || (other.gems > 0 && theftWindowAllows(other, world.time));
 }
 
 /** Visible, eligible incoming suction, nearest first; do not wait for the first stolen gem. */

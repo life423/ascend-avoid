@@ -1,6 +1,148 @@
 # Ascend Avoid — ordered work and idea inventory
 
-Updated November 1, 2026. This is the durable list of the user's requests and decisions. Current code and later feedback override historical tuning. The approved injury-only theft change supersedes ordinary healthy-player stealing and the earlier theft-allowance suggestion. The fifteen archived balance options remain proposals unless separately accepted.
+Updated November 2, 2026. This is the durable list of the user's requests and decisions. Current code and later feedback override historical tuning. The approved injury-only theft change supersedes ordinary healthy-player stealing and the earlier theft-allowance suggestion. The fifteen archived balance options remain proposals unless separately accepted.
+
+## November 2 morning playtest — defense, injury recovery and player bullets
+
+### Latest approved follow-up — implementation, validation and release authorization
+
+The user now authorizes committing and pushing this batch, merging it into main
+through the required pull-request checks, and deploying the updated game. The
+gust candidates remain offline experiments; runtime gust settings are unchanged.
+The previous local-only status below records the implementation's history.
+
+The user rejected inhale prolonging vulnerability and approved the proposed
+bullet-warning UI for implementation, testing and refinement. They explicitly
+require isolated gust candidates so other balance remains intact. Later feedback
+also removes tutorial lesson countdowns, questions the capture-to-shot teleport,
+and reports a held mobile joystick being lost during transitions.
+
+- Injury continuation is removed from server state, theft, bot targeting and
+  injury rendering. The seven-second deadline now restores breathing and gust
+  access under uninterrupted incoming pressure and ends injury-only mouth
+  finishes. A genuinely new damaging hit after expiry can cause a fresh injury;
+  ordinary healthy, size-based capture still works. `fixed-injury.unit.ts`
+  replaces the obsolete continuation suite and checks both actor roles.
+- Player-bullet warning prototype: up to 1.2s of prediction with actual flight
+  deceleration; a compact amber edge crescent/chevron hands over to an outlined
+  flying creature and short wake. It remains during partial screen entry and
+  avoids HUD/touch footprints; no face covering, flashing, pinned text or firing
+  lanes. Shared public flight telemetry excludes spent, expired and
+  launcher-grace shots. Bots use the same observations and existing delayed
+  ordinary steering, including in rooms without assembled weapons.
+- Warning limits remain important: the first 1,550-unit launcher setup sometimes
+  hit a 101.5-unit defender on iPad emulation despite a nominal 250ms response.
+  A cue cannot provide time before a shot exists. The distant-shot sweep uses
+  1,550/1,750-unit shooter separations for 20/101.5-unit defenders, includes real
+  idle-hit controls and measures input from the painted cue without a screenshot
+  delaying the dodge. Do not report universal avoidability or physical-phone
+  reaction guarantees. No missile speed, damage, hitbox or immunity was changed.
+- Tutorial countdown state, timer, UI, pause/start-now controls and obsolete tests
+  are removed. All prepared lessons use Ready with no automatic deadline;
+  completed lessons still load the next lesson in the full sequence. Real captive
+  identity and remaining hold budget survive reading time.
+- Automatic scene resets preserve held movement; explicit selection/exit, blur
+  and real pointer cancellation still release controls. Basics and combat keep
+  one 1600x2000 arena. Growth-to-capture preserves the learner's position, and
+  the next shooting rival is introduced during capture and carried into aiming,
+  alongside the real captive. Target framing remains inside the map. Browser
+  tests check continuous thumb input, injured Ready and the same visible rival.
+- The tutorial checks exposed an assembly edge case: numeric array index zero
+  can be absent even while the synced parts collection contains all three
+  carried components. Assembly and the lesson objective now identify the hub
+  by component kind, using the same shared weapon system and ordinary recipes.
+- Gust runtime constants, weapon pushes, movement and suction remain unchanged.
+  [135 isolated chase executions](playtests/gust-candidates-2026-11-02.json)
+  compare no gust/current/moderate/stronger/gust-only settings over 27 healthy
+  straight retreats each. Captures were 9/6/6/6/4; the first two stronger candidates added about
+  11.2/17.8 median world units of clearance at 800ms in comparable cases, without
+  improving that capture count. The gust-only proxy scales the rear impulse up
+  to a 320-unit/s cap with a separate 6/s recipient drift, leaving caster/front
+  behavior at its release settings. It prevents two additional captures in this
+  small sample, but is not a production motion channel and has not established
+  multi-target momentum, repeated-use balance or human feel. This does not
+  establish a balanced buff. Reproduce
+  with `node scripts/gust-candidates-study.cjs` after building; it writes only
+  `.tmp/gust-candidates-study.json` and restores isolated process constants.
+  A final gust change must have its own tuning path, not alter the shared drag
+  that also controls weapon-hit pushes. Preserve no stun and no solid barrier.
+
+Validation on the finished local source: types, generated schema, build, lint
+(zero errors, 187 existing warnings), all 44 server unit scripts plus progress
+checks, and all 18 multiplayer scenarios pass. Browser verification passes 51
+distinct applicable cases, with one inapplicable skip: all five individual lessons,
+full sequences, a 320px reduced-motion sequence, reading/puff/placement feedback,
+and 15 transition checks across desktop Chrome, Android Chrome, iPhone Safari
+portrait/landscape and iPad Safari profiles; plus 15 warning/dodge/idle-hit cases
+across those same profiles. The completed tutorial run is 27 passed/one skip,
+the remaining portrait/tablet transitions six passed, landscape transitions
+three passed, and player-warning checks 15 passed. Screenshots were inspected
+in phone portrait, landscape, tablet and desktop states. These are browser
+emulations, not a new physical Pixel check or proof of optimal UX/final balance.
+
+Internal design-review heuristics, not measured quality: tutorial usability 8,
+hierarchy 9, accessibility 8, consistency 9, responsiveness 9, feedback 9 and
+performance 8; warning usability 8, hierarchy 9, accessibility 7, consistency 9,
+responsiveness 9, feedback 8 and performance 8. Prioritized remaining work is an
+actual Pixel warning/reaction and held-touch pass, newcomer observation of Ready
+and the visible-rival handoff, a nonvisual warning option that respects sound
+preferences, and on-device frame/input measurements. A pure predictor microcheck
+took about 127ms for 10,000 four-shot calls on this PC; it is not a phone FPS
+measurement. Do not redesign passing layouts just to increase these scores.
+
+Commit, merge, push and deployment are now requested for this follow-up. The
+original release observations below remain the diagnostic baseline, not the new
+behavior. Record the resulting PR/deployment separately once verified.
+
+PR #71 is merged and deployed at main `d5a03d6b13a8c83323a37cf5a4efaf55fb97cd3c`.
+These are new observations about that release, not completed fixes. The user asks
+that all three be remembered and investigated. No new balance values, commit,
+merge or deployment are requested by this report.
+
+- [ ] **Make the defensive gust meaningfully create space again.** The user
+  reports hardly any impact and suggests a strong arc of wind. Preserve the
+  front-to-back wind identity and the explicit **no stun / no solid barrier**
+  rules. Do not restore overlapping protections to compensate. Measure actual
+  escape separation, tap registration and readable wind contact across physical
+  size ratios, moving pursuers and several attackers; bots and humans share it.
+  Source review confirms a 220ms wrap, one 140ms rear push opportunity and fast
+  exponential drag (`EXHALE.DRAG = 12`). An isolated rear-impulse diagnostic using
+  the actual `puffImpulses` and `puffDrift` functions, rear falloff 0.7, one target,
+  no walking/suction and 120Hz integration for one second yields only 16.25 world
+  units against equal width, 13.31 at 1.2x, 9.97 at 1.5x, 6.45 at 2x and 3.19 at
+  3x. These are air-drift distances, not measured escape gaps or a chosen buff.
+  Also distinguish a blocked puff while injured from a successful but weak cast.
+- [x] **Review and remove injury continuation after the base deadline.** The user suspects
+  inhaling an injured player extends the injury. Confirmed: the stored injury
+  deadline is seven seconds, but an established, still-valid theft connection
+  can keep `continuedTheft` and `breathingBlocked` active after it expires. This
+  also preserves injured-mouth finish eligibility and the injured visual state.
+  Breaking all valid continuations restores recovery after the deadline; a new
+  attacker or broken connection cannot join/restart without a new injury. There
+  is no separate maximum continuation duration. See `injuryVulnerable`,
+  `syncContinuedTheft`, `theftWindowAllows` and `sustained-theft.unit.ts`.
+  A fixed numeric timer is not a fixed maximum vulnerability period. Decide
+  whether to remove or cap continuation before changing this rule, and verify
+  healing, breathing, theft, finish eligibility and actor/tutorial parity together.
+- [x] **Implement and test the off-screen living-cannonball warning prototype for the threatened
+  player.** The user still reports hard-to-avoid surprise player-bullet hits and
+  believes the intended victim is not seeing an indicator. `drawIncoming` does
+  evaluate the local player's predicted collision, rather than a shooter-selected
+  target identifier. However, this path caps player-missile prediction at 0.5s,
+  removes its edge cue on any viewport overlap, and draws a small yellow arrow
+  (15 by 12 CSS-pixel path before stroke), smaller than the weapon-shot cue.
+  It selects only the earliest predicted collision under current velocities.
+  Reproduce on the actual phone/production camera, including partially visible
+  bullets, HUD/control occlusion, changed movement, latency, multiple shots and
+  different sizes. Establish a readable warning/reaction opportunity without
+  turning every shot or near miss into permanent arena clutter. The exact phone
+  incident and warning placement have not been reproduced yet.
+
+Investigation checks: `sustained-theft.unit.ts`, `vulnerable-inhale.unit.ts`,
+`gust-wave.unit.ts` and `incoming-shot.unit.ts` all pass on the released source.
+They confirm the current mechanics; passing assertions do not establish fair
+reaction time, satisfying gust strength or final human balance. Gameplay remains
+unchanged while these follow-ups are recorded locally.
 
 ## Publishing workflow — November 1 release authorization
 

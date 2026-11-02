@@ -188,7 +188,7 @@ export class BotBrain {
     // Something big enough to capture it close by: get away (smaller, it's faster).
     const threat = { x: 0, y: 0, distance: BOTS.FLEE_RANGE };
     world.players.forEach((other) => {
-      if (other === bot || other.state !== PLAYER_STATE.ALIVE || !canCatch(other.width, bot.width) || injuryVulnerable(world, other, now)) return;
+      if (other === bot || other.state !== PLAYER_STATE.ALIVE || !canCatch(other.width, bot.width) || injuryVulnerable(world, other)) return;
       const ox = other.x + other.width / 2;
       const oy = other.y + other.height / 2;
       const distance = Math.hypot(ox - cx, oy - cy) - other.width / 2;
@@ -229,7 +229,7 @@ export class BotBrain {
       const fy = Math.sin(victim.facing);
       const d = Math.hypot(cx - vx, cy - vy) || 1;
       const facingMe = ((cx - vx) * fx + (cy - vy) * fy) / d > 0.5;
-      if (facingMe && !catchable && !injuryVulnerable(world, victim, now)) {
+      if (facingMe && !catchable && !injuryVulnerable(world, victim)) {
         const side = Math.sign((cx - vx) * -fy + (cy - vy) * fx) || 1;
         return { x: vx - fy * side * (victim.width + 90) - fx * victim.width * 0.6, y: vy + fx * side * (victim.width + 90) - fy * victim.width * 0.6 };
       }
@@ -296,14 +296,14 @@ export class BotBrain {
     let bestAppeal = 0;
     world.players.forEach((other) => {
       if (!botPreyAvailable(world, bot, other, now)) return;
-      if (injuredOnly && !injuryVulnerable(world, other, now)) return;
+      if (injuredOnly && !injuryVulnerable(world, other)) return;
       if ((this.shunned.get(other.sessionId) ?? 0) > now) return;
       const distance = Math.hypot(other.x + other.width / 2 - cx, other.y + other.height / 2 - cy) - other.width / 2;
       if (distance > range) return;
       const edible = other.width * INHALE.EAT_RATIO <= bot.width;
       const reach = INHALE.REACH + bot.width * INHALE.REACH_PER_SIZE;
       const arrivalMs = Math.max(0, distance - reach) / moveSpeed(bot.width) * 1000;
-      if (!edible && !bot.theftContinuations.has(other.sessionId) && other.injuredUntil - world.time <= arrivalMs + BOTS.THINK_MS_MAX) return;
+      if (!edible && other.injuredUntil - world.time <= arrivalMs + BOTS.THINK_MS_MAX) return;
       if (!edible && other.gems < 3) return;
       let pursuers = 0;
       world.brains.forEach((brain, id) => {
