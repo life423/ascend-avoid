@@ -66,7 +66,7 @@ for (const bot of [false, true]) {
   updateGustWaves(s, s.now);
   assert(!chaser.inhaling, 'a chaser is interrupted without the runner turning');
   assert(!chaser.stunned && !chaser.sliding, 'rear pressure never locks movement');
-  assert(chaser.puffVx < 0, 'the pursuer receives a real shove');
+  assert(chaser.gustVx < 0 && chaser.puffVx === 0, 'the pursuer receives separate rear wind, not a stronger weapon push');
   const y = chaser.y, facing = chaser.facing;
   chaser.steer(0, 1); chaser.updateMovement(4200, 4200, s.now + 17, .017);
   assert(chaser.y > y && chaser.facing !== facing, 'the pursuer moves and turns during the shove');

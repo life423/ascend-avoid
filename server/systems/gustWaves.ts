@@ -2,7 +2,7 @@ import type { GameState } from '../schema/GameState.js';
 import { EXHALE } from '../constants/gameConstants.js';
 import { waveActive, waveIntercepts, distanceToWave } from '../game/gustWave.js';
 import { airflowQuality } from '../game/airflow.js';
-import { puffImpulses } from '../game/puffImpulse.js';
+import { rearGustImpulses } from '../game/puffImpulse.js';
 export function updateGustWaves(state: GameState, now: number): void {
   for (const [id, wave] of state.gustWaves) {
     const owner = state.players.get(wave.owner);
@@ -36,10 +36,10 @@ export function updateGustWaves(state: GameState, now: number): void {
         candidates.push({ id: otherId, width: other.width, falloff: .7 });
       }
     }
-    const impulses = puffImpulses(wave.width, candidates), total = impulses.hits.reduce((sum, hit) => sum + hit.impulse, 0), scale = total ? Math.min(1, wave.remainingImpulse / total) : 0;
-    for (const hit of impulses.hits) {
+    const impulses = rearGustImpulses(wave.width, candidates), total = impulses.reduce((sum, hit) => sum + hit.impulse, 0), scale = total ? Math.min(1, wave.remainingImpulse / total) : 0;
+    for (const hit of impulses) {
       const speed = hit.velocity * scale;
-      state.players.get(hit.id)?.pushWithControl(-Math.cos(wave.facing), -Math.sin(wave.facing), speed);
+      state.players.get(hit.id)?.pushByGust(-Math.cos(wave.facing), -Math.sin(wave.facing), speed);
       if (speed > 0) state.onEvent?.('gustHit', { id: owner.sessionId, targetId: hit.id, rear: true });
     }
     wave.remainingImpulse = Math.max(0, wave.remainingImpulse - total * scale);

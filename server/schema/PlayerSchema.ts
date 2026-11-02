@@ -3,7 +3,7 @@ const { Schema, type } = schema;
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 import { turnStep, walk } from "../game/movement.js";
 import { breathRate } from "../game/airflow.js";
-import { CANNON } from "../constants/gameConstants.js";
+import { CANNON, EXHALE } from "../constants/gameConstants.js";
 import { creatureSize } from '../game/creatureSize.js';
 import { puffDrift } from '../game/puffImpulse.js';
 import type { Box, Direction } from "../game/movement.js";
@@ -50,6 +50,8 @@ class PlayerSchema extends Schema {
   /** Brief air impulse: additive to steering, never a stun or impact skid. */
   puffVx = 0;
   puffVy = 0;
+  gustVx = 0;
+  gustVy = 0;
   flightRemainingMs = 0;
   flightAgeMs = 0;
 
@@ -367,6 +369,13 @@ class PlayerSchema extends Schema {
     this.puffVy += dy * speed;
   }
 
+  /** Rear wind remains steerable and cannot stack into an unbounded throw. */
+  pushByGust(dx: number, dy: number, speed: number): void {
+    const x = this.gustVx + dx * speed, y = this.gustVy + dy * speed;
+    const scale = Math.min(1, EXHALE.REAR_SPEED_CAP / Math.max(1e-9, Math.hypot(x, y)));
+    this.gustVx = x * scale; this.gustVy = y * scale;
+  }
+
   /** Who shoved this player within the last `withinMs` (their session id), if anyone */
   shovedBy(now: number, withinMs: number): string | null {
     return this.lastShoveBy && now - this.lastShoveAt <= withinMs ? this.lastShoveBy : null;
@@ -493,6 +502,7 @@ class PlayerSchema extends Schema {
     this.vx = 0;
     this.vy = 0;
     this.puffVx = this.puffVy = 0;
+    this.gustVx = this.gustVy = 0;
     this.sliding = false;
   }
 
@@ -525,7 +535,7 @@ class PlayerSchema extends Schema {
 
   /** How fast the player is moving right now: walking and sliding together */
   velocity(): { x: number; y: number } {
-    return { x: this.walkX + this.vx + this.puffVx, y: this.walkY + this.vy + this.puffVy };
+    return { x: this.walkX + this.vx + this.puffVx + this.gustVx, y: this.walkY + this.vy + this.puffVy + this.gustVy };
   }
 
   /** Inhale or loaded-cannon aim, independent of walking. A zero vector returns to movement aiming. */
@@ -610,6 +620,9 @@ class PlayerSchema extends Schema {
       const air = { x: this.puffVx, y: this.puffVy };
       puffDrift(this, air, deltaTime, worldWidth, worldHeight);
       this.puffVx = air.x; this.puffVy = air.y;
+      const gust = { x: this.gustVx, y: this.gustVy };
+      puffDrift(this, gust, deltaTime, worldWidth, worldHeight, EXHALE.REAR_DRAG);
+      this.gustVx = gust.x; this.gustVy = gust.y;
     }
     if (this.sliding) {
       this.walkX = 0;
@@ -664,6 +677,7 @@ class PlayerSchema extends Schema {
     this.vx = 0;
     this.vy = 0;
     this.puffVx = this.puffVy = 0;
+    this.gustVx = this.gustVy = 0;
     if (this.sliding) this.sliding = false;
   }
 }
@@ -735,3 +749,5 @@ type("number")(PlayerSchema.prototype, "weaponSafeUntil");
 type("boolean")(PlayerSchema.prototype, "breathingBlocked");
 type("number")(PlayerSchema.prototype, "puffVx");
 type("number")(PlayerSchema.prototype, "puffVy");
+type("number")(PlayerSchema.prototype, "gustVx");
+type("number")(PlayerSchema.prototype, "gustVy");

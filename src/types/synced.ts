@@ -222,6 +222,8 @@ export interface SyncedPlayer {
     breathingBlocked: boolean
     puffVx: number
     puffVy: number
+    gustVx: number
+    gustVy: number
 }
 
 /** PracticeSchema, as synced to the browser */

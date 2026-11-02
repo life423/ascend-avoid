@@ -19,7 +19,7 @@ async function scene(page, baseURL) {
     postData: JSON.stringify({ ...route.request().postDataJSON(), testBots: 0, testFieldGems: 0, testCores: 0, testCalm: true, testTurbines: 'manual' }),
   }));
   await page.goto('/');
-  await page.waitForFunction(() => window.game?.currentGameMode?.lastView && !document.body.classList.contains('intro-playing'));
+  await page.waitForFunction(() => window.game?.currentGameMode?.lastView && !window.game.currentGameMode.introPlaying && !document.body.classList.contains('intro-playing'));
   const id = await page.evaluate(() => window.game.currentGameMode.multiplayerManager.room.id);
   const peer = await new Client(baseURL.replace(/^http/, 'ws')).joinById(id, { name: 'Chaser' });
   peer.onMessage('*', () => {});
@@ -104,6 +104,27 @@ test('a forward puff wraps behind and shoves once without a stun or barrier', as
     else await page.keyboard.up('ArrowRight');
     await peer.leave();
   }
+});
+
+test('the receiving player feels separate rear wind and can keep moving with keyboard or thumb', async ({page,baseURL,hasTouch,browserName}) => {
+  const {peer,errors}=await scene(page,baseURL), input=await practiceInput(page,browserName,hasTouch);
+  try {
+    const width=peer.state.players.get(peer.sessionId).width;
+    peer.send('test:moveTo',{x:2100+width+80,y:2100}); peer.send('test:face',{angle:0});
+    await expect.poll(()=>peer.state.players.get(peer.sessionId).x).toBeCloseTo(2100+width+80,0);
+    await input.hold(); await page.waitForFunction(()=>window.game.currentGameMode.multiplayerManager.getLocalPlayer().inhaling);
+    const before=await read(page); peer.send('tap');
+    await page.waitForFunction(()=>window.game.currentGameMode.multiplayerManager.getLocalPlayer().gustVx < -20);
+    await input.releaseAction(); await input.move(0,1); await page.waitForTimeout(180);
+    const after=await read(page); expect(after.x).toBeLessThan(before.x-15); expect(after.y).toBeGreaterThan(before.y+5);
+    expect(after.stunned).toBe(false); expect(after.sliding).toBe(false); expect(after.gems).toBe(100);
+    const state=await page.evaluate(()=>{const m=window.game.currentGameMode,p=m.multiplayerManager.getLocalPlayer();return{
+      wind:Math.hypot(p.gustVx,p.gustVy),weapon:p.puffVx,error:Math.abs(m.predicted.x-p.x)};});
+    expect(state.wind).toBeLessThanOrEqual(280);expect(state.weapon).toBe(0);expect(state.error).toBeLessThan(25);
+    await page.screenshot({path:test.info().outputPath('receiving-rear-wind-with-control.png'),scale:'css'});
+    await expect.poll(()=>page.evaluate(()=>window.game.currentGameMode.multiplayerManager.getLocalPlayer().gustVx)).toBe(0);
+    expect(errors).toEqual([]);
+  }finally{await input.close();await peer.leave();}
 });
 
 test('body contact compresses smoothly while the player keeps steering', async ({ page, baseURL }) => {

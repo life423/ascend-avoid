@@ -945,6 +945,7 @@ export class MultiplayerMode extends GameMode {
         this.localSpin = turn.spin
         const rimFrom = { x: box.x, y: box.y }
         puffDrift(box, { x: me.puffVx, y: me.puffVy }, deltaTime, state.worldWidth, state.worldHeight)
+        puffDrift(box, { x: me.gustVx, y: me.gustVy }, deltaTime, state.worldWidth, state.worldHeight, EXHALE.REAR_DRAG)
         walk(box, this.velocity, steer, deltaTime, state.worldWidth, state.worldHeight)
         // Creatures are solid: stop at anyone you walk into and slide along them, as the server does
         const myId = this.multiplayerManager?.localSessionId
