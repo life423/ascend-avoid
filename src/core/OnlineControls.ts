@@ -11,7 +11,7 @@ export type ControlEvent = 'inhale' | 'exhale' | 'cancel' | 'tap'
  * within it and it's a tap (fire a captive, spit a bomb), never a moment of inhaling; keep holding
  * past it and the inhale starts
  */
-export const TAP_MS = 180
+const TAP_MS = 180
 
 /** Your breath, for the button and the ring around your creature: draining while you inhale, refilling while you catch it */
 export type Breath = { phase: 'ready' } | { phase: 'inhaling'; left: number } | { phase: 'recovering'; back: number }

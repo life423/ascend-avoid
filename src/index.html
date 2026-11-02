@@ -8,9 +8,12 @@
         <meta name="theme-color" content="#0a192f" />
         <script>try { if (localStorage.getItem('ascend.barHidden') === '1') document.documentElement.classList.add('bar-start-hidden'); } catch {}</script>
         <link rel="stylesheet" href="styles/index.css" />
-        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <link rel="icon" href="/favicon.ico?v=v12" sizes="16x16 32x32 48x48" />
+        <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png?v=v12" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png?v=v12" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png?v=v12" />
         <link rel="manifest" href="/manifest.webmanifest" />
-        <link rel="apple-touch-icon" href="/icons/app-192.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=v12" />
     </head>
 
     <body class="online-mode">
@@ -49,17 +52,6 @@
                         ></canvas>
                     </div>
 
-                    <aside class="info-panel desktop-only">
-                    <div class="panel-content"><h2>How to Play</h2><div class="game-instructions"></div></div>
-                    <div class="info-actions">
-                        <button
-                            class="nav-button btn-action guide-btn-desktop"
-                            aria-label="How to play"
-                        >
-                            Guide
-                        </button>
-                    </div>
-                    </aside>
                 </div>
                 
                 <div class="touch-controls-area mobile-only">
@@ -67,39 +59,6 @@
                 </div>
             </main>
 
-            <div class="float-menu mobile-only">
-                <div class="float-trigger">
-                    <span class="menu-dot"></span>
-                    <span class="menu-dot"></span>
-                    <span class="menu-dot"></span>
-                </div>
-                <div class="float-options hidden">
-                    <button
-                        class="btn-action guide-btn-mobile"
-                        aria-label="How to play"
-                        title="How to play"
-                    >
-                        Guide
-                    </button>
-                </div>
-            </div>
-
-            <div class="modal-panel mobile-only modal hidden">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3>How to Play</h3>
-                        <button
-                            class="close-modal"
-                            aria-label="Close instructions"
-                        >
-                            ×
-                        </button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="modal-instructions game-instructions"></div>
-                    </div>
-                </div>
-            </div>
         </div>
 
         <script

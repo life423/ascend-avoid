@@ -11,7 +11,12 @@ tests
 .tmp
 .temp
 android
+branding
 artifacts
+docs
+reports
+test-results
+playwright-report
 *.jks
 *.keystore
 *.p12

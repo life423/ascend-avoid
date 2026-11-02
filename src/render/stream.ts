@@ -205,7 +205,7 @@ export function drawAirflow(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
  * and, between two inhaling each other, the flows meet in a turbulent pressure zone pushed toward
  * whichever side is losing. Coherence, not brightness, says how strong it is.
  */
-export function drawStream(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, id: string, player: SyncedPlayer, target: SyncedPlayer, mouthX: number, mouthY: number, facing: number, timestamp: number, coherence: number, fraying: number, power: number, heft: number, flow: Airflow, dt: number, weakened = false) : void {
+function drawStream(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, id: string, player: SyncedPlayer, target: SyncedPlayer, mouthX: number, mouthY: number, facing: number, timestamp: number, coherence: number, fraying: number, power: number, heft: number, flow: Airflow, dt: number, weakened = false) : void {
     const at = mode.drawnPositions.get(player.latchTarget) ?? target
     const tx = at.x + target.width / 2
     const ty = at.y + target.height / 2

@@ -222,7 +222,7 @@ export function updateInhales(state: GameState, now: number, deltaTime: number) 
 }
 
 /** Locks on creatures no longer held (or every lock, when `keep` is null) fade fast: out of the cone, out of danger */
-export function fadeLocks(_state: GameState, eater: PlayerSchema, keep: Set<string> | null, deltaTime: number) : void {
+function fadeLocks(_state: GameState, eater: PlayerSchema, keep: Set<string> | null, deltaTime: number) : void {
   for (const [id, lock] of eater.lockOn) {
     if (keep?.has(id)) continue;
     const left = lock - (deltaTime * 1000) / INHALE.LOCK_DECAY_MS;
@@ -263,7 +263,7 @@ export function stealWeight(state: GameState, thief: PlayerSchema, victim: Playe
 }
 
 /** Whether `victim` is touching `thief` anywhere across its front (contact range: an inhale grabs it with no aiming) */
-export function touchingFront(_state: GameState, thief: PlayerSchema, victim: PlayerSchema) : boolean {
+function touchingFront(_state: GameState, thief: PlayerSchema, victim: PlayerSchema) : boolean {
   const dx = victim.x + victim.width / 2 - (thief.x + thief.width / 2);
   const dy = victim.y + victim.height / 2 - (thief.y + thief.height / 2);
   const d = Math.hypot(dx, dy);
@@ -277,7 +277,7 @@ export function touchingFront(_state: GameState, thief: PlayerSchema, victim: Pl
  * cone reaches far but bites near the mouth), and weaker while the victim gets away, strafing
  * across the cone most of all. Right at the mouth there's no getting away.
  */
-export function stealStrength(_state: GameState, thief: PlayerSchema, victim: PlayerSchema) : number {
+function stealStrength(_state: GameState, thief: PlayerSchema, victim: PlayerSchema) : number {
   const fx = Math.cos(thief.facing);
   const fy = Math.sin(thief.facing);
   const dx = victim.x + victim.width / 2 - (thief.x + thief.width / 2 + fx * thief.width * 0.3);
@@ -481,7 +481,7 @@ export function exhale(state: GameState, player: PlayerSchema, now: number) : vo
 }
 
 /** A run of stealing ends (or switches to someone else): a big one gets a banner and a line in the feed */
-export function endTheft(state: GameState, thief: PlayerSchema, now: number, next = "") : void {
+function endTheft(state: GameState, thief: PlayerSchema, now: number, next = "") : void {
   const victim = thief.stealingFrom ? state.players.get(thief.stealingFrom) : undefined;
   if (victim && thief.stolenRun >= INHALE.STOLE_NOTICE) state.credit(victim, "stole", now, thief.sessionId, { gems: thief.stolenRun, out: false });
   thief.stolenRun = 0;

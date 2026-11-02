@@ -7,7 +7,7 @@
         "start": "tsx index.ts",
         "start:prod": "node dist/index.js",
         "dev": "tsx --watch index.ts",
-        "build": "rimraf dist && tsc && node fix-dist-module.js",
+        "build": "rimraf dist && tsc -p tsconfig.build.json && node fix-dist-module.js",
         "clean": "rimraf dist",
         "type-check": "tsc --noEmit"
     },

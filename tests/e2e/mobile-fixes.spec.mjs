@@ -36,7 +36,8 @@ test('the compact menu and minimap align as one dock without a floating player-c
     await page.setViewportSize({width,height});await page.waitForTimeout(200);
     const at=await page.evaluate(()=>{const c=document.querySelector('canvas'),r=c.getBoundingClientRect(),u=c.width/r.width,b=window.mapBox;return b?{left:r.left+b.x/u,right:r.left+(b.x+b.w)/u,top:r.top+b.y/u}:null;});
     expect(at).not.toBeNull();const menu=await page.getByRole('button',{name:'Toggle menu'}).boundingBox();
-    expect(Math.abs(menu.x+menu.width-at.right-4)).toBeLessThan(2);
+    // The compact panel extends eight CSS pixels beyond its inner map border.
+    expect(Math.abs(menu.x+menu.width-at.right-8)).toBeLessThan(2);
     expect(menu.y+menu.height).toBeLessThanOrEqual(at.top-2);
     expect(at.left).toBeGreaterThan(150);
   }
@@ -45,7 +46,7 @@ test('the compact menu and minimap align as one dock without a floating player-c
   await page.screenshot({path:test.info().outputPath('aligned-hud-dock.png')});
 });
 
-test('the drawer accepts touch scrolling and its bottom actions remain reachable', async ({ page, hasTouch, browserName }) => {
+test('the drawer accepts touch scrolling and its bottom activity remains reachable', async ({ page, hasTouch, browserName }) => {
   test.skip(!hasTouch, 'phone/tablet touch regression');
   await start(page);
   await page.evaluate(() => { for (let i=0;i<20;i++) window.dispatchEvent(new CustomEvent('ascend:activity',{detail:`Event ${i}: a weapon hit earned gems.`})); window.drawerUI.open(); });
@@ -65,8 +66,10 @@ test('the drawer accepts touch scrolling and its bottom actions remain reachable
   } else if(browserName==='webkit') { await drawer.press('PageDown'); }
   else { await page.mouse.move(x,y); await page.mouse.wheel(0,600); }
   await expect.poll(() => drawer.evaluate(el => el.scrollTop)).toBeGreaterThan(80);
-  await drawer.getByRole('button', { name: 'Show starter tips', exact: true }).scrollIntoViewIfNeeded();
-  await expect(drawer.getByRole('button', { name: 'Show starter tips', exact: true })).toBeInViewport();
+  const oldest = drawer.locator('.activity-history li').last();
+  await oldest.scrollIntoViewIfNeeded();
+  await expect(oldest).toHaveText('Event 0: a weapon hit earned gems.');
+  await expect(oldest).toBeInViewport();
   await page.screenshot({path:test.info().outputPath('drawer-scrolled.png')});
 });
 

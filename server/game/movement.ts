@@ -2,12 +2,6 @@ import { ARENA_RULES, FACING } from "../constants/gameConstants.js";
 
 export type Direction = "up" | "down" | "left" | "right";
 
-/** Which movement keys are held */
-export type Keys = Record<Direction, boolean>;
-
-/** Seconds until the next repeat hop, per direction, while that direction is held */
-export type HopTimers = Record<Direction, number>;
-
 export interface Box {
   x: number;
   y: number;
@@ -51,7 +45,7 @@ export function walk(
 }
 
 /** How far one hop goes for a player this wide: HOP while small, then a little more than your own size */
-export function hopLength(width: number): number {
+function hopLength(width: number): number {
   return Math.max(ARENA_RULES.HOP, width + ARENA_RULES.HOP_BEYOND_SIZE);
 }
 

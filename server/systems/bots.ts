@@ -169,7 +169,7 @@ export function balanceBots(state: GameState, now: number) : void {
   while (state.brains.size > wanted) removeBot(state);
 }
 
-export function addBot(state: GameState, now: number) : void {
+function addBot(state: GameState, now: number) : void {
   const id = `bot-${state.nextBotId++}`;
   const taken = new Set<string>();
   state.players.forEach((player) => taken.add(player.name));
@@ -231,7 +231,7 @@ function angleGap(from: number, to: number) : number {
 }
 
 /** The bot with the fewest gems leaves */
-export function removeBot(state: GameState) : void {
+function removeBot(state: GameState) : void {
   const pick = { id: "", gems: Infinity };
   state.brains.forEach((_, id) => {
     const gems = state.players.get(id)?.gems ?? 0;

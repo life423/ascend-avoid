@@ -61,7 +61,6 @@ interface Game {
     obstacleManager: any
     particleSystem: any
     uiManager: any
-    assetManager: any
     scalingInfo: any
 }
 
@@ -269,14 +268,7 @@ export class SinglePlayerMode extends GameMode {
      * Handle collision with obstacle
      */
     private handleCollision(_obstacle: Obstacle): void {
-        // Play collision sound
-        if (this.game.assetManager) {
-            this.game.assetManager.playSound('collision', 0.3)
-        } else {
-            // Fallback to legacy sound method
-            const playSound = (window as any).playSound || (() => {})
-            playSound('collision')
-        }
+        sound.play('impact')
 
         // Flash screen red
         if (this.game.uiManager) {
@@ -349,10 +341,7 @@ export class SinglePlayerMode extends GameMode {
             // Add visual effects
             this.addScoreParticles(scaledWinningLine)
 
-            // Play score sound
-            if (this.game.assetManager) {
-                this.game.assetManager.playSound('score', 0.3)
-            }
+            sound.play('gem')
 
             // Reset player to bottom of screen
             this.resetPlayerPosition()
@@ -1691,6 +1680,3 @@ export class MultiplayerMode extends GameMode {
         this.game.uiManager?.updateHighScore(this.game.highScore)
     }
 }
-
-// Default exports for backward compatibility
-export { SinglePlayerMode as default }

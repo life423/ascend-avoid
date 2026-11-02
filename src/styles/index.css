@@ -7,8 +7,6 @@
 @import './base.css';      /* CSS variables, resets, typography */
 @import './main.css';      /* All layout, components, responsive */
 
-/* All component styles moved to main.css */
-
 /* ============================================
    UTILITY CLASSES
    ============================================ */
@@ -16,10 +14,6 @@
 /* Visibility utilities */
 .hidden {
     display: none !important;
-}
-
-.invisible {
-    visibility: hidden !important;
 }
 
 .sr-only {
@@ -33,125 +27,3 @@
     white-space: nowrap !important;
     border: 0 !important;
 }
-
-/* Text utilities */
-.text-center {
-    text-align: center;
-}
-
-.text-left {
-    text-align: left;
-}
-
-.text-right {
-    text-align: right;
-}
-
-/* Spacing utilities */
-.mt-0 { margin-top: 0; }
-.mt-1 { margin-top: var(--space-xs); }
-.mt-2 { margin-top: var(--space-sm); }
-.mt-3 { margin-top: var(--space-md); }
-.mt-4 { margin-top: var(--space-lg); }
-
-.mb-0 { margin-bottom: 0; }
-.mb-1 { margin-bottom: var(--space-xs); }
-.mb-2 { margin-bottom: var(--space-sm); }
-.mb-3 { margin-bottom: var(--space-md); }
-.mb-4 { margin-bottom: var(--space-lg); }
-
-.p-0 { padding: 0; }
-.p-1 { padding: var(--space-xs); }
-.p-2 { padding: var(--space-sm); }
-.p-3 { padding: var(--space-md); }
-.p-4 { padding: var(--space-lg); }
-
-/* Flexbox utilities */
-.flex {
-    display: flex;
-}
-
-.flex-col {
-    flex-direction: column;
-}
-
-.flex-row {
-    flex-direction: row;
-}
-
-.justify-center {
-    justify-content: center;
-}
-
-.justify-between {
-    justify-content: space-between;
-}
-
-.items-center {
-    align-items: center;
-}
-
-.items-start {
-    align-items: flex-start;
-}
-
-.items-end {
-    align-items: flex-end;
-}
-
-/* Grid utilities */
-.grid {
-    display: grid;
-}
-
-.grid-cols-1 {
-    grid-template-columns: repeat(1, 1fr);
-}
-
-.grid-cols-2 {
-    grid-template-columns: repeat(2, 1fr);
-}
-
-.grid-cols-3 {
-    grid-template-columns: repeat(3, 1fr);
-}
-
-.gap-1 { gap: var(--space-xs); }
-.gap-2 { gap: var(--space-sm); }
-.gap-3 { gap: var(--space-md); }
-.gap-4 { gap: var(--space-lg); }
-
-/* Color utilities */
-.text-primary {
-    color: var(--accent-primary);
-}
-
-.text-secondary {
-    color: var(--accent-secondary);
-}
-
-.text-light {
-    color: var(--text-light);
-}
-
-.text-dark {
-    color: var(--text-dark);
-}
-
-.text-warning {
-    color: var(--warning);
-}
-
-.text-success {
-    color: var(--success);
-}
-
-.bg-primary {
-    background-color: var(--primary-dark);
-}
-
-.bg-secondary {
-    background-color: var(--primary-light);
-}
-
-/* Legacy compatibility removed - using class selectors only */

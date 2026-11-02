@@ -4,6 +4,7 @@
  */
 import Game from '../core/Game'
 import Player from '../entities/Player'
+import { sound } from '../core/Sound'
 
 // Interface for control button definition
 interface ControlButton {
@@ -333,6 +334,7 @@ export default class TouchControls {
         }
 
         if (isActive) {
+            sound.unlock()
             // Activate button
             button.classList.add('active')
             this.activeButtons[key] = touchId

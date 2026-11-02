@@ -108,7 +108,7 @@ export function updateLatches(state: GameState, now: number, deltaTime: number) 
 }
 
 /** Whether a latch can still hold: the target within LATCH.BREAK_ANGLE of the attacker's facing and LATCH.RANGE of its reach */
-export function latchInRange(_state: GameState, attacker: PlayerSchema, target: PlayerSchema) : boolean {
+function latchInRange(_state: GameState, attacker: PlayerSchema, target: PlayerSchema) : boolean {
   const dx = target.x + target.width / 2 - (attacker.x + attacker.width / 2);
   const dy = target.y + target.height / 2 - (attacker.y + attacker.height / 2);
   const d = Math.hypot(dx, dy);

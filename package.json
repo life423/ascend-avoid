@@ -10,7 +10,7 @@
         "dev:client": "vite --open",
         "dev:server": "cd server && tsx --watch index.ts",
         "start": "npm run dev",
-        "build": "npm run build:client && npm run build:server",
+        "build": "npm run build:client && npm run build:server && npm run verify:production",
         "build:client": "vite build --mode production",
         "build:server": "cd server && npm run build",
         "build:prod": "npm run clean && npm run build",
@@ -30,7 +30,7 @@
         "preview:prod": "npm run build && npm run start:prod",
         "start:prod": "cross-env NODE_ENV=production node ./server/dist/index.js",
         "start:prod:safe": "npm run verify:server && npm run start:prod",
-        "verify:server": "node -e \"const fs=require('fs'); if(!fs.existsSync('./server/dist/index.js')) {console.error('❌ Server not built! Run: npm run build:server'); process.exit(1);} else {console.log('✅ Server build verified');}\"",
+        "verify:server": "node -e \"const fs=require('fs'); if(!fs.existsSync('./server/dist/index.js')) {console.error('\u274c Server not built! Run: npm run build:server'); process.exit(1);} else {console.log('\u2705 Server build verified');}\"",
         "docker:build": "docker build -t ascend-avoid .",
         "docker:run": "docker run -p 3000:3000 ascend-avoid",
         "docker:dev": "docker-compose up --build",
@@ -49,7 +49,9 @@
         "test:multiplayer": "npm run build:server && node scripts/multiplayer-smoke.mjs",
         "deploy:local": "npm run build:prod && npm run start:prod",
         "debug:server": "cd server && tsx index.ts",
-        "debug:server:compiled": "cd server && node --inspect dist/index.js"
+        "debug:server:compiled": "cd server && node --inspect dist/index.js",
+        "icons:sync": "node scripts/android-icons.mjs",
+        "verify:production": "node scripts/verify-production.mjs"
     },
     "keywords": [
         "game",

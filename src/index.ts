@@ -9,7 +9,6 @@
 import Game from './core/Game'
 import { DrawerUI } from './ui/DrawerUI'
 import { DesktopChrome } from './ui/DesktopChrome'
-import { GAME_RULES } from './ui/GameRules'
 
 // Helper function for device detection
 function detectDevice() {
@@ -24,7 +23,6 @@ function detectDevice() {
 
 // Wait for DOM to load
 document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('.game-instructions').forEach(element => { element.innerHTML = GAME_RULES })
     console.log('Initializing Ascend Avoid game...')
 
     // Show initial loading indicator if it exists
@@ -66,8 +64,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Everyone starts in the online game (Game.init joins it)
     setupModeSwitch()
 
-    // Initialize UI controls
-    initializeUIControls()
+    // Keep arena gestures from scrolling the page; menu/tutorial content remains scrollable.
+    initializeTouchScrollGuard()
 
     // Remove loading indicator after initialization
     if (loader) {
@@ -120,123 +118,10 @@ function showMode(mode: GameModeName): void {
     })
 }
 
-/**
- * Initialize UI controls (menu, modals, etc.)
- */
-function initializeUIControls() {
-    const menuButton = document.querySelector('.float-trigger')
-    const menuItems = document.querySelector('.float-options')
-    const guideButton = document.querySelector(
-        '.guide-btn-mobile'
-    )
-    const guideSidebarBtn = document.querySelector(
-        '.guide-btn-desktop'
-    )
-    const instructionsModal = document.querySelector('.modal-panel')
-    const closeModalBtn = document.querySelector('.close-modal')
-
-    function closeMenu() {
-        if (menuItems) {
-            menuItems.classList.add('hidden')
-        }
-    }
-
-    function openMenu() {
-        if (menuItems) {
-            menuItems.classList.remove('hidden')
-        }
-    }
-
-    if (menuButton && menuItems) {
-        ;['click', 'touchstart'].forEach(eventType => {
-            menuButton.addEventListener(
-                eventType,
-                function (e) {
-                    e.preventDefault()
-                    e.stopPropagation()
-
-                    if (menuItems.classList.contains('hidden')) {
-                        openMenu()
-                    } else {
-                        closeMenu()
-                    }
-                },
-                { passive: false }
-            )
-        })
-    }
-
-    function openInstructionsModal() {
-        if (instructionsModal) {
-            instructionsModal.classList.remove('hidden')
-            document.body.classList.add('modal-open')
-            closeMenu()
-        }
-    }
-
-    if (guideButton) {
-        guideButton.addEventListener('click', openInstructionsModal)
-    }
-
-    if (guideSidebarBtn) {
-        guideSidebarBtn.addEventListener(
-            'click',
-            openInstructionsModal
-        )
-    }
-
-    if (closeModalBtn) {
-        closeModalBtn.addEventListener('click', function () {
-            if (instructionsModal) {
-                instructionsModal.classList.add('hidden')
-                document.body.classList.remove('modal-open')
-            }
-        })
-    }
-
-
-
-
-    document.addEventListener('click', function (e) {
-        if (menuItems && !menuItems.classList.contains('hidden')) {
-            if (!(e.target as HTMLElement).closest('.float-menu')) {
-                closeMenu()
-            }
-        }
-    })
-
-    document.addEventListener(
-        'touchstart',
-        function (e) {
-            if (
-                menuItems &&
-                !menuItems.classList.contains('hidden')
-            ) {
-                if (!(e.target as HTMLElement).closest('.float-menu')) {
-                    closeMenu()
-                }
-            }
-        },
-        { passive: true }
-    )
-
-    if (instructionsModal) {
-        instructionsModal.addEventListener('click', function (e) {
-            if (e.target === instructionsModal) {
-                instructionsModal.classList.add('hidden')
-                document.body.classList.remove('modal-open')
-            }
-        })
-    }
-
-    document.addEventListener(
-        'touchmove',
-        function (e) {
-            if ((e.target as HTMLElement).closest('.modal-content, .drawer')) {
-                return
-            }
-            e.preventDefault()
-        },
-        { passive: false }
-    )
+/** Keep the arena fixed while preserving scrolling in the menu and tutorial dialogs. */
+function initializeTouchScrollGuard(): void {
+    document.addEventListener('touchmove', event => {
+        if ((event.target as HTMLElement | null)?.closest('.drawer, .practice-ui')) return
+        event.preventDefault()
+    }, { passive: false })
 }

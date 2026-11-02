@@ -73,7 +73,7 @@ export function launchObstacle(state: GameState, obstacle: ObstacleSchema, sprea
  * Whether an obstacle spanning `start`..`start + length` along a lane keeps its distance:
  * TRAFFIC.MIN_GAP from others in the same lane, TRAFFIC.STAGGER from those in the lanes beside it
  */
-export function laneIsClear(state: GameState, self: ObstacleSchema, lane: number, start: number, length: number) : boolean {
+function laneIsClear(state: GameState, self: ObstacleSchema, lane: number, start: number, length: number) : boolean {
   const horizontal = lane < TRAFFIC.LANES;
   let clear = true;
   state.obstacles.forEach((o) => {

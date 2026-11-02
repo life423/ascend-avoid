@@ -12,11 +12,8 @@ RUN apk add --no-cache python3 make g++ && \
 COPY package*.json ./
 COPY server/package*.json ./server/
 
-# Install dependencies for both root and server
-# The root dependencies include Vite and build tools
-# The server dependencies include Colyseus and Express
-RUN npm ci --workspace=server --include-workspace-root || \
-    (npm ci && cd server && npm ci)
+# Install the two independent lockfiles; this project is not an npm workspace.
+RUN npm ci && npm ci --prefix server
 
 # Copy the entire project
 COPY . .
@@ -24,8 +21,8 @@ COPY . .
 # Build the client (Vite) and server (TypeScript)
 RUN npm run build
 
-# Create the module type configuration for the server
-RUN echo '{"type":"commonjs"}' > server/dist/package.json
+# Keep build tools in this stage; only production server dependencies ship below.
+RUN npm prune --omit=dev --prefix server && npm cache clean --force
 
 # Stage 2: Create the production image
 FROM node:20-alpine AS production
@@ -39,11 +36,8 @@ RUN addgroup -g 1001 -S nodejs && \
 
 WORKDIR /app
 
-# Copy the built application and its dependencies
-# We need both the root node_modules (for shared dependencies)
-# and the server node_modules (for server-specific dependencies)
-COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
-COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
+# The browser bundle is self-contained. Node resolves the server's runtime
+# dependencies from server/node_modules; client/build dependencies stay behind.
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 COPY --from=builder --chown=nodejs:nodejs /app/server/package*.json ./server/
 COPY --from=builder --chown=nodejs:nodejs /app/server/node_modules ./server/node_modules

@@ -47,7 +47,7 @@ interface GameConfigInterface {
 
 // Import our manager classes
 import ParticleSystem from '../entities/ParticleSystem'
-import AssetManager from '../managers/AssetManager'
+import { sound } from './Sound'
 import InputManager from '../managers/InputManager'
 import ObstacleManager from '../managers/ObstacleManager'
 import UIManager from '../managers/UIManager'
@@ -91,7 +91,6 @@ export default class Game {
     inputManager: InputManager | null
     obstacleManager: ObstacleManager | null
     uiManager: UIManager | null
-    assetManager: AssetManager | null
     particleSystem: ParticleSystem | null
 
     // Multiplayer state
@@ -185,7 +184,6 @@ export default class Game {
         this.inputManager = null
         this.obstacleManager = null
         this.uiManager = null
-        this.assetManager = null
 
         // Multiplayer state
         this.isMultiplayerMode = false
@@ -224,11 +222,7 @@ export default class Game {
         })
 
         // Show loading screen while we set up
-        this.uiManager.showLoading('Loading game assets...')
-
-        // Initialize asset manager and preload assets
-        this.assetManager = new AssetManager()
-        await this.preloadAssets()
+        this.uiManager.showLoading('Starting game...')
 
         // Initialize the responsive manager
         this.responsiveManager = new ResponsiveManager(this)
@@ -485,18 +479,6 @@ export default class Game {
     }
 
     /**
-     * Preload all game assets
-     */
-    async preloadAssets(): Promise<boolean> {
-        // Note: We don't need to preload image assets since sprites are
-        // created dynamically by the SpriteManager using Canvas
-
-        // Return immediately as there are no assets to load
-        console.log('No external assets to preload - using generated sprites')
-        return true
-    }
-
-    /**
      * Handle restart event from input manager
      * Can be triggered by keyboard or touch controls
      */
@@ -675,14 +657,7 @@ export default class Game {
      * @param obstacle - The obstacle that was hit
      */
     handleCollision(_obstacle: GameObject): void {
-        // Play collision sound
-        if (this.assetManager) {
-            this.assetManager.playSound('collision', 0.3)
-        } else {
-            // Fallback to legacy sound method
-            const playSound = (window as any).playSound || (() => {})
-            playSound('collision')
-        }
+        sound.play('impact')
 
         // Flash screen red
         if (this.uiManager) {
@@ -937,14 +912,7 @@ export default class Game {
         // Add visual effects at the correct screen position
         this.addScoreParticles(winningLineScreenY)
 
-        // Play score sound
-        if (this.assetManager) {
-            this.assetManager.playSound('score', 0.3)
-        } else {
-            // Fallback to legacy sound method
-            const playSound = (window as any).playSound || (() => {})
-            playSound('score')
-        }
+        sound.play('gem')
 
         // Reset player to bottom of screen
         this.player.resetPosition()

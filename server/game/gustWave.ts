@@ -48,7 +48,7 @@ export function waveArcs(wave: GustWave, time: number): WavePoint[][] {
   const turn = Math.PI * t * t * (3 - 2 * t);
   return [arc(wave, wave.facing + turn), arc(wave, wave.facing - turn)];
 }
-export function segmentDistance(p: WavePoint, a: WavePoint, b: WavePoint): number {
+function segmentDistance(p: WavePoint, a: WavePoint, b: WavePoint): number {
   const dx = b.x - a.x, dy = b.y - a.y, length = dx * dx + dy * dy;
   const t = length ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / length)) : 0;
   return Math.hypot(p.x - a.x - t * dx, p.y - a.y - t * dy);
