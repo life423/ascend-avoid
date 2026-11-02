@@ -1,5 +1,4 @@
 import type { Breath } from '../core/OnlineControls'
-import { ARENA_RULES } from '../../server/constants/gameConstants'
 import { drawInjury } from './injury'
 import type { InjuryVisual } from './injury'
 
@@ -18,12 +17,6 @@ export const MOUTH_OFFSET = 0.3
 /** The mouth's center for a creature drawn at (x, y) with this size, facing this way */
 export function mouthOf(x: number, y: number, size: number, facing: number): { x: number; y: number } {
     return { x: x + Math.cos(facing) * size * MOUTH_OFFSET, y: y + Math.sin(facing) * size * MOUTH_OFFSET }
-}
-
-/** How wide the open mouth is: 24% of the body's radius for a newborn, growing with size to 36% for giants, so bigger looks hungrier */
-export function mouthRadius(size: number): number {
-    const relative = Math.max(1, size / ARENA_RULES.PLAYER_SIZE)
-    return (size / 2) * Math.min(0.36, 0.24 + 0.035 * Math.log2(relative))
 }
 
 /** A round creature with eyes toward where it faces, so everyone can see which side is its back */

@@ -164,50 +164,6 @@ export class EventBus {
     setDebugMode(enabled: boolean): void {
         this.debugMode = enabled;
     }
-
-    /**
-     * Create a namespaced event bus for a specific system
-     * @param namespace - Namespace prefix for events
-     * @returns Namespaced event bus interface
-     */
-    createNamespace(namespace: string) {
-        return {
-            on: <T = EventData>(event: string, callback: EventCallback<T>) => 
-                this.on(`${namespace}:${event}`, callback),
-            
-            once: <T = EventData>(event: string, callback: EventCallback<T>) => 
-                this.once(`${namespace}:${event}`, callback),
-            
-            off: (event: string, callback: EventCallback) => 
-                this.off(`${namespace}:${event}`, callback),
-            
-            emit: <T = EventData>(event: string, data?: T) => 
-                this.emit(`${namespace}:${event}`, data),
-            
-            clear: (event: string) => 
-                this.clear(`${namespace}:${event}`)
-        };
-    }
-}
-
-// Common event types for type safety
-export interface GameEvents {
-    'engine:started': Record<string, never>;
-    'engine:stopped': Record<string, never>;
-    'engine:paused': Record<string, never>;
-    'engine:resumed': Record<string, never>;
-    'engine:update': { deltaTime: number; timestamp: number };
-    'engine:render': { deltaTime: number; timestamp: number };
-    'game:reset': Record<string, never>;
-    'game:paused': Record<string, never>;
-    'game:resumed': Record<string, never>;
-    'game:over': { score: number; reason: string };
-    'state:updated': { state: any };
-    'system:error': { system: string; error: Error };
-    'player:moved': { x: number; y: number };
-    'player:shot': { x: number; y: number };
-    'collision:detected': { entityA: string; entityB: string };
-    'score:updated': { score: number; highScore: number };
 }
 
 export default EventBus;

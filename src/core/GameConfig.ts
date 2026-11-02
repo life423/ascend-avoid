@@ -100,30 +100,6 @@ export default class GameConfig implements GameConfigInterface {
     }
 
     /**
-     * Get the base movement speed for obstacles
-     * @returns The base movement speed
-     */
-    getBaseSpeed(): number {
-        return this.settings.BASE_SPEED
-    }
-
-    /**
-     * Get the minimum step size for player movement
-     * @returns The minimum step size
-     */
-    getMinStep(): number {
-        return this.settings.MIN_STEP
-    }
-
-    /**
-     * Get the player size ratio relative to canvas
-     * @returns The player size ratio
-     */
-    getPlayerSizeRatio(): number {
-        return this.settings.PLAYER_SIZE_RATIO
-    }
-
-    /**
      * Get the minimum obstacle width ratio
      * @returns The minimum obstacle width ratio
      */
@@ -145,39 +121,6 @@ export default class GameConfig implements GameConfigInterface {
      */
     getMaxCars(): number {
         return this.settings.MAX_CARS
-    }
-
-    /**
-     * Get minimum number of obstacles that should be maintained
-     * Added for obstacle pooling optimization
-     * @returns The minimum number of obstacles
-     */
-    getMinObstacles(): number {
-        return Math.floor(this.settings.MAX_CARS / 2)
-    }
-
-    /**
-     * Get the difficulty increase rate
-     * @returns The difficulty increase rate
-     */
-    getDifficultyIncreaseRate(): number {
-        return this.settings.DIFFICULTY_INCREASE_RATE
-    }
-
-    /**
-     * Get the device tier (when implemented)
-     * @returns The device tier
-     */
-    getDeviceTier(): string | undefined {
-        return this.deviceTier
-    }
-
-    /**
-     * Get the target FPS (when implemented)
-     * @returns The target FPS
-     */
-    getTargetFPS(): number | undefined {
-        return this.targetFPS
     }
 
     /**

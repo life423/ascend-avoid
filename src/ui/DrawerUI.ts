@@ -564,15 +564,4 @@ export class DrawerUI {
         this.overlay.remove();
         document.getElementById('drawer-styles')?.remove();
     }
-
-    public updateContent(content: string): void {
-        const contentDiv = this.drawer.querySelector('.drawer-content');
-        if (contentDiv) {
-            contentDiv.innerHTML = content;
-        }
-    }
-
-    public isDrawerOpen(): boolean {
-        return this.isOpen;
-    }
 }

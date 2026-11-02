@@ -260,15 +260,6 @@ export default class Obstacle implements GameObject {
         this.calculateHeight();
     }
 
-    triggerCollision(): void {
-        this.isColliding = true;
-        this.explosionFrame = 0;
-    }
-
-    getBounds(): { x: number; y: number; width: number; height: number } {
-        return { x: this.x, y: this.y, width: this.width, height: this.height };
-    }
-
     detectCollision(player: GameObject): boolean {
         const hitboxReduction = 0.1;
         const pLeft = player.x + player.width * hitboxReduction;

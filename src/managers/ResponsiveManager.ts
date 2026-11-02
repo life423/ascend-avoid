@@ -265,49 +265,11 @@ export default class ResponsiveManager {
     }
 
     /**
-     * Get the current device settings
-     * @returns The current device settings
-     */
-    getDeviceSettings(): any {
-        return this.deviceSettings
-    }
-
-    /**
      * Get the current scaling information
      * @returns The current scaling information
      */
     getScalingInfo(): ScalingInfo {
         return this.scalingInfo
-    }
-
-    /**
-     * Check if the current device is desktop
-     * @returns Whether the current device is desktop
-     */
-    isDesktopDevice(): boolean {
-        return this.isDesktop
-    }
-
-    /**
-     * Calculate a responsive value based on the base value and scaling
-     * @param baseValue - The base value
-     * @param dimension - The dimension to scale by ('width', 'height', or 'both')
-     * @returns The scaled value
-     */
-    getResponsiveValue(
-        baseValue: number,
-        dimension: 'width' | 'height' | 'both' = 'both'
-    ): number {
-        if (dimension === 'width') {
-            return baseValue * this.scalingInfo.widthScale
-        } else if (dimension === 'height') {
-            return baseValue * this.scalingInfo.heightScale
-        } else {
-            // Use average scaling for 'both'
-            const avgScale =
-                (this.scalingInfo.widthScale + this.scalingInfo.heightScale) / 2
-            return baseValue * avgScale
-        }
     }
 
     /**
