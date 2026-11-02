@@ -73,7 +73,7 @@ for (const lesson of PRACTICE_LESSONS) {
     assert(events.some(e => e.type === 'combatReward' && e.data.how === 'mouth'));
   }
   if (lesson === 'defense') {
-    assert(events.some(e => e.type === 'parry' && e.data.id === p.sessionId));
+    assert(events.some(e => e.type === 'gustHit' && e.data.id === p.sessionId && e.data.rear === true));
     assert(!p.breathingBlocked && p.injuredUntil <= s.time, 'actual injury expired before completion');
   }
   const attempt = s.practice.attempt;
@@ -144,7 +144,7 @@ for (const lesson of PRACTICE_LESSONS) {
   p.steer(1, 0); exhale(s, p, now()); step(100);
   assert.equal(s.practice.phase, 'resolving', 'a valid rear cast is not rejected before the 220ms wrap');
   until(() => s.practice.cue === 'move-clear');
-  assert.equal(s.practice.completed, '', 'parry alone does not prove escaping');
+  assert.equal(s.practice.completed, '', 'a rear shove alone does not prove escaping');
   until(() => s.practice.phase === 'success');
   p.steer(0, 0); until(() => s.practice.stage === 'injured-escape');
   assert.equal(s.practice.phase, 'ready'); c.ready(s.practice.attempt, now());

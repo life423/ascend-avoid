@@ -2,6 +2,25 @@
 
 Updated November 2, 2026. This is the durable list of the user's requests and decisions. Current code and later feedback override historical tuning. The approved injury-only theft change supersedes ordinary healthy-player stealing and the earlier theft-allowance suggestion. The fifteen archived balance options remain proposals unless separately accepted.
 
+## Defense update — release approved November 2, 2026
+
+- Puff should physically push without forcibly cancelling the pursuer's inhale,
+  dropping their latch, erasing their pressure or blocking restart. Loss of range
+  or aim uses the existing connection/pressure rules. Keep released shove strength.
+- Latest resource direction supersedes the earlier refill-pause/burst approach:
+  use 75% of a full breath per puff for the user-requested local comparison
+  against the earlier 80% trial. Normal refill, no gameplay cooldown, no added refill pause.
+  The user rejected the three-puff opening and the four-second cooldown proposal.
+- Approved: 140-degree rear arc, unchanged shove strength and reach.
+- Approved local experiment: redirect otherwise-blocked valid-hit recoil along
+  a wall toward movement input, within its existing impulse budget. Keep catches
+  possible when the player fails to clear the mouth. Play and test walls/corners.
+- Rounded arena corners remain a discussion item, not implemented in this pass.
+- Local testing completed; the user reported that 75% feels good and authorized
+  committing, merging to main, pushing and deploying this defense update.
+- See [defense details](GUST_DEFENSE.md). Automated checks establish mechanics,
+  not whether the chase balance feels right to human players.
+
 ## November 2 morning playtest — defense, injury recovery and player bullets
 
 ### Stronger rear gust follow-up

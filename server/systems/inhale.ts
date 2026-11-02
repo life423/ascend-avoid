@@ -15,7 +15,7 @@ import { puffWeaponParts } from "./weapons.js";
 import { stealCapturedPart } from './weaponTheft.js';
 import { theftWindowAllows } from '../game/injuryTheft.js';
 import { groupPressureScale } from '../game/groupPressure.js';
-import { puffImpulses } from '../game/puffImpulse.js';
+import { puffImpulses, wallPuffRecoil } from '../game/puffImpulse.js';
 
 /** Finish once: transfer remaining value, then emit visual-only reward/shatter data. */
 export function finishWithReward(state: GameState, target: PlayerSchema, byId: string, now: number, how: 'mouth' | 'cannon' | 'blackhole', core?: { x: number; y: number }): number {
@@ -456,28 +456,21 @@ export function exhale(state: GameState, player: PlayerSchema, now: number) : vo
     const d = Math.hypot(ox, oy);
     const gap = Math.max(0, d - other.width / 2);
     if (d < 1e-6 || gap > reach || (ox * fx + oy * fy) / d < cone) return;
-    const parried = other.inhaling && stealWeight(state, other, player) > 0;
-    if (parried) {
-      other.stopInhale(now);
-      other.dropLatch();
-      other.lockOn.delete(player.sessionId);
-      other.heldFor.delete(player.sessionId);
-      other.inhaleBlockedUntil = Math.max(other.inhaleBlockedUntil, now + EXHALE.PARRY_MS);
-      state.onEvent?.("parry", { id: player.sessionId, targetId: other.sessionId });
-    }
     hits.push({ target: other, falloff: 1 - gap / reach });
   });
   const impulses = puffImpulses(player.width, hits.map(hit => ({ id: hit.target.sessionId, width: hit.target.width, falloff: hit.falloff })));
   for (const hit of impulses.hits) state.players.get(hit.id)?.pushWithControl(fx, fy, hit.velocity);
-  if (impulses.recoil > 0) player.pushWithControl(-fx, -fy, impulses.recoil);
+  const recoil = wallPuffRecoil(player, { x: -fx * impulses.recoil, y: -fy * impulses.recoil }, player.steering(), state.worldWidth, state.worldHeight);
+  if (impulses.recoil > 0) player.pushWithControl(recoil.x, recoil.y, 1);
   const wave=new GustWaveSchema();
   wave.owner=player.sessionId;wave.x=player.x+player.width/2;wave.y=player.y+player.height/2;
   wave.width=player.width;wave.facing=player.facing;wave.at=state.time;
   wave.remainingImpulse=bodyMass(player.width)*Math.max(0,EXHALE.IMPULSE_RECOIL_CAP-impulses.recoil)*EXHALE.REAR_IMPULSE_SCALE;
-  for (const hit of hits) { wave.pushed.add(hit.target.sessionId); wave.parried.add(hit.target.sessionId); }
+  for (const hit of hits) wave.pushed.add(hit.target.sessionId);
   state.gustWaves.set(player.sessionId,wave);
   state.onEvent?.('exhale', { id: player.sessionId, x: Math.round(mouthX), y: Math.round(mouthY), facing: Math.round(player.facing * 100) / 100,
-    reach: Math.round(reach), breathLeft: player.stamina, recoil: impulses.recoil });
+    reach: Math.round(reach), breathLeft: player.stamina, recoil: impulses.recoil,
+    wallSlideX: recoil.slideX ?? 0, wallSlideY: recoil.slideY ?? 0 });
 }
 
 /** A run of stealing ends (or switches to someone else): a big one gets a banner and a line in the feed */

@@ -18,6 +18,19 @@ export function drawPuffs(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, 
         ctx.beginPath();
         ctx.arc(puff.x, puff.y, puff.reach * (REDUCED_MOTION.matches ? .55 : .1 + .9 * t), puff.facing - EXHALE.ARC * Math.PI / 180, puff.facing + EXHALE.ARC * Math.PI / 180);
         ctx.stroke();
+        const slide = Math.hypot(puff.slideX, puff.slideY), caster = state?.players.get(puff.by);
+        if (slide > 0 && caster) {
+            const dx = puff.slideX / slide, dy = puff.slideY / slide;
+            const cx = caster.x + caster.width / 2, cy = caster.y + caster.height / 2;
+            const back = caster.width / 2 + (REDUCED_MOTION.matches ? 10 : 6 + 14 * t) * unit;
+            ctx.lineWidth = 2 * unit;
+            for (const offset of [-5, 5]) {
+                ctx.beginPath();
+                ctx.moveTo(cx - dx * back - dy * offset * unit, cy - dy * back + dx * offset * unit);
+                ctx.lineTo(cx - dx * (back + 14 * unit) - dy * offset * unit, cy - dy * (back + 14 * unit) + dx * offset * unit);
+                ctx.stroke();
+            }
+        }
         ctx.restore();
     }
     if (!state?.gustWaves)

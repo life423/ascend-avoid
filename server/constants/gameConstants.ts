@@ -585,7 +585,7 @@ export const EXHALE = {
   WAVE_WRAP_MS: 220,
   WAVE_PUSH_MS: 140, // one passing gust, never continuous cover
   WAVE_FADE_MS: 480, // visual dissipation after wrapping; no lasting shield
-  WAVE_HALF_ARC: 1.05,
+  WAVE_HALF_ARC: 70 * Math.PI / 180, // 140-degree rear sweep and matching wrap artwork
   WAVE_THICKNESS: 12,
   IMPULSE_RELATIVE_SPEED: 560,
   IMPULSE_ADDED_SPEED_CAP: 560,
@@ -602,10 +602,11 @@ export const EXHALE = {
   PUSH_RATIO_MAX: 1.8,
   PUSH_MAX: 500,
   DEFENSE_PUSH: 200,
-  COOLDOWN_MS: 1800, // a deliberate defense, not repeated knockback
+  COOLDOWN_MS: 0, // local trial: availability is governed by breath, not a fixed timer
+  WALL_SLIP_INPUT: 0.2, // require deliberate movement along a wall
   PARRY_MS: 350, // minimum restart lock on a broken inhale
   DRAG: 12, // short steerable air impulse, separate from control-locking impact skids
-  BREATH_COST: 0.35, // 35 percentage points from a full meter, not 35% of the remaining breath
+  BREATH_COST: 0.75, // provisional: 75 percentage points of the full meter, not of remaining breath
 } as const;
 
 /** Short, announced resource contests in the continuous world. */
