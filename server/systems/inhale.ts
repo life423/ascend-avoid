@@ -473,7 +473,7 @@ export function exhale(state: GameState, player: PlayerSchema, now: number) : vo
   const wave=new GustWaveSchema();
   wave.owner=player.sessionId;wave.x=player.x+player.width/2;wave.y=player.y+player.height/2;
   wave.width=player.width;wave.facing=player.facing;wave.at=state.time;
-  wave.remainingImpulse=bodyMass(player.width)*Math.max(0,EXHALE.IMPULSE_RECOIL_CAP-impulses.recoil);
+  wave.remainingImpulse=bodyMass(player.width)*Math.max(0,EXHALE.IMPULSE_RECOIL_CAP-impulses.recoil)*EXHALE.REAR_IMPULSE_SCALE;
   for (const hit of hits) { wave.pushed.add(hit.target.sessionId); wave.parried.add(hit.target.sessionId); }
   state.gustWaves.set(player.sessionId,wave);
   state.onEvent?.('exhale', { id: player.sessionId, x: Math.round(mouthX), y: Math.round(mouthY), facing: Math.round(player.facing * 100) / 100,

@@ -3,8 +3,8 @@ import { bodyMass } from './creatureSize.js';
 import type { Box } from './movement.js';
 
 /** Brief air drift adds to walking; it never switches a creature into a locked skid. */
-export function puffDrift(box: Box, velocity: { x: number; y: number }, seconds: number, worldWidth: number, worldHeight: number): void {
-  const slow = Math.exp(-EXHALE.DRAG * seconds), travel = (1 - slow) / EXHALE.DRAG;
+export function puffDrift(box: Box, velocity: { x: number; y: number }, seconds: number, worldWidth: number, worldHeight: number, drag: number = EXHALE.DRAG): void {
+  const slow = Math.exp(-drag * seconds), travel = (1 - slow) / drag;
   const margin = ARENA_RULES.EDGE_MARGIN;
   const x = box.x + velocity.x * travel, y = box.y + velocity.y * travel;
   box.x = Math.max(margin, Math.min(x, worldWidth - box.width - margin));
@@ -16,6 +16,14 @@ export function puffDrift(box: Box, velocity: { x: number; y: number }, seconds:
 }
 
 export interface PuffBody { id: string; width: number; falloff: number }
+/** Rear wind has a separate finite budget; its recipients can always walk and turn. */
+export function rearGustImpulses(width: number, targets: readonly PuffBody[]): { id: string; impulse: number; velocity: number }[] {
+  const base = puffImpulses(width, targets);
+  return base.hits.map(hit => {
+    const scale = Math.min(EXHALE.REAR_IMPULSE_SCALE, EXHALE.REAR_SPEED_CAP / Math.max(1e-9, hit.velocity));
+    return { id: hit.id, velocity: hit.velocity * scale, impulse: hit.impulse * scale };
+  });
+}
 /** One finite impulse budget, conserving momentum before ordinary drag/boundary collisions. */
 export function puffImpulses(width: number, targets: readonly PuffBody[]): { recoil: number; hits: { id: string; impulse: number; velocity: number }[] } {
   const mass = Math.max(.001, bodyMass(width));

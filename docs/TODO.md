@@ -4,6 +4,19 @@ Updated November 2, 2026. This is the durable list of the user's requests and de
 
 ## November 2 morning playtest — defense, injury recovery and player bullets
 
+### Stronger rear gust follow-up
+
+PR #72 is merged and deployed at `350b7b67961c146e0a635e9bf4962d3e745bbce6`.
+The user expected the stronger gust to go live too; the earlier batch had only
+included isolated experiments. Complete, validate and release the bounded
+[rear-gust improvement](GUST_DEFENSE.md). Its conservative profile creates more
+space without altering front recoil, weapon pushes, damage or suction settings.
+The 432-case comparison, limitations and selected parameters are recorded there.
+Local validation passes: build, types, schema, lint, 45 unit suites, 18 multiplayer
+scenarios and 30 browser cases across desktop/phone/tablet. The user expects this
+follow-up to ship; commit and merge through required checks, then verify the
+deployed image and client. Do not call the stronger gust live before that check.
+
 ### Latest approved follow-up — implementation, validation and release authorization
 
 The user now authorizes committing and pushing this batch, merging it into main

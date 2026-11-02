@@ -615,6 +615,9 @@ export const EXHALE = {
   IMPULSE_RELATIVE_SPEED: 560,
   IMPULSE_ADDED_SPEED_CAP: 560,
   IMPULSE_RECOIL_CAP: 420,
+  REAR_IMPULSE_SCALE: 3, // rear wind only; front recoil and weapon pushes retain their tuning
+  REAR_SPEED_CAP: 280, // shared ceiling even when several gusts arrive together
+  REAR_DRAG: 7, // finite steerable drift, with no stun or collision barrier
   REACH: 160, // the puff reaches this far from the mouth, plus REACH_PER_SIZE times your width (about 200 for a newborn, 450 at 100 gems)
   REACH_PER_SIZE: 2,
   ARC: 55, // degrees either side of where you face

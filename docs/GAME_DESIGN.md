@@ -1,5 +1,15 @@
 # Ascend Avoid
 
+## November 2 stronger rear gust follow-up
+
+The user expected the stronger gust to ship with PR #72. That release only
+contained the earlier isolated study. The [gust follow-up](GUST_DEFENSE.md) now
+implements the conservative separate rear-wind channel: 3x mass-based impulse,
+280-unit/s combined cap and 7/s decay. Front recoil and weapon pushes remain
+unchanged. No stun or solid barrier is added; movement, bot/human/tutorial parity,
+cost, cooldown, brief parry and the front-to-back animation remain. Validation
+and release status belong in that document and the newest TODO entry.
+
 ## November 2 playtest follow-up
 
 The user now authorizes committing this follow-up, pushing its branch, merging
