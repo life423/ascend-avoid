@@ -165,5 +165,3 @@ export class EventBus {
         this.debugMode = enabled;
     }
 }
-
-export default EventBus;

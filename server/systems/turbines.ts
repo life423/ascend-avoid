@@ -149,7 +149,7 @@ export function runTurbine(state: GameState, turbine: TurbineSchema, now: number
 }
 
 /** Gems whose time has come fire out of their turbine's exhaust and fly 400-700 units, landing as ordinary gems */
-export function fireFlights(state: GameState, now: number) : void {
+function fireFlights(state: GameState, now: number) : void {
   const t = state.time;
   const due: string[] = [];
   state.flights.forEach((flight, id) => {
@@ -174,7 +174,7 @@ export function fireFlights(state: GameState, now: number) : void {
 }
 
 /** Whether gems are still on their way through a turbine */
-export function turbineBusy(state: GameState, id: string) : boolean {
+function turbineBusy(state: GameState, id: string) : boolean {
   let busy = false;
   state.flights.forEach((flight) => {
     if (flight.turbine === id) busy = true;

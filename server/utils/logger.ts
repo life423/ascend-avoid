@@ -1,4 +1,4 @@
-export enum LogLevel {
+enum LogLevel {
   ERROR = 'error',
   WARN = 'warn',
   INFO = 'info',
@@ -22,7 +22,7 @@ function prefix(): string {
   return `[${new Date().toISOString()}]`;
 }
 
-export const logger = {
+const logger = {
   error: (...args: unknown[]) => {
     if (shouldLog(LogLevel.ERROR)) console.error(prefix(), ...args);
   },

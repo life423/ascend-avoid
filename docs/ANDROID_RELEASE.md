@@ -45,8 +45,9 @@ were installed and launched on the Pixel over Wi-Fi with installed hashes matchi
 the verified artifacts. Proof is in each local artifact folder (`verification.json`,
 `icon-verification.json`, `device-installation.json`). Supplied mask previews were
 inspected; actual V12 launcher/theme review remains. No hosted publication was made.
-Web/PWA icons remain the existing website mark;
-`node scripts/android-icons.mjs` regenerates those web PNGs.
+Web favicon, Apple bookmark, and standard PWA icons use the supplied web pack in
+`branding/web/ascend-avoid-favicon-pack/`.
+`npm run icons:sync` synchronizes the supplied web favicon pack and standard PWA icons; it regenerates the existing maskable-specific image separately. Native launcher artwork is unaffected.
 The repository's web manifest adds install metadata without a service worker or
 new game caching behavior.
 

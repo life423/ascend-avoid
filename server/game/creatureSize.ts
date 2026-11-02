@@ -1,7 +1,7 @@
 import { ARENA_RULES, GEMS, WORLD } from '../constants/gameConstants.js';
 
 /** Banked gems convert to physical growth progressively, with a gentler opening and uncapped score. */
-export function growthMass(gems: number): number {
+function growthMass(gems: number): number {
   const opening = GEMS.GROWTH_OPENING_GEMS;
   const mass = gems <= opening ? Math.max(0, gems) : opening + GEMS.GROWTH_SCALE / GEMS.GROWTH_EXPONENT * Math.expm1(GEMS.GROWTH_EXPONENT * Math.log1p((gems - opening) / GEMS.GROWTH_SCALE));
   return mass * GEMS.GROWTH_MASS_PER_GEM;

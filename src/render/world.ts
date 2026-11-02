@@ -171,7 +171,7 @@ export function drawLaunchPuff(ctx: CanvasRenderingContext2D, x: number, y: numb
 }
 
 /** Gem colors: most are gold, some cyan, blue or pink (all worth the same), for a livelier field */
-export const GEM_COLORS = [GOLD, GOLD, GOLD, '#4fe3d9', '#5aa8ff', '#ff7ad9']
+const GEM_COLORS = [GOLD, GOLD, GOLD, '#4fe3d9', '#5aa8ff', '#ff7ad9']
 
 /** A gem's color, fixed by its id so it never changes */
 export function gemColor(id: string): string {

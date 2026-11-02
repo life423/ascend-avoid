@@ -87,251 +87,12 @@
 }
 
 /* Desktop Info Panel */
-.info-panel {
-    display: none;
-    background: var(--primary-light);
-    border-radius: var(--border-radius);
-    border-inline-start: 4px solid var(--accent-primary);
-    box-shadow: var(--shadow-medium);
-    flex-direction: column;
-    block-size: 100%;
-    padding: var(--space-lg);
-}
-
-.panel-content {
-    flex: 1;
-    margin-bottom: var(--space-xxl);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-lg);
-}
-
-.panel-content h3 {
-    color: var(--accent-secondary);
-    font-size: 1.25rem;
-    margin: 0 0 var(--space-sm) 0;
-    font-weight: 600;
-    line-height: 1.3;
-}
-
-.panel-content p {
-    margin: 0;
-    line-height: 1.6;
-    color: var(--text-light);
-}
-
-.panel-content ul {
-    margin: 0;
-    padding-left: var(--space-xl);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-sm);
-}
-
-.panel-content .note {
-    font-style: italic;
-    color: var(--accent-secondary);
-    font-size: 0.9rem;
-    margin: 0;
-    padding: var(--space-sm);
-    background: rgba(0, 188, 212, 0.1);
-    border-radius: var(--border-radius);
-    border-left: 3px solid var(--accent-secondary);
-}
-
-.info-actions {
-    margin-top: auto;
-    display: flex;
-    gap: 0.75rem;
-    padding-block: var(--space-lg) 1.5rem;
-    border-block-start: 2px solid var(--divider-line);
-    align-items: center;
-    justify-content: center;
-}
 
 /* Touch controls are created dynamically by TouchControls.ts */
 
-.float-menu {
-    position: absolute;
-    bottom: var(--space-md);
-    right: var(--space-md);
-    z-index: var(--z-ui);
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-}
-
-.float-trigger {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    background: var(--accent-primary);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
-    box-shadow: var(--shadow-medium);
-    transition: transform var(--transition);
-    border: none;
-    flex-direction: column;
-    gap: 3px;
-}
-
-.float-trigger:hover {
-    transform: scale(1.1);
-}
-
-.menu-dot {
-    width: 4px;
-    height: 4px;
-    background: var(--text-dark);
-    border-radius: 50%;
-    display: block;
-}
-
-.float-options {
-    display: flex;
-    flex-direction: column;
-    margin-bottom: var(--space-sm);
-    transition: all 0.3s ease;
-    transform-origin: bottom right;
-    position: absolute;
-    bottom: 70px;
-    right: 5px;
-    z-index: var(--z-overlay);
-    background: var(--nav-bg);
-    padding: var(--space-sm);
-    border-radius: var(--border-radius);
-    box-shadow: var(--shadow-heavy);
-    border: 1px solid var(--accent-primary);
-}
-
-.float-options.hidden {
-    transform: scale(0);
-    opacity: 0;
-    pointer-events: none;
-    visibility: hidden;
-    display: none;
-}
-
 /* Buttons */
-.nav-button, .btn-action {
-    padding: var(--space-sm) var(--space-md);
-    background: var(--accent-primary);
-    color: var(--text-dark);
-    border: none;
-    border-radius: var(--border-radius);
-    font-weight: bold;
-    cursor: pointer;
-    transition: all var(--transition);
-    text-transform: uppercase;
-    font-size: 14px;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 44px;
-}
-
-.nav-button:hover, .btn-action:hover {
-    background: var(--accent-secondary);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-medium);
-}
-
-.float-options button {
-    margin-bottom: var(--space-sm);
-    width: 120px;
-    text-align: center;
-}
-
-.float-options button:last-child {
-    margin-bottom: 0;
-}
 
 /* Modal */
-.modal-panel {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(0, 0, 0, 0.8);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 9999;
-    padding: var(--space-md);
-}
-
-.modal-panel.hidden {
-    display: none;
-}
-
-.modal-content {
-    background: var(--primary-light);
-    border-radius: var(--border-radius);
-    max-width: 500px;
-    width: 100%;
-    max-height: 80vh;
-    overflow-y: auto;
-    box-shadow: var(--shadow-heavy);
-    border: 2px solid var(--accent-primary);
-}
-
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--space-lg);
-    border-bottom: 1px solid var(--divider-line);
-}
-
-.modal-header h3 {
-    margin: 0;
-    color: var(--accent-secondary);
-    font-size: 1.5rem;
-}
-
-.close-modal {
-    background: none;
-    border: none;
-    color: var(--text-light);
-    font-size: 2rem;
-    cursor: pointer;
-    padding: 0;
-    width: 30px;
-    height: 30px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    border-radius: 50%;
-    transition: background-color var(--transition);
-}
-
-.close-modal:hover {
-    background: var(--warning);
-}
-
-.modal-body {
-    padding: var(--space-lg);
-}
-
-.modal-instructions ul {
-    padding-left: var(--space-md);
-    margin: var(--space-md) 0;
-}
-
-.modal-instructions li {
-    margin-bottom: var(--space-sm);
-    list-style-type: square;
-}
-
-.modal-instructions .note {
-    font-style: italic;
-    color: var(--accent-secondary);
-    margin: var(--space-md) 0;
-}
 
 /* Touch control active states */
 .control-button.active {
@@ -370,14 +131,6 @@
     
     .touch-controls-area {
         display: none;
-    }
-    
-    .info-panel {
-        display: flex;
-        width: 280px;
-        min-width: 280px;
-        max-width: 280px;
-        flex: 0 0 280px;
     }
     
     .desktop-only {
@@ -515,9 +268,6 @@
 }
 
 /* The drawer menu replaced the old floating menu */
-.float-menu {
-    display: none !important;
-}
 
 /* Landscape phones: controls sit either side of the canvas instead of under it */
 @media (orientation: landscape) and (max-height: 520px) {
@@ -623,9 +373,6 @@
     }
 
     /* The panel scrolls when the window is too short for all of it */
-    .info-panel {
-        overflow-y: auto;
-    }
 }
 
 @media (orientation: landscape) and (max-height: 520px) {
@@ -696,10 +443,6 @@ body.online-mode .touch-controls-area {
 
     .game-canvas-container {
         padding: 8px;
-    }
-
-    .info-panel {
-        display: none !important;
     }
 
     .bar-actions {

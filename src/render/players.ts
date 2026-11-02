@@ -17,10 +17,10 @@ export interface HeldPose {
 }
 
 /** How long a caught creature takes to slide down the throat and out of sight */
-export const SUCK_MS = 280
+const SUCK_MS = 280
 
 /** How long a creature takes to swell back to full size as it comes back out (let go, slipped free, or fired) */
-export const EMERGE_MS = 220
+const EMERGE_MS = 220
 
 /** The captor holding this player at its mouth right now (both alive, and the captor's hold agrees), or null */
 export function captorOf(state: SyncedGameState, player: SyncedPlayer, sessionId: string): { id: string; captor: SyncedPlayer } | null {
@@ -342,7 +342,7 @@ function drawMouthful(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, capt
 }
 
 /** Pressed against another creature: how much this one squishes, and along which line (lighter ones squish more) */
-export function squashFor(mode: MultiplayerMode, id: string, x: number, y: number, size: number, timestamp=performance.now()) : { angle: number; amount: number } {
+function squashFor(mode: MultiplayerMode, id: string, x: number, y: number, size: number, timestamp=performance.now()) : { angle: number; amount: number } {
     const state = mode.multiplayerManager?.getState()
     if (!state) return { angle: 0, amount: 0 }
     const self = state.players.get(id) as SyncedPlayer | undefined

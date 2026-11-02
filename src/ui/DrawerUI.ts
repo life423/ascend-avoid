@@ -410,42 +410,6 @@ export class DrawerUI {
             }
 
             /* Menu Buttons */
-            .menu-button {
-                width: 100%;
-                padding: 15px 20px;
-                background: rgba(12, 199, 199, 0.1);
-                border: 1px solid rgba(12, 199, 199, 0.3);
-                border-radius: 8px;
-                color: #0CC7C7;
-                font-size: 16px;
-                font-weight: 500;
-                cursor: pointer;
-                transition: all 0.3s ease;
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                margin-bottom: 10px;
-            }
-
-            .menu-button:hover {
-                background: rgba(12, 199, 199, 0.2);
-                border-color: rgba(12, 199, 199, 0.5);
-                box-shadow: 0 0 15px rgba(12, 199, 199, 0.2);
-                transform: translateY(-1px);
-            }
-
-            .menu-button:active {
-                transform: translateY(0);
-            }
-
-            .button-icon {
-                font-size: 18px;
-            }
-
-            .button-text {
-                flex: 1;
-                text-align: left;
-            }
 
             .activity-history { padding-left: 18px; font-size: 12px; line-height: 1.5; }
             .activity-history li { margin: 6px 0; overflow-wrap: anywhere; }
@@ -484,12 +448,6 @@ export class DrawerUI {
                 }
             }
 
-            /* Hide multiplayer button on mobile when drawer is present */
-            @media (max-width: 768px) {
-                .mp-button-container {
-                    display: none !important;
-                }
-            }
 
             /* Hide hamburger button on desktop when desktop-nav-buttons is visible */
             @media (min-width: 1200px) {

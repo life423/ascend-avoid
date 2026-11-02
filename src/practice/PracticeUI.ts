@@ -6,7 +6,7 @@ import { mouseControlEnabled, setMouseControl } from '../core/MouseControl';
 import './practice.css';
 import { freeAreas, type Bounds } from './layout';
 
-export const LESSON_NAMES: Record<PracticeLesson, string> = { basics: 'Move, grow & capture', combat: 'Aim, hit & finish', defense: 'Escape & recover', blackhole: 'Black-hole shot', weapon: 'Build a weapon' };
+const LESSON_NAMES: Record<PracticeLesson, string> = { basics: 'Move, grow & capture', combat: 'Aim, hit & finish', defense: 'Escape & recover', blackhole: 'Black-hole shot', weapon: 'Build a weapon' };
 const descriptions: Record<PracticeLesson, string> = { basics: 'Gather gems and capture a smaller healthy rival.', combat: 'Aim a shot, shatter a smaller rival, then learn an injured finish.', defense: 'Two exercises: Puff & flee, then Escape while injured.', blackhole: 'Capture a rival, then aim a long shot into the core.', weapon: 'Three matching parts. One automatic weapon.' };
 const defenseStages: Record<string, string> = { 'rear-cover': 'Puff & flee', 'injured-escape': 'Escape while injured' };
 export class PracticeUI {
@@ -228,9 +228,13 @@ export class PracticeUI {
   private key = (e: KeyboardEvent): void => {
     if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); this.close(); return; }
     if (e.key !== 'Tab') return;
-    const buttons = [...this.chooser.querySelectorAll<HTMLButtonElement>('button')];
-    const first = buttons[0], last = buttons[buttons.length - 1];
-    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    const buttons = [...this.chooser.querySelectorAll<HTMLButtonElement>('button')].filter(button => !button.disabled && button.getClientRects().length);
+    if (!buttons.length) return;
+    // iOS WebKit can skip buttons in native Tab navigation. Cycle explicitly so
+    // an attached keyboard stays inside the lesson picker on every platform.
+    e.preventDefault();
+    const current = buttons.indexOf(document.activeElement as HTMLButtonElement);
+    const next = current < 0 ? (e.shiftKey ? buttons.length - 1 : 0) : (current + (e.shiftKey ? -1 : 1) + buttons.length) % buttons.length;
+    buttons[next]?.focus();
   };
 }

@@ -29,20 +29,6 @@ export const OBSTACLE = {
   MAX_WIDTH_RATIO: 0.18,
 } as const;
 
-// Projectile settings
-export const PROJECTILE = {
-  WIDTH: 4,
-  HEIGHT: 8,
-  SPEED: 400,
-  BASE_SPEED: 400, // Base speed for projectiles (used in constructor)
-  MAX_ACTIVE: 5,
-  MAX_COUNT: 5, // Maximum number of projectiles (used by ProjectileManager)
-  FIRE_RATE: 250, // milliseconds between shots
-  COLOR: '#00ffff',
-  TRAIL_LENGTH: 3,
-  LIFETIME: 3000, // Projectile lifetime in milliseconds (3 seconds)
-} as const;
-
 // Game settings
 export const GAME = {
   WINNING_LINE: 40,
@@ -258,17 +244,6 @@ export const FACING = {
   INHALE_TURN: 0.55,
   TURN_ACCEL: 30, // how fast turning builds up or slows down (radians a second, each second) for a newborn...
   ACCEL_FALLOFF: 0.35, // large bodies respond promptly while retaining a lower turn rate
-} as const;
-
-/**
- * How hard suction moves a body (a creature's inhale, or a turbine's intake): the puller's width
- * over the target's, softened by SOFTEN and kept between MIN and MAX. Small creatures are moved
- * strongly, giants barely. Bodies only: gems have their own rule (see INHALE.STEAL_RATE).
- */
-export const SUCTION = {
-  SOFTEN: 0.75,
-  MIN: 0.3,
-  MAX: 2,
 } as const;
 
 /**
@@ -746,7 +721,6 @@ export const GAME_CONSTANTS = {
   CANVAS,
   PLAYER,
   OBSTACLE,
-  PROJECTILE, // Added this
   GAME,
   STATE,
   PLAYER_STATE,
@@ -762,14 +736,12 @@ export const GAME_CONSTANTS = {
   INHALE,
   BOMBS,
   TURBINE,
-  SUCTION,
   SHIFT,
   KEYS,
   DEVICE_SETTINGS
 } as const;
 
-// Export everything as default for legacy imports
-export default GAME_CONSTANTS;
+
 
 /** Shot-only positional hazards; no walking collision or outer gravity. Provisional layout. */
 export const BLACK_HOLE = {

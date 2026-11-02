@@ -16,7 +16,7 @@ interface SpriteSheets {
 /**
  * Modernized Sprite Manager class to handle sprite creation, caching, and animation
  */
-export class SpriteManager {
+class SpriteManager {
   // Sprite cache storage
   // private frameCache: Record<string, HTMLImageElement> = {};
   private spriteSheets: SpriteSheets = {};

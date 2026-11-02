@@ -4,6 +4,7 @@
  * Now with TypeScript support.
  */
 import { InputState } from '../types'
+import { sound } from '../core/Sound'
 
 interface Point {
     x: number
@@ -120,6 +121,7 @@ export default class InputManager {
     private handleKeyDown(e: KeyboardEvent): void {
         const target = e.target as HTMLElement | null
         if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return
+        sound.unlock()
         // Look for movement keys
         if (this.keyMappings.UP.includes(e.key) || e.keyCode === 38) {
             this.keys.up = true

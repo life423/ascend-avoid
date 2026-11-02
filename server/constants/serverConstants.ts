@@ -1,27 +1,2 @@
-/**
- * Server-specific constants for the game server
- * Imports base constants and adds server-specific values
- */
-
-import { 
-  GAME_CONSTANTS, 
-  PLAYER, 
-  OBSTACLE, 
-  GAME, 
-  STATE, 
-  PLAYER_STATE, 
-  WORLD,
-  PLAYER_COLORS 
-} from './gameConstants.js';
-
-// Re-export all constants for convenience
-export {
-  GAME_CONSTANTS,
-  PLAYER,
-  OBSTACLE,
-  GAME,
-  STATE,
-  PLAYER_STATE,
-  WORLD,
-  PLAYER_COLORS
-};
+/** Server modules share the same aggregate as the client rules. */
+export { GAME_CONSTANTS } from './gameConstants.js';

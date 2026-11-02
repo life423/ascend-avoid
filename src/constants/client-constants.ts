@@ -24,6 +24,3 @@ export const GameEvents = {
     UI_SHOW_LOBBY: 'ui:showLobby',
     UI_HIDE_LOBBY: 'ui:hideLobby',
 } as const;
-
-// Type for GameEvents values
-export type GameEventType = typeof GameEvents[keyof typeof GameEvents];

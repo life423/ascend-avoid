@@ -69,7 +69,7 @@ export function updateBombs(state: GameState, now: number, deltaTime: number) : 
  * gems knocked loose, more near the middle; under GEMS.SURVIVE_AT gems it knocks them out. Other
  * bombs caught in it go off a moment later. Credit goes to whoever spat or kicked it last.
  */
-export function explode(state: GameState, bomb: BombSchema, now: number) : void {
+function explode(state: GameState, bomb: BombSchema, now: number) : void {
   const x = bomb.x;
   const y = bomb.y;
   const by = bomb.thrownBy;

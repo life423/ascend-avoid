@@ -5,7 +5,7 @@ export type Layout = boolean[];
 
 const N = SHIFT.GRID;
 /** The size of a tile, in world units */
-export const TILE = WORLD.WIDTH / N;
+const TILE = WORLD.WIDTH / N;
 
 /** Hand-made shapes ('#' is floor). Each is also used turned and mirrored. */
 const PREMADE: Record<string, readonly string[]> = {
@@ -153,7 +153,7 @@ function connected(layout: Layout): boolean {
  * to stand around in (a 2x2 block of tiles), and close enough to everywhere that anyone can
  * reach it during the grace period
  */
-export function isGoodLayout(layout: Layout): boolean {
+function isGoodLayout(layout: Layout): boolean {
   const share = count(layout) / (N * N);
   if (share < SHIFT.FLOOR_SHARE_MIN || share > SHIFT.FLOOR_SHARE_MAX || !connected(layout)) return false;
   let roomy = false;

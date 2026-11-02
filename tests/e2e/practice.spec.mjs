@@ -95,15 +95,19 @@ test('black-hole lesson: actual capture, distant shot and visible once-only spat
   expect((await read(page)).me.gems).toBe(350);
 });
 
-test('a missed shot restores that attempt and cancels held movement/action input', async ({ page }) => {
+test('a missed shot restores its attempt, preserves held movement and cancels held action', async ({ page }) => {
   await start(page, 'blackhole'); await captureForBlackHole(page); const attempt = (await read(page)).attempt;
   await page.keyboard.down('ArrowUp'); await page.waitForTimeout(400); await page.keyboard.up('ArrowUp');
   await shot(page); await page.keyboard.down('Space'); await page.keyboard.down('ArrowDown');
   await page.waitForFunction(previous => window.game.currentGameMode.multiplayerManager.getState().practice.attempt > previous, attempt);
   await page.waitForTimeout(100); const v = await read(page);
   expect(v.lesson).toBe('blackhole'); expect(v.stage).toBe('shoot'); expect(v.passed).toBe(1); expect(v.failures).toBe(1); expect(v.me.gulping).toBeTruthy(); expect(v.me.inhaling).toBe(false);
-  expect(await page.evaluate(() => Object.values(window.game.inputManager.getInputState()).some(Boolean))).toBe(false);
+  expect(await page.evaluate(() => window.game.inputManager.getInputState().down)).toBe(true);
+  await page.waitForTimeout(250);
+  expect((await read(page)).me.gulping).toBe(v.me.gulping);
+  expect((await read(page)).me.inhaling).toBe(false);
   await page.keyboard.up('Space'); await page.keyboard.up('ArrowDown');
+  expect(await page.evaluate(() => Object.values(window.game.inputManager.getInputState()).some(Boolean))).toBe(false);
 });
 
 

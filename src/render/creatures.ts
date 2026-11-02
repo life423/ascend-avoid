@@ -12,7 +12,7 @@ export function bounce(position: number, distance: number, low: number, high: nu
 }
 
 /** Where the mouth sits: this share of the body's width out from its center, along its facing (the server's own figure: see inhale.ts) */
-export const MOUTH_OFFSET = 0.3
+const MOUTH_OFFSET = 0.3
 
 /** The mouth's center for a creature drawn at (x, y) with this size, facing this way */
 export function mouthOf(x: number, y: number, size: number, facing: number): { x: number; y: number } {
