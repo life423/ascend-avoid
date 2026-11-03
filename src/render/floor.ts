@@ -4,6 +4,7 @@ import { FONT, GOLD } from './style'
 import { drawCrystal } from './world'
 import { GRID, View } from './shared'
 import type { SyncedGameState } from '../types/synced'
+import { traceArena } from './arenaBoundary'
 
 /** The arena floor: a faint grid, and the wall around the world */
 export function drawFloor(_mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state: SyncedGameState, view: View) : void {
@@ -12,6 +13,10 @@ export function drawFloor(_mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
     const top = Math.max(0, view.y - view.height / 2)
     const bottom = Math.min(state.worldHeight, view.y + view.height / 2)
     ctx.save()
+    ctx.save()
+    ctx.beginPath()
+    traceArena(ctx, 0, 0, state.worldWidth, state.worldHeight)
+    ctx.clip()
     ctx.strokeStyle = 'rgba(79, 209, 197, 0.09)'
     ctx.lineWidth = 1 / view.scale
     ctx.beginPath()
@@ -24,19 +29,22 @@ export function drawFloor(_mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
         ctx.lineTo(right, y)
     }
     ctx.stroke()
+    ctx.restore()
     // Outside the physical floor is empty space, not a continuation of the stars.
     const viewLeft = view.x - view.width / 2
     const viewTop = view.y - view.height / 2
     const viewRight = view.x + view.width / 2
     const viewBottom = view.y + view.height / 2
-    ctx.fillStyle = '#18354e'
-    if (viewLeft < 0) ctx.fillRect(viewLeft, viewTop, -viewLeft, view.height)
-    if (viewRight > state.worldWidth) ctx.fillRect(state.worldWidth, viewTop, viewRight - state.worldWidth, view.height)
-    if (viewTop < 0) ctx.fillRect(viewLeft, viewTop, view.width, -viewTop)
-    if (viewBottom > state.worldHeight) ctx.fillRect(viewLeft, state.worldHeight, view.width, viewBottom - state.worldHeight)
+    ctx.fillStyle = '#020710'
+    ctx.beginPath()
+    ctx.rect(viewLeft, viewTop, viewRight - viewLeft, viewBottom - viewTop)
+    traceArena(ctx, 0, 0, state.worldWidth, state.worldHeight)
+    ctx.fill('evenodd')
     ctx.strokeStyle = 'rgba(67, 165, 195, 0.75)'
     ctx.lineWidth = 2 / view.scale
-    ctx.strokeRect(0, 0, state.worldWidth, state.worldHeight)
+    ctx.beginPath()
+    traceArena(ctx, 0, 0, state.worldWidth, state.worldHeight)
+    ctx.stroke()
     ctx.restore()
 }
 

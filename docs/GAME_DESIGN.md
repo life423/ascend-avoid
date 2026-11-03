@@ -1,8 +1,22 @@
 # Ascend Avoid
 
-## Current local puff-pressure trial
+## Rounded arena corners — approved November 3, 2026
 
-The latest local trial supersedes automatic gust parries: front and rear wind
+The same rounded rectangle now drives authoritative body collision, client
+prediction, the visible boundary and minimap. The 4200-unit arena uses 700-unit
+corner arcs; smaller arenas cap that radius at one quarter of their shorter side.
+Physical body radius plus the existing eight-unit clearance offsets the wall,
+so giants slide against the same visible curve as small players. Outward motion
+is removed while tangential movement remains available. Growth, knockback,
+spawn/escape routes, flight wall contacts and reachable world objects agree.
+The user approved commit, merge and deployment after playing the local build;
+GitHub main and its production workflow record the published revision. The
+defense release below is the historical base of this change.
+See [ROUNDED_ARENA.md](ROUNDED_ARENA.md) for checks and preview.
+
+## Current defense release — November 2, 2026
+
+Released in PR #76, main `5ca85fb`. This update supersedes automatic gust parries: front and rear wind
 push with the existing force but preserve the pursuer's inhale/latch/pressure.
 Only ordinary loss of valid contact causes connection decay. The rear arc is
 140 degrees with matching wrap artwork; the instantaneous forward cone and
@@ -11,7 +25,11 @@ breath, with ordinary refill and no fixed gameplay cooldown or added refill paus
 This replaces the rejected three-puff burst and four-second timer proposals.
 Valid-hit recoil that would hit a wall can redirect along that wall toward
 movement input, without extra impulse, a free empty-puff dash or capture immunity.
-This is local-only tuning; see [GUST_DEFENSE.md](GUST_DEFENSE.md).
+Deployment and live 75% server/client verification passed; see
+[GUST_DEFENSE.md](GUST_DEFENSE.md) and [the active TODO](TODO.md) for remaining work.
+
+The dated sections below preserve implementation/release history and can describe
+superseded mechanics; they are not the current backlog.
 
 ## November 2 stronger rear gust follow-up
 
@@ -59,7 +77,7 @@ by an established, valid theft continuation, keeping breathing blocked and finis
 eligibility active. Player-missile warnings currently have at most half a second
 of predicted lead and disappear on viewport overlap. Gust air drift is especially
 small against wider pursuers. These findings and acceptance work are saved in
-[TODO.md](TODO.md#november-2-morning-playtest--defense-injury-recovery-and-player-bullets).
+[historical request inventory](TODO_HISTORY.md#november-2-morning-playtest--defense-injury-recovery-and-player-bullets).
 The exact phone warning failure remains to reproduce. This follow-up records an
 investigation, not new combat rules or authorization to publish another release.
 
@@ -197,7 +215,7 @@ The user's Pixel playtest reports unfair surprise projectile/satellite hits,
 difficult injured escape, an active joystick lost on tutorial Ready, distant
 top-screen lesson actions, repeated defense headings, perceived clash stun and
 weapon pieces spawning over fans. Preserve the full report and acceptance work
-in [TODO.md](TODO.md#pixel-playtest-follow-up--november-1) and
+in [historical request inventory](TODO_HISTORY.md#pixel-playtest-follow-up--november-1) and
 [GitHub #69](https://github.com/life423/ascend-avoid/issues/69).
 Fix input/readiness defects before drawing balance conclusions. Ordinary body
 contact must keep steering and use soft squash/slide; current contact code has

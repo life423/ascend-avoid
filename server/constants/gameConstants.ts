@@ -638,6 +638,7 @@ export const ARENA_RULES = {
   HOP_REPEAT_DELAY: 0.2, // holding a direction: the first repeat hop comes after this many seconds,
   HOP_REPEAT: 1 / 6, // then one every this many seconds (six a second)
   EDGE_MARGIN: 8, // closest you can get to the edge of the world
+  CORNER_RADIUS: 700, // rounded physical arena wall; scales down for smaller practice arenas
   OBSTACLE_THICKNESS: 34,
   OBSTACLE_MIN_LENGTH: 48,
   OBSTACLE_MAX_LENGTH: 108,

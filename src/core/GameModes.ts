@@ -18,6 +18,8 @@ import { breathRate } from '../../server/game/airflow'
 import { CameraRig, constrainArenaView } from '../../server/game/camera'
 import { turnStep, walk } from '../../server/game/movement'
 import { puffDrift } from '../../server/game/puffImpulse'
+import { constrainArena } from '../../server/game/arenaBoundary'
+import { traceArena } from '../render/arenaBoundary'
 import { launchDuration, launchPosition, turbineBodyPush } from '../../server/game/turbine'
 import { OnlineControls } from './OnlineControls'
 import type { Breath } from './OnlineControls'
@@ -980,6 +982,7 @@ export class MultiplayerMode extends GameMode {
 
         const rim = slideBlackHoleRims(box, rimFrom.x, rimFrom.y, state.blackHoles?.filter((h: SyncedBlackHole) => !state.floor || state.floor[Math.floor(h.y / state.worldHeight * RIM_SHIFT.GRID) * RIM_SHIFT.GRID + Math.floor(h.x / state.worldWidth * RIM_SHIFT.GRID)] === '1') ?? [], state.worldWidth, state.worldHeight, deltaTime)
         box.x = rim.x; box.y = rim.y
+        constrainArena(box, state.worldWidth, state.worldHeight, this.velocity)
 
         // The server shows where you were about a round trip ago: quietly correct any drift from that
         this.history.push({ at: now, x: box.x, y: box.y })
@@ -1069,7 +1072,7 @@ export class MultiplayerMode extends GameMode {
         drawFloor(this, ctx, state, view)
         ctx.save()
         ctx.beginPath()
-        ctx.rect(0, 0, state.worldWidth, state.worldHeight)
+        traceArena(ctx, 0, 0, state.worldWidth, state.worldHeight)
         ctx.clip()
         drawShiftFloor(this, ctx, state, view, timestamp)
         const margin = 120

@@ -6,6 +6,8 @@ import type { SyncedGameState, SyncedPlayer, SyncedTurbine } from '../types/sync
 import { weaponRecipe } from './weaponStyle'
 import { allWeapons, weaponProfile } from '../../server/game/weaponKit'
 import { formatGems } from '../utils/score'
+import { arenaCornerRadius } from '../../server/game/arenaBoundary'
+import { traceArena } from './arenaBoundary'
 
 function weaponMarker(ctx: CanvasRenderingContext2D, x: number, y: number, kind: string, own: boolean, charging = false): void {
     ctx.save(); ctx.translate(x, y); ctx.fillStyle = '#0c1725';
@@ -43,7 +45,11 @@ export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
     else hudPanel(ctx, x - 4, y - 4, width + 8, height + 8, 10)
     ctx.lineWidth = 1
     ctx.strokeStyle = 'rgba(79, 209, 197, 0.25)'
-    ctx.strokeRect(x, y, width, height)
+    ctx.beginPath()
+    traceArena(ctx, x, y, width, height, arenaCornerRadius(state.worldWidth, state.worldHeight) * scale)
+    ctx.fillStyle = '#07121e'
+    ctx.fill()
+    ctx.stroke()
     if (state.floor) {
         // The (new) floor: the void is dark, or red while it's still coming
         const tile = width / SHIFT.GRID

@@ -4,6 +4,7 @@ import { WORLD } from '../constants/gameConstants.js';
 import { viewShort } from './camera.js';
 import { randomFloorPoint } from './layouts.js';
 import { clearanceAt } from '../systems/turbines.js';
+import { arenaContains } from './arenaBoundary.js';
 export const SPAWN_RETRY_MS = 250;
 const ESCAPE_DISTANCE = 180;
 /** Two separated, walkable exits; clearance is measured along each route, not just at its end. */
@@ -13,7 +14,7 @@ export function hasEscapeRoutes(state: GameState, player: PlayerSchema, x: numbe
     const a = dir * Math.PI / 4, dx = Math.cos(a), dy = Math.sin(a);
     if ([.33, .67, 1].every(t => {
       const cx = centre.x + dx * ESCAPE_DISTANCE * t, cy = centre.y + dy * ESCAPE_DISTANCE * t, r = player.width / 2 + 8;
-      return cx >= r && cy >= r && cx <= state.worldWidth - r && cy <= state.worldHeight - r && state.isFloorAt(cx, cy) && clearanceAt(state, cx, cy, player, null) > 24;
+      return cx >= r && cy >= r && cx <= state.worldWidth - r && cy <= state.worldHeight - r && arenaContains({ x: cx - player.width / 2, y: cy - player.width / 2, width: player.width, height: player.width }, state.worldWidth, state.worldHeight) && state.isFloorAt(cx, cy) && clearanceAt(state, cx, cy, player, null) > 24;
     }))
       open.push(dir);
   }
@@ -33,7 +34,7 @@ export function chooseSpawn(state: GameState, player: PlayerSchema): {
   const add = (x: number, y: number) => {
     x = Math.round(x);
     y = Math.round(y);
-    if (x < 8 || y < 8 || x + size > state.worldWidth - 8 || y + size > state.worldHeight - 8 || !state.isFloorAt(x + size / 2, y + size / 2))
+    if (!arenaContains({ x, y, width: size, height: size }, state.worldWidth, state.worldHeight) || !state.isFloorAt(x + size / 2, y + size / 2))
       return;
     candidates.push({ x, y, score: clearanceAt(state, x + size / 2, y + size / 2, player, leader) });
   };

@@ -1,4 +1,5 @@
 import type { GameState } from "../schema/GameState.js";
+import { arenaClearance } from '../game/arenaBoundary.js';
 import { PlayerSchema } from "../schema/PlayerSchema.js";
 import { GemSchema } from "../schema/GemSchema.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
@@ -54,6 +55,7 @@ export function topUpField(state: GameState, initial = false) : void {
     for (let attempt = 0; attempt < 64; attempt++) {
       const p = state.shiftPhase === 'shift' && state.layout ? randomFloorPoint(state.layout) : { x: 40 + Math.random() * (state.worldWidth - 80), y: 40 + Math.random() * (state.worldHeight - 80) };
       const padding = GEMS.RADIUS + 8;
+      if (arenaClearance(p.x, p.y, state.worldWidth, state.worldHeight) < 40) continue;
       if (bodies.some(body => p.x > body.x - padding && p.x < body.x + body.width + padding && p.y > body.y - padding && p.y < body.y + body.height + padding)) continue;
       const distance = Math.min(spacing, ...nearPoints(grid, p, spacing).map(q => Math.hypot(p.x - q.x, p.y - q.y)));
       if (distance > clearance) { best = p; clearance = distance; }

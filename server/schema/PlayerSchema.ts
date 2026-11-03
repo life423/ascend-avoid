@@ -6,6 +6,7 @@ import { breathRate } from "../game/airflow.js";
 import { CANNON, EXHALE } from "../constants/gameConstants.js";
 import { creatureSize } from '../game/creatureSize.js';
 import { puffDrift } from '../game/puffImpulse.js';
+import { constrainArena } from '../game/arenaBoundary.js';
 import type { Box, Direction } from "../game/movement.js";
 
 const { ARENA_RULES, GEMS, INHALE, PLAYER_STATE, PUSH, WORLD } = GAME_CONSTANTS;
@@ -400,11 +401,11 @@ class PlayerSchema extends Schema {
     if (size === this.width) return;
     const centerX = this.x + this.width / 2;
     const centerY = this.y + this.height / 2;
-    const margin = ARENA_RULES.EDGE_MARGIN;
     this.width = size;
     this.height = size;
-    this.x = Math.max(margin, Math.min(centerX - size / 2, this.bodyWorldWidth - size - margin));
-    this.y = Math.max(margin, Math.min(centerY - size / 2, this.bodyWorldHeight - size - margin));
+    this.x = centerX - size / 2;
+    this.y = centerY - size / 2;
+    constrainArena(this, this.bodyWorldWidth, this.bodyWorldHeight);
   }
 
   /** The box traffic hits: what you see, a little inside the edges so grazing doesn't count */
@@ -593,10 +594,9 @@ class PlayerSchema extends Schema {
 
   /** Moved aside by someone walking into you, staying inside the world */
   nudge(dx: number, dy: number, worldWidth: number, worldHeight: number): void {
-    const margin = ARENA_RULES.EDGE_MARGIN;
     const x = this.x, y = this.y;
-    this.x = Math.max(margin, Math.min(this.x + dx, worldWidth - this.width - margin));
-    this.y = Math.max(margin, Math.min(this.y + dy, worldHeight - this.height - margin));
+    this.x += dx; this.y += dy;
+    constrainArena(this, worldWidth, worldHeight);
     this.tickNudgeX += this.x - x; this.tickNudgeY += this.y - y;
   }
 
@@ -650,26 +650,16 @@ class PlayerSchema extends Schema {
     if (box.y !== this.y) this.y = box.y;
   }
 
-  /** Slide after a shove, slowing to a stop; the world's walls stop you dead */
+  /** Slide after a shove, slowing normally while walls remove outward motion. */
   private slide(deltaTime: number, worldWidth: number, worldHeight: number): void {
-    const margin = ARENA_RULES.EDGE_MARGIN;
-    // Exactly how far this tick's slowing slide goes, so a shove travels PUSH.DISTANCE
     const slow = Math.exp(-PUSH.FRICTION * deltaTime);
     const travel = (1 - slow) / PUSH.FRICTION;
-    let x = this.x + this.vx * travel;
-    let y = this.y + this.vy * travel;
-    if (x < margin || x > worldWidth - this.width - margin) {
-      x = Math.max(margin, Math.min(x, worldWidth - this.width - margin));
-      this.vx = 0;
-    }
-    if (y < margin || y > worldHeight - this.height - margin) {
-      y = Math.max(margin, Math.min(y, worldHeight - this.height - margin));
-      this.vy = 0;
-    }
-    this.x = x;
-    this.y = y;
-    this.vx *= slow;
-    this.vy *= slow;
+    this.x += this.vx * travel;
+    this.y += this.vy * travel;
+    const velocity = { x: this.vx, y: this.vy };
+    constrainArena(this, worldWidth, worldHeight, velocity);
+    this.vx = velocity.x * slow;
+    this.vy = velocity.y * slow;
     if (Math.hypot(this.vx, this.vy) < PUSH.STOP_SPEED) this.stopSliding();
   }
 

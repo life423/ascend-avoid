@@ -1,4 +1,6 @@
-import { ARENA_RULES, BLACK_HOLE } from '../constants/gameConstants.js';
+import { BLACK_HOLE } from '../constants/gameConstants.js';
+
+import { constrainArena } from './arenaBoundary.js';
 
 /** First entry into a circle along a swept segment, including starts inside; null for a miss. */
 export function circleEntry(ax: number, ay: number, bx: number, by: number, cx: number, cy: number, radius: number): number | null {
@@ -16,9 +18,12 @@ export function circleEntry(ax: number, ay: number, bx: number, by: number, cx: 
 /** Shared authoritative/predicted soft-rim routing. No velocity, damage, input or score changes. */
 export function slideBlackHoleRims(body: { x: number; y: number; width: number; height: number },
   fromX: number, fromY: number, holes: Iterable<{ x: number; y: number; radius: number }>, worldWidth: number, worldHeight: number, dt: number): { x: number; y: number } {
-  const half = body.width / 2, edge = ARENA_RULES.EDGE_MARGIN;
-  const clamp = (x: number, y: number) => ({ x: Math.max(edge + half, Math.min(worldWidth - edge - half, x)),
-    y: Math.max(edge + half, Math.min(worldHeight - edge - half, y)) });
+  const half = body.width / 2;
+  const clamp = (x: number, y: number) => {
+    const box = { x: x - half, y: y - body.height / 2, width: body.width, height: body.height };
+    constrainArena(box, worldWidth, worldHeight);
+    return { x: box.x + half, y: box.y + body.height / 2 };
+  };
   let end = clamp(body.x + half, body.y + body.height / 2);
   const start = { x: fromX + half, y: fromY + body.height / 2 };
   for (const hole of holes) {

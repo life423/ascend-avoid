@@ -1,3 +1,4 @@
+import { constrainArenaPoint } from '../../server/game/arenaBoundary';
 import type { MultiplayerMode } from '../core/GameModes';
 import type { SyncedGameState, SyncedWeaponPart, SyncedPinwheel } from '../types/synced';
 import { PINWHEEL, WEAPON_FLEET, WEAPON_SHOTS } from '../../server/constants/gameConstants';
@@ -108,8 +109,10 @@ function drawWeapon(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state:
                 const facing = p.carriedBy === mode.multiplayerManager?.localSessionId ? mode.localFacing : carrier.facing;
                 const a = facing + Math.PI + (p.kind - 1) * 0.55;
                 const radius = carrier.width / 2 + 43;
-                const x = Math.max(30, Math.min(state.worldWidth - 30, at.x + Math.cos(a) * radius));
-                const y = Math.max(30, Math.min(state.worldHeight - 30, at.y + Math.sin(a) * radius));
+                let x = Math.max(30, Math.min(state.worldWidth - 30, at.x + Math.cos(a) * radius));
+                let y = Math.max(30, Math.min(state.worldHeight - 30, at.y + Math.sin(a) * radius));
+                const bounded = { x, y }; constrainArenaPoint(bounded, state.worldWidth, state.worldHeight, 30);
+                x = bounded.x; y = bounded.y;
                 ctx.save(); ctx.strokeStyle = 'rgba(200, 225, 240, 0.4)'; ctx.lineWidth = 1.5;
                 ctx.beginPath(); ctx.moveTo(at.x, at.y); ctx.lineTo(x, y); ctx.stroke(); ctx.restore();
                 if (inView(mode.renderView, x, y, 85)) drawPart(ctx, { ...p, x, y }, w.claimUntil - now, timestamp, w.kind, own, locked, locked && !carrier.spawnProtected && carrier.launchSafeUntil <= now && !allWeapons(state).some(other => other !== w && other.owner === localId && (other.phase === 'parts' || other.phase === 'carried')));
@@ -131,6 +134,8 @@ function drawWeapon(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state:
         drawX = Math.max(56, Math.min(state.worldWidth - 56, at.x - Math.cos(facing) * (holder.width / 2 + 58)));
         drawY = Math.max(56, Math.min(state.worldHeight - 56, at.y - Math.sin(facing) * (holder.height / 2 + 58)));
     }
+    const bounded = { x: drawX, y: drawY }; constrainArenaPoint(bounded, state.worldWidth, state.worldHeight, 56);
+    drawX = bounded.x; drawY = bounded.y;
     ctx.save(); ctx.translate(drawX, drawY);
     const charging = w.phase === 'charging';
     ctx.strokeStyle = charging ? '#ffd47d' : '#80e7de'; ctx.lineWidth = 2;

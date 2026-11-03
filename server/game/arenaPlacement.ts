@@ -1,5 +1,6 @@
 import { BLACK_HOLE, TURBINE } from '../constants/gameConstants.js';
 import { distanceToSegment } from './geometry.js';
+import { arenaClearance } from './arenaBoundary.js';
 
 interface Point { x: number; y: number }
 interface Fan extends Point { intake: number }
@@ -62,7 +63,7 @@ export function findPartLayout(space: Space, x: number, y: number): { x: number;
   grid.sort((a, b) => Math.hypot(a.x - preferred.x, a.y - preferred.y) - Math.hypot(b.x - preferred.x, b.y - preferred.y));
   for (const anchor of [...candidates, ...grid]) {
     const parts = offsets.map(p => ({ x: anchor.x + p.x, y: anchor.y + p.y }));
-    if (parts.every(part => fans.every(fan => partClearOfFan(part, fan))
+    if (parts.every(part => arenaClearance(part.x, part.y, space.width, space.height) >= margin && fans.every(fan => partClearOfFan(part, fan))
       && holes.every(hole => Math.hypot(part.x - hole.x, part.y - hole.y) >= holeRadius(hole) + margin)
       && occupied.every(other => Math.hypot(part.x - other.x, part.y - other.y) >= PLACEMENT.PART_RADIUS * 2 + PLACEMENT.PART_GAP))) {
       return { ...anchor, parts };

@@ -135,6 +135,7 @@ export class GameRoom extends Room<GameState> {
         const player = playerOf(client);
         if (player) this.state.hitPlayer(player);
       });
+      this.onMessage("test:clearHoles", () => this.state.blackHoles.clear());
       this.onMessage("test:setGems", (client, data: any) => {
         playerOf(client)?.setGems(Number(data?.count) || 0, worldWidth, worldHeight);
       });

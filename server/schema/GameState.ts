@@ -37,6 +37,7 @@ import { PINWHEEL } from "../constants/gameConstants.js";
 import { chooseSpawn, SPAWN_RETRY_MS } from '../game/spawnSafety.js';
 import { fanClearOfHole, partClearOfFan } from '../game/arenaPlacement.js';
 import { allWeapons } from '../game/weaponKit.js';
+import { arenaClearance, constrainArenaPoint } from '../game/arenaBoundary.js';
 
 const { WORLD, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS, COMETS, BOMBS, TURBINE, SURGE } = GAME_CONSTANTS;
 /** Which way each of a bot's decisions steers it */
@@ -266,6 +267,9 @@ class GameState extends Schema {
         return;
       }
       gem.unlock(now);
+      const bounded = { x: gem.x, y: gem.y };
+      constrainArenaPoint(bounded, this.worldWidth, this.worldHeight, GEMS.RADIUS + 2);
+      if (Math.hypot(bounded.x - gem.x, bounded.y - gem.y) > 1e-6) gem.moveTo(bounded.x, bounded.y);
       // During a shift, gems stop at the floor's edge instead of sliding out over the void
       if (layout && !isFloor(layout, gem.x, gem.y)) {
         const spot = closestFloorPoint(layout, gem.x, gem.y, 12);
@@ -452,7 +456,7 @@ class GameState extends Schema {
 
   /** Whether a point is on the floor: always outside a shift; during one (or its grace period), the new floor */
   isFloorAt(x: number, y: number): boolean {
-    return !this.layout || isFloor(this.layout, x, y);
+    return arenaClearance(x, y, this.worldWidth, this.worldHeight) >= 0 && (!this.layout || isFloor(this.layout, x, y));
   }
 
   /** The nearest point on the (new) floor */
@@ -528,6 +532,9 @@ class GameState extends Schema {
       x ?? spot?.x ?? margin + Math.random() * (this.worldWidth - 2 * margin),
       y ?? spot?.y ?? margin + Math.random() * (this.worldHeight - 2 * margin)
     );
+    const bounded = { x: gem.x, y: gem.y };
+    constrainArenaPoint(bounded, this.worldWidth, this.worldHeight, margin);
+    gem.moveTo(bounded.x, bounded.y);
     this.gems.set(`g${this.nextGemId++}`, gem);
     this.fieldGems++;
   }
@@ -615,6 +622,7 @@ class GameState extends Schema {
 
   /** Whether a turbine at (x, y) stands on floor (it always does, unless the arena is shifting) */
   turbineFits(x: number, y: number): boolean {
+    if (arenaClearance(x, y, this.worldWidth, this.worldHeight) < TURBINE.BODY_RADIUS + 60) return false;
     if (this.shiftPhase === "normal" || !this.layout) return true;
     const reach = TURBINE.BODY_RADIUS + 60;
     for (let i = 0; i < 8; i++) {
