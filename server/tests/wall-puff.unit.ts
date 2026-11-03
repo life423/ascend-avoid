@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { ARENA_RULES, EXHALE } from '../constants/gameConstants.js';
 import { puffImpulses, wallPuffRecoil } from '../game/puffImpulse.js';
+import { arenaContains, arenaCornerRadius } from '../game/arenaBoundary.js';
 import { GameState } from '../schema/GameState.js';
 import { exhale, updateInhales } from '../systems/inhale.js';
 
@@ -29,22 +30,25 @@ for (const wall of walls) for (const side of [-1, 1]) for (const width of [20, 8
   assert.deepEqual(wallPuffRecoil({ ...box, x: 2100, y: 2100 }, recoil, input, W, W), { ...recoil, redirected: false });
   matrix++;
 }
-for (const xSign of [-1, 1]) for (const ySign of [-1, 1]) for (const input of [{ x: -xSign, y: 0 }, { x: 0, y: -ySign }, { x: -xSign, y: -ySign }]) {
-  const box = { x: xSign < 0 ? margin : W - margin - 80, y: ySign < 0 ? margin : W - margin - 80, width: 80, height: 80 };
-  const recoil = { x: xSign * 200, y: ySign * 150 };
+for (const xSign of [-1, 1]) for (const ySign of [-1, 1]) for (const side of [-1, 1]) {
+  const radius = arenaCornerRadius(W, W), inner = radius - margin - 40;
+  const nx = xSign / Math.SQRT2, ny = ySign / Math.SQRT2;
+  const box = { x: (xSign < 0 ? radius : W - radius) + nx * inner - 40,
+    y: (ySign < 0 ? radius : W - radius) + ny * inner - 40, width: 80, height: 80 };
+  const recoil = { x: nx * 250, y: ny * 250 }, input = { x: -ny * side, y: nx * side };
   const result = wallPuffRecoil(box, recoil, input, W, W);
   assert(result.redirected && Math.hypot(result.x, result.y) <= 250 + 1e-9);
-  assert(result.x * xSign <= 0 && result.y * ySign <= 0, 'corner tangent never exits through the other boundary');
-  assert(result.x === 0 || result.y === 0, 'a corner slip follows one boundary, not a diagonal free dash');
-  assert.equal(wallPuffRecoil(box, recoil, { x: xSign, y: ySign }, W, W).redirected, false);
+  assert(result.x * input.x + result.y * input.y > 0, 'rounded wall slip honors either tangent');
+  assert(arenaContains({ ...box, x: box.x + result.x / EXHALE.DRAG, y: box.y + result.y / EXHALE.DRAG }, W, W), 'redirected recoil stays inside the curved boundary');
+  assert.equal(wallPuffRecoil(box, recoil, { x: nx, y: ny }, W, W).redirected, false);
 }
 {
   const box = { x: margin + 5, y: 2100, width: 80, height: 80 };
   const result = wallPuffRecoil(box, { x: -400, y: 0 }, { x: 0, y: 1 }, W, W);
-  assert(result.redirected && result.x === -5 * EXHALE.DRAG && result.y === 400 - 5 * EXHALE.DRAG, 'only the recoil that cannot fit before the wall is redirected');
+  assert(result.redirected && Math.abs(result.x + 5 * EXHALE.DRAG) < 1e-8 && Math.abs(result.y - (400 - 5 * EXHALE.DRAG)) < 1e-8, 'only the recoil that cannot fit before the wall is redirected');
   assert.equal(wallPuffRecoil({ ...box, x: margin + 40 }, { x: -400, y: 0 }, { x: 0, y: 1 }, W, W).redirected, false, 'no distant wall attraction');
   const opposed = wallPuffRecoil({ ...box, x: margin }, { x: -100, y: 300 }, { x: 0, y: -1 }, W, W);
-  assert(opposed.redirected && opposed.y === 200 && opposed.slideY === -100, 'blocked recoil can help walking overcome an opposing tangent without adding force');
+  assert(opposed.redirected && Math.abs(opposed.y - 200) < 1e-8 && Math.abs((opposed.slideY ?? 0) + 100) < 1e-8, 'blocked recoil can help walking overcome an opposing tangent without adding force');
 }
 // Diagonal incidence cannot turn vector addition into extra energy.
 for (let angle = 0; angle < Math.PI * 2; angle += .05) {

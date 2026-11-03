@@ -1,4 +1,5 @@
 import { ARENA_RULES, FACING } from "../constants/gameConstants.js";
+import { constrainArena } from './arenaBoundary.js';
 
 export type Direction = "up" | "down" | "left" | "right";
 
@@ -39,9 +40,9 @@ export function walk(
   velocity.y += (steer.y * speed - velocity.y) * blend;
   if (steer.x === 0 && Math.abs(velocity.x) < 2) velocity.x = 0;
   if (steer.y === 0 && Math.abs(velocity.y) < 2) velocity.y = 0;
-  const margin = ARENA_RULES.EDGE_MARGIN;
-  box.x = Math.max(margin, Math.min(box.x + velocity.x * deltaTime, worldWidth - box.width - margin));
-  box.y = Math.max(margin, Math.min(box.y + velocity.y * deltaTime, worldHeight - box.height - margin));
+  box.x += velocity.x * deltaTime;
+  box.y += velocity.y * deltaTime;
+  constrainArena(box, worldWidth, worldHeight, velocity);
 }
 
 /** How far one hop goes for a player this wide: HOP while small, then a little more than your own size */
@@ -54,15 +55,13 @@ function hopLength(width: number): number {
  * always clears your own body. The server and the browser both use this.
  */
 export function hop(player: Box, direction: Direction, worldWidth: number, worldHeight: number, scale = 1): void {
-  const { EDGE_MARGIN } = ARENA_RULES;
   // (scale: several hops' worth at once)
   const length = hopLength(player.width) * scale;
   if (direction === "up") player.y -= length;
   else if (direction === "down") player.y += length;
   else if (direction === "left") player.x -= length;
   else player.x += length;
-  player.x = Math.max(EDGE_MARGIN, Math.min(player.x, worldWidth - player.width - EDGE_MARGIN));
-  player.y = Math.max(EDGE_MARGIN, Math.min(player.y, worldHeight - player.height - EDGE_MARGIN));
+  constrainArena(player, worldWidth, worldHeight);
 }
 
 /** How fast a creature can turn at most (radians a second): heavier creatures turn slower, and everyone turns slower while inhaling */

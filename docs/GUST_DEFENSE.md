@@ -1,8 +1,16 @@
 # Rear gust follow-up — November 2, 2026
 
-## Approved defense update: push without cancelling pressure
+## Released defense update: push without cancelling pressure
 
-The local build now keeps incoming inhale, latch and accumulated pressure intact
+Released November 2, 2026 in [PR #76](https://github.com/life423/ascend-avoid/pull/76),
+main `5ca85fbea932c55f73657ba193898e5eb0b52b22`.
+[Production workflow 41542025055](https://github.com/life423/ascend-avoid/actions/runs/41542025055)
+succeeded; Azure revision `ascend-avoid--0000116` was healthy with one replica and
+100% traffic. The live client includes 75% cost and an actual production WebSocket
+puff left 25% breath. Required CI and production multiplayer checks passed.
+The user reported that 75% feels good. Remaining playtests are in [TODO.md](TODO.md).
+
+The released build keeps incoming inhale, latch and accumulated pressure intact
 when a front or rear puff hits. Physical separation can still break range or aim;
 the ordinary latch grace and pressure-decay rules then apply. No automatic parry,
 restart delay or pressure wipe is applied. The rear sweep and its wrap artwork
@@ -10,7 +18,7 @@ now span 140 degrees (70 degrees to either side of the rear heading). All shove
 impulses, mass resistance, speed caps and reach retain their released values.
 The instantaneous forward puff still uses its existing 110-degree hit cone.
 
-The latest resource-only trial costs 75% of a full breath per accepted puff,
+The released resource-only tuning costs 75% of a full breath per accepted puff,
 with normal idle refill (three seconds from empty), no fixed gameplay cooldown
 and no added refill pause. One full-meter puff leaves 25%; the earliest second
 is about 1.5 seconds later and subsequent empty-meter puffs need about 2.25 seconds.

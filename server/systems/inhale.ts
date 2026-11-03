@@ -16,6 +16,7 @@ import { stealCapturedPart } from './weaponTheft.js';
 import { theftWindowAllows } from '../game/injuryTheft.js';
 import { groupPressureScale } from '../game/groupPressure.js';
 import { puffImpulses, wallPuffRecoil } from '../game/puffImpulse.js';
+import { arenaContains, constrainArena } from '../game/arenaBoundary.js';
 
 /** Finish once: transfer remaining value, then emit visual-only reward/shatter data. */
 export function finishWithReward(state: GameState, target: PlayerSchema, byId: string, now: number, how: 'mouth' | 'cannon' | 'blackhole', core?: { x: number; y: number }): number {
@@ -489,11 +490,11 @@ function free(state: GameState, captive: PlayerSchema, ax: number, ay: number, n
     // Mouth positions are inside large bodies. Start clear, choosing an open side at arena edges.
     const cx = captor.x + captor.width / 2, cy = captor.y + captor.height / 2;
     const clearance = (captor.width + captive.width) / 2 + CANNON.RELEASE_CLEARANCE;
-    const angle = Math.atan2(ay, ax), margin = GAME_CONSTANTS.ARENA_RULES.EDGE_MARGIN;
-    for (const turn of [0, Math.PI / 2, -Math.PI / 2, Math.PI]) {
+    const angle = Math.atan2(ay, ax);
+    for (const turn of [0, Math.PI / 2, -Math.PI / 2, Math.PI, Math.PI / 4, -Math.PI / 4, 3 * Math.PI / 4, -3 * Math.PI / 4]) {
       const dx = Math.cos(angle + turn), dy = Math.sin(angle + turn);
       const x = cx + dx * clearance - captive.width / 2, y = cy + dy * clearance - captive.height / 2;
-      if (x < margin || y < margin || x + captive.width > state.worldWidth - margin || y + captive.height > state.worldHeight - margin) continue;
+      if (!arenaContains({ x, y, width: captive.width, height: captive.height }, state.worldWidth, state.worldHeight)) continue;
       captive.placeAt(x, y); ax = dx; ay = dy;
       break;
     }
@@ -527,11 +528,10 @@ export function fireCaptive(state: GameState, eater: PlayerSchema, now: number):
     // Set clear of the captor's body first, along the shot, so the flight never starts with the two overlapping
     captive.launch(now, Math.cos(angle) * speed, Math.sin(angle) * speed, eater.sessionId, CANNON.FLIGHT_MS);
     const clearance = eater.width / 2 + CANNON.BULLET_SIZE / 2 + CANNON.LAUNCH_CLEARANCE;
-    const margin = GAME_CONSTANTS.ARENA_RULES.EDGE_MARGIN;
     const x = eater.x + eater.width / 2 + Math.cos(angle) * clearance - CANNON.BULLET_SIZE / 2;
     const y = eater.y + eater.height / 2 + Math.sin(angle) * clearance - CANNON.BULLET_SIZE / 2;
-    captive.placeAt(Math.max(margin, Math.min(state.worldWidth - CANNON.BULLET_SIZE - margin, x)),
-      Math.max(margin, Math.min(state.worldHeight - CANNON.BULLET_SIZE - margin, y)));
+    captive.placeAt(x, y);
+    constrainArena(captive, state.worldWidth, state.worldHeight);
     captive.shotMassBonus = power; captive.shotShooterWidth = eater.width;
     state.onEvent?.("launch", { byId: eater.sessionId, id: captive.sessionId, x: captive.x, y: captive.y });
   } else {

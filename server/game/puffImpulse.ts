@@ -1,16 +1,16 @@
-import { ARENA_RULES, EXHALE } from '../constants/gameConstants.js';
+import { EXHALE } from '../constants/gameConstants.js';
 import { bodyMass } from './creatureSize.js';
 import type { Box } from './movement.js';
+import { constrainArena } from './arenaBoundary.js';
 
 /** Brief air drift adds to walking; it never switches a creature into a locked skid. */
 export function puffDrift(box: Box, velocity: { x: number; y: number }, seconds: number, worldWidth: number, worldHeight: number, drag: number = EXHALE.DRAG): void {
   const slow = Math.exp(-drag * seconds), travel = (1 - slow) / drag;
-  const margin = ARENA_RULES.EDGE_MARGIN;
-  const x = box.x + velocity.x * travel, y = box.y + velocity.y * travel;
-  box.x = Math.max(margin, Math.min(x, worldWidth - box.width - margin));
-  box.y = Math.max(margin, Math.min(y, worldHeight - box.height - margin));
-  velocity.x = box.x === x ? velocity.x * slow : 0;
-  velocity.y = box.y === y ? velocity.y * slow : 0;
+  box.x += velocity.x * travel;
+  box.y += velocity.y * travel;
+  constrainArena(box, worldWidth, worldHeight, velocity);
+  velocity.x *= slow;
+  velocity.y *= slow;
   if (Math.abs(velocity.x) < 1) velocity.x = 0;
   if (Math.abs(velocity.y) < 1) velocity.y = 0;
 }
@@ -18,35 +18,24 @@ export function puffDrift(box: Box, velocity: { x: number; y: number }, seconds:
 export interface PuffBody { id: string; width: number; falloff: number }
 /** A wall can redirect blocked recoil from a valid hit, never add impulse or create an empty-puff dash. */
 export function wallPuffRecoil(box: Box, recoil: { x: number; y: number }, input: { x: number; y: number }, worldWidth: number, worldHeight: number): { x: number; y: number; redirected: boolean; slideX?: number; slideY?: number } {
-  const margin = ARENA_RULES.EDGE_MARGIN;
-  // Existing exponential drift travels velocity / drag in total. Preserve the
-  // part that fits before the wall; only its otherwise-lost remainder can turn.
-  const left = Math.max(0, box.x - margin) * EXHALE.DRAG;
-  const right = Math.max(0, worldWidth - margin - box.width - box.x) * EXHALE.DRAG;
-  const top = Math.max(0, box.y - margin) * EXHALE.DRAG;
-  const bottom = Math.max(0, worldHeight - margin - box.height - box.y) * EXHALE.DRAG;
-  const usable = { x: Math.max(-left, Math.min(right, recoil.x)), y: Math.max(-top, Math.min(bottom, recoil.y)) };
-  const blockedX = recoil.x - usable.x, blockedY = recoil.y - usable.y;
+  const end = { x: box.x + recoil.x / EXHALE.DRAG, y: box.y + recoil.y / EXHALE.DRAG, width: box.width, height: box.height };
+  const contact = constrainArena(end, worldWidth, worldHeight);
   const speed = Math.hypot(recoil.x, recoil.y);
-  if (!speed || !blockedX && !blockedY) return { ...recoil, redirected: false };
-  const blocked = Math.hypot(blockedX, blockedY);
-  const candidates: { x: number; y: number }[] = [];
-  if (blockedX && Math.abs(input.y) > EXHALE.WALL_SLIP_INPUT)
-    candidates.push({ x: usable.x, y: usable.y + Math.sign(input.y) * blocked });
-  if (blockedY && Math.abs(input.x) > EXHALE.WALL_SLIP_INPUT)
-    candidates.push({ x: usable.x + Math.sign(input.x) * blocked, y: usable.y });
-  // Walking still contributes normally: assistance may reduce opposing recoil
-  // without needing to reverse its entire tangential component.
-  let best: { x: number; y: number } | undefined, bestScore = usable.x * input.x + usable.y * input.y;
-  for (const candidate of candidates) {
-    // At a corner, the chosen tangent must lead back into the arena, not into the other wall.
-    if (candidate.x < -left - 1e-9 || candidate.x > right + 1e-9 || candidate.y < -top - 1e-9 || candidate.y > bottom + 1e-9) continue;
-    const scale = Math.min(1, speed / Math.max(1e-9, Math.hypot(candidate.x, candidate.y)));
-    const next = { x: candidate.x * scale, y: candidate.y * scale };
-    const score = next.x * input.x + next.y * input.y;
-    if (score > bestScore) { best = next; bestScore = score; }
-  }
-  return best ? { ...best, redirected: true, slideX: best.x - usable.x, slideY: best.y - usable.y } : { ...recoil, redirected: false };
+  if (!contact.hit || !speed) return { ...recoil, redirected: false };
+  const usable = { x: (end.x - box.x) * EXHALE.DRAG, y: (end.y - box.y) * EXHALE.DRAG };
+  const blocked = Math.hypot(recoil.x - usable.x, recoil.y - usable.y);
+  const tx = -contact.ny, ty = contact.nx, intent = input.x * tx + input.y * ty;
+  if (Math.abs(intent) <= EXHALE.WALL_SLIP_INPUT) return { ...recoil, redirected: false };
+  const candidate = { x: usable.x + tx * Math.sign(intent) * blocked, y: usable.y + ty * Math.sign(intent) * blocked };
+  const scale = Math.min(1, speed / Math.max(1e-9, Math.hypot(candidate.x, candidate.y)));
+  const at = { x: box.x + candidate.x * scale / EXHALE.DRAG, y: box.y + candidate.y * scale / EXHALE.DRAG, width: box.width, height: box.height };
+  constrainArena(at, worldWidth, worldHeight);
+  const next = { x: (at.x - box.x) * EXHALE.DRAG, y: (at.y - box.y) * EXHALE.DRAG };
+  const capped = Math.min(1, speed / Math.max(1e-9, Math.hypot(next.x, next.y)));
+  next.x *= capped; next.y *= capped;
+  if (next.x * input.x + next.y * input.y <= usable.x * input.x + usable.y * input.y + 1e-9)
+    return { ...recoil, redirected: false };
+  return { ...next, redirected: true, slideX: next.x - usable.x, slideY: next.y - usable.y };
 }
 
 /** Rear wind has a separate finite budget; its recipients can always walk and turn. */

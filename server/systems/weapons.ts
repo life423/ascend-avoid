@@ -1,3 +1,4 @@
+import { constrainArenaPoint } from '../game/arenaBoundary.js';
 import type { GameState } from '../schema/GameState.js';
 import type { PlayerSchema } from '../schema/PlayerSchema.js';
 import { PinwheelSchema, WeaponPartSchema, WeaponBoltSchema } from '../schema/PinwheelSchema.js';
@@ -87,6 +88,7 @@ export function deployWeapon(state: GameState, player: PlayerSchema): boolean {
   const radius = player.width / 2 + 72;
   w.x = Math.max(56, Math.min(state.worldWidth - 56, player.x + player.width / 2 + Math.cos(player.facing) * radius));
   w.y = Math.max(56, Math.min(state.worldHeight - 56, player.y + player.height / 2 + Math.sin(player.facing) * radius));
+  constrainArenaPoint(w, state.worldWidth, state.worldHeight, 56);
   w.phase = 'charging'; w.at = state.time + (w.kind === 'pulsar' ? SHOCKWAVE.CHARGE_MS : PINWHEEL.CHARGE_MS); w.angle = player.facing;
   w.originX = w.x; w.originY = w.y;
   state.onEvent?.("weaponPlaced", { byId: player.sessionId, kind: w.kind });
@@ -127,6 +129,7 @@ function updateWeapon(state: GameState, w: PinwheelSchema, dt: number, now: numb
         const radius = carrier.width / 2 + 43;
         part.x = Math.max(30, Math.min(state.worldWidth - 30, carrier.x + carrier.width / 2 + Math.cos(a) * radius));
         part.y = Math.max(30, Math.min(state.worldHeight - 30, carrier.y + carrier.height / 2 + Math.sin(a) * radius));
+        constrainArenaPoint(part, state.worldWidth, state.worldHeight, 30);
         part.vx = part.vy = 0;
         tryPartTheft(state, w, part, carrier, dt, now);
         continue;
@@ -135,6 +138,7 @@ function updateWeapon(state: GameState, w: PinwheelSchema, dt: number, now: numb
       const travel = (1 - Math.exp(-5 * dt)) / 5;
       part.x = Math.max(30, Math.min(state.worldWidth - 30, part.x + part.vx * travel));
       part.y = Math.max(30, Math.min(state.worldHeight - 30, part.y + part.vy * travel));
+      constrainArenaPoint(part, state.worldWidth, state.worldHeight, 30);
       part.vx *= Math.exp(-5 * dt); part.vy *= Math.exp(-5 * dt);
       // Strong gusts briefly overpower suction; only the current piece owner can pull a claimed part.
       if (Math.hypot(part.vx, part.vy) > 100) continue;
@@ -166,6 +170,7 @@ function updateWeapon(state: GameState, w: PinwheelSchema, dt: number, now: numb
       const my = puller.y + puller.height / 2 + Math.sin(puller.facing) * puller.height * 0.3;
       const step = Math.min(nearest, PINWHEEL.PULL_SPEED * dt);
       if (nearest > 0) { part.x += (mx - part.x) / nearest * step; part.y += (my - part.y) / nearest * step; }
+      constrainArenaPoint(part, state.worldWidth, state.worldHeight, 30);
       if (nearest - step < PINWHEEL.PART_RADIUS + 12) {
         if (!w.owner || !(w.progress & (1 << part.kind))) claimPart(state, w, part, puller);
         else part.carriedBy = puller.sessionId;
@@ -194,6 +199,7 @@ function updateWeapon(state: GameState, w: PinwheelSchema, dt: number, now: numb
             w.y = Math.max(56, Math.min(state.worldHeight - 56, cy + Math.sin(a) * gap));
           }
         }
+        constrainArenaPoint(w, state.worldWidth, state.worldHeight, 56);
         w.progress = 7; w.parts.clear(); w.phase = 'carried';
         w.at = 0; w.claimUntil = state.time + PINWHEEL.CLAIM_MS;
         w.angle = state.players.get(w.owner)?.facing ?? 0;
@@ -209,6 +215,7 @@ function updateWeapon(state: GameState, w: PinwheelSchema, dt: number, now: numb
       const radius = carrier.width / 2 + 58;
       w.x = Math.max(56, Math.min(state.worldWidth - 56, carrier.x + carrier.width / 2 - Math.cos(carrier.facing) * radius));
       w.y = Math.max(56, Math.min(state.worldHeight - 56, carrier.y + carrier.height / 2 - Math.sin(carrier.facing) * radius));
+      constrainArenaPoint(w, state.worldWidth, state.worldHeight, 56);
       w.angle = carrier.facing;
     } else { w.phase = 'charging'; w.at = state.time + (w.kind === 'pulsar' ? SHOCKWAVE.CHARGE_MS : PINWHEEL.CHARGE_MS); w.originX = w.x; w.originY = w.y; }
     return;

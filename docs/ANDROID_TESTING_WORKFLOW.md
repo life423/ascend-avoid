@@ -49,7 +49,7 @@ APK push from GitHub to the user's phone.
    reproducible technical checks; the user judges feel/fun. Fresh players are
    still needed to assess uncoached learning and enjoyment.
    The user's November 1 Pixel feedback is tracked in #69 and
-   [TODO.md](TODO.md#pixel-playtest-follow-up--november-1): held tutorial input,
+   [TODO.md](TODO.md#physical-device-checks): held tutorial input,
    thumb reach, injured escape, surprise shots, perceived stun and part/fan
    overlap. These are current device-readiness findings, not completed checks.
 5. **Distribution and operating habits — pending store phase.** Use wireless

@@ -3,6 +3,7 @@ import type { PlayerSchema } from "../schema/PlayerSchema.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 import { CANNON } from "../constants/gameConstants.js";
 import { circleEntry } from "../game/blackHole.js";
+import { arenaExit } from '../game/arenaBoundary.js';
 import { flightStep, impactGems, missileMassAfterImpact, sweptHit, lethalPlayerImpact } from "../game/cannon.js";
 import { sprayGems } from "./gems.js";
 import { knockOutWithGems, finishWithReward } from "./inhale.js";
@@ -37,7 +38,8 @@ export function updateFlights(state: GameState, now: number, deltaTime: number):
     const speed = Math.hypot(next.vx, next.vy);
     const fromX = player.x;
     const fromY = player.y;
-    player.nudge(next.vx * deltaTime, next.vy * deltaTime, state.worldWidth, state.worldHeight);
+    const wall = arenaExit(player, next.vx * deltaTime, next.vy * deltaTime, state.worldWidth, state.worldHeight);
+    player.nudge(next.vx * deltaTime * (wall ?? 1), next.vy * deltaTime * (wall ?? 1), state.worldWidth, state.worldHeight);
     // Resolve only the path before the first core; a player hit in front of it wins.
     // The center must enter: a giant's outer edge never enlarges a hole's lethal area.
     let coreEntry: number | null = null;
@@ -60,7 +62,7 @@ export function updateFlights(state: GameState, now: number, deltaTime: number):
       const x = endX + size / 2, y = endY + size / 2;
       finishWithReward(state, player, byId, now, 'blackhole', core);
       state.credit(player, 'blackhole', now, byId, { out: true, gems, x, y, size });
-    } else if (Math.hypot(player.x - fromX, player.y - fromY) < speed * deltaTime * 0.5) {
+    } else if (wall !== null) {
       spendMissileMass(state, player, now);
       if (player.state === PLAYER_STATE.ALIVE) land(state, player, now);
     }

@@ -166,4 +166,4 @@ See [Android release setup](docs/ANDROID_RELEASE.md) and [the testing workflow](
 
 After changing synced schema fields, run `npm run gen:types` and commit `src/types/synced.ts`. Do not hand-edit generated types or remove neutral compatibility wire slots without a protocol migration. The browser networking adapters are loaded through Vite resolution hooks, so an import-only dead-code scanner can misclassify them. Retain the single-player fallback and the shared sprite/input code it uses.
 
-Start future work from [the current TODO](docs/TODO.md), [the implementation plan](docs/FUN_PASS_PLAN.md), and [the gameplay direction](docs/TOP_10_IDEAS.md). Preserve report and branding archives intentionally rather than treating every unimported file as dead code.
+Start future work from [the current TODO](docs/TODO.md). [The request history](docs/TODO_HISTORY.md), [the early implementation plan](docs/FUN_PASS_PLAN.md), and [the original ten ideas](docs/TOP_10_IDEAS.md) preserve historical decisions and can describe superseded mechanics. Preserve report and branding archives intentionally rather than treating every unimported file as dead code.
