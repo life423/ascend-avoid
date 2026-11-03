@@ -1,8 +1,8 @@
 # Ascend Avoid — current work and next-session handoff
 
-Updated November 3, 2026. The defense release is live; rounded corners are now
-implemented and tested on `codex/rounded-arena-corners`; the user approved
-commit, merge, push and deployment after playing it. This is the active list.
+Updated November 3, 2026. Latest verified live main is `8a9f04a` (rounded camera,
+PR #80); rounded corners, 75% defense, ownership visuals and the single-outline
+minimap are shipped. The original top-right Menu box is retained. This is the active list.
 The complete earlier request inventory is preserved in [TODO_HISTORY.md](TODO_HISTORY.md).
 Historical studies and checklists can describe removed mechanics; do not treat
 those descriptions as unfinished implementation work.
@@ -61,8 +61,10 @@ strength, speed and unrelated tuning.
 
 ## Suggested next session
 
-1. Play wall/corner chases with the released 75% defense before changing tuning.
-   Include equal/large pursuers, active tracking, several attackers and black-hole rims.
+1. Continue real-match playtests of [confirmed rear-hit wall slip](REAR_WALL_SLIP.md).
+   The user tested it locally, said it feels good, and authorized commit, merge
+   and deployment. Keep 75% breath and shove strength; broad scripted capture
+   totals did not improve, so longer human balance validation remains open.
 2. Run the physical Pixel/browser checks below, especially Android Firefox lag,
    injured escape and incoming-shot reaction time.
 3. Review ordinary-match pacing, weapon assembly and long-run growth together.
@@ -73,6 +75,20 @@ strength, speed and unrelated tuning.
 
 ### Defense and cornering
 
+- [x] Local tracking playtest of released corners and 75% defense: nine UI-directed
+  drills, 24 desktop/emulated-mobile input runs, and 1,872 scripted cases at the
+  released 30Hz step plus a 60Hz sensitivity repeat. No gameplay tuning changed.
+  See [CORNER_DEFENSE_PLAYTEST.md](CORNER_DEFENSE_PLAYTEST.md).
+- [ ] Review top-left fight overlap with the score/leaderboard; preserve the
+  explicitly restored top-right Menu layout. Camera containment alone does not
+  ensure unobstructed face/airflow feedback.
+- [x] Implement and locally test bounded wall slip from confirmed rear hits,
+  sharing the existing caster recoil budget with front hits. Preserve 75% cost,
+  recipient shove, ordinary capture and incoming pressure. See [REAR_WALL_SLIP.md](REAR_WALL_SLIP.md).
+- [x] User reviewed rear-hit wall slip, reported that it feels good and authorized
+  commit, merge and live deployment. The main deployment workflow records the
+  released revision and result. Flank misses still give no slip; do not expand
+  hit geometry or strengthen shove without a further decision.
 - [ ] Assess 75% breath in real matches: a useful first escape, cost of misses,
   repeat pressure, and the shared choice between puff and inhale. Keep current
   shove strength and other balance unchanged until a further change is chosen.

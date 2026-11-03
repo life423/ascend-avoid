@@ -1,4 +1,4 @@
-import { EXHALE } from '../constants/gameConstants.js';
+import { ARENA_RULES, EXHALE } from '../constants/gameConstants.js';
 import { bodyMass } from './creatureSize.js';
 import type { Box } from './movement.js';
 import { constrainArena } from './arenaBoundary.js';
@@ -16,6 +16,20 @@ export function puffDrift(box: Box, velocity: { x: number; y: number }, seconds:
 }
 
 export interface PuffBody { id: string; width: number; falloff: number }
+/** A confirmed rear hit can bank its unboosted recoil against a nearby wall.
+ * The existing drag distance bounds both wall proximity and slip travel. There
+ * is no recoil in open space, without tangent input, or without a hit budget.
+ */
+export function rearWallSlip(box: Box, speed: number, input: { x: number; y: number }, worldWidth: number, worldHeight: number): ReturnType<typeof wallPuffRecoil> {
+  if (speed <= 0) return { x: 0, y: 0, redirected: false };
+  const probe = { x: box.x, y: box.y, width: box.width, height: box.height };
+  const wall = constrainArena(probe, worldWidth, worldHeight, undefined, ARENA_RULES.EDGE_MARGIN + speed / EXHALE.DRAG);
+  if (!wall.hit) return { x: 0, y: 0, redirected: false };
+  const slip = wallPuffRecoil(box, { x: wall.nx * speed, y: wall.ny * speed }, input, worldWidth, worldHeight);
+  // Only the banked tangent is granted; never attract the creature to the wall.
+  if (!slip.redirected) return { x: 0, y: 0, redirected: false };
+  return { x: slip.slideX ?? 0, y: slip.slideY ?? 0, redirected: true, slideX: slip.slideX, slideY: slip.slideY };
+}
 /** A wall can redirect blocked recoil from a valid hit, never add impulse or create an empty-puff dash. */
 export function wallPuffRecoil(box: Box, recoil: { x: number; y: number }, input: { x: number; y: number }, worldWidth: number, worldHeight: number): { x: number; y: number; redirected: boolean; slideX?: number; slideY?: number } {
   const end = { x: box.x + recoil.x / EXHALE.DRAG, y: box.y + recoil.y / EXHALE.DRAG, width: box.width, height: box.height };

@@ -137,6 +137,7 @@ export class MultiplayerManager {
         onMessage('surge', (data) => this.eventBus.emit('multiplayer:surge', data));
         onMessage('blast', (data) => this.eventBus.emit('multiplayer:blast', data));
         onMessage('exhale', (data) => this.eventBus.emit('multiplayer:exhale', data));
+        onMessage('wallSlip', (data) => this.eventBus.emit('multiplayer:wallSlip', data));
 
 
         // Handle errors
