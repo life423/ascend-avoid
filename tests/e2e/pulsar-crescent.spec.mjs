@@ -8,12 +8,17 @@ async function prepare(page, baseURL, hit=false) {
   await page.addInitScript(()=>{
     localStorage.setItem('ascend.guideSeen','true');localStorage.setItem('ascend.mouseFollow','off');
     window.pulsarPaint=[];
-    const arc=CanvasRenderingContext2D.prototype.arc;
+    const arc=CanvasRenderingContext2D.prototype.arc, stroke=CanvasRenderingContext2D.prototype.stroke, begin=CanvasRenderingContext2D.prototype.beginPath;
+    CanvasRenderingContext2D.prototype.beginPath=function(...args){this.pulsarArc=null;return begin.apply(this,args);};
     CanvasRenderingContext2D.prototype.arc=function(x,y,r,start,end,...rest){
-      if(this.lineWidth===4&&(this.strokeStyle.includes('241, 211, 255')||this.strokeStyle==='#f1d3ff')) {
-        window.pulsarPaint.push({r,span:end-start});if(window.pulsarPaint.length>60)window.pulsarPaint.shift();
-      }
+      if(r>90&&Math.abs(end-start-Math.PI/2)<1e-6)this.pulsarArc={r,span:end-start};
       return arc.call(this,x,y,r,start,end,...rest);
+    };
+    CanvasRenderingContext2D.prototype.stroke=function(...args){
+      if(this.pulsarArc&&this.strokeStyle==='#ff896f') {
+        window.pulsarPaint.push(this.pulsarArc);if(window.pulsarPaint.length>60)window.pulsarPaint.shift();
+      }
+      return stroke.apply(this,args);
     };
   });
   await page.route('**/matchmake/joinOrCreate/game_room',route=>route.continue({

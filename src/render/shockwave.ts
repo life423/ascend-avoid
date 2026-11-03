@@ -1,5 +1,6 @@
 import type { SyncedPinwheel } from '../types/synced';
 import { SHOCKWAVE } from '../../server/constants/gameConstants';
+import { ownershipStroke, WEAPON_OWNERSHIP } from './weaponOwnership';
 import { pulsarHeading, pulsarRadius } from '../../server/game/pulsar';
 
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
@@ -31,7 +32,7 @@ export function pulsarPartIcon(ctx: CanvasRenderingContext2D, kind: number): voi
 }
 
 /** A braced forward emitter releases a crescent, then rotates independently of the traveling front. */
-export function drawPulsarArray(ctx: CanvasRenderingContext2D, w: SyncedPinwheel, now: number): void {
+export function drawPulsarArray(ctx: CanvasRenderingContext2D, w: SyncedPinwheel, now: number, own = false, unit = 1): void {
     const windup = w.phase === 'active' ? Math.max(0, Math.min(1, 1 - (w.beatAt - now) / SHOCKWAVE.WINDUP_MS)) : 0;
     const age = now - w.pulseAt;
     if (w.phase === 'active' && w.pulseAt > 0 && age >= 0 && age <= SHOCKWAVE.WAVE_MS + SHOCKWAVE.FADE_MS) {
@@ -41,9 +42,11 @@ export function drawPulsarArray(ctx: CanvasRenderingContext2D, w: SyncedPinwheel
         ctx.save(); ctx.translate(w.pulseX - w.x, w.pulseY - w.y); ctx.lineCap = 'round';
         ctx.strokeStyle = `rgba(206, 101, 255, ${alpha * .25})`; ctx.lineWidth = 18;
         ctx.beginPath(); ctx.arc(0, 0, radius, start, end); ctx.stroke();
-        ctx.strokeStyle = `rgba(241, 211, 255, ${alpha})`; ctx.lineWidth = 4;
-        ctx.beginPath(); ctx.arc(0, 0, radius, start, end); ctx.stroke();
-        ctx.strokeStyle = `rgba(112, 255, 228, ${alpha * .65})`; ctx.lineWidth = 2;
+        ctx.save(); ctx.globalAlpha = age <= SHOCKWAVE.WAVE_MS ? 1 : alpha;
+        ctx.beginPath(); ctx.arc(0, 0, radius, start, end);
+        ownershipStroke(ctx, own ? WEAPON_OWNERSHIP.mint : WEAPON_OWNERSHIP.hostile, 2.5 * unit, unit);
+        ctx.restore();
+        ctx.strokeStyle = own ? `rgba(128,255,241,${alpha * .65})` : `rgba(241,211,255,${alpha * .65})`; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(0, 0, Math.max(36, radius - 12), start + .05, end - .05); ctx.stroke();
         for (let i = 0; i <= 6; i++) {
             const a = start + (end - start) * i / 6; ctx.save(); ctx.rotate(a); ctx.fillStyle = `rgba(244,199,255,${alpha})`;
@@ -72,8 +75,8 @@ export function drawPulsarArray(ctx: CanvasRenderingContext2D, w: SyncedPinwheel
     ctx.fillStyle = `rgba(255,235,255,${.35 + .65 * windup})`;
     ctx.beginPath(); ctx.ellipse(22, 0, 9 + windup * 7, 8 + windup * 4, 0, 0, Math.PI * 2); ctx.fill();
     if (windup > 0) {
-        ctx.strokeStyle = `rgba(153,255,233,${.4 + .6 * windup})`; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(27, 0, 13 + windup * 4, -SHOCKWAVE.HALF_ARC, SHOCKWAVE.HALF_ARC); ctx.stroke();
+        ctx.strokeStyle = own ? WEAPON_OWNERSHIP.mint : WEAPON_OWNERSHIP.hostile; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(27, 0, 13 + windup * 4, -SHOCKWAVE.HALF_ARC, SHOCKWAVE.HALF_ARC); ownershipStroke(ctx, own ? WEAPON_OWNERSHIP.mint : WEAPON_OWNERSHIP.hostile, 1.5 * unit, unit);
     }
     ctx.restore();
 }

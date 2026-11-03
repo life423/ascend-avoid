@@ -20,9 +20,13 @@ async function prepare(page, baseURL, kind, small = false) {
       }
       return move.call(this,x,y);
     };
-    CanvasRenderingContext2D.prototype.lineTo = function(x,y) {
+    const stroke = CanvasRenderingContext2D.prototype.stroke;
+    CanvasRenderingContext2D.prototype.stroke = function(...args) {
       if (this.strokeStyle === '#ff896f') window.shotPaint.hot++;
       if (this.strokeStyle === '#a7c6d6') window.shotPaint.cold++;
+      return stroke.apply(this,args);
+    };
+    CanvasRenderingContext2D.prototype.lineTo = function(x,y) {
       if (this.getLineDash().length && this.lastShotPoint && Math.hypot(x-this.lastShotPoint.x,y-this.lastShotPoint.y)>350) window.shotPaint.longDashes++;
       this.lastShotPoint = {x,y}; return line.call(this,x,y);
     };

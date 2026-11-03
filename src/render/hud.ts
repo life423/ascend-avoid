@@ -7,10 +7,11 @@ import { weaponRecipe } from './weaponStyle'
 import { allWeapons, weaponProfile } from '../../server/game/weaponKit'
 import { formatGems } from '../utils/score'
 import { arenaCornerRadius } from '../../server/game/arenaBoundary'
+import { ownsWeapon, ownershipStroke, ownershipShield, WEAPON_OWNERSHIP } from './weaponOwnership'
 import { traceArena } from './arenaBoundary'
 
-function weaponMarker(ctx: CanvasRenderingContext2D, x: number, y: number, kind: string, own: boolean, charging = false): void {
-    ctx.save(); ctx.translate(x, y); ctx.fillStyle = '#0c1725';
+function weaponMarker(ctx: CanvasRenderingContext2D, x: number, y: number, kind: string, own: boolean, charging = false, unit = 1): void {
+    ctx.save(); ctx.translate(x, y); ctx.scale(unit, unit); ctx.fillStyle = '#0c1725';
     ctx.strokeStyle = kind === 'pulsar' ? '#dfa4ff' : weaponProfile(kind).color; ctx.lineWidth = 1.5;
     if (charging) ctx.setLineDash([2, 2]);
     ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.setLineDash([]);
@@ -24,7 +25,10 @@ function weaponMarker(ctx: CanvasRenderingContext2D, x: number, y: number, kind:
     } else {
         ctx.beginPath(); ctx.moveTo(-4, 4); ctx.lineTo(0, -5); ctx.lineTo(4, 4); ctx.closePath(); ctx.stroke();
     }
-    if (own) { ctx.strokeStyle = '#80fff1'; ctx.beginPath(); ctx.arc(0, 0, 9, 0, Math.PI * 2); ctx.stroke(); }
+    if (own) {
+        ctx.beginPath(); ctx.arc(0, 0, 9, 0, Math.PI * 2); ownershipStroke(ctx, WEAPON_OWNERSHIP.mint, 2, 1);
+        ownershipShield(ctx, 6.5, 6.5, 6);
+    }
     ctx.restore();
 }
 
@@ -126,7 +130,7 @@ export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
     ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
     for (const w of allWeapons(state)) {
         if (w.phase === 'waiting') continue;
-        const own = w.owner === localId, locked = Boolean(w.owner && !own);
+        const own = ownsWeapon(w, localId), locked = Boolean(w.owner && !own);
         ctx.globalAlpha = locked ? .3 : 1;
         if (w.phase === 'parts') {
             const letters = weaponRecipe(w.kind).letters;
@@ -149,10 +153,10 @@ export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
                 ctx.beginPath(); ctx.arc(px, py, own ? 6 : 3, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
                 if (own && part.carriedBy !== localId) { ctx.fillStyle = '#80fff1'; ctx.fillText(letters[part.kind], px, py); }
             }
-            if (!w.owner && (w.kind === 'pinwheel' || w.kind === 'pulsar')) weaponMarker(ctx, x + w.x * scale, y + w.y * scale, w.kind, false);
+            if (!w.owner && (w.kind === 'pinwheel' || w.kind === 'pulsar')) weaponMarker(ctx, x + w.x * scale, y + w.y * scale, w.kind, false, false, u);
         } else {
             const wx = x + w.x * scale, wy = y + w.y * scale;
-            weaponMarker(ctx, wx, wy, w.kind, own, w.phase === 'charging');
+            weaponMarker(ctx, wx, wy, w.kind, own, w.phase === 'charging', u);
         }
     }
     ctx.globalAlpha = 1;
