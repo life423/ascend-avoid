@@ -45,10 +45,9 @@ export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
     const y = compact ? dockY + 62 * u : mode.controls?.touchDevice ? Math.max(mode.hudInsets.top + 76, mode.chromeBottom + 24) : canvas.height - height - mode.hudInsets.bottom - 12
     mode.minimapBottom = y + height
     ctx.save()
-    if (compact) hudPanel(ctx, x - 8 * u, y - 8 * u, width + 16 * u, height + 16 * u, 12 * u)
-    else hudPanel(ctx, x - 4, y - 4, width + 8, height + 8, 10)
-    ctx.lineWidth = 1
-    ctx.strokeStyle = 'rgba(79, 209, 197, 0.25)'
+    // One arena-shaped surface; a second panel frame makes the small map feel boxed in.
+    ctx.lineWidth = 1.25 * u
+    ctx.strokeStyle = 'rgba(79, 209, 197, 0.45)'
     ctx.beginPath()
     traceArena(ctx, x, y, width, height, arenaCornerRadius(state.worldWidth, state.worldHeight) * scale)
     ctx.fillStyle = '#07121e'
