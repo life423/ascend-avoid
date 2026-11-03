@@ -107,6 +107,19 @@ strength, speed and unrelated tuning.
 
 ### Incoming shots and assembled-weapon fairness
 
+- [x] **Implement ownership/safety cues for all six assembled weapons locally.**
+  Mint `#80FFF1` rims with a small shield, paired friendly bolt trails, matching
+  beam/Pulsar accents and minimap shields identify the actual local builder.
+  Opaque navy `#07131F` edging keeps essential marks readable over white bodies
+  and bright loot; recipe shapes and hollow/armed cues remain distinct. One brief
+  assembly reveal respects reduced motion. Owner immunity and balance are unchanged.
+  Implementation and verification: [WEAPON_OWNERSHIP.md](WEAPON_OWNERSHIP.md).
+- [ ] Human/device review of the ownership cues in a crowded live match, including
+  the actual Pixel/Firefox, bright overlaps and color-vision/readability. Automated
+  mobile emulation does not establish physical-device or full accessibility compliance.
+- [x] Ownership visuals approved for commit, merge and production release after
+  the user's local playtest. GitHub Actions remains the release record.
+
 - [ ] Check the player-cannonball warning on the actual Pixel/production camera:
   offscreen and partial entry, close/distant shots, moving defenders, several
   threats, changed trajectories, latency, HUD/touch occlusion and disappearing threats.

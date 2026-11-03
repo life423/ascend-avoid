@@ -9,6 +9,7 @@ import { drawPulsarArray, pulsarPartIcon } from './shockwave';
 import { allWeapons, weaponProfile, orbitalPosition, ionFiring } from '../../server/game/weaponKit';
 import { inView } from './shared';
 import { drawWeaponBolts } from './weaponShots';
+import { ownsWeapon, ownershipReveal, drawOwnership, ownershipStroke, WEAPON_OWNERSHIP } from './weaponOwnership';
 
 const COLORS = PART_COLORS;
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -82,10 +83,13 @@ export function drawWeapons(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
 }
 
 function drawWeapon(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state: SyncedGameState, timestamp: number, w: SyncedPinwheel): void {
-    if (!w || w.phase === 'waiting') return;
+    if (!w) return;
     const now = mode.worldNow(state, timestamp);
+    const reveal = ownershipReveal(w, mode.multiplayerManager?.localSessionId, now);
+    if (w.phase === 'waiting') return;
+    const unit = mode.cssScale / Math.max(.001, Math.abs(ctx.getTransform().a));
     const localId = mode.multiplayerManager?.localSessionId;
-    const own = w.owner === localId, locked = Boolean(w.owner && !own);
+    const own = ownsWeapon(w, localId), locked = Boolean(w.owner && !own);
     if (w.phase === 'parts') {
         // Claim links fan out toward the locked siblings as soon as a first piece is collected.
         const claimAge = now - w.claimedAt;
@@ -138,17 +142,18 @@ function drawWeapon(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state:
     drawX = bounded.x; drawY = bounded.y;
     ctx.save(); ctx.translate(drawX, drawY);
     const charging = w.phase === 'charging';
-    ctx.strokeStyle = charging ? '#ffd47d' : '#80e7de'; ctx.lineWidth = 2;
+    ctx.strokeStyle = charging ? '#ffd47d' : '#8195aa'; ctx.lineWidth = 2;
     ctx.fillStyle = 'rgba(22, 41, 58, 0.95)'; ctx.beginPath(); ctx.arc(0, 0, 43, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    if (w.kind === 'pulsar') drawPulsarArray(ctx, w, now);
-    else if (w.kind !== 'pinwheel') drawSatellite(ctx, w, now);
+    if (w.kind === 'pulsar') drawPulsarArray(ctx, w, now, own, unit);
+    else if (w.kind !== 'pinwheel') drawSatellite(ctx, w, now, own, unit);
     else {
     // Barrel-local preparation, with no arena-spanning dotted firing lanes.
     ctx.save(); ctx.rotate(w.angle);
     partIcon(ctx, 2, 31, 0, 0); ctx.restore();
     ctx.save(); ctx.scale(1.3, 1.3); partIcon(ctx, 1, 0, 0, charging ? timestamp / 160 : w.angle * 2); partIcon(ctx, 0, 0, 0, w.angle); ctx.restore();
-    if (w.phase === 'active') { ctx.save(); ctx.rotate(w.angle); drawMuzzleCharge(ctx, 1 - (w.nextShotAt - now) / profile.shotMs); ctx.restore(); }
+    if (w.phase === 'active') { ctx.save(); ctx.rotate(w.angle); drawMuzzleCharge(ctx, 1 - (w.nextShotAt - now) / profile.shotMs, own, unit); ctx.restore(); }
     }
+    if (own) drawOwnership(ctx, unit, reveal, reducedMotion.matches);
     ctx.restore();
     drawWeaponBolts(mode, ctx, w, now, timestamp);
 }
@@ -171,21 +176,23 @@ function satellitePart(ctx: CanvasRenderingContext2D, weapon: string, kind: numb
     }
 }
 
-function drawSatellite(ctx: CanvasRenderingContext2D, w: SyncedPinwheel, now: number): void {
+function drawSatellite(ctx: CanvasRenderingContext2D, w: SyncedPinwheel, now: number, own: boolean, unit: number): void {
     const profile = weaponProfile(w.kind), active = w.phase === 'active', carried = w.phase === 'carried';
     const phase = Math.max(0, now - w.activatedAt) % WEAPON_FLEET.ION_PERIOD_MS;
     ctx.save(); ctx.rotate(w.angle);
     const chargingShot = active && now >= w.nextShotAt - WEAPON_SHOTS.CHARGE_MS;
     if (!carried && w.kind === 'ion') {
         const firing = active && w.kind === 'ion' && ionFiring(now - w.activatedAt);
-        ctx.strokeStyle = profile.color; ctx.globalAlpha = firing ? .85 : .3;
-        ctx.lineWidth = firing ? 18 : 2;
-        if (!firing) ctx.setLineDash([9, 12]);
+        const color = own ? WEAPON_OWNERSHIP.mint : WEAPON_OWNERSHIP.hostile;
         const reach = WEAPON_FLEET.ION_RANGE;
-        // Ion's warning line is always visible before its firing interval.
+        if (!firing) ctx.setLineDash([9, 12]);
+        // Dash/solid remains the warning/firing distinction independently of ownership.
         if (!active || phase < WEAPON_FLEET.ION_WARNING_MS || firing) {
-            ctx.beginPath(); ctx.moveTo(48, 0); ctx.lineTo(reach, 0); ctx.stroke();
-            if (firing) { ctx.globalAlpha = 1; ctx.strokeStyle = '#eaffff'; ctx.lineWidth = 4; ctx.stroke(); }
+            ctx.beginPath(); ctx.moveTo(48, 0); ctx.lineTo(reach, 0);
+            if (firing) {
+                ctx.save(); ctx.globalAlpha = .35; ctx.strokeStyle = profile.color; ctx.lineWidth = 18; ctx.stroke(); ctx.restore();
+            }
+            ownershipStroke(ctx, color, (firing ? 2.5 : 1.2) * unit, unit);
         }
         ctx.setLineDash([]); ctx.globalAlpha = 1;
     }
@@ -202,23 +209,24 @@ function drawSatellite(ctx: CanvasRenderingContext2D, w: SyncedPinwheel, now: nu
     }
     satellitePart(ctx, w.kind, 1);
     ctx.save(); ctx.translate(27, 0); satellitePart(ctx, w.kind, 2); ctx.restore();
-    if (chargingShot && w.kind !== 'ion') drawMuzzleCharge(ctx, 1 - (w.nextShotAt - now) / WEAPON_SHOTS.CHARGE_MS);
+    if (chargingShot && w.kind !== 'ion') drawMuzzleCharge(ctx, 1 - (w.nextShotAt - now) / WEAPON_SHOTS.CHARGE_MS, own, unit);
     ctx.restore();
     ctx.fillStyle = profile.color; ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI * 2); ctx.fill();
 }
 
 /** A chamber filling with light and a tightening flare show commitment without drawing a lane. */
-function drawMuzzleCharge(ctx: CanvasRenderingContext2D, progress: number): void {
+function drawMuzzleCharge(ctx: CanvasRenderingContext2D, progress: number, own: boolean, unit: number): void {
     const t = Math.max(0, Math.min(1, progress));
     ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    ctx.fillStyle = `rgba(255,137,111,${.35 + .6 * t})`;
+    const rgb = own ? '128,255,241' : '255,137,111';
+    ctx.fillStyle = `rgba(${rgb},${.35 + .6 * t})`;
     ctx.fillRect(22, -4, 26 * t, 8);
-    ctx.fillStyle = `rgba(255,137,111,${.08 + .12 * t})`;
+    ctx.fillStyle = `rgba(${rgb},${.08 + .12 * t})`;
     ctx.beginPath(); ctx.arc(50, 0, 9 + (reducedMotion.matches ? 0 : 4 * t), 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#fff3e9'; ctx.beginPath(); ctx.arc(50, 0, 2 + 3 * t, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = '#ffad94'; ctx.lineWidth = 2;
+    ctx.strokeStyle = own ? WEAPON_OWNERSHIP.mint : '#ffad94'; ctx.lineWidth = 2;
     const x = reducedMotion.matches ? 64 : 64 - 7 * t, height = 9 - 3 * t;
-    ctx.beginPath(); ctx.moveTo(x - 5, -height); ctx.lineTo(x + 2, 0); ctx.lineTo(x - 5, height); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x - 5, -height); ctx.lineTo(x + 2, 0); ctx.lineTo(x - 5, height); ownershipStroke(ctx, own ? WEAPON_OWNERSHIP.mint : WEAPON_OWNERSHIP.hostile, 1.5 * unit, unit);
     ctx.restore();
 }
 
