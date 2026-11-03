@@ -15,7 +15,7 @@ import type { OnlineSession } from '../managers/MultiplayerManager'
 import { WeaponPlacement } from '../ui/WeaponPlacement'
 import { drawSurge } from '../render/surge'
 import { breathRate } from '../../server/game/airflow'
-import { CameraRig, constrainArenaView } from '../../server/game/camera'
+import { CameraRig, constrainArenaView, type CameraSubject } from '../../server/game/camera'
 import { turnStep, walk } from '../../server/game/movement'
 import { puffDrift } from '../../server/game/puffImpulse'
 import { constrainArena } from '../../server/game/arenaBoundary'
@@ -1051,7 +1051,7 @@ export class MultiplayerMode extends GameMode {
             this.weaponPlacement?.update(state, localId, false)
             this.game.practiceUI?.layout(canvasBox, safe, this.controls?.touchBounds() ?? [])
         }
-        const view = this.updateCamera(canvas, state, me, timestamp)
+        let view = this.updateCamera(canvas, state, me, timestamp)
         if (!CAMERA.LOCKED && timestamp < this.shakeUntil) {
             const strength = ((this.shakeUntil - timestamp) / SHAKE_MS) * 8
             view.x += (Math.random() - 0.5) * 2 * strength
@@ -1059,6 +1059,8 @@ export class MultiplayerMode extends GameMode {
         }
         const jolt = this.extraShake()
         if (!CAMERA.LOCKED) { view.x += jolt.x; view.y += jolt.y }
+        if (!CAMERA.LOCKED) view = constrainArenaView(view, state.worldWidth, state.worldHeight,
+            me?.state === 'alive' ? { x: (this.predicted ?? me).x + me.width / 2, y: (this.predicted ?? me).y + me.height / 2, width: me.width } : undefined)
         this.lastView = view
         const leaderId = this.leaderId(state)
         this.inGrace = state.shiftPhase === 'grace'
@@ -1220,7 +1222,7 @@ export class MultiplayerMode extends GameMode {
         // The soft-follow rig (game/camera): it leads your movement a little (and your facing, more while
         // inhaling), follows on a spring, and zooms by how big you should look and the threat horizon
         const dt = this.lastRenderAt ? (timestamp - this.lastRenderAt) / 1000 : 0
-        let subject = null
+        let subject: CameraSubject | null = null
         if (me && me.state === 'alive') {
             const position = this.predicted ?? me
             const middleX = position.x + me.width / 2
@@ -1265,7 +1267,7 @@ export class MultiplayerMode extends GameMode {
         this.lastRenderAt = timestamp
 
         // Every viewport stays filled with playable map, including held death views and ultrawide screens.
-        return constrainArenaView({ ...framing, width, height, scale }, state.worldWidth, state.worldHeight)
+        return constrainArenaView({ ...framing, width, height, scale }, state.worldWidth, state.worldHeight, subject ?? undefined)
     }
 
     /**

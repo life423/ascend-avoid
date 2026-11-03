@@ -1,5 +1,6 @@
 import { ARENA_RULES, CAMERA } from "../constants/gameConstants.js";
 import { threatHorizon } from "./airflow.js";
+import { arenaClearance, arenaCornerRadius, constrainArenaPoint } from "./arenaBoundary.js";
 
 /**
  * The camera rig (browsers): pure, so it can be tested. A soft follow: position on a critically
@@ -22,13 +23,65 @@ export function viewShort(width: number): number {
   return Math.max(width / share, 2 * threatHorizon(Math.min(width, CAMERA.THREAT_MAX_WIDTH), CAMERA.THREAT_RATIO, CAMERA.REACTION_S));
 }
 
-/** Keep every viewport filled with arena, including held knockout views and extreme zoom levels. */
-export function constrainArenaView(view: { x: number; y: number; width: number; height: number; scale: number }, worldWidth: number, worldHeight: number) {
-  const zoom = Math.max(1, view.width / worldWidth, view.height / worldHeight);
-  const width = view.width / zoom, height = view.height / zoom;
-  return { width, height, scale: view.scale * zoom,
-    x: Math.max(width / 2, Math.min(worldWidth - width / 2, view.x)),
-    y: Math.max(height / 2, Math.min(worldHeight - height / 2, view.y)) };
+export interface ArenaView { x: number; y: number; width: number; height: number; scale: number }
+export interface CameraFocus { x: number; y: number; width: number }
+
+/** Fit the entire rectangular viewport inside the curved arena, keeping the followed body visible.
+ * Position is projected onto the intersection of the four corner constraints. Zoom changes only
+ * when that rectangle cannot otherwise fit while retaining the subject. Physics never changes.
+ */
+export function constrainArenaView(view: ArenaView, worldWidth: number, worldHeight: number, focus?: CameraFocus): ArenaView {
+  const radius = arenaCornerRadius(worldWidth, worldHeight);
+  const coreX = worldWidth / 2 - radius, coreY = worldHeight / 2 - radius;
+  const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+  const subject = focus ? { x: focus.x, y: focus.y } : null;
+  if (subject) constrainArenaPoint(subject, worldWidth, worldHeight, 1);
+  // A same-aspect rectangle inscribed in the body's wall-clearance circle is always feasible.
+  // Preserve the entire body in open space; at a tight curved wall retain its visible core.
+  const clearance = subject ? arenaClearance(subject.x, subject.y, worldWidth, worldHeight) * .95 : 0;
+  const diagonal = Math.hypot(view.width, view.height);
+  const padX = focus ? Math.min(focus.width / 2, clearance * view.width / diagonal) : 0;
+  const padY = focus ? Math.min(focus.width / 2, clearance * view.height / diagonal) : 0;
+  const baseZoom = Math.max(1, view.width / worldWidth, view.height / worldHeight);
+  const bounds = (zoom: number) => {
+    const hx = view.width / zoom / 2, hy = view.height / zoom / 2;
+    const minX = subject ? Math.max(hx, subject.x - hx + padX) : hx;
+    const maxX = subject ? Math.min(worldWidth - hx, subject.x + hx - padX) : worldWidth - hx;
+    const minY = subject ? Math.max(hy, subject.y - hy + padY) : hy;
+    const maxY = subject ? Math.min(worldHeight - hy, subject.y + hy - padY) : worldHeight - hy;
+    const nearX = clamp(worldWidth / 2, minX, maxX), nearY = clamp(worldHeight / 2, minY, maxY);
+    return { hx, hy, minX, maxX, minY, maxY, nearX, nearY };
+  };
+  const fits = (zoom: number) => {
+    const b = bounds(zoom);
+    return b.minX <= b.maxX + 1e-7 && b.minY <= b.maxY + 1e-7 &&
+      Math.hypot(Math.max(0, Math.abs(b.nearX - worldWidth / 2) + b.hx - coreX),
+        Math.max(0, Math.abs(b.nearY - worldHeight / 2) + b.hy - coreY)) <= radius + 1e-7;
+  };
+  let maxZoom = baseZoom * 2;
+  if (subject && focus) maxZoom = Math.max(baseZoom,
+    Math.min(view.width / (2 * padX), view.height / (2 * padY)));
+  let zoom = baseZoom;
+  if (!fits(zoom)) {
+    let lo = zoom, hi = maxZoom;
+    for (let i = 0; i < 32; i++) { const mid = (lo + hi) / 2; if (fits(mid)) hi = mid; else lo = mid; }
+    zoom = hi;
+  }
+  const b = bounds(zoom);
+  let x = clamp(view.x, b.minX, b.maxX), y = clamp(view.y, b.minY, b.maxY);
+  const qx = Math.max(0, Math.abs(x - worldWidth / 2) + b.hx - coreX);
+  const qy = Math.max(0, Math.abs(y - worldHeight / 2) + b.hy - coreY);
+  const distance = Math.hypot(qx, qy);
+  if (distance > radius) {
+    const minQx = Math.max(0, Math.abs(b.nearX - worldWidth / 2) + b.hx - coreX);
+    const minQy = Math.max(0, Math.abs(b.nearY - worldHeight / 2) + b.hy - coreY);
+    let px = qx * radius / distance, py = qy * radius / distance;
+    if (px < minQx) { px = minQx; py = Math.sqrt(Math.max(0, radius * radius - px * px)); }
+    if (py < minQy) { py = minQy; px = Math.sqrt(Math.max(0, radius * radius - py * py)); }
+    x -= Math.sign(x - worldWidth / 2) * (qx - px);
+    y -= Math.sign(y - worldHeight / 2) * (qy - py);
+  }
+  return { x, y, width: b.hx * 2, height: b.hy * 2, scale: view.scale * zoom };
 }
 
 /** What the camera follows: a creature's middle, velocity, width and facing, and whether it's inhaling */

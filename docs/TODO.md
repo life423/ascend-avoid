@@ -7,6 +7,20 @@ The complete earlier request inventory is preserved in [TODO_HISTORY.md](TODO_HI
 Historical studies and checklists can describe removed mechanics; do not treat
 those descriptions as unfinished implementation work.
 
+## Rounded camera follow-up — release approved November 3
+
+- [x] Constrain the whole camera viewport to the rounded arena, including large-player
+  visibility, growth, knockout/respawn and phone rotation. Geometry and browser checks
+  pass locally; see [ROUNDED_CAMERA.md](ROUNDED_CAMERA.md).
+- [x] User reviewed the local camera and approved release. Continue longer device
+  playtests of corner zoom, maximum-size bodies and HUD overlap. Giants retain their center/body core; their outer edge can crop at
+  a curved wall because a full circular body and zero exterior cannot always fit
+  in the same rectangular viewport.
+- [x] Camera follow-up approved for commit, merge and production release. The
+  protected main deployment workflow records the published result.
+- Menu experiments were explicitly reverted. Keep the original top-right Menu box
+  with the minimap underneath; no collapsed dock, hidden-menu gesture or relocated icon.
+
 ## Rounded corners — release approved November 3
 
 The user requested actual rounded corners with matching collision/movement and
