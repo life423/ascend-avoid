@@ -1,0 +1,701 @@
+{
+  "date": "2026-11-03",
+  "revision": "8a9f04a38a6131d68de20d164f54cada358db1c2",
+  "tuningChanged": false,
+  "method": "Six-second deterministic scripted chases using unmodified released GameState and normal steering/aim/inhale/puff APIs. Trackers retarget every 100ms and rearm only after recovering 25% breath. Defender follows the wall tangent from the first tick. Front policies initially face the hunter; run policies initially face the escape direction. First puff at time zero is an optimistic preemptive reference, not human reaction time. Both use normal turning afterward. Retry requests every 100ms; normal server breath rules accept/reject. Open/left wall/top-left curve exhaustive, remaining boundaries rotation spots, plus soft-hole cases. No weapons, pickups or background bots. Not human fun or guaranteed escapes.",
+  "normalStepHz": 30,
+  "scriptedCases": 1872,
+  "sensitivityStepHz": 60,
+  "sensitivityCases": 1872,
+  "tuning": {
+    "WAVE_WRAP_MS": 220,
+    "WAVE_PUSH_MS": 140,
+    "WAVE_FADE_MS": 480,
+    "WAVE_HALF_ARC": 1.2217304763960306,
+    "WAVE_THICKNESS": 12,
+    "IMPULSE_RELATIVE_SPEED": 560,
+    "IMPULSE_ADDED_SPEED_CAP": 560,
+    "IMPULSE_RECOIL_CAP": 420,
+    "REAR_IMPULSE_SCALE": 3,
+    "REAR_SPEED_CAP": 280,
+    "REAR_DRAG": 7,
+    "REACH": 160,
+    "REACH_PER_SIZE": 2,
+    "ARC": 55,
+    "GEM_PUSH": 420,
+    "BODY_PUSH": 400,
+    "PUSH_RATIO_MIN": 0.5,
+    "PUSH_RATIO_MAX": 1.8,
+    "PUSH_MAX": 500,
+    "DEFENSE_PUSH": 200,
+    "COOLDOWN_MS": 0,
+    "WALL_SLIP_INPUT": 0.2,
+    "PARRY_MS": 350,
+    "DRAG": 12,
+    "BREATH_COST": 0.75
+  },
+  "summary": [
+    {
+      "site": "open",
+      "policy": "front-no-puff",
+      "cases": 96,
+      "captured": 65,
+      "pressureFree": 2,
+      "frontHits": 0,
+      "rearHits": 0,
+      "wallSlips": 0,
+      "maxCasts": 0
+    },
+    {
+      "site": "open",
+      "policy": "front-one",
+      "cases": 96,
+      "captured": 63,
+      "pressureFree": 2,
+      "frontHits": 88,
+      "rearHits": 0,
+      "wallSlips": 0,
+      "maxCasts": 1
+    },
+    {
+      "site": "open",
+      "policy": "front-retry",
+      "cases": 96,
+      "captured": 60,
+      "pressureFree": 4,
+      "frontHits": 88,
+      "rearHits": 94,
+      "wallSlips": 0,
+      "maxCasts": 3
+    },
+    {
+      "site": "open",
+      "policy": "run-no-puff",
+      "cases": 96,
+      "captured": 65,
+      "pressureFree": 2,
+      "frontHits": 0,
+      "rearHits": 0,
+      "wallSlips": 0,
+      "maxCasts": 0
+    },
+    {
+      "site": "open",
+      "policy": "run-one",
+      "cases": 96,
+      "captured": 65,
+      "pressureFree": 2,
+      "frontHits": 0,
+      "rearHits": 15,
+      "wallSlips": 0,
+      "maxCasts": 1
+    },
+    {
+      "site": "open",
+      "policy": "run-retry",
+      "cases": 96,
+      "captured": 60,
+      "pressureFree": 4,
+      "frontHits": 0,
+      "rearHits": 110,
+      "wallSlips": 0,
+      "maxCasts": 3
+    },
+    {
+      "site": "left wall",
+      "policy": "front-no-puff",
+      "cases": 96,
+      "captured": 65,
+      "pressureFree": 2,
+      "frontHits": 0,
+      "rearHits": 0,
+      "wallSlips": 0,
+      "maxCasts": 0
+    },
+    {
+      "site": "left wall",
+      "policy": "front-one",
+      "cases": 96,
+      "captured": 63,
+      "pressureFree": 2,
+      "frontHits": 88,
+      "rearHits": 0,
+      "wallSlips": 88,
+      "maxCasts": 1
+    },
+    {
+      "site": "left wall",
+      "policy": "front-retry",
+      "cases": 96,
+      "captured": 60,
+      "pressureFree": 4,
+      "frontHits": 88,
+      "rearHits": 95,
+      "wallSlips": 88,
+      "maxCasts": 3
+    },
+    {
+      "site": "left wall",
+      "policy": "run-no-puff",
+      "cases": 96,
+      "captured": 65,
+      "pressureFree": 2,
+      "frontHits": 0,
+      "rearHits": 0,
+      "wallSlips": 0,
+      "maxCasts": 0
+    },
+    {
+      "site": "left wall",
+      "policy": "run-one",
+      "cases": 96,
+      "captured": 65,
+      "pressureFree": 2,
+      "frontHits": 0,
+      "rearHits": 15,
+      "wallSlips": 0,
+      "maxCasts": 1
+    },
+    {
+      "site": "left wall",
+      "policy": "run-retry",
+      "cases": 96,
+      "captured": 60,
+      "pressureFree": 4,
+      "frontHits": 0,
+      "rearHits": 110,
+      "wallSlips": 0,
+      "maxCasts": 3
+    },
+    {
+      "site": "top-left corner",
+      "policy": "front-no-puff",
+      "cases": 96,
+      "captured": 69,
+      "pressureFree": 0,
+      "frontHits": 0,
+      "rearHits": 0,
+      "wallSlips": 0,
+      "maxCasts": 0
+    },
+    {
+      "site": "top-left corner",
+      "policy": "front-one",
+      "cases": 96,
+      "captured": 69,
+      "pressureFree": 0,
+      "frontHits": 88,
+      "rearHits": 0,
+      "wallSlips": 88,
+      "maxCasts": 1
+    },
+    {
+      "site": "top-left corner",
+      "policy": "front-retry",
+      "cases": 96,
+      "captured": 67,
+      "pressureFree": 0,
+      "frontHits": 88,
+      "rearHits": 76,
+      "wallSlips": 88,
+      "maxCasts": 3
+    },
+    {
+      "site": "top-left corner",
+      "policy": "run-no-puff",
+      "cases": 96,
+      "captured": 69,
+      "pressureFree": 0,
+      "frontHits": 0,
+      "rearHits": 0,
+      "wallSlips": 0,
+      "maxCasts": 0
+    },
+    {
+      "site": "top-left corner",
+      "policy": "run-one",
+      "cases": 96,
+      "captured": 69,
+      "pressureFree": 0,
+      "frontHits": 0,
+      "rearHits": 15,
+      "wallSlips": 0,
+      "maxCasts": 1
+    },
+    {
+      "site": "top-left corner",
+      "policy": "run-retry",
+      "cases": 96,
+      "captured": 68,
+      "pressureFree": 0,
+      "frontHits": 0,
+      "rearHits": 87,
+      "wallSlips": 0,
+      "maxCasts": 3
+    }
+  ],
+  "matchedCaptureEligibleComparisons": [
+    {
+      "site": "left wall",
+      "policy": "front-one",
+      "matchedCases": 72,
+      "baselineCaptures": 65,
+      "withPuffCaptures": 63,
+      "additionalSixSecondSurvivals": 2,
+      "additionalCaptures": 0,
+      "medianCaptureDelayAmongBothCaptured": 0.033333333333333215,
+      "baselineCapturedBefore250ms": 25
+    },
+    {
+      "site": "left wall",
+      "policy": "front-retry",
+      "matchedCases": 72,
+      "baselineCaptures": 65,
+      "withPuffCaptures": 60,
+      "additionalSixSecondSurvivals": 5,
+      "additionalCaptures": 0,
+      "medianCaptureDelayAmongBothCaptured": 0.033333333333333326,
+      "baselineCapturedBefore250ms": 25
+    },
+    {
+      "site": "left wall",
+      "policy": "run-one",
+      "matchedCases": 72,
+      "baselineCaptures": 65,
+      "withPuffCaptures": 65,
+      "additionalSixSecondSurvivals": 0,
+      "additionalCaptures": 0,
+      "medianCaptureDelayAmongBothCaptured": 0,
+      "baselineCapturedBefore250ms": 25
+    },
+    {
+      "site": "left wall",
+      "policy": "run-retry",
+      "matchedCases": 72,
+      "baselineCaptures": 65,
+      "withPuffCaptures": 60,
+      "additionalSixSecondSurvivals": 5,
+      "additionalCaptures": 0,
+      "medianCaptureDelayAmongBothCaptured": 0,
+      "baselineCapturedBefore250ms": 25
+    },
+    {
+      "site": "top-left corner",
+      "policy": "front-one",
+      "matchedCases": 72,
+      "baselineCaptures": 69,
+      "withPuffCaptures": 69,
+      "additionalSixSecondSurvivals": 0,
+      "additionalCaptures": 0,
+      "medianCaptureDelayAmongBothCaptured": 0,
+      "baselineCapturedBefore250ms": 25
+    },
+    {
+      "site": "top-left corner",
+      "policy": "front-retry",
+      "matchedCases": 72,
+      "baselineCaptures": 69,
+      "withPuffCaptures": 67,
+      "additionalSixSecondSurvivals": 2,
+      "additionalCaptures": 0,
+      "medianCaptureDelayAmongBothCaptured": 0,
+      "baselineCapturedBefore250ms": 25
+    },
+    {
+      "site": "top-left corner",
+      "policy": "run-one",
+      "matchedCases": 72,
+      "baselineCaptures": 69,
+      "withPuffCaptures": 69,
+      "additionalSixSecondSurvivals": 0,
+      "additionalCaptures": 0,
+      "medianCaptureDelayAmongBothCaptured": 0,
+      "baselineCapturedBefore250ms": 25
+    },
+    {
+      "site": "top-left corner",
+      "policy": "run-retry",
+      "matchedCases": 72,
+      "baselineCaptures": 69,
+      "withPuffCaptures": 68,
+      "additionalSixSecondSurvivals": 1,
+      "additionalCaptures": 0,
+      "medianCaptureDelayAmongBothCaptured": 0,
+      "baselineCapturedBefore250ms": 25
+    }
+  ],
+  "mechanicalChecks": {
+    "outOfBoundsCases": 0,
+    "unintendedControlLocks": 0,
+    "equalSizeCaptures": 0,
+    "maxAcceptedPuffsInSixSeconds": 3,
+    "wallSlipUnobstructedTravelUpperBound": {
+      "min": 1.521735659233013,
+      "median": 26.540603175660653,
+      "max": 35
+    }
+  },
+  "browserInputRuns": [
+    {
+      "scene": "corner running puff",
+      "device": "Android",
+      "capturedAt": 1.869,
+      "acceptedPuffs": 1,
+      "wallSlips": 0,
+      "frontRecoilSpeed": [
+        0
+      ],
+      "rearHits": 0
+    },
+    {
+      "scene": "corner running puff",
+      "device": "Desktop",
+      "capturedAt": 1.722,
+      "acceptedPuffs": 1,
+      "wallSlips": 0,
+      "frontRecoilSpeed": [
+        0
+      ],
+      "rearHits": 0
+    },
+    {
+      "scene": "corner running puff",
+      "device": "iPhone",
+      "capturedAt": 1.857,
+      "acceptedPuffs": 1,
+      "wallSlips": 0,
+      "frontRecoilSpeed": [
+        0
+      ],
+      "rearHits": 0
+    },
+    {
+      "scene": "corner two trackers",
+      "device": "Android",
+      "capturedAt": 1.136,
+      "acceptedPuffs": 1,
+      "wallSlips": 1,
+      "frontRecoilSpeed": [
+        308
+      ],
+      "rearHits": 0
+    },
+    {
+      "scene": "corner two trackers",
+      "device": "Desktop",
+      "capturedAt": 1.106,
+      "acceptedPuffs": 1,
+      "wallSlips": 1,
+      "frontRecoilSpeed": [
+        289
+      ],
+      "rearHits": 0
+    },
+    {
+      "scene": "corner two trackers",
+      "device": "iPhone",
+      "capturedAt": 1.109,
+      "acceptedPuffs": 1,
+      "wallSlips": 1,
+      "frontRecoilSpeed": [
+        288
+      ],
+      "rearHits": 0
+    },
+    {
+      "scene": "corner stronger tracker",
+      "device": "Android",
+      "capturedAt": 1.868,
+      "acceptedPuffs": 1,
+      "wallSlips": 1,
+      "frontRecoilSpeed": [
+        186
+      ],
+      "rearHits": 0
+    },
+    {
+      "scene": "corner stronger tracker",
+      "device": "Desktop",
+      "capturedAt": 1.814,
+      "acceptedPuffs": 1,
+      "wallSlips": 1,
+      "frontRecoilSpeed": [
+        173
+      ],
+      "rearHits": 0
+    },
+    {
+      "scene": "corner stronger tracker",
+      "device": "iPhone",
+      "capturedAt": 1.836,
+      "acceptedPuffs": 1,
+      "wallSlips": 1,
+      "frontRecoilSpeed": [
+        173
+      ],
+      "rearHits": 0
+    },
+    {
+      "scene": "corner front puff",
+      "device": "Android",
+      "capturedAt": 1.868,
+      "acceptedPuffs": 1,
+      "wallSlips": 1,
+      "frontRecoilSpeed": [
+        157
+      ],
+      "rearHits": 0
+    },
+    {
+      "scene": "corner front puff",
+      "device": "Desktop",
+      "capturedAt": 1.95,
+      "acceptedPuffs": 1,
+      "wallSlips": 1,
+      "frontRecoilSpeed": [
+        148
+      ],
+      "rearHits": 0
+    },
+    {
+      "scene": "corner front puff",
+      "device": "iPhone",
+      "capturedAt": 1.857,
+      "acceptedPuffs": 1,
+      "wallSlips": 1,
+      "frontRecoilSpeed": [
+        148
+      ],
+      "rearHits": 0
+    },
+    {
+      "scene": "equal-size two trackers",
+      "device": "Android",
+      "capturedAt": null,
+      "acceptedPuffs": 1,
+      "wallSlips": 1,
+      "frontRecoilSpeed": [
+        237
+      ],
+      "rearHits": 0
+    },
+    {
+      "scene": "equal-size two trackers",
+      "device": "Desktop",
+      "capturedAt": null,
+      "acceptedPuffs": 1,
+      "wallSlips": 1,
+      "frontRecoilSpeed": [
+        223
+      ],
+      "rearHits": 0
+    },
+    {
+      "scene": "equal-size two trackers",
+      "device": "iPhone",
+      "capturedAt": null,
+      "acceptedPuffs": 1,
+      "wallSlips": 1,
+      "frontRecoilSpeed": [
+        223
+      ],
+      "rearHits": 0
+    },
+    {
+      "scene": "large corner tracker",
+      "device": "Android",
+      "capturedAt": 1.253,
+      "acceptedPuffs": 1,
+      "wallSlips": 1,
+      "frontRecoilSpeed": [
+        263
+      ],
+      "rearHits": 0
+    },
+    {
+      "scene": "large corner tracker",
+      "device": "Desktop",
+      "capturedAt": 1.308,
+      "acceptedPuffs": 1,
+      "wallSlips": 1,
+      "frontRecoilSpeed": [
+        256
+      ],
+      "rearHits": 0
+    },
+    {
+      "scene": "large corner tracker",
+      "device": "iPhone",
+      "capturedAt": 1.316,
+      "acceptedPuffs": 1,
+      "wallSlips": 1,
+      "frontRecoilSpeed": [
+        256
+      ],
+      "rearHits": 0
+    },
+    {
+      "scene": "wall baseline",
+      "device": "Android",
+      "capturedAt": 3.118,
+      "acceptedPuffs": 0,
+      "wallSlips": 0,
+      "frontRecoilSpeed": [],
+      "rearHits": 0
+    },
+    {
+      "scene": "wall baseline",
+      "device": "Desktop",
+      "capturedAt": 4.621,
+      "acceptedPuffs": 0,
+      "wallSlips": 0,
+      "frontRecoilSpeed": [],
+      "rearHits": 0
+    },
+    {
+      "scene": "wall baseline",
+      "device": "iPhone",
+      "capturedAt": null,
+      "acceptedPuffs": 0,
+      "wallSlips": 0,
+      "frontRecoilSpeed": [],
+      "rearHits": 0
+    },
+    {
+      "scene": "wall front puff",
+      "device": "Android",
+      "capturedAt": null,
+      "acceptedPuffs": 1,
+      "wallSlips": 1,
+      "frontRecoilSpeed": [
+        157
+      ],
+      "rearHits": 0
+    },
+    {
+      "scene": "wall front puff",
+      "device": "Desktop",
+      "capturedAt": null,
+      "acceptedPuffs": 1,
+      "wallSlips": 1,
+      "frontRecoilSpeed": [
+        148
+      ],
+      "rearHits": 0
+    },
+    {
+      "scene": "wall front puff",
+      "device": "iPhone",
+      "capturedAt": null,
+      "acceptedPuffs": 1,
+      "wallSlips": 1,
+      "frontRecoilSpeed": [
+        148
+      ],
+      "rearHits": 0
+    }
+  ],
+  "uiDirectedTrials": [
+    {
+      "site": "wall",
+      "gems": 221,
+      "ratio": 1.35,
+      "gap": 400,
+      "attackers": 1,
+      "puffs": 1,
+      "wallSlips": 1,
+      "survivedSeconds": 6.1
+    },
+    {
+      "site": "wall",
+      "gems": 221,
+      "ratio": 1.35,
+      "gap": 240,
+      "attackers": 1,
+      "puffs": 1,
+      "wallSlips": 1,
+      "survivedSeconds": 6.1
+    },
+    {
+      "site": "corner",
+      "gems": 221,
+      "ratio": 1.35,
+      "gap": 240,
+      "attackers": 1,
+      "puffs": 1,
+      "wallSlips": 1,
+      "capturedAt": 1.8
+    },
+    {
+      "site": "corner",
+      "gems": 221,
+      "ratio": 1.35,
+      "gap": 240,
+      "attackers": 2,
+      "puffs": 1,
+      "wallSlips": 1,
+      "capturedAt": 1.1
+    },
+    {
+      "site": "wall",
+      "gems": 221,
+      "ratio": 1.35,
+      "gap": 240,
+      "attackers": 1,
+      "puffs": 0,
+      "wallSlips": 0,
+      "survivedSeconds": 6.1
+    },
+    {
+      "site": "wall",
+      "gems": 221,
+      "ratio": 1.35,
+      "gap": 240,
+      "attackers": 1,
+      "facing": "escape",
+      "puffs": 1,
+      "wallSlips": 0,
+      "rearHits": 0,
+      "capturedAt": 5.8
+    },
+    {
+      "site": "corner",
+      "gems": 1000,
+      "ratio": 1.75,
+      "gap": 240,
+      "attackers": 1,
+      "puffs": 1,
+      "wallSlips": 1,
+      "capturedAt": 1.4
+    },
+    {
+      "site": "corner",
+      "gems": 221,
+      "ratio": 1,
+      "gap": 240,
+      "attackers": 2,
+      "puffs": 1,
+      "wallSlips": 1,
+      "survivedSeconds": 6
+    },
+    {
+      "site": "corner",
+      "gems": 221,
+      "ratio": 1,
+      "gap": 240,
+      "attackers": 2,
+      "rapidTaps": 3,
+      "acceptedPuffsWithinOneSecond": 1,
+      "wallSlips": 1
+    }
+  ],
+  "limits": [
+    "Scripted trackers, not production bot AI or human opponents.",
+    "A six-second survival is not a permanent escape.",
+    "Desktop/mobile emulation does not validate a physical phone.",
+    "First simulation cast is preemptive at time zero; many close cases are inside a sub-250ms response window.",
+    "Near-hole setups often end before the rim; their inclusion does not validate real rim-chase choices.",
+    "Wall baseline timing varied between browser runs; no cross-browser balance ranking is inferred."
+  ],
+  "visualObservation": "Top-left corner fights can overlap the score/leaderboard in captured phone frames, obscuring body/airflow feedback. No occlusion-percentage measurement was made."
+}

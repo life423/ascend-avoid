@@ -620,7 +620,7 @@ export class MultiplayerMode extends GameMode {
     /** Bomb blasts going off: a flash and a ring racing out to the blast's edge */
     blasts: { x: number; y: number; radius: number; at: number }[] = []
     /** Exhales: a puff of air out of a mouth, arcs rolling out through its cone */
-    puffs: { by: string; x: number; y: number; facing: number; reach: number; recoil: number; slideX: number; slideY: number; at: number }[] = []
+    puffs: { by: string; x: number; y: number; facing: number; reach: number; recoil: number; slideX: number; slideY: number; at: number; slideOnly?: boolean }[] = []
     /** Gravity theft on screen: each victim's gems last frame, and the stolen gems in flight */
     theftGems = new Map<string, number>()
     theftParticles: { from: string; to: string; at: number; angle: number; flight: number; power: number }[] = []
@@ -708,6 +708,9 @@ export class MultiplayerMode extends GameMode {
                 this.staminaAt = performance.now()
                 this.breath = { phase: 'recovering', back: this.stamina }
             }
+        })
+        eventBus.on('multiplayer:wallSlip', (data: { id: string; wallSlideX: number; wallSlideY: number }) => {
+            this.puffs.push({ by: data.id, x: 0, y: 0, facing: 0, reach: 0, recoil: 0, slideX: data.wallSlideX, slideY: data.wallSlideY, at: performance.now(), slideOnly: true })
         })
         eventBus.on('multiplayer:jackpot', (data: any) => {
             this.addNotice(`${this.nameOf(data?.byId, data?.by)} took the jackpot! +${data?.value ?? ''}`, true)

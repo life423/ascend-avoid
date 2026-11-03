@@ -15,9 +15,11 @@ export function drawPuffs(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, 
         ctx.save();
         ctx.strokeStyle = `rgba(220,247,255,${.7 * (1 - t)})`;
         ctx.lineWidth = (3 * (1 - t) + 1) * unit;
-        ctx.beginPath();
-        ctx.arc(puff.x, puff.y, puff.reach * (REDUCED_MOTION.matches ? .55 : .1 + .9 * t), puff.facing - EXHALE.ARC * Math.PI / 180, puff.facing + EXHALE.ARC * Math.PI / 180);
-        ctx.stroke();
+        if (!puff.slideOnly) {
+            ctx.beginPath();
+            ctx.arc(puff.x, puff.y, puff.reach * (REDUCED_MOTION.matches ? .55 : .1 + .9 * t), puff.facing - EXHALE.ARC * Math.PI / 180, puff.facing + EXHALE.ARC * Math.PI / 180);
+            ctx.stroke();
+        }
         const slide = Math.hypot(puff.slideX, puff.slideY), caster = state?.players.get(puff.by);
         if (slide > 0 && caster) {
             const dx = puff.slideX / slide, dy = puff.slideY / slide;

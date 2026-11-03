@@ -1,5 +1,14 @@
 # Rear gust follow-up — November 2, 2026
 
+## Release-approved follow-up — confirmed rear-hit wall slip, November 3
+
+The user authorized a bounded wall slip from actual rear-gust hits, keeping 75%
+breath and recipient shove unchanged. It is implemented and tested locally; see
+[REAR_WALL_SLIP.md](REAR_WALL_SLIP.md) for budget rules, checks and limitations.
+The user reviewed the local trial, said it feels good, and authorized commit,
+merge and deployment. The main deployment workflow records the release result.
+The release history below refers to the earlier front-hit wall slip.
+
 ## Released defense update: push without cancelling pressure
 
 Released November 2, 2026 in [PR #76](https://github.com/life423/ascend-avoid/pull/76),
@@ -35,8 +44,10 @@ never increases recoil magnitude. At a corner it selects a viable boundary
 tangent, not a path through a wall. Empty/invalid hits, no tangent input, and
 recoil that fits in open space do not gain movement. No stun, suction shield,
 pressure wipe or capture exception is added. Humans and bots use the same rule.
-Two brief airflow wisps show the redirected movement. This is the wall-slip
-experiment only; arena corners have not been rounded.
+Two brief airflow wisps show the redirected movement. Rounded corners and their
+camera framing subsequently shipped in PRs #77/#80. The newer tracking study is
+in [CORNER_DEFENSE_PLAYTEST.md](CORNER_DEFENSE_PLAYTEST.md); this original study
+does not establish escape success against a pursuing opponent.
 
 After local testing, the user reported that the 75% trial feels good and
 authorized committing, merging and deployment on November 2, 2026. The wider

@@ -2,7 +2,8 @@ import type { GameState } from '../schema/GameState.js';
 import { EXHALE } from '../constants/gameConstants.js';
 import { waveActive, waveIntercepts, distanceToWave } from '../game/gustWave.js';
 import { airflowQuality } from '../game/airflow.js';
-import { rearGustImpulses } from '../game/puffImpulse.js';
+import { rearGustImpulses, rearWallSlip } from '../game/puffImpulse.js';
+import { bodyMass } from '../game/creatureSize.js';
 export function updateGustWaves(state: GameState, _now: number): void {
   for (const [id, wave] of state.gustWaves) {
     const owner = state.players.get(wave.owner);
@@ -34,5 +35,17 @@ export function updateGustWaves(state: GameState, _now: number): void {
       if (speed > 0) state.onEvent?.('gustHit', { id: owner.sessionId, targetId: hit.id, rear: true });
     }
     wave.remainingImpulse = Math.max(0, wave.remainingImpulse - total * scale);
+    // Recipient shove is unchanged. Its existing finite budget also bounds the
+    // caster's front + rear movement to the existing recoil cap per cast,
+    // using the physical body mass snapshotted when the puff was cast.
+    // Remove the rear-only shove multiplier when funding caster movement.
+    const recoil = total * scale / (Math.max(.001, bodyMass(wave.width)) * EXHALE.REAR_IMPULSE_SCALE);
+    if (recoil > 0 && !owner.stunned && !owner.sliding && !owner.recovering) {
+      const slip = rearWallSlip(owner, recoil, owner.steering(), state.worldWidth, state.worldHeight);
+      if (slip.redirected) {
+        owner.pushWithControl(slip.x, slip.y, 1);
+        state.onEvent?.('wallSlip', { id: owner.sessionId, wallSlideX: slip.x, wallSlideY: slip.y });
+      }
+    }
   }
 }
