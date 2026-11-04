@@ -1,11 +1,26 @@
 # Ascend Avoid — current work and next-session handoff
 
-Updated November 3, 2026. Latest verified live main is `8a9f04a` (rounded camera,
-PR #80); rounded corners, 75% defense, ownership visuals and the single-outline
+Updated November 4, 2026. Latest verified live main is `46cc5a0` (rear-hit wall
+slip, PR #81), deployed successfully with live bundle and WebSocket checks.
+Rounded camera/corners, 75% defense, ownership visuals and the single-outline
 minimap are shipped. The original top-right Menu box is retained. This is the active list.
 The complete earlier request inventory is preserved in [TODO_HISTORY.md](TODO_HISTORY.md).
 Historical studies and checklists can describe removed mechanics; do not treat
 those descriptions as unfinished implementation work.
+
+## Bot giant awareness — release approved November 4
+
+- [x] Use actual mouth-facing inhale reach and bot radius for proactive giant
+  avoidance, retaining the existing close-body caution and normal reactions.
+  Other balance constants are unchanged. Build/types/schema/lint, 52 server unit
+  suites, 18 multiplayer scenarios and six desktop/emulated-mobile AI checks pass.
+- [x] User reviewed the local [bot giant-awareness fix](BOT_GIANT_AVOIDANCE.md),
+  said it feels good, and authorized commit, merge and live deployment. The main
+  deployment workflow records the published revision and result.
+- [ ] Continue ordinary-match testing of giant chasing, crowded encounters and
+  whether bots remain engaging; retain the unchanged balance constants.
+- The 288-case comparison shows earlier retreat with unchanged tuning, but its
+  three-second warning setup does not establish human balance or invincibility.
 
 ## Rounded camera follow-up — release approved November 3
 
@@ -61,10 +76,9 @@ strength, speed and unrelated tuning.
 
 ## Suggested next session
 
-1. Continue real-match playtests of [confirmed rear-hit wall slip](REAR_WALL_SLIP.md).
-   The user tested it locally, said it feels good, and authorized commit, merge
-   and deployment. Keep 75% breath and shove strength; broad scripted capture
-   totals did not improve, so longer human balance validation remains open.
+1. Continue ordinary-match [bot giant-awareness](BOT_GIANT_AVOIDANCE.md) and
+   human-match playtests of giant/small-player escape and the released rear-hit
+   wall slip. Keep 75% breath, shove strength and other balance unchanged.
 2. Run the physical Pixel/browser checks below, especially Android Firefox lag,
    injured escape and incoming-shot reaction time.
 3. Review ordinary-match pacing, weapon assembly and long-run growth together.
