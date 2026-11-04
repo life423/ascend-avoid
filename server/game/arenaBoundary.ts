@@ -32,7 +32,7 @@ export function constrainArena(box: Box, width: number, height: number, velocity
   const radius = arenaCornerRadius(width, height);
   const pad = Math.max(box.width, box.height) / 2 + margin;
   const x = box.x + box.width / 2, y = box.y + box.height / 2;
-  // Legal growth stays below the corner radius; the fallback also handles tiny test arenas.
+  // Bodies larger than the wall's corner radius use the inset straight edges.
   const inset = Math.max(pad, radius), round = Math.max(0, radius - pad);
   const qx = Math.max(Math.min(inset, width / 2), Math.min(width - inset, x));
   const qy = Math.max(Math.min(inset, height / 2), Math.min(height - inset, y));

@@ -15,7 +15,7 @@ import type { OnlineSession } from '../managers/MultiplayerManager'
 import { WeaponPlacement } from '../ui/WeaponPlacement'
 import { drawSurge } from '../render/surge'
 import { breathRate } from '../../server/game/airflow'
-import { CameraRig, constrainArenaView, type CameraSubject } from '../../server/game/camera'
+import { CameraRig, InhaleFraming, constrainArenaView, type CameraSubject } from '../../server/game/camera'
 import { turnStep, walk } from '../../server/game/movement'
 import { puffDrift } from '../../server/game/puffImpulse'
 import { constrainArena } from '../../server/game/arenaBoundary'
@@ -544,6 +544,7 @@ export class MultiplayerMode extends GameMode {
     emerges = new Map<string, number>()
     /** The camera rig, and the creature's last middle and smoothed velocity it follows */
     private cameraRig = new CameraRig()
+    private inhaleFraming = new InhaleFraming()
     private cameraFrom: { x: number; y: number } | null = null
     private cameraVelocity = { x: 0, y: 0 }
     /** Each creature's airflow while it inhales (see drawAirflow) */
@@ -1270,7 +1271,9 @@ export class MultiplayerMode extends GameMode {
         this.lastRenderAt = timestamp
 
         // Every viewport stays filled with playable map, including held death views and ultrawide screens.
-        return constrainArenaView({ ...framing, width, height, scale }, state.worldWidth, state.worldHeight, subject ?? undefined)
+        const contained = constrainArenaView({ ...framing, width, height, scale }, state.worldWidth, state.worldHeight, subject ?? undefined)
+        // Tutorial objective framing takes precedence; ordinary play gets a bounded pan, never inhale zoom.
+        return this.inhaleFraming.update(contained, this.isPractice ? null : subject, dt, state.worldWidth, state.worldHeight)
     }
 
     /**

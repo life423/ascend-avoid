@@ -17,7 +17,14 @@ export function springStep(value: number, velocity: number, target: number, omeg
   return { value: target + (offset + carry * dt) * decay, velocity: (velocity - omega * carry * dt) * decay };
 }
 
-/** The short side of the view (world units) for a creature this wide: big enough to keep it the right size on screen, and to show a bigger creature coming in time */
+/** Smooth size transition: no abrupt camera change when a pickup crosses a width threshold. */
+function inhaleFrameWeight(width: number): number {
+  const t = Math.max(0, Math.min(1, (width - CAMERA.INHALE_FRAME_FROM_WIDTH) /
+    (CAMERA.INHALE_FRAME_FULL_WIDTH - CAMERA.INHALE_FRAME_FROM_WIDTH)));
+  return t * t * (3 - 2 * t);
+}
+
+/** The short side of the view, determined by body size and incoming threat horizon, never inhale. */
 export function viewShort(width: number): number {
   const share = Math.min(CAMERA.SIZE_SHARE_MAX, CAMERA.SIZE_SHARE * Math.pow(Math.max(1, width / ARENA_RULES.PLAYER_SIZE), CAMERA.SIZE_SHARE_GROWTH));
   return Math.max(width / share, 2 * threatHorizon(Math.min(width, CAMERA.THREAT_MAX_WIDTH), CAMERA.THREAT_RATIO, CAMERA.REACTION_S));
@@ -93,6 +100,35 @@ export interface CameraSubject {
   width: number;
   facing: number;
   inhaling: boolean;
+}
+
+/** Pan the already-contained view toward a large player's inhale. Smooth the
+ * feasible offset, rather than a distant goal that would snap against a clamp.
+ * Size/arena fitting owns zoom: this class never changes view dimensions/scale.
+ */
+export class InhaleFraming {
+  private x = 0;
+  private y = 0;
+  private lastSubject: { x: number; y: number } | null = null;
+
+  update(view: ArenaView, subject: CameraSubject | null, dt: number, worldWidth: number, worldHeight: number): ArenaView {
+    const short = Math.min(view.width, view.height);
+    if (!subject || subject.width <= CAMERA.INHALE_FRAME_FROM_WIDTH) {
+      this.x = this.y = 0; this.lastSubject = null;
+      return view;
+    }
+    if (this.lastSubject && Math.hypot(subject.x - this.lastSubject.x, subject.y - this.lastSubject.y) > short) this.x = this.y = 0;
+    this.lastSubject = { x: subject.x, y: subject.y };
+    const lead = subject.inhaling ? inhaleFrameWeight(subject.width) * short * CAMERA.INHALE_LOOK_SHARE : 0;
+    if (!lead && Math.hypot(this.x, this.y) < 1e-4) { this.x = this.y = 0; return view; }
+    const target = lead ? constrainArenaView({ ...view,
+      x: view.x + Math.cos(subject.facing) * lead, y: view.y + Math.sin(subject.facing) * lead,
+    }, worldWidth, worldHeight, subject) : view;
+    const blend = 1 - Math.exp(-CAMERA.LOOK_SMOOTH * Math.min(.1, Math.max(0, dt)));
+    this.x += (target.x - view.x - this.x) * blend;
+    this.y += (target.y - view.y - this.y) * blend;
+    return constrainArenaView({ ...view, x: view.x + this.x, y: view.y + this.y }, worldWidth, worldHeight, subject);
+  }
 }
 
 /** Where the camera wants to lead a creature: its velocity a little ahead, plus a little of its facing (more inhaling), capped to CAMERA.MAX_OFFSET of the view */
