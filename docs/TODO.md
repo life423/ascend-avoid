@@ -1,8 +1,8 @@
 # Ascend Avoid — current work and next-session handoff
 
-Updated November 4, 2026. Previous verified live baseline is `ad88358` (bot giant
-awareness and gem/black-hole clearance, PR #82), deployed successfully with live
-bundle and WebSocket checks on Azure revision `ascend-avoid--0000122`.
+Updated November 4, 2026. Verified live baseline is `4bf5cb7` (earned weapon
+injury, later growth and inhale framing, PR #83), deployed successfully with live
+bundle and WebSocket checks on Azure revision `ascend-avoid--0000123`.
 Rounded camera/corners, 75% defense, ownership visuals and the single-outline
 minimap are shipped. The original top-right Menu box is retained. This is the active list.
 The complete earlier request inventory is preserved in [TODO_HISTORY.md](TODO_HISTORY.md).
@@ -10,6 +10,49 @@ Historical studies and checklists can describe removed mechanics; do not treat
 those descriptions as unfinished implementation work.
 
 ## Current release — approved November 4
+
+The user reviewed this local candidate, said it feels good and authorized commit,
+merge to main, GitHub push and live deployment. The
+[production workflow](https://github.com/life423/ascend-avoid/actions/workflows/deploy.yml)
+records its final published commit and rollout result. The baseline at the top
+identifies the preceding verified release.
+
+- [x] Implement periodic black-hole retirement and safe relocation, with a
+  closing warning, harmless new-location warning, activation revalidation and
+  bounded retries. Provisional values: 60s active, first-cycle 12s slot stagger,
+  3s closing, 1.5s dormant, 4s warning, 1s blocked retry. Preserve safe ordinary
+  walking, shot-only lethality and full-size routes around holes. See
+  [BLACK_HOLE_RELOCATION.md](BLACK_HOLE_RELOCATION.md).
+- [x] Replace tilted ellipse art with circular dark cores and broken circular
+  rings in both world and minimap. Hollow gold warns; closing retains its full
+  lethal core until disappearance. No new gameplay banner or sound.
+- [x] Improve HUD/award text readability without changing the restored Menu
+  layout. Fade overlapping glass, retain outlined text and group readable
+  gain/loss counters clear of the crown/name. Clarify tutorial radar/ownership
+  and Help's black-hole warnings. See [HUD_READABILITY.md](HUD_READABILITY.md).
+  Human recognition still needs review.
+- [x] Pair this Mac with the user's Pixel 10 Pro XL over Wi-Fi. No APK installed.
+  User selected Chrome-only phone testing; physical Firefox remains pending.
+  Track exact checks in [DEVICE_VALIDATION_2026-11-04.md](DEVICE_VALIDATION_2026-11-04.md).
+- [x] Short actual Pixel Chrome check: approximately 60Hz animation callbacks
+  over 15s, no gaps above 50ms or page/network errors. Joystick plus inhale,
+  release, puff and finger-scrolling pass. Phone Chrome can open
+  <http://localhost:3001/> while the paired ADB connection and Mac preview run.
+  This does not establish long-session, landscape or Firefox performance.
+- [x] Review later hole-size, size-tiered weapon and pre-launch fan-aim directions.
+  Concrete proposals and dependencies are in
+  [NEXT_GAMEPLAY_DESIGNS.md](NEXT_GAMEPLAY_DESIGNS.md); these ideas are not enabled
+  or agreed balance values. Fan impacts currently injure/stun on any spill, so
+  deliberate fan aim first needs a decision about small-ammunition limits.
+- [x] Verify build, schema, client/server types and lint; 58 server suites,
+  18 multiplayer scenarios and 49 browser cases across the hole, mobile,
+  starfield and HUD suites pass. Three 180s/20-bot simulations recorded 19 safe
+  relocated openings with no all-hole starvation. Human balance, long sessions
+  and globally open routes through existing fans are not established by this.
+- [x] User reviewed the local candidate and approved release.
+- [ ] Continue ordinary human matches and longer device sessions after release.
+
+## Released November 4 — PR #83
 
 The user reviewed the local version, said it feels good, and authorized commit,
 merge to main, push and live deployment. The
@@ -28,7 +71,7 @@ records the final published revision and deployment result.
 - [x] Accommodate the new maximum through initial hole placement: upper holes
   now start at 40% arena height. Full-body routes from all corners to the center
   pass authoritative human/bot checks; no reduced body/rim collision or walking
-  damage. Dynamic relocation and warning behavior remain future work below.
+  damage. Dynamic relocation is now implemented in the separate local batch above.
 - [x] Measure speed, body-length travel and turns across size tiers. Current
   formula gives 109.3 units/s and a roughly 1.03s 90° turn at maximum width;
   half-width prey retain 18.9% faster walking. Clear hole-only corner-to-center
@@ -55,17 +98,11 @@ records the final published revision and deployment result.
   and motion comfort. Preserve the user's explicit **no inhale zoom** preference.
   Full-cone visibility cannot always coexist with the current portrait viewport
   and no exterior: at width 1,470 reach is 3,020 units beyond the mouth.
-- [ ] **Agreed direction: black holes periodically relocate with a warning.**
-  Close the old hole, visibly announce a clear new location, then reopen there;
-  do not move an active lethal core underneath players. Preserve shot-only death
-  and safe walking/soft rims. Set timing, safe placement, warning/minimap cues and
-  behavior for shots arriving during closure before implementing. Current holes
-  already scale their fixed positions with arena dimensions; they do not yet
-  respawn like fans.
-- [ ] Redesign the black-hole icon, especially on the minimap: the tilted purple
-  ellipse was reported to resemble lips/genitalia. Proposed direction is a dark
-  circular core with a thin broken circular ring; distinguish it from players,
-  weapons and fan icons without relying on words.
+- [x] Implement the agreed black-hole close–warning–reopen relocation locally.
+  The closing core remains lethal until gone; a shot arriving afterward receives
+  no black-hole reward. New locations cannot open underneath a late entrant.
+- [x] Redesign black-hole world/minimap icons as circular dark cores and broken
+  circular rings; retain distinct hollow warning and retiring live states.
 - [ ] Consider modest small/medium black-hole size variation after relocation.
   This is an idea, not implemented tuning. Match visible/core/rim geometry and
   minimap size cues; check giant routes and avoid closing corridors with huge holes.
@@ -164,16 +201,18 @@ strength, speed and unrelated tuning.
 
 ## Suggested next session
 
-1. Review the local earned-injury and larger-growth trials above before release.
-2. Plan the agreed black-hole close–warning–reopen relocation and icon redesign.
+1. Continue ordinary-match review of relocation, circular hole icons and HUD readability.
+2. Finish physical-device checks documented below; Android Firefox is still
+   pending because the user selected Chrome-only testing this session.
 3. Continue ordinary-match [bot giant-awareness](BOT_GIANT_AVOIDANCE.md) and
    human-match playtests of giant/small-player escape and the released rear-hit
    wall slip. Keep 75% breath, shove strength and other balance unchanged.
-4. Run the physical Pixel/browser checks below, especially Android Firefox lag,
-   injured escape and incoming-shot reaction time.
-5. Review ordinary-match pacing, weapon assembly and long-run growth together.
+4. Review ordinary-match pacing, weapon assembly and long-run growth together.
    Use recordings and measurements; do not require the user to replay as a
    prerequisite to reproducible technical investigations.
+5. Select a later gameplay experiment from [NEXT_GAMEPLAY_DESIGNS.md](NEXT_GAMEPLAY_DESIGNS.md).
+   Hole-size variation, tiered weapons and fan aim still require their specific
+   tuning/interaction decisions; arena enlargement and extra bots remain deferred.
 
 ## Remaining work
 
@@ -183,9 +222,9 @@ strength, speed and unrelated tuning.
   drills, 24 desktop/emulated-mobile input runs, and 1,872 scripted cases at the
   released 30Hz step plus a 60Hz sensitivity repeat. No gameplay tuning changed.
   See [CORNER_DEFENSE_PLAYTEST.md](CORNER_DEFENSE_PLAYTEST.md).
-- [ ] Review top-left fight overlap with the score/leaderboard; preserve the
-  explicitly restored top-right Menu layout. Camera containment alone does not
-  ensure unobstructed face/airflow feedback.
+- [x] Add overlap-aware score/leaderboard glass fading while retaining opaque
+  outlined text and the explicitly restored top-right Menu layout.
+- [ ] Human review of top-left fights and face/airflow feedback with that fading.
 - [x] Implement and locally test bounded wall slip from confirmed rear hits,
   sharing the existing caster recoil budget with front hits. Preserve 75% cost,
   recipient shove, ordinary capture and incoming pressure. See [REAR_WALL_SLIP.md](REAR_WALL_SLIP.md).
@@ -290,9 +329,10 @@ strength, speed and unrelated tuning.
 - [ ] Review the injured shell from front/rear/sides on a physical phone, including
   clear eyes, healing, holding ammo, finish effects and reduced motion. Artwork
   is implemented; recognition, appearance and device cost still need human review.
-- [ ] Low-priority polish: transient gain/name overlap remains noted in the
-  tutorial review. See [PRACTICE_TUTORIAL.md](PRACTICE_TUTORIAL.md)
-  and [INJURY_ART.md](INJURY_ART.md).
+- [x] Fix transient gain/name/crown overlap locally with grouped gain/loss labels
+  and a 12 CSS-pixel minimum at giant zoom. Preserve actual award values.
+- [ ] Human/tutorial review of label recognition and newcomer comprehension. See
+  [PRACTICE_TUTORIAL.md](PRACTICE_TUTORIAL.md) and [INJURY_ART.md](INJURY_ART.md).
 
 ### Physical device checks
 
@@ -348,8 +388,9 @@ strength, speed and unrelated tuning.
 
 - [ ] Repair the Ubuntu Chromium/Gecko/WebKit browser matrix and re-enable it
   when that deferred work is resumed. Preserve the required gameplay CI gate.
-  The current Mac Firefox test-runtime failure also remains unresolved; neither
-  skipped CI nor emulated Chrome/WebKit establishes Firefox coverage.
+  Current Mac Firefox desktop/phone-viewport runs pass; the historical Mac
+  runtime failure is not a current blocker. Those runs do not establish Android
+  Firefox performance or repair the deferred Ubuntu matrix.
 - [ ] Reconcile GitHub #66/#68/#69 with the later shipped changes when updating
   those trackers; retain their genuinely open physical-device/store/design work.
 - [ ] Keep current docs separate from historical studies. Confirmed dead code/files

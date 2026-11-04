@@ -1,10 +1,11 @@
 import { BLACK_HOLE, GEMS, TURBINE } from '../constants/gameConstants.js';
 import { distanceToSegment } from './geometry.js';
 import { arenaClearance, constrainArenaPoint } from './arenaBoundary.js';
+import { blackHoleReservesSpace } from './blackHole.js';
 
 interface Point { x: number; y: number }
 interface Fan extends Point { intake: number }
-interface Hole extends Point { radius: number }
+interface Hole extends Point { radius: number; phase?: string }
 
 /** Visual reservation includes the part's claim badge/label, not its smaller pickup hitbox. */
 export const PLACEMENT = { PART_RADIUS: 48, PART_GAP: 16, HAZARD_GAP: 260, RETRY_MS: 250 } as const;
@@ -17,12 +18,12 @@ const holeRadius = (hole: Hole) => Math.max(BLACK_HOLE.RING_RADIUS + 8, hole.rad
 /** Reserve the visible outer ring and the gem's halo, not just their cores. */
 export function gemClearOfHoles(point: Point, holes: Iterable<Hole>): boolean {
   const x = Math.round(point.x), y = Math.round(point.y);
-  return Array.from(holes).every(hole => Math.hypot(x - hole.x, y - hole.y) >= holeRadius(hole) + GEMS.RADIUS * 2);
+  return Array.from(holes).filter(blackHoleReservesSpace).every(hole => Math.hypot(x-hole.x,y-hole.y)>=holeRadius(hole)+GEMS.RADIUS*2);
 }
 
 /** Nearby bounded placement for a drop or settled gem; never consume its value. */
 export function clearGemPoint(point: Point, holes: Iterable<Hole>, width: number, height: number, floor: (point: Point) => boolean = () => true): Point | null {
-  const all = Array.from(holes), margin = GEMS.RADIUS + 2;
+  const all = Array.from(holes).filter(blackHoleReservesSpace), margin = GEMS.RADIUS + 2;
   const valid = (p: Point) => arenaClearance(p.x, p.y, width, height) >= margin - 1e-7 && floor(p) && gemClearOfHoles(p, all);
   const bounded = { ...point };
   constrainArenaPoint(bounded, width, height, margin);
@@ -62,7 +63,7 @@ export function partClearOfFan(part: Point, fan: Fan): boolean {
 
 /** Fixed black-hole landmarks reserve a visible gap from later fan spawns. */
 export function fanClearOfHole(fan: Point, hole: Hole): boolean {
-  return Math.hypot(fan.x - hole.x, fan.y - hole.y) >= fanRadius + holeRadius(hole) + PLACEMENT.HAZARD_GAP;
+  return !blackHoleReservesSpace(hole) || Math.hypot(fan.x-hole.x,fan.y-hole.y)>=fanRadius+holeRadius(hole)+PLACEMENT.HAZARD_GAP;
 }
 
 interface Space {
@@ -72,7 +73,7 @@ interface Space {
 
 /** Keep a three-part set together. Try nearby spots, then a bounded grid; never force a bad fallback. */
 export function findPartLayout(space: Space, x: number, y: number): { x: number; y: number; parts: Point[] } | null {
-  const fans = Array.from(space.fans), holes = Array.from(space.holes), occupied = Array.from(space.parts);
+  const fans = Array.from(space.fans), holes = Array.from(space.holes).filter(blackHoleReservesSpace), occupied = Array.from(space.parts);
   const margin = PLACEMENT.PART_RADIUS + PLACEMENT.PART_GAP;
   const minX = margin - Math.min(...offsets.map(p => p.x)), maxX = space.width - margin - Math.max(...offsets.map(p => p.x));
   const minY = margin - Math.min(...offsets.map(p => p.y)), maxY = space.height - margin - Math.max(...offsets.map(p => p.y));

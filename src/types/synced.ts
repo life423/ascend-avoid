@@ -29,6 +29,8 @@ export interface SyncedBlackHole {
     y: number
     radius: number
     activeAt: number
+    phase: string
+    at: number
 }
 
 /** BombSchema, as synced to the browser */

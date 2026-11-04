@@ -5,6 +5,7 @@ import { PracticeSchema } from "./PracticeSchema.js";
 import { GustWaveSchema } from './GustWaveSchema.js';
 import { updateGustWaves } from '../systems/gustWaves.js';
 import { BLACK_HOLE } from "../constants/gameConstants.js";
+import { updateBlackHoles } from '../systems/blackHoles.js';
 import { PlayerSchema } from "./PlayerSchema.js";
 import { ObstacleSchema } from "./ObstacleSchema.js";
 import { GemSchema } from "./GemSchema.js";
@@ -195,7 +196,11 @@ class GameState extends Schema {
       this.comets.forEach((comet) => comet.placeAt(-500, -500));
       this.balls.forEach((ball) => ball.park());
     }
-    for (const [x, y] of BLACK_HOLE.POSITIONS) this.blackHoles.push(new BlackHoleSchema(x * this.worldWidth, y * this.worldHeight, BLACK_HOLE.CORE_RADIUS, BLACK_HOLE.WARNING_MS));
+    BLACK_HOLE.POSITIONS.forEach(([x,y],index) => {
+      const hole = new BlackHoleSchema(x*this.worldWidth,y*this.worldHeight,BLACK_HOLE.CORE_RADIUS,BLACK_HOLE.WARNING_MS);
+      hole.cycling = true; hole.firstStagger = index * BLACK_HOLE.STAGGER_MS;
+      this.blackHoles.push(hole);
+    });
     topUpField(this, true);
   }
 
@@ -236,6 +241,7 @@ class GameState extends Schema {
     if (this.cores.length) this.cores.clear();
     this.players.forEach((player) => player.markTick());
     updateShift(this, deltaTime, now);
+    updateBlackHoles(this);
     updateSurges(this, deltaTime, now);
     updateTraffic(this);
     updateInhales(this, now, deltaTime);
