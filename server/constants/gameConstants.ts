@@ -752,7 +752,14 @@ export const GAME_CONSTANTS = {
 export const BLACK_HOLE = {
   CORE_RADIUS: 64,
   RING_RADIUS: 96,
-  WARNING_MS: 2500,
+  WARNING_MS: 4000,
+  ACTIVE_MS: 60000,
+  STAGGER_MS: 12000,
+  CLOSING_MS: 3000,
+  DORMANT_MS: 1500,
+  RETRY_MS: 1000,
+  PLAYER_CLEARANCE: 120,
+  RELOCATE_MIN: 600,
   RIM_CLEARANCE: 8,
   RIM_RECOVERY_SPEED: 180,
   // Upper holes leave a full-width route above them for the larger trial giant.

@@ -8,6 +8,7 @@ import { exhale, fireCaptive, stealWeight, injuryVulnerable } from "./inhale.js"
 import { botPreyAvailable, botSuctionThreat } from '../game/botTargets.js';
 import { CANNON, EXHALE } from '../constants/gameConstants.js';
 import { waveIntercepts } from '../game/gustWave.js';
+import { blackHoleIsLethal } from '../game/blackHole.js';
 
 const { PLAYER_STATE, BOTS, INHALE, BOMBS } = GAME_CONSTANTS;
 
@@ -190,9 +191,11 @@ function botFire(state: GameState, bot: PlayerSchema, cx: number, cy: number, no
   bot.captureNeedsRelease = false; // AI releases capture input; its later shot is a separate decision.
   const valid = (id: string): boolean => {
     if (id.startsWith('hole:')) {
-      const hole = state.blackHoles[Number(id.slice(5))];
-      if (!hole || state.time < hole.activeAt || state.shiftPhase === 'grace' || !state.isFloorAt(hole.x, hole.y)) return false;
+      const [index,generation] = id.slice(5).split(':').map(Number);
+      const hole = state.blackHoles[index];
+      if (!hole || generation !== hole.generation || !blackHoleIsLethal(hole,state.time) || state.shiftPhase === 'grace' || !state.isFloorAt(hole.x,hole.y)) return false;
       const d = Math.hypot(hole.x - cx, hole.y - cy);
+      if (hole.phase === 'closing' && state.time + 700 + d/launchSpeed(bot.width)*1500 >= hole.at) return false;
       return d <= BOTS.FIRE_RANGE && d > (bot.width + CANNON.BULLET_SIZE) / 2 + CANNON.LAUNCH_CLEARANCE + hole.radius;
     }
     const other = state.players.get(id);
@@ -210,7 +213,7 @@ function botFire(state: GameState, bot: PlayerSchema, cx: number, cy: number, no
       if (score > best) { best = score; target = { id, angle: Math.atan2(dy, dx) }; }
     });
     state.blackHoles.forEach((hole, index) => {
-      const id = `hole:${index}`;
+      const id = `hole:${index}:${hole.generation}`;
       if (!valid(id)) return;
       const dx = hole.x - cx, dy = hole.y - cy, score = 160 - Math.hypot(dx, dy) * .05;
       if (score > best) { best = score; target = { id, angle: Math.atan2(dy, dx) }; }

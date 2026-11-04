@@ -2,7 +2,7 @@ import type { GameState } from "../schema/GameState.js";
 import type { PlayerSchema } from "../schema/PlayerSchema.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 import { CANNON } from "../constants/gameConstants.js";
-import { circleEntry } from "../game/blackHole.js";
+import { circleEntry, blackHoleIsLethal } from "../game/blackHole.js";
 import { arenaExit } from '../game/arenaBoundary.js';
 import { flightStep, impactGems, missileMassAfterImpact, sweptHit, lethalPlayerImpact } from "../game/cannon.js";
 import { sprayGems } from "./gems.js";
@@ -46,7 +46,7 @@ export function updateFlights(state: GameState, now: number, deltaTime: number):
     let core = { x: 0, y: 0 };
     if (player.flightKind === 'missile' && player.shotOwner && !player.spawnProtected && state.shiftPhase !== 'grace') {
       state.blackHoles.forEach(hole => {
-        if (state.time < hole.activeAt || !state.isFloorAt(hole.x, hole.y)) return;
+        if (!blackHoleIsLethal(hole,state.time) || !state.isFloorAt(hole.x,hole.y)) return;
         const t = circleEntry(fromX + player.width / 2, fromY + player.height / 2,
           player.x + player.width / 2, player.y + player.height / 2, hole.x, hole.y, hole.radius);
         if (t !== null && (coreEntry === null || t < coreEntry)) { coreEntry = t; core = { x: hole.x, y: hole.y }; }

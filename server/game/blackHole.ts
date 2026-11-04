@@ -2,6 +2,16 @@ import { BLACK_HOLE } from '../constants/gameConstants.js';
 
 import { constrainArena } from './arenaBoundary.js';
 
+/** Shared by collision, prediction and AI. Legacy geometry-only fixtures retain their rim. */
+export function blackHoleHasRim(hole: { phase?: string }): boolean {
+  return !hole.phase || hole.phase === 'active' || hole.phase === 'closing';
+}
+export function blackHoleIsLethal(hole: { phase?: string; activeAt: number }, time: number): boolean {
+  return blackHoleHasRim(hole) && time >= hole.activeAt;
+}
+/** Warned locations reserve loot/fan/part space, but dormant old locations do not. */
+export function blackHoleReservesSpace(hole: { phase?: string }): boolean { return hole.phase !== 'dormant'; }
+
 /** First entry into a circle along a swept segment, including starts inside; null for a miss. */
 export function circleEntry(ax: number, ay: number, bx: number, by: number, cx: number, cy: number, radius: number): number | null {
   const x = ax - cx, y = ay - cy, dx = bx - ax, dy = by - ay;
@@ -17,7 +27,7 @@ export function circleEntry(ax: number, ay: number, bx: number, by: number, cx: 
 
 /** Shared authoritative/predicted soft-rim routing. No velocity, damage, input or score changes. */
 export function slideBlackHoleRims(body: { x: number; y: number; width: number; height: number },
-  fromX: number, fromY: number, holes: Iterable<{ x: number; y: number; radius: number }>, worldWidth: number, worldHeight: number, dt: number): { x: number; y: number } {
+  fromX: number, fromY: number, holes: Iterable<{ x: number; y: number; radius: number; phase?: string }>, worldWidth: number, worldHeight: number, dt: number): { x: number; y: number } {
   const half = body.width / 2;
   const clamp = (x: number, y: number) => {
     const box = { x: x - half, y: y - body.height / 2, width: body.width, height: body.height };
@@ -27,6 +37,7 @@ export function slideBlackHoleRims(body: { x: number; y: number; width: number; 
   let end = clamp(body.x + half, body.y + body.height / 2);
   const start = { x: fromX + half, y: fromY + body.height / 2 };
   for (const hole of holes) {
+    if (!blackHoleHasRim(hole)) continue;
     const r = hole.radius + half + BLACK_HOLE.RIM_CLEARANCE;
     const sx = start.x - hole.x, sy = start.y - hole.y, initial = Math.hypot(sx, sy);
     const dx = end.x - start.x, dy = end.y - start.y, travel = Math.hypot(dx, dy);

@@ -136,6 +136,12 @@ export class GameRoom extends Room<GameState> {
         if (player) this.state.hitPlayer(player);
       });
       this.onMessage("test:clearHoles", () => this.state.blackHoles.clear());
+      this.onMessage("test:cycleHole", (_client, data: { slot?: number }) => {
+        const hole = this.state.blackHoles[Number(data?.slot) || 0];
+        if (!hole || hole.phase !== 'active') return;
+        // Accelerate only the next retirement; all warning/placement/collision code stays real.
+        hole.cycling = true; hole.at = this.state.time;
+      });
       this.onMessage("test:setGems", (client, data: any) => {
         playerOf(client)?.setGems(Number(data?.count) || 0, worldWidth, worldHeight);
       });

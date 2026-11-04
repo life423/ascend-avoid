@@ -170,9 +170,9 @@ export class PracticeUI {
       return 'Theft makes you bigger. Keep inhaling and move close for a mouth finish.';
     }
     if (v.lesson === 'blackhole') return v.stage === 'capture' ? `${hold} toward the marked rival to capture it.` : `Release, aim at the distant black core, then ${fire}.`;
-    if (v.lesson === 'weapon') return v.stage === 'collect' ? 'Gather the three matching parts. They assemble automatically.'
+    if (v.lesson === 'weapon') return v.stage === 'collect' ? 'Collect three matching parts. After the first, follow their radar marks to assemble your weapon.'
       : v.stage === 'place' ? (this.touch ? 'Assembled. Tap Place weapon to deploy your Pulsar.' : 'Assembled. Press E to place your Pulsar.')
-      : 'Placed. Your Pulsar locks, charges and releases a forward wave. Watch the marked rival.';
+      : 'Placed. Your Pulsar locks, charges and fires a wave. Its mint shield means it cannot hurt you. Watch the marked rival.';
     if (v.stage === 'injured-escape') return v.phase === 'ready' ? `${this.touch ? 'Hold the left stick right' : 'Hold Right'}, away from the pursuer. Keep moving when the lesson starts, until your shell closes.` : 'Keep moving right, away from the pursuer. Your shell heals after seven seconds; breathing returns when it closes.';
     if (['ready'].includes(v.phase)) return 'A pursuer starts behind you. Move right and quick-tap a puff to push them back. The air will not stop them for you.';
     if (v.cue === 'move-clear') return 'The gust pushed the pursuer back. Keep moving: there is no shield or stun.';

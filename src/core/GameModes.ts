@@ -1168,7 +1168,7 @@ export class MultiplayerMode extends GameMode {
         drawPuffs(this, ctx, timestamp)
         drawCannonHits(this, ctx, state, timestamp)
         drawBursts(this, ctx, timestamp)
-        drawPickups(this, ctx, me, timestamp)
+        drawPickups(this, ctx, me, timestamp, localId === leaderId)
         // Return gems and shatter fragments stay visible above bodies and other world effects.
         drawCombatRewards(this, ctx, state, timestamp)
         ctx.restore()

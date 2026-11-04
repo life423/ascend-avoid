@@ -9,6 +9,31 @@ import { formatGems } from '../utils/score'
 import { arenaCornerRadius } from '../../server/game/arenaBoundary'
 import { ownsWeapon, ownershipStroke, ownershipShield, WEAPON_OWNERSHIP } from './weaponOwnership'
 import { traceArena } from './arenaBoundary'
+import { blackHoleLook, drawBlackHoleMarker } from './blackHoleStyle'
+import { HudBackingFade, hudFocus, hudObstruction, type HudRect } from './hudReadability'
+
+const backingFades = new WeakMap<MultiplayerMode, Map<string, HudBackingFade>>()
+function readablePanel(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, me: SyncedPlayer | undefined, key: string, rect: HudRect, radius: number): void {
+    let fades = backingFades.get(mode)
+    if (!fades) { fades = new Map(); backingFades.set(mode, fades) }
+    let fade = fades.get(key)
+    if (!fade) { fade = new HudBackingFade(); fades.set(key, fade) }
+    const view = mode.renderView, position = mode.predicted ?? me
+    const focus = me?.state === 'alive' && !me.capturedBy && !me.flying && view && position
+        ? hudFocus(canvas.width / 2 + (position.x + me.width / 2 - view.x) * view.scale,
+            canvas.height / 2 + (position.y + me.height / 2 - view.y) * view.scale,
+            me.width, mode.localFacing, view.scale, Boolean(me.inhaling), mode.cssScale) : []
+    const alpha = fade.update(hudObstruction(rect, focus, mode.cssScale), performance.now())
+    ctx.save(); ctx.globalAlpha *= alpha
+    hudPanel(ctx, rect.x, rect.y, rect.width, rect.height, radius)
+    ctx.restore()
+}
+
+/** Navy outlines keep the retained information legible even over a white creature. */
+function readableText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, pixel: number): void {
+    ctx.save(); ctx.strokeStyle = '#07121e'; ctx.lineJoin = 'round'; ctx.lineWidth = 2.5 * pixel
+    ctx.strokeText(text, x, y); ctx.fillText(text, x, y); ctx.restore()
+}
 
 function weaponMarker(ctx: CanvasRenderingContext2D, x: number, y: number, kind: string, own: boolean, charging = false, unit = 1): void {
     ctx.save(); ctx.translate(x, y); ctx.scale(unit, unit); ctx.fillStyle = '#0c1725';
@@ -68,6 +93,12 @@ export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
         view.width * scale,
         view.height * scale
     )
+    // Landmark rings sit below player dots so an approaching player never disappears beneath one.
+    const holeTime = mode.worldNow(state, performance.now())
+    state.blackHoles?.forEach(hole => {
+        if (state.floor && state.floor[Math.floor(hole.y / state.worldHeight * SHIFT.GRID) * SHIFT.GRID + Math.floor(hole.x / state.worldWidth * SHIFT.GRID)] !== '1') return
+        drawBlackHoleMarker(ctx, x + hole.x * scale, y + hole.y * scale, hole, blackHoleLook(hole, holeTime), u)
+    })
     state.players.forEach((player: SyncedPlayer, sessionId: string) => {
         if (player.state !== 'alive') return
         const isLocal = sessionId === localId
@@ -99,12 +130,6 @@ export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
         ctx.moveTo(tx, ty)
         ctx.lineTo(tx + Math.cos(turbine.intake) * 7, ty + Math.sin(turbine.intake) * 7)
         ctx.stroke()
-    })
-    state.blackHoles?.forEach(hole => {
-        const hx = x + hole.x * scale, hy = y + hole.y * scale
-        ctx.fillStyle = '#02030c'; ctx.strokeStyle = state.time >= hole.activeAt ? '#d6a0ff' : GOLD; ctx.lineWidth = 1.5
-        ctx.beginPath(); ctx.arc(hx, hy, 4.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke()
-        ctx.beginPath(); ctx.ellipse(hx, hy, 7, 2.5, -.35, 0, Math.PI * 2); ctx.stroke()
     })
     if (state.surgePhase === 'warning'  || state.surgePhase === 'active') {
         ctx.strokeStyle = GOLD
@@ -276,7 +301,7 @@ export function drawLeaderboard(mode: MultiplayerMode, ctx: CanvasRenderingConte
     const gapForYou = apart ? 7 * u : 0
     const rowsHeight = rows.length * rowHeight + 10 * u + gapForYou
     ctx.save()
-    hudPanel(ctx, x, y, width, rowsHeight, 10 * u)
+    readablePanel(mode, ctx, _canvas, localId ? state.players.get(localId) : undefined, 'leaderboard', { x, y, width, height: rowsHeight }, 10 * u)
     ctx.font = `600 ${(compact ? 11.5 : 13) * u}px ${FONT}`
     ctx.textBaseline = 'middle'
     let rowY = y + 5 * u + rowHeight / 2
@@ -297,7 +322,7 @@ export function drawLeaderboard(mode: MultiplayerMode, ctx: CanvasRenderingConte
         } else {
             ctx.fillStyle = 'rgba(207, 216, 220, 0.7)'
             ctx.textAlign = 'center'
-            ctx.fillText(String(row.rank), x + 14 * u, rowY)
+            readableText(ctx, String(row.rank), x + 14 * u, rowY, u)
         }
         const nameX = x + 27 * u
         ctx.fillStyle = isLocal ? '#4fd1c5' : 'rgba(225, 235, 240, 0.92)'
@@ -310,10 +335,10 @@ export function drawLeaderboard(mode: MultiplayerMode, ctx: CanvasRenderingConte
             while (name.length && ctx.measureText(`${name}…`).width > nameWidth) name = name.slice(0, -1)
             name += '…'
         }
-        ctx.fillText(name, nameX, rowY)
+        readableText(ctx, name, nameX, rowY, u)
         ctx.fillStyle = isLocal ? '#4fd1c5' : GOLD
         ctx.textAlign = 'right'
-        ctx.fillText(score, x + width - 9 * u, rowY)
+        readableText(ctx, score, x + width - 9 * u, rowY, u)
         rowY += rowHeight
     })
     ctx.restore()
@@ -336,14 +361,14 @@ export function drawTopBar(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
     const pillHeight = 34 * u
     const pillWidth = 132 * u
     const pillX = mode.hudInsets.left + 10 * u
-    hudPanel(ctx, pillX, top, pillWidth, pillHeight, pillHeight / 2)
+    readablePanel(mode, ctx, canvas, me, 'score', { x: pillX, y: top, width: pillWidth, height: pillHeight }, pillHeight / 2)
     ctx.font = `600 ${12.5 * u}px ${FONT}`
     ctx.fillStyle = '#e8f4f8'
-    ctx.fillText(label, pillX + 14 * u, top + pillHeight / 2)
+    readableText(ctx, label, pillX + 14 * u, top + pillHeight / 2, u)
     ctx.font = `800 ${18 * u}px ${FONT}`
     ctx.fillStyle = '#4fd1c5'
     ctx.textAlign = 'right'
-    ctx.fillText(value, pillX + pillWidth - 14 * u, top + pillHeight / 2 + 1 * u)
+    readableText(ctx, value, pillX + pillWidth - 14 * u, top + pillHeight / 2 + 1 * u, u)
     ctx.restore()
 }
 

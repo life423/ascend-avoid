@@ -28,20 +28,30 @@ test('closing Help returns Space to inhale instead of reopening the menu', async
 
 test('the compact menu and minimap align as one dock without a floating player-count label', async ({page}) => {
   await start(page);
-  await page.evaluate(()=>{const stroke=CanvasRenderingContext2D.prototype.strokeRect,fill=CanvasRenderingContext2D.prototype.fillText;window.playingLabels=0;
-    CanvasRenderingContext2D.prototype.strokeRect=function(x,y,w,h){if(this.getTransform().a===1&&this.strokeStyle.includes('79')&&this.strokeStyle.includes('209')&&this.strokeStyle.includes('197')&&w<200)window.mapBox={x,y,w,h};return stroke.call(this,x,y,w,h);};
+  await page.evaluate(()=>{const proto=CanvasRenderingContext2D.prototype,begin=proto.beginPath,move=proto.moveTo,line=proto.lineTo,arc=proto.arcTo,stroke=proto.stroke,strokeRect=proto.strokeRect,fill=proto.fillText;window.playingLabels=0;window.extraMapFrames=0;
+    // The map has one traced circular-arc arena outline. The white strokeRect is the viewport.
+    const paths=new WeakMap();
+    const point=(ctx,x,y)=>{const p=paths.get(ctx);if(p){p.left=Math.min(p.left,x);p.top=Math.min(p.top,y);p.right=Math.max(p.right,x);p.bottom=Math.max(p.bottom,y);}};
+    proto.beginPath=function(){paths.set(this,{left:Infinity,top:Infinity,right:-Infinity,bottom:-Infinity,arcs:0});return begin.call(this);};
+    proto.moveTo=function(x,y){point(this,x,y);return move.call(this,x,y);};
+    proto.lineTo=function(x,y){point(this,x,y);return line.call(this,x,y);};
+    proto.arcTo=function(x1,y1,x2,y2,r){point(this,x1,y1);point(this,x2,y2);const p=paths.get(this);if(p)p.arcs++;return arc.call(this,x1,y1,x2,y2,r);};
+    proto.stroke=function(...args){const p=paths.get(this);if(this.getTransform().a===1&&this.strokeStyle==='rgba(79, 209, 197, 0.45)'&&p?.arcs===4&&p.right-p.left<200){window.mapBox={x:p.left,y:p.top,w:p.right-p.left,h:p.bottom-p.top};}return stroke.apply(this,args);};
+    proto.strokeRect=function(...args){if(this.getTransform().a===1&&this.strokeStyle.includes('79')&&this.strokeStyle.includes('209')&&this.strokeStyle.includes('197')&&args[2]<200)window.extraMapFrames++;return strokeRect.apply(this,args);};
     CanvasRenderingContext2D.prototype.fillText=function(text,...args){if(matchMedia('(max-width: 1199px)').matches&&/\d+ playing/.test(String(text)))window.playingLabels++;return fill.call(this,text,...args);};
   });
   for(const [width,height] of [[320,568],[475,744],[915,412]]) {
     await page.setViewportSize({width,height});await page.waitForTimeout(200);
     const at=await page.evaluate(()=>{const c=document.querySelector('canvas'),r=c.getBoundingClientRect(),u=c.width/r.width,b=window.mapBox;return b?{left:r.left+b.x/u,right:r.left+(b.x+b.w)/u,top:r.top+b.y/u}:null;});
     expect(at).not.toBeNull();const menu=await page.getByRole('button',{name:'Toggle menu'}).boundingBox();
-    // The compact panel extends eight CSS pixels beyond its inner map border.
+    // The menu's right edge sits eight CSS pixels beyond the single arena outline.
     expect(Math.abs(menu.x+menu.width-at.right-8)).toBeLessThan(2);
     expect(menu.y+menu.height).toBeLessThanOrEqual(at.top-2);
     expect(at.left).toBeGreaterThan(150);
+    expect(at.top).toBeGreaterThan(menu.y+menu.height);
   }
   expect(await page.evaluate(()=>window.playingLabels)).toBe(0);
+  expect(await page.evaluate(()=>window.extraMapFrames)).toBe(0);
   await page.setViewportSize({width:475,height:744});await page.waitForTimeout(200);
   await page.screenshot({path:test.info().outputPath('aligned-hud-dock.png')});
 });
