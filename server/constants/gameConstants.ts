@@ -95,8 +95,8 @@ export const GEMS = {
   GROWTH_MASS_PER_GEM: 0.5, // slower earned growth; score/value, combat tuning and recovery rules are unchanged
   GROWTH_SCALE: 600, // diminishing late size gains; every player keeps the same uncapped gem total
   GROWTH_EXPONENT: 0.8, // retain useful size differences between established rivals, rather than flattening them logarithmically
-  SIZE_SOFT_START_SHARE: 0.15, // normal growth until diameter reaches 15% of the shorter map side
-  SIZE_MAX_SHARE: 0.30, // very late diameter approaches 30%; gem totals and score remain uncapped
+  SIZE_SOFT_START_SHARE: 0.20, // local trial: delay extra taper to 20% of the shorter map side
+  SIZE_MAX_SHARE: 0.35, // local trial: very late diameter approaches 35%; score remains uncapped
   SPRAY_SHARE: 0.5, // a hit sprays out this share of your gems...
   SURVIVE_AT: 3, // ...but with fewer than this, a hit knocks you out (your last gems burst out)
   SPRAY_PIECES: 24, // fewer distinct drops, preserving total spilled value
@@ -376,7 +376,10 @@ export const CAMERA = {
   THREAT_RATIO: 1.5, // ...but the view always shows a creature this many times wider coming...
   REACTION_S: 0.9, // ...this long before the lethal part of its airflow could reach you (this wins at small sizes)...
   THREAT_MAX_WIDTH: 150, // ...planned for creatures up to this wide; past it there's little bigger to fear, so your growth fills the screen
-  LOCKED: true as boolean, // the view stays centered on you, Agar.io-style: no lead, no lag (false brings back the soft follow below)
+  LOCKED: true as boolean, // ordinary movement follows without lag; large-player inhale framing is smoothed separately
+  INHALE_FRAME_FROM_WIDTH: 240, // ease in the framing with physical size; small-player view is unchanged
+  INHALE_FRAME_FULL_WIDTH: 600,
+  INHALE_LOOK_SHARE: 0.30, // desired forward lead; containment also retains the followed body
   LOOK_AHEAD_S: 0.22, // (soft follow) the camera leads your movement by this much of your velocity...
   FACING: 0.02, // ...plus a little toward where you face (a share of the view's short side)...
   INHALE_FACING: 0.06, // ...more while inhaling, where the fight is...
@@ -752,7 +755,8 @@ export const BLACK_HOLE = {
   WARNING_MS: 2500,
   RIM_CLEARANCE: 8,
   RIM_RECOVERY_SPEED: 180,
-  POSITIONS: [[0.25, 0.30], [0.75, 0.30], [0.50, 0.74]],
+  // Upper holes leave a full-width route above them for the larger trial giant.
+  POSITIONS: [[0.25, 0.40], [0.75, 0.40], [0.50, 0.74]],
 } as const;
 
 /** Provisional assembled-weapon counterplay; independent of player-fired cannonballs. */
@@ -761,4 +765,10 @@ export const WEAPON_FAIRNESS = {
   GRAZE_DAMAGE_SHARE: 0.25,
   SHARED_HIT_MS: 900,
   FULL_GUARD_WIDTH: 500,
+} as const;
+
+/** Provisional injury gating only; weapon damage, cadence and guards stay unchanged. */
+export const WEAPON_INJURY = {
+  MASS_SHARE: 0.05,
+  BURST_WINDOW_MS: 2000,
 } as const;

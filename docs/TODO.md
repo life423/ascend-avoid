@@ -1,14 +1,87 @@
 # Ascend Avoid — current work and next-session handoff
 
-Updated November 4, 2026. Latest verified live main is `46cc5a0` (rear-hit wall
-slip, PR #81), deployed successfully with live bundle and WebSocket checks.
+Updated November 4, 2026. Previous verified live baseline is `ad88358` (bot giant
+awareness and gem/black-hole clearance, PR #82), deployed successfully with live
+bundle and WebSocket checks on Azure revision `ascend-avoid--0000122`.
 Rounded camera/corners, 75% defense, ownership visuals and the single-outline
 minimap are shipped. The original top-right Menu box is retained. This is the active list.
 The complete earlier request inventory is preserved in [TODO_HISTORY.md](TODO_HISTORY.md).
 Historical studies and checklists can describe removed mechanics; do not treat
 those descriptions as unfinished implementation work.
 
-## Bot giant awareness — release approved November 4
+## Current release — approved November 4
+
+The user reviewed the local version, said it feels good, and authorized commit,
+merge to main, push and live deployment. The
+[production workflow](https://github.com/life423/ascend-avoid/actions/workflows/deploy.yml)
+records the final published revision and deployment result.
+
+- [x] Make all assembled weapons earn injury through a meaningful central hit or
+  concentrated burst. Provisional threshold: nominal impact credit equal to 5%
+  of pre-hit physical mass in a rolling 2s window. Damage, rewards, guards and
+  fixed non-refreshing 7s injury are unchanged. See
+  [EARNED_WEAPON_INJURY.md](EARNED_WEAPON_INJURY.md).
+- [x] Measure the late growth curve and try a later taper/larger maximum on the
+  **same arena with the same bot count**. Local trial starts extra taper at 840
+  and approaches 1,470 width; early growth is unchanged. See
+  [LATE_GROWTH_TRIAL.md](LATE_GROWTH_TRIAL.md) and its recorded comparison.
+- [x] Accommodate the new maximum through initial hole placement: upper holes
+  now start at 40% arena height. Full-body routes from all corners to the center
+  pass authoritative human/bot checks; no reduced body/rim collision or walking
+  damage. Dynamic relocation and warning behavior remain future work below.
+- [x] Measure speed, body-length travel and turns across size tiers. Current
+  formula gives 109.3 units/s and a roughly 1.03s 90° turn at maximum width;
+  half-width prey retain 18.9% faster walking. Clear hole-only corner-to-center
+  routes take 18.7–20.7s. Keep testing whether this feels slow without becoming
+  tedious; no speed/turning constants have changed in this trial.
+- [x] Implement bounded large-player inhale framing locally. The view pans
+  forward smoothly and returns on release; **no inhale-driven zoom** (explicit
+  user preference). Preserve player visibility, rounded containment, ordinary
+  movement framing and tutorial objective framing. See
+  [INHALE_CAMERA.md](INHALE_CAMERA.md) for tuning and verification.
+- [ ] Human playtest these provisional values in ordinary matches, especially
+  first-hit breathing availability, burst injury, giant capture reach, continued
+  physical growth and tighter hole/corner routes. Automated checks are not a
+  claim of final balance. At extreme uncapped gem totals, existing weapon damage
+  can again exceed the injury threshold in one hit; assess this dependency.
+- Local normal game: <http://localhost:3001/>. Disposable controlled review:
+  <http://localhost:3001/growth-review.html>. No opt-in gameplay flag. Local
+  review is complete; continue the broader human/device checks below after release.
+
+## Newly discussed design follow-ups
+
+- [ ] Human/device review of the implemented [inhale framing](INHALE_CAMERA.md):
+  reading targets/shots, turning, mouth visibility, corners, crowded HUD overlap
+  and motion comfort. Preserve the user's explicit **no inhale zoom** preference.
+  Full-cone visibility cannot always coexist with the current portrait viewport
+  and no exterior: at width 1,470 reach is 3,020 units beyond the mouth.
+- [ ] **Agreed direction: black holes periodically relocate with a warning.**
+  Close the old hole, visibly announce a clear new location, then reopen there;
+  do not move an active lethal core underneath players. Preserve shot-only death
+  and safe walking/soft rims. Set timing, safe placement, warning/minimap cues and
+  behavior for shots arriving during closure before implementing. Current holes
+  already scale their fixed positions with arena dimensions; they do not yet
+  respawn like fans.
+- [ ] Redesign the black-hole icon, especially on the minimap: the tilted purple
+  ellipse was reported to resemble lips/genitalia. Proposed direction is a dark
+  circular core with a thin broken circular ring; distinguish it from players,
+  weapons and fan icons without relying on words.
+- [ ] Consider modest small/medium black-hole size variation after relocation.
+  This is an idea, not implemented tuning. Match visible/core/rim geometry and
+  minimap size cues; check giant routes and avoid closing corridors with huge holes.
+- [ ] Explore size-tiered weapons as a later progression goal. Physical size
+  could unlock a recipe, while rare contested parts and an exposed build process
+  earn the strongest weapon. Decide shrink-before-completion, duration/ammo and
+  counterplay. Do not grant an automatic leader weapon or silently add recipes.
+- [ ] Discuss pre-launch self-aiming in a fan. Existing fan flight has limited
+  steering; a bounded aim/loading opportunity would be separate. Preserve small
+  ammunition's physical limits against giants, avoid player-shot shooter bonuses
+  on fan launches, and prevent re-entry spam. No implementation is approved yet.
+- Arena enlargement and additional bots are **deferred**. First assess more
+  rewarding physical growth, small-player escapes and mobile performance on the
+  current arena. The user does not need to know an exact score where reward fades.
+
+## Bot giant awareness — released November 4
 
 - [x] Use actual mouth-facing inhale reach and bot radius for proactive giant
   avoidance, retaining the existing close-body caution and normal reactions.
@@ -23,14 +96,19 @@ those descriptions as unfinished implementation work.
 - The 288-case comparison shows earlier retreat with unchanged tuning, but its
   three-second warning setup does not establish human balance or invincibility.
 
-## Gem placement — included in the pending release
+## Gem placement — released November 4
 
 - [x] Keep initial/refilled gems, showers, surge crystals and jackpots clear of
   black-hole rings. Clear settled overlaps while preserving moving drop paths,
   normal counts, values and refill/expiry timing. See
   [GEM_BLACK_HOLE_CLEARANCE.md](GEM_BLACK_HOLE_CLEARANCE.md).
 - The user reported the overlap while the bot release was pending. This fix is
-  included in PR #82; the main deployment workflow records the final rollout.
+  included in released PR #82; the main deployment workflow records the rollout.
+- Required GitHub CI statuses stayed queued despite completed successful logs,
+  including a fresh run. The user explicitly authorized a one-time admin merge
+  override. Original branch protections were restored and verified unchanged.
+  Treat as isolated for now; investigate GitHub Actions/check reporting if it
+  recurs. Do not reuse the one-time override as standing permission.
 
 ## Rounded camera follow-up — release approved November 3
 
@@ -86,12 +164,14 @@ strength, speed and unrelated tuning.
 
 ## Suggested next session
 
-1. Continue ordinary-match [bot giant-awareness](BOT_GIANT_AVOIDANCE.md) and
+1. Review the local earned-injury and larger-growth trials above before release.
+2. Plan the agreed black-hole close–warning–reopen relocation and icon redesign.
+3. Continue ordinary-match [bot giant-awareness](BOT_GIANT_AVOIDANCE.md) and
    human-match playtests of giant/small-player escape and the released rear-hit
    wall slip. Keep 75% breath, shove strength and other balance unchanged.
-2. Run the physical Pixel/browser checks below, especially Android Firefox lag,
+4. Run the physical Pixel/browser checks below, especially Android Firefox lag,
    injured escape and incoming-shot reaction time.
-3. Review ordinary-match pacing, weapon assembly and long-run growth together.
+5. Review ordinary-match pacing, weapon assembly and long-run growth together.
    Use recordings and measurements; do not require the user to replay as a
    prerequisite to reproducible technical investigations.
 

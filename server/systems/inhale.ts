@@ -189,6 +189,7 @@ export function updateInhales(state: GameState, now: number, deltaTime: number) 
       eater.gulpEndsAt = state.time + caught.captureHoldMs;
       eater.captureNeedsRelease = true;
       caught.capturedBy = eater.sessionId;
+      caught.weaponInjury.clear();
       state.clearTheftFor(caught.sessionId); state.clearTheftFor(eater.sessionId);
       const amount = captureGrowthTransfer(caught.gems, state.worldWidth, state.worldHeight);
       caught.setGems(caught.gems - amount, state.worldWidth, state.worldHeight);

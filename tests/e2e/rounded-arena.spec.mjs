@@ -26,9 +26,9 @@ for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const [label, gems] of 
       return label === 'giant' ? p.width > 1200 : label === 'large' ? p.width > 290 && p.width < 310 : p.width === 20;
     }, label);
     const size = await page.evaluate(() => window.game.currentGameMode.multiplayerManager.getLocalPlayer().width);
-    const inner = R - M - size / 2;
-    const x = (sx < 0 ? R : W - R) + sx * inner / Math.SQRT2 - size / 2;
-    const y = (sy < 0 ? R : W - R) + sy * inner / Math.SQRT2 - size / 2;
+    const inset = Math.max(R, M + size / 2), inner = Math.max(0, R - M - size / 2);
+    const x = (sx < 0 ? inset : W - inset) + sx * inner / Math.SQRT2 - size / 2;
+    const y = (sy < 0 ? inset : W - inset) + sy * inner / Math.SQRT2 - size / 2;
     await send('test:moveTo', { x, y });
     await page.waitForFunction(({ x, y }) => {
       const m = window.game.currentGameMode, p = m.multiplayerManager.getLocalPlayer();

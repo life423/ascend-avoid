@@ -40,7 +40,7 @@ for (const bot of [false, true]) for (const kind of weaponKinds.filter(k => k !=
   const lost = graze ? Math.max(1, Math.round(original * WEAPON_FAIRNESS.GRAZE_DAMAGE_SHARE)) : original;
   assert.equal(p.gems, 5000 - lost, `${kind}: full center hit or quarter-damage outer graze`);
   assert.equal(owner.gems, lost); assert.equal(owner.weaponDamage, lost); assert.equal(s.gems.size, 0);
-  assert.equal(p.injuredUntil > s.time, !graze, 'only a direct hit opens injury');
+  assert.equal(p.injuredUntil > s.time, !graze && kind === 'comet', 'at this giant size only the heavy direct comet earns injury in one hit');
   assert(!p.sliding && !p.recovering && !p.stunned, 'neither grazes nor direct weapon hits lock steering');
   assert.equal(p.puffVx > 0, !graze, 'only a direct hit adds a brief steerable push');
   assert.equal(credits.length, 1); assert.equal(credits[0].glancing, graze);
@@ -84,12 +84,14 @@ for (const core of [false, true]) {
   activate(s, other.sessionId, 'sentinel', second); p.placeAt(2350 - p.width / 2, 2100 - p.height / 2);
   bolt(s, w); bolt(s, second); updateWeapons(s, .6, NOW);
   const firstLoss = 5000 - p.gems, until = p.weaponSafeUntil, injury = p.injuredUntil;
-  assert(firstLoss > 0); assert.equal(other.gems, 0); assert.equal(credits.length, 1, 'independent recipes share one guard');
+  assert(firstLoss > 0); assert.equal(injury, 0, 'the first weak hit costs gems without disabling this giant');
+  assert.equal(other.gems, 0); assert.equal(credits.length, 1, 'independent recipes share one guard');
   assert.equal(second.bolts.size, 0, 'guarded bolts are consumed instead of lodging inside a giant');
   s.time += 100; bolt(s, w, 'during-local-cooldown'); updateWeapons(s, .1, NOW + 100);
   assert.equal(w.bolts.size, 0); assert.equal(p.gems, 5000 - firstLoss); assert.equal(p.weaponSafeUntil, until, 'blocked hits cannot extend protection');
   s.time = until; bolt(s, second, 'after'); updateWeapons(s, .6, NOW + 900);
-  assert(other.gems > 0, 'a later well-aimed hit can damage normally'); assert.equal(p.injuredUntil, injury, 'active injury remains non-refreshing');
+  assert(other.gems > 0, 'a later well-aimed hit can damage normally');
+  assert.equal(p.injuredUntil, s.time + 7000, 'accepted direct hits from different builders can earn one concentrated-burst injury');
   assert.equal(p.gems + owner.gems + other.gems, 5000, 'all transferred damage remains conserved');
   s.spawn(p, NOW + 2000); assert.equal(p.weaponSafeUntil, 0, 'respawn clears the guard');
   p.weaponSafeUntil = 99999; p.knockOut(NOW); assert.equal(p.weaponSafeUntil, 0, 'death clears the guard');

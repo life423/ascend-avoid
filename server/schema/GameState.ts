@@ -210,6 +210,7 @@ class GameState extends Schema {
   }
 
   removePlayer(sessionId: string): void {
+    this.players.get(sessionId)?.weaponInjury.clear();
     if (this.gustWaves.has(sessionId)) this.gustWaves.delete(sessionId);
     this.spawnRetries.delete(sessionId);
     clearCapture(this, sessionId, this.now);

@@ -7,6 +7,7 @@ import { CANNON, EXHALE } from "../constants/gameConstants.js";
 import { creatureSize } from '../game/creatureSize.js';
 import { puffDrift } from '../game/puffImpulse.js';
 import { constrainArena } from '../game/arenaBoundary.js';
+import { WeaponInjuryPressure } from '../game/weaponInjury.js';
 import type { Box, Direction } from "../game/movement.js";
 
 const { ARENA_RULES, GEMS, INHALE, PLAYER_STATE, PUSH, WORLD } = GAME_CONSTANTS;
@@ -115,6 +116,8 @@ class PlayerSchema extends Schema {
   launchSafeUntil = 0;
   /** World-time guard against assembled weapons only; not suction or player cannonballs. */
   weaponSafeUntil = 0;
+  /** Server-only: accepted direct weapon damage in a short rolling window. */
+  readonly weaponInjury = new WeaponInjuryPressure();
   /** World-time deadline: direct damaging hits expose gems, without adding movement or input penalties. */
   injuredUntil = 0;
   /** Server-only: gem count at the start of this injury; fixes theft rate until the window ends. */
@@ -266,6 +269,7 @@ class PlayerSchema extends Schema {
 
   /** Traffic passes through for `ms` (drawn in a bubble) */
   protectFor(ms: number, now: number): void {
+    this.weaponInjury.clear();
     this.spawnProtected = true;
     this.protectedUntil = now + ms;
   }
@@ -273,6 +277,7 @@ class PlayerSchema extends Schema {
   /** Start a fixed exposure after real damage; further hits still hurt but cannot extend it. */
   injure(worldTime: number): void {
     if (this.state !== PLAYER_STATE.ALIVE || this.spawnProtected || worldTime < this.injuredUntil) return;
+    this.weaponInjury.clear();
     this.injuredUntil = worldTime + INHALE.INJURY_MS;
     this.breathingBlocked = true;
     this.inhaling = false;
@@ -293,6 +298,7 @@ class PlayerSchema extends Schema {
 
   /** Hit with no gems left: out of play until respawnAt */
   knockOut(now: number): void {
+    this.weaponInjury.clear();
     this.shotMassBonus = 0; this.shotShooterWidth = 0; this.shotOwner = "";
     this.capturedBy = this.gulping = ""; this.captureNeedsRelease = false;
     this.state = PLAYER_STATE.DEAD;
@@ -484,6 +490,7 @@ class PlayerSchema extends Schema {
 
   /** Launched at this velocity until it slows or `maxMs` passes. Only turbine throws opt into steering. */
   launch(now: number, vx: number, vy: number, by: string, maxMs: number, drag: number = CANNON.DRAG, kind: 'missile' | 'turbine' = 'missile'): void {
+    this.weaponInjury.clear();
     this.shotMassBonus = 0; this.shotShooterWidth = 0;
     this.flying = true;
     this.flightVx = vx;

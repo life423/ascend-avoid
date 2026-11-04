@@ -1,0 +1,194 @@
+{
+  "date": "2026-11-04",
+  "world": [
+    4200,
+    4200
+  ],
+  "blackHolePositions": [
+    [
+      0.25,
+      0.4
+    ],
+    [
+      0.75,
+      0.4
+    ],
+    [
+      0.5,
+      0.74
+    ]
+  ],
+  "trial": {
+    "softStart": 0.2,
+    "maximum": 0.35
+  },
+  "lessThanFivePercentPerDoubling": {
+    "released": 69000,
+    "trial": 83000
+  },
+  "rows": [
+    {
+      "gems": 1000,
+      "releasedWidth": 301,
+      "trialWidth": 301,
+      "releasedDoublingGainPct": 36.54485049833887,
+      "trialDoublingGainPct": 36.54485049833887,
+      "trialMass": 453.00500000000005,
+      "releasedWalkSpeed": 162.4672589354394,
+      "trialWalkSpeed": 162.4672589354394,
+      "trialOneBodySeconds": 1.8526809769075394,
+      "trialArenaSpanSeconds": 23.900200110737458,
+      "trialInhaleReach": 682
+    },
+    {
+      "gems": 5000,
+      "releasedWidth": 612,
+      "trialWidth": 612,
+      "releasedDoublingGainPct": 29.820261437908503,
+      "trialDoublingGainPct": 34.06862745098038,
+      "trialMass": 1872.7200000000003,
+      "releasedWalkSpeed": 136.0566024388085,
+      "trialWalkSpeed": 136.0566024388085,
+      "trialOneBodySeconds": 4.498127904342217,
+      "trialArenaSpanSeconds": 26.253779206389545,
+      "trialInhaleReach": 1304
+    },
+    {
+      "gems": 10000,
+      "releasedWidth": 794.5,
+      "trialWidth": 820.5,
+      "releasedDoublingGainPct": 20.64191315292636,
+      "trialDoublingGainPct": 27.84887263863498,
+      "trialMass": 3366.1012499999997,
+      "releasedWalkSpeed": 127.46296065001846,
+      "trialWalkSpeed": 126.44097349088845,
+      "trialOneBodySeconds": 6.489193948345601,
+      "trialArenaSpanSeconds": 26.60134533243197,
+      "trialInhaleReach": 1721
+    },
+    {
+      "gems": 20000,
+      "releasedWidth": 958.5,
+      "trialWidth": 1049,
+      "releasedDoublingGainPct": 13.667188315075629,
+      "trialDoublingGainPct": 17.445185891325067,
+      "trialMass": 5502.005000000001,
+      "releasedWalkSpeed": 121.6212458657146,
+      "trialWalkSpeed": 118.90869290490829,
+      "trialOneBodySeconds": 8.821894971454181,
+      "trialArenaSpanSeconds": 26.364767145384995,
+      "trialInhaleReach": 2178
+    },
+    {
+      "gems": 50000,
+      "releasedWidth": 1123,
+      "trialWidth": 1279,
+      "releasedDoublingGainPct": 6.812110418521811,
+      "trialDoublingGainPct": 8.365910867865512,
+      "trialMass": 8179.205000000001,
+      "releasedWalkSpeed": 116.89946892680183,
+      "trialWalkSpeed": 113.15919287267894,
+      "trialOneBodySeconds": 11.302661034698849,
+      "trialArenaSpanSeconds": 25.67179851899934,
+      "trialInhaleReach": 2638
+    },
+    {
+      "gems": 100000,
+      "releasedWidth": 1199.5,
+      "trialWidth": 1386,
+      "releasedDoublingGainPct": 3.334722801167156,
+      "trialDoublingGainPct": 4.00432900432901,
+      "trialMass": 9604.98,
+      "releasedWalkSpeed": 114.98929575185336,
+      "trialWalkSpeed": 110.90896938782737,
+      "trialOneBodySeconds": 12.496735003942055,
+      "trialArenaSpanSeconds": 25.227896494249542,
+      "trialInhaleReach": 2852
+    },
+    {
+      "gems": 200000,
+      "releasedWidth": 1239.5,
+      "trialWidth": 1441.5,
+      "releasedDoublingGainPct": 1.2505042355788643,
+      "trialDoublingGainPct": 1.4915019077349934,
+      "trialMass": 10389.61125,
+      "releasedWalkSpeed": 114.05014570844125,
+      "trialWalkSpeed": 109.82565840842908,
+      "trialOneBodySeconds": 13.12534812802329,
+      "trialArenaSpanSeconds": 24.971395935555933,
+      "trialInhaleReach": 2963
+    },
+    {
+      "gems": 1000000,
+      "releasedWidth": 1259.5,
+      "trialWidth": 1469.5,
+      "releasedDoublingGainPct": 0.03969829297341132,
+      "trialDoublingGainPct": 0.03402517863217991,
+      "trialMass": 10797.151249999999,
+      "releasedWalkSpeed": 113.59466478167326,
+      "trialWalkSpeed": 109.29872092806337,
+      "trialOneBodySeconds": 13.44480509490293,
+      "trialArenaSpanSeconds": 24.835606281125557,
+      "trialInhaleReach": 3019
+    }
+  ],
+  "movement": [
+    {
+      "width": 20,
+      "speed": 320,
+      "oneBodySeconds": 0.0625,
+      "ninetyDegreeTurnSeconds": 0.4,
+      "halfWidthSpeedAdvantagePct": 0,
+      "captureSizedPreySpeedAdvantagePct": 0
+    },
+    {
+      "width": 301,
+      "speed": 162.4672589354394,
+      "oneBodySeconds": 1.8526809769075394,
+      "ninetyDegreeTurnSeconds": 0.7333333333333333,
+      "halfWidthSpeedAdvantagePct": 18.920711500272102,
+      "captureSizedPreySpeedAdvantagePct": 6.778997237244111
+    },
+    {
+      "width": 612,
+      "speed": 136.0566024388085,
+      "oneBodySeconds": 4.498127904342217,
+      "ninetyDegreeTurnSeconds": 0.8333333333333334,
+      "halfWidthSpeedAdvantagePct": 18.920711500272102,
+      "captureSizedPreySpeedAdvantagePct": 6.778997237244089
+    },
+    {
+      "width": 1049,
+      "speed": 118.90869290490829,
+      "oneBodySeconds": 8.821894971454181,
+      "ninetyDegreeTurnSeconds": 0.9666666666666667,
+      "halfWidthSpeedAdvantagePct": 18.920711500272102,
+      "captureSizedPreySpeedAdvantagePct": 6.778997237244089
+    },
+    {
+      "width": 1279,
+      "speed": 113.15919287267894,
+      "oneBodySeconds": 11.302661034698849,
+      "ninetyDegreeTurnSeconds": 1,
+      "halfWidthSpeedAdvantagePct": 18.920711500272102,
+      "captureSizedPreySpeedAdvantagePct": 6.778997237244089
+    },
+    {
+      "width": 1386,
+      "speed": 110.90896938782737,
+      "oneBodySeconds": 12.496735003942055,
+      "ninetyDegreeTurnSeconds": 1,
+      "halfWidthSpeedAdvantagePct": 18.920711500272127,
+      "captureSizedPreySpeedAdvantagePct": 6.778997237244111
+    },
+    {
+      "width": 1470,
+      "speed": 109.28942563343259,
+      "oneBodySeconds": 13.450523611776712,
+      "ninetyDegreeTurnSeconds": 1.0333333333333334,
+      "halfWidthSpeedAdvantagePct": 18.920711500272102,
+      "captureSizedPreySpeedAdvantagePct": 6.778997237244089
+    }
+  ],
+  "limits": "A finite arena still needs bounded physical size. These are curve measurements, not human fun validation. Larger bodies inherently change mass, reach, movement speed and capture matchups through unchanged formulas."
+}

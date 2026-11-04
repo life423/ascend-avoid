@@ -5,7 +5,7 @@ import { PlayerSchema } from '../schema/PlayerSchema.js';
 
 const maximumWidth = Math.min(WORLD.WIDTH, WORLD.HEIGHT) * GEMS.SIZE_MAX_SHARE;
 assert.equal(moveSpeed(ARENA_RULES.PLAYER_SIZE), 320, 'newborn movement is preserved');
-assert(moveSpeed(maximumWidth) > 110, 'even the largest legal body remains mobile');
+assert(moveSpeed(maximumWidth) > 109, 'the larger trial body remains mobile under the unchanged walking formula');
 for (let width = ARENA_RULES.PLAYER_SIZE + .5; width <= maximumWidth; width += .5) {
   assert(moveSpeed(width) < moveSpeed(width - .5), 'every larger legal half-unit body has a lower maximum speed');
 }

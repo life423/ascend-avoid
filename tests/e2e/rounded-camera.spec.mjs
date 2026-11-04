@@ -23,7 +23,7 @@ for(const [label,gems]of [['small',0],['large',1000],['giant',1e9]])test(`${labe
  const size=(await read(page)).p.size,input=await practiceInput(page,browserName,hasTouch);
  try{
   for(const sx of [-1,1])for(const sy of [-1,1])for(const deg of [15,45,75]){
-   const a=deg*Math.PI/180,inner=700-size/2-8,x=(sx<0?700:3500)+sx*inner*Math.cos(a)-size/2,y=(sy<0?700:3500)+sy*inner*Math.sin(a)-size/2;
+   const a=deg*Math.PI/180,inset=Math.max(700,size/2+8),inner=Math.max(0,700-size/2-8),x=(sx<0?inset:4200-inset)+sx*inner*Math.cos(a)-size/2,y=(sy<0?inset:4200-inset)+sy*inner*Math.sin(a)-size/2;
    await send(page,'test:moveTo',{x,y});
    await page.waitForFunction(({x,y})=>{const m=window.game.currentGameMode,p=m.multiplayerManager.getLocalPlayer();return Math.hypot(p.x-x,p.y-y)<18&&Math.hypot(m.predicted.x-p.x,m.predicted.y-p.y)<10;},{x,y});
    await page.waitForTimeout(35);check(await read(page));

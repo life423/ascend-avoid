@@ -16,12 +16,16 @@ for (const gems of [0, 1, 4, 12, 40]) {
 let previous = 0;
 for (const gems of [0, 100, 1000, 1980, 1983, 2000, 5000, 10000, 30000, 100000, 1000000, 1e12]) {
   const width = creatureSize(gems);
-  assert(width >= previous && width <= 1260 && Number.isFinite(width), 'late growth stays monotonic and fits a finite arena'); previous = width;
+  assert(width >= previous && width <= 1470 && Number.isFinite(width), 'late growth stays monotonic and fits a finite arena'); previous = width;
 }
 assert(creatureSize(10000) > creatureSize(2000) + 150, 'the late climb still produces a visibly larger creature');
 assert(creatureSize(1000) > creatureSize(100) * 2 && creatureSize(10000) < creatureSize(1000) * Math.sqrt(10), 'later visible gains require progressively more crystals');
 assert(creatureSize(5000) >= creatureSize(2000) * 1.3, 'a substantial established lead still earns a useful capture advantage, not nearly equal bodies');
-assert(creatureSize(1e12, 2100, 4200) <= 630, 'physical bounds follow the shorter map side');
+assert.equal(creatureSize(1e12), 1470, 'the local maximum is physically larger than the previous 1260');
+assert.equal(creatureSize(5000), 612, 'the opening and established pre-taper body are unchanged');
+assert.equal(creatureSize(50000), 1279, 'long runs keep visible growth beyond the old maximum');
+assert(creatureSize(100000) / creatureSize(50000) > 1.08, 'doubling this late score still earns over 8% width in the local trial');
+assert(creatureSize(1e12, 2100, 4200) <= 735, 'physical bounds follow the shorter map side');
 {
   const rig = new CameraRig();
   const subject = { x: 2100, y: 2100, vx: 0, vy: 0, width: 20, facing: 0, inhaling: false };

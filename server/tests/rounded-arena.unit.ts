@@ -9,13 +9,14 @@ import { updateFlights } from '../systems/flights.js';
 import { chooseSpawn, hasEscapeRoutes } from '../game/spawnSafety.js';
 import { findPartLayout } from '../game/arenaPlacement.js';
 import { updateHolds, fireCaptive } from '../systems/inhale.js';
+import { creatureSize } from '../game/creatureSize.js';
 const W = 4200, NOW = 100000, R = 700, M = 8;
 const near = (a: number, b: number, e = 1e-6) => assert(Math.abs(a - b) < e, `${a} != ${b}`);
 const signs = [-1, 1];
 function atCorner(size: number, sx: number, sy: number, angle = Math.PI / 4): Box {
-  const inner = R - M - size / 2;
-  return { x: (sx < 0 ? R : W - R) + sx * Math.cos(angle) * inner - size / 2,
-    y: (sy < 0 ? R : W - R) + sy * Math.sin(angle) * inner - size / 2, width: size, height: size };
+  const inset = Math.max(R, M + size / 2), inner = Math.max(0, R - M - size / 2);
+  return { x: (sx < 0 ? inset : W - inset) + sx * Math.cos(angle) * inner - size / 2,
+    y: (sy < 0 ? inset : W - inset) + sy * Math.sin(angle) * inner - size / 2, width: size, height: size };
 }
 // Independent visible-outline oracle: test the body circumference, not the centre/helper's own result.
 function fits(box: Box) {
@@ -35,7 +36,7 @@ assert.equal(arenaCornerRadius(1600, 2000), 400, 'practice geometry scales witho
 assert(arenaClearance(0, 0, W, W) < 0);
 assert(!arenaContains({ x: M, y: M, width: 20, height: 20 }, W, W), 'old square corner is no longer playable');
 let steps = 0;
-for (const size of [20, 100, 600, 1260]) for (const sx of signs) for (const sy of signs) for (const side of signs) {
+for (const size of [20, 100, 600, 1260, 1470]) for (const sx of signs) for (const sy of signs) for (const side of signs) {
   const box = atCorner(size, sx, sy), velocity = { x: 0, y: 0 };
   const tx = -sy * side / Math.SQRT2, ty = sx * side / Math.SQRT2, start = { ...box };
   let previous = { ...box };
@@ -59,7 +60,7 @@ for (const size of [20, 1260]) for (const sx of signs) for (const sy of signs) {
   for (let i = 0; i < 600; i++) { walk(box, velocity, { x: 0, y: sy }, 1 / 60, W, W); fits(box); }
   assert(Math.abs(box.x - before.x) > Math.min(80, (R - M - size / 2) * .5), 'holding along the side carries a giant smoothly onto the arc');
 }
-for (const size of [20, 600, 1260]) for (const sx of signs) for (const sy of signs) {
+for (const size of [20, 600, 1260, 1470]) for (const sx of signs) for (const sy of signs) {
   const box = atCorner(size, sx, sy), v = { x: sx * 600, y: sy * 100 };
   puffDrift(box, v, .1, W, W); fits(box);
   assert(Math.hypot(v.x, v.y) <= Math.hypot(600, 100));
@@ -106,13 +107,15 @@ for (const kind of ['missile', 'turbine'] as const) for (const sx of signs) for 
   for (const gem of s.gems.values()) assert(arenaClearance(gem.x, gem.y, W, W) >= 39);
 }
 // Actual fixed holes and a giant at every corner: no idle correction/jitter, and an open retreat remains.
+let legacyGems = 0;
+while (creatureSize(legacyGems) < 1260) legacyGems++;
 for (const sx of signs) for (const sy of signs) {
   const s = scene();
   for (const [x, y] of [[1050, 1260], [3150, 1260], [2100, 3108]]) s.blackHoles.push(new BlackHoleSchema(x, y));
-  const p = s.addPlayer('giant', 'Giant', NOW); p.setGems(1e9, W, W);
+  const p = s.addPlayer('giant', 'Giant', NOW); p.setGems(legacyGems, W, W);
   const at = atCorner(p.width, sx, sy); p.placeAt(at.x, at.y);
   for (let i = 1; i <= 60; i++) s.update(1 / 60, NOW + i * 1000 / 60);
-  near(p.x, at.x); near(p.y, at.y); fits(p);
+  near(p.x+p.width/2, at.x+at.width/2); near(p.y+p.height/2, at.y+at.height/2); fits(p);
   // Follow the upper arc toward the roomy top edge; lower arcs have an open inward retreat.
   const input = sy < 0 ? { x: -sx, y: -1 } : { x: -sx, y: -sy };
   p.steer(input.x / Math.SQRT2, input.y / Math.SQRT2);
@@ -120,6 +123,24 @@ for (const sx of signs) for (const sy of signs) {
   for (let i = 61; i <= 180; i++) { s.update(1 / 60, NOW + i * 1000 / 60); fits(p); }
   assert(Math.hypot(p.x - start.x, p.y - start.y) > 60, 'giant can navigate the actual corner/hole layout');
   assert(s.blackHoles.every(h => Math.hypot(p.x + p.width / 2 - h.x, p.y + p.width / 2 - h.y) >= h.radius + p.width / 2 + 8 - .1));
+}
+// Growth can create a new rim overlap: at the larger trial maximum, keep steering
+// useful and verify eventual clearance without a teleport, death or collision pop.
+for (const sx of signs) for (const sy of signs) {
+  const s = scene();
+  for (const [x, y] of [[1050,1260],[3150,1260],[2100,3108]]) s.blackHoles.push(new BlackHoleSchema(x,y));
+  const p = s.addPlayer('maximum','Maximum',NOW); p.setGems(1e9,W,W);
+  const at = atCorner(p.width,sx,sy); p.placeAt(at.x,at.y); p.dropProtection();
+  p.steer(-sx/Math.SQRT2,(sy<0?-1:-sy)/Math.SQRT2);
+  let previous = {x:p.x,y:p.y};
+  for(let i=1;i<=600;i++) {
+    s.update(1/60,NOW+i*1000/60); fits(p);
+    assert(Math.hypot(p.x-previous.x,p.y-previous.y)<6,'growth overlap does not teleport the giant');
+    previous={x:p.x,y:p.y};
+  }
+  assert.equal(p.state,'alive');
+  assert(Math.hypot(p.x-at.x,p.y-at.y)>300,'a larger giant can navigate out of every corner');
+  assert(s.blackHoles.every(h=>Math.hypot(p.x+p.width/2-h.x,p.y+p.width/2-h.y)>=h.radius+p.width/2+8-.1),'the maximum-size escape eventually clears the current rims');
 }
 // Eject and fire near a curve: retained input/protection/accounting use the ordinary paths.
 for (const fire of [false, true]) {
@@ -130,4 +151,4 @@ for (const fire of [false, true]) {
   if (fire) { assert(fireCaptive(s, owner, NOW)); fits(kid); updateFlights(s, NOW + 100, .1); assert(!kid.flying); }
   else { owner.gulpEndsAt = s.time; updateHolds(s, NOW); fits(kid); assert(kid.recaptureAfter >= NOW + CANNON.ESCAPE_SAFE_MS); }
 }
-console.log(`Rounded arena passed: ${steps} walking steps across four corners/two directions/four sizes; whole-body outline oracle, seams, release, growth/shrink, drift, hops, bot parity, swept flight, safe spawn and reachable objects.`);
+console.log(`Rounded arena passed: ${steps} walking steps across four corners/two directions/five sizes; whole-body outline oracle, seams, release, growth/shrink, drift, hops, bot parity, swept flight, safe spawn and reachable objects.`);

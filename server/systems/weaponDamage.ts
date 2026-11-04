@@ -12,7 +12,8 @@ export function weaponDamage(state: GameState, target: PlayerSchema, ownerId: st
   const out = target.gems - amount < PINWHEEL.KO_GEMS;
   const lost = out ? target.gems : Math.min(target.gems, amount);
   const x = target.x + target.width / 2, y = target.y + target.height / 2;
-  if (!out && lost > 0 && !glancing) target.injure(state.time);
+  if (out || target.state !== 'alive' || target.spawnProtected || target.capturedBy || target.flying || state.time < target.injuredUntil) target.weaponInjury.clear();
+  else if (lost > 0 && !glancing && target.weaponInjury.hit(state.time, lost, target.width)) target.injure(state.time);
   if (lost > 0 || out) target.weaponSafeUntil = state.time + pause;
   target.setGems(target.gems - lost, state.worldWidth, state.worldHeight);
   if (out) { target.knockOut(now); state.clearTheftFor(target.sessionId); }

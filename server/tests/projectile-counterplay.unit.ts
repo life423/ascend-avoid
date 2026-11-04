@@ -68,7 +68,8 @@ for (const kind of ['pinwheel', 'sentinel', 'ricochet', 'comet', 'ion'] as const
     updateWeapons(s, .1, NOW + s.time);
     assert(target.gems < gems && target.state === 'alive', `${kind}: an ordinary central hit lands`);
     assert(!target.stunned && !target.sliding && !target.recovering, `${kind}: no hidden control-locking skid`);
-    assert(target.breathingBlocked && owner.weaponDamage === gems - target.gems, 'injury and exact builder credit remain');
+    assert.equal(target.breathingBlocked, gems < 10000, 'a single hit injures smaller bodies; this giant needs concentrated follow-up');
+    assert.equal(owner.weaponDamage, gems - target.gems, 'exact builder credit remains independent of injury');
     const x = target.x, y = target.y, facing = target.facing;
     target.steer(0, 1);
     target.updateMovement(4200, 4200, NOW + s.time + 33, 1 / 30);
