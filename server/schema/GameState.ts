@@ -35,7 +35,7 @@ import { PinwheelSchema } from "./PinwheelSchema.js";
 import { deployWeapon, updateWeapons } from "../systems/weapons.js";
 import { PINWHEEL } from "../constants/gameConstants.js";
 import { chooseSpawn, SPAWN_RETRY_MS } from '../game/spawnSafety.js';
-import { fanClearOfHole, partClearOfFan } from '../game/arenaPlacement.js';
+import { fanClearOfHole, partClearOfFan, clearGemPoint } from '../game/arenaPlacement.js';
 import { allWeapons } from '../game/weaponKit.js';
 import { arenaClearance, constrainArenaPoint } from '../game/arenaBoundary.js';
 
@@ -484,9 +484,11 @@ class GameState extends Schema {
 
   /** Gems dropping onto the floor (they can be grabbed once they land) */
   dropGems(count: number, value: number, now: number): void {
-    if (!this.layout) return;
+    const layout = this.layout;
+    if (!layout) return;
     for (let i = 0; i < count && this.gems.size < GEMS.MAX_GEMS; i++) {
-      const spot = randomFloorPoint(this.layout);
+      const spot = clearGemPoint(randomFloorPoint(layout), this.blackHoles, this.worldWidth, this.worldHeight, p => isFloor(layout, p.x, p.y));
+      if (!spot) continue;
       const gem = new GemSchema(spot.x, spot.y, value);
       gem.drop(now);
       this.gems.set(`g${this.nextGemId++}`, gem);
@@ -495,10 +497,13 @@ class GameState extends Schema {
 
   /** The jackpot crystal drops at a spot, landing after `fallMs` */
   dropJackpot(x: number, y: number, fallMs: number): void {
+    const layout = this.shiftPhase !== "normal" ? this.layout : null;
+    const spot = clearGemPoint({ x, y }, this.blackHoles, this.worldWidth, this.worldHeight, p => !layout || isFloor(layout, p.x, p.y));
+    if (!spot) return;
     this.jackpotDropped = true;
     this.jackpotOn = true;
-    this.jackpotX = Math.round(x);
-    this.jackpotY = Math.round(y);
+    this.jackpotX = spot.x;
+    this.jackpotY = spot.y;
     this.jackpotLandsAt = this.time + fallMs;
     this.jackpotHolder = "";
     this.jackpotProgress = 0;
@@ -534,7 +539,10 @@ class GameState extends Schema {
     );
     const bounded = { x: gem.x, y: gem.y };
     constrainArenaPoint(bounded, this.worldWidth, this.worldHeight, margin);
-    gem.moveTo(bounded.x, bounded.y);
+    const layout = this.shiftPhase === "shift" ? this.layout : null;
+    const placed = clearGemPoint(bounded, this.blackHoles, this.worldWidth, this.worldHeight, p => !layout || isFloor(layout, p.x, p.y));
+    if (!placed) return;
+    gem.moveTo(placed.x, placed.y);
     this.gems.set(`g${this.nextGemId++}`, gem);
     this.fieldGems++;
   }

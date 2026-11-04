@@ -12,8 +12,9 @@ those descriptions as unfinished implementation work.
 
 - [x] Use actual mouth-facing inhale reach and bot radius for proactive giant
   avoidance, retaining the existing close-body caution and normal reactions.
-  Other balance constants are unchanged. Build/types/schema/lint, 52 server unit
-  suites, 18 multiplayer scenarios and six desktop/emulated-mobile AI checks pass.
+  Other balance constants are unchanged. With the gem-clearance fix below,
+  build/types/schema/lint, 53 server unit suites, 18 multiplayer scenarios and
+  nine desktop/emulated-mobile checks pass (six AI and three full gem fields).
 - [x] User reviewed the local [bot giant-awareness fix](BOT_GIANT_AVOIDANCE.md),
   said it feels good, and authorized commit, merge and live deployment. The main
   deployment workflow records the published revision and result.
@@ -21,6 +22,15 @@ those descriptions as unfinished implementation work.
   whether bots remain engaging; retain the unchanged balance constants.
 - The 288-case comparison shows earlier retreat with unchanged tuning, but its
   three-second warning setup does not establish human balance or invincibility.
+
+## Gem placement — included in the pending release
+
+- [x] Keep initial/refilled gems, showers, surge crystals and jackpots clear of
+  black-hole rings. Clear settled overlaps while preserving moving drop paths,
+  normal counts, values and refill/expiry timing. See
+  [GEM_BLACK_HOLE_CLEARANCE.md](GEM_BLACK_HOLE_CLEARANCE.md).
+- The user reported the overlap while the bot release was pending. This fix is
+  included in PR #82; the main deployment workflow records the final rollout.
 
 ## Rounded camera follow-up — release approved November 3
 
