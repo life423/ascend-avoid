@@ -5,9 +5,8 @@ import { BotGustDefense } from './botDefense.js';
 import { BotWeaponPlan } from './botWeapons.js';
 import { BotProjectileDodge } from './botProjectiles.js';
 import { BotPulsarDodge } from './botPulsar.js';
-import { botPreyAvailable, botSuctionThreat } from './botTargets.js';
+import { botPreyAvailable, botSuctionThreat, botCaptureThreat } from './botTargets.js';
 import { injuryVulnerable } from '../systems/inhale.js';
-import { canCatch } from './cannon.js';
 import type { Box, Direction } from "./movement.js";
 import type { GameState } from "../schema/GameState.js";
 import type { PlayerSchema } from "../schema/PlayerSchema.js";
@@ -115,7 +114,7 @@ export class BotBrain {
       if (bot.breathingBlocked) this.weaponPlan.goal(world, bot, now);
       return null;
     }
-    if (botSuctionThreat(world, bot, now)) this.disperseUntil = 0;
+    if (botSuctionThreat(world, bot, now) || botCaptureThreat(world, bot)) this.disperseUntil = 0;
     else this.spreadOut(bot, world, now);
     if (!this.isDisengaging(now) && Math.random() < this.mistakeChance) {
       // A careless hop (misjudging traffic), though never straight over the edge
@@ -185,15 +184,11 @@ export class BotBrain {
       return { x: Math.max(margin, Math.min(world.worldWidth - margin, cx - fy * side * lateral + (cx - rx) / distance * outward)),
         y: Math.max(margin, Math.min(world.worldHeight - margin, cy + fx * side * lateral + (cy - ry) / distance * outward)) };
     }
-    // Something big enough to capture it close by: get away (smaller, it's faster).
-    const threat = { x: 0, y: 0, distance: BOTS.FLEE_RANGE };
-    world.players.forEach((other) => {
-      if (other === bot || other.state !== PLAYER_STATE.ALIVE || !canCatch(other.width, bot.width) || injuryVulnerable(world, other)) return;
-      const ox = other.x + other.width / 2;
-      const oy = other.y + other.height / 2;
-      const distance = Math.hypot(ox - cx, oy - cy) - other.width / 2;
-      if (distance < threat.distance) Object.assign(threat, { x: ox, y: oy, distance });
-    });
+    // Avoid a capture-capable mouth's real reach before it starts pulling.
+    // Active suction above still uses the existing lateral escape behavior.
+    const predator = botCaptureThreat(world, bot);
+    const threat = predator ? { x: predator.player.x + predator.player.width / 2, y: predator.player.y + predator.player.height / 2, distance: predator.distance }
+      : { x: 0, y: 0, distance: Infinity };
     // ...or a turbine's intake: keep out of its inner zone
     world.turbines.forEach((turbine) => {
       if (turbine.phase !== "active") return;
@@ -202,7 +197,7 @@ export class BotBrain {
       const distance = Math.hypot(mx - cx, my - cy) - bot.width / 2;
       if (distance < TURBINE.DANGER_REACH + 160 && distance < threat.distance) Object.assign(threat, { x: mx, y: my, distance });
     });
-    if (threat.distance < BOTS.FLEE_RANGE) return { x: cx + (cx - threat.x) * 3, y: cy + (cy - threat.y) * 3 };
+    if (Number.isFinite(threat.distance)) return { x: cx + (cx - threat.x) * 3, y: cy + (cy - threat.y) * 3 };
     // Low on gems (or just reckless): go for the jackpot
     if (world.jackpotOn && (bot.gems < 20 || this.reckless)) return { x: world.jackpotX, y: world.jackpotY };
     if (bot.gulping) {

@@ -1,0 +1,95 @@
+{
+  "date": "2026-11-04",
+  "baseRevision": "46cc5a0e1a749cac1f682caea16ae4fc60e3d5d5",
+  "status": "local change, not committed or deployed",
+  "method": "288 seeded real-GameState scenarios: stationary healthy giant faces smaller bot for3s, then ordinary 3s aimed inhale pursuit. A gem500units toward the giant competes for attention. Actual bot AI, random mistakes, normal turning, movement, puff, breath and capture. Cardinal orientations and real legal sizes. Not human balance.",
+  "definition": "Early retreat means any outward ordinary steering during the first second. Capture count is only the3s stationary warning plus3s chase scenario, not a match win rate.",
+  "baseline": {
+    "cases": 288,
+    "earlyRetreats": 73,
+    "captured": 77,
+    "boundaryViolations": 0,
+    "meanGapBeforeInhale": 640.0234008522724
+  },
+  "candidate": {
+    "cases": 288,
+    "earlyRetreats": 288,
+    "captured": 0,
+    "boundaryViolations": 0,
+    "meanGapBeforeInhale": 1230.1494821864856
+  },
+  "allTuningConstantsIdentical": true,
+  "browser": [
+    {
+      "profile": "iPhone-Safari-",
+      "giantWidth": 300,
+      "initialBodyGap": 528.338907566782,
+      "maxOutward": 162.45002034329764,
+      "samples": 23
+    },
+    {
+      "profile": "Android-phone-Chrome-",
+      "giantWidth": 600,
+      "initialBodyGap": 967.4400467053892,
+      "maxOutward": 250.00783068960527,
+      "samples": 23
+    },
+    {
+      "profile": "iPhone-Safari-",
+      "giantWidth": 600,
+      "initialBodyGap": 973.8972767649161,
+      "maxOutward": 260.773414660267,
+      "samples": 23
+    },
+    {
+      "profile": "Chrome-desktop-",
+      "giantWidth": 300,
+      "initialBodyGap": 549.4399999996097,
+      "maxOutward": 582.3999999997518,
+      "samples": 22
+    },
+    {
+      "profile": "Chrome-desktop-",
+      "giantWidth": 600,
+      "initialBodyGap": 956.6233116210192,
+      "maxOutward": 268.0589297824722,
+      "samples": 22
+    },
+    {
+      "profile": "Android-phone-Chrome-",
+      "giantWidth": 300,
+      "initialBodyGap": 528.0872911358832,
+      "maxOutward": 194.67516984144413,
+      "samples": 23
+    }
+  ],
+  "verification": {
+    "serverUnitSuites": 52,
+    "geometryCases": 36,
+    "multiplayerScenarios": 18,
+    "browserScenarios": 6,
+    "productionBuild": true,
+    "types": true,
+    "schema": true,
+    "lintErrors": 0
+  },
+  "manual": [
+    {
+      "giantWidthApprox": 589,
+      "bot": "Waffle",
+      "bodyEdgeDistanceInitial": 983,
+      "bodyEdgeDistanceAfter": 1148,
+      "outwardTravel": 161,
+      "giantInhaling": false,
+      "botState": "alive",
+      "setup": "UI-directed private local room with11 real AI bots and normal field gems; no forced fleeing input"
+    }
+  ],
+  "limits": [
+    "Not a human multiplayer balance validation.",
+    "Browser phone profiles are emulation, not physical Android Firefox or iPhone testing.",
+    "Six-second pursuit has a deliberate3s stationary warning and a single bot; no proof of permanent escape or crowd-match pacing.",
+    "Random bot mistakes, normal reaction cadence and ordinary capture remain.",
+    "Actual suction escape is unchanged; proactive awareness uses current mouth direction plus existing10-unit safety margin, while legacy nearby-body caution stays420."
+  ]
+}

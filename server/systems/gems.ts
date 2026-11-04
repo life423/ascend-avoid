@@ -4,6 +4,7 @@ import { PlayerSchema } from "../schema/PlayerSchema.js";
 import { GemSchema } from "../schema/GemSchema.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 import { randomFloorPoint } from '../game/layouts.js';
+import { gemClearOfHoles, clearGemPoint } from '../game/arenaPlacement.js';
 
 const { GEMS, PLAYER_STATE, SHIFT } = GAME_CONSTANTS;
 
@@ -56,6 +57,7 @@ export function topUpField(state: GameState, initial = false) : void {
       const p = state.shiftPhase === 'shift' && state.layout ? randomFloorPoint(state.layout) : { x: 40 + Math.random() * (state.worldWidth - 80), y: 40 + Math.random() * (state.worldHeight - 80) };
       const padding = GEMS.RADIUS + 8;
       if (arenaClearance(p.x, p.y, state.worldWidth, state.worldHeight) < 40) continue;
+      if (!gemClearOfHoles(p, state.blackHoles)) continue;
       if (bodies.some(body => p.x > body.x - padding && p.x < body.x + body.width + padding && p.y > body.y - padding && p.y < body.y + body.height + padding)) continue;
       const distance = Math.min(spacing, ...nearPoints(grid, p, spacing).map(q => Math.hypot(p.x - q.x, p.y - q.y)));
       if (distance > clearance) { best = p; clearance = distance; }
@@ -63,7 +65,10 @@ export function topUpField(state: GameState, initial = false) : void {
     }
     // A crowded map may temporarily have fewer field gems; never fall back inside a pickup box.
     if (!best) break;
-    state.addGem(best.x, best.y); addPoint(grid, best, spacing);
+    const previousCount = state.fieldGems;
+    state.addGem(best.x, best.y);
+    if (state.fieldGems === previousCount) break;
+    addPoint(grid, best, spacing);
     if (!initial) state.fieldReplenishCredit--;
   }
   if (initial && state.fieldGems > 0) state.fieldReplenishCredit = 0;
@@ -84,6 +89,10 @@ function nearPoints<T extends Point>(grid: Map<string, T[]>, p: Point, cell: num
 /** A cheap spatial pass gently opens up settled piles; airborne drops and live sprays retain their paths. */
 export function spreadSettledGems(state: GameState): void {
   const spacing = GEMS.SETTLED_SPACING;
+  for (const gem of state.gems.values()) if (gem.settled() && !gemClearOfHoles(gem, state.blackHoles)) {
+    const spot = clearGemPoint(gem, state.blackHoles, state.worldWidth, state.worldHeight);
+    if (spot) gem.moveTo(spot.x, spot.y);
+  }
   const points = [...state.gems.values()].filter(g => g.settled()).map((gem, order) => ({ x: gem.x, y: gem.y, gem, order, pushX: 0, pushY: 0 }));
   const grid = new Map<string, typeof points>();
   for (const p of points) addPoint(grid, p, spacing);

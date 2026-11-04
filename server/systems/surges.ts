@@ -3,6 +3,7 @@ import { GemSchema } from "../schema/GemSchema.js";
 import { GEMS, SURGE } from "../constants/gameConstants.js";
 import { updateJackpot } from "./gems.js";
 import type { TurbineSchema } from "../schema/TurbineSchema.js";
+import { clearGemPoint } from '../game/arenaPlacement.js';
 
 /** Announce a fixed contest location, preferably beside a turbine's exhaust. */
 export function beginSurge(state: GameState): void {
@@ -56,7 +57,9 @@ export function updateSurges(state: GameState, dt: number, now: number): void {
     for (let i = 0; i < SURGE.PIECES && state.gems.size < GEMS.MAX_GEMS; i++) {
       const angle = Math.random() * Math.PI * 2;
       const reach = Math.sqrt(Math.random()) * SURGE.RADIUS;
-      const gem = new GemSchema(state.surgeX + Math.cos(angle) * reach, state.surgeY + Math.sin(angle) * reach, SURGE.VALUE);
+      const spot = clearGemPoint({ x: state.surgeX + Math.cos(angle) * reach, y: state.surgeY + Math.sin(angle) * reach }, state.blackHoles, state.worldWidth, state.worldHeight);
+      if (!spot) continue;
+      const gem = new GemSchema(spot.x, spot.y, SURGE.VALUE);
       gem.drop(now);
       state.gems.set(`g${state.nextGemId++}`, gem);
     }

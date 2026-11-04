@@ -1,6 +1,6 @@
-import { BLACK_HOLE, TURBINE } from '../constants/gameConstants.js';
+import { BLACK_HOLE, GEMS, TURBINE } from '../constants/gameConstants.js';
 import { distanceToSegment } from './geometry.js';
-import { arenaClearance } from './arenaBoundary.js';
+import { arenaClearance, constrainArenaPoint } from './arenaBoundary.js';
 
 interface Point { x: number; y: number }
 interface Fan extends Point { intake: number }
@@ -13,6 +13,33 @@ const clusterRadius = 145;
 const fanRadius = Math.hypot(TURBINE.BODY_RADIUS * 1.15, TURBINE.BODY_RADIUS * .8) + 2;
 const offsets = [0, 1, 2].map(i => ({ x: Math.cos(i * Math.PI * 2 / 3) * clusterRadius, y: Math.sin(i * Math.PI * 2 / 3) * clusterRadius }));
 const holeRadius = (hole: Hole) => Math.max(BLACK_HOLE.RING_RADIUS + 8, hole.radius + 24);
+
+/** Reserve the visible outer ring and the gem's halo, not just their cores. */
+export function gemClearOfHoles(point: Point, holes: Iterable<Hole>): boolean {
+  const x = Math.round(point.x), y = Math.round(point.y);
+  return Array.from(holes).every(hole => Math.hypot(x - hole.x, y - hole.y) >= holeRadius(hole) + GEMS.RADIUS * 2);
+}
+
+/** Nearby bounded placement for a drop or settled gem; never consume its value. */
+export function clearGemPoint(point: Point, holes: Iterable<Hole>, width: number, height: number, floor: (point: Point) => boolean = () => true): Point | null {
+  const all = Array.from(holes), margin = GEMS.RADIUS + 2;
+  const valid = (p: Point) => arenaClearance(p.x, p.y, width, height) >= margin - 1e-7 && floor(p) && gemClearOfHoles(p, all);
+  const bounded = { ...point };
+  constrainArenaPoint(bounded, width, height, margin);
+  bounded.x = Math.round(bounded.x); bounded.y = Math.round(bounded.y);
+  if (valid(bounded)) return bounded;
+  let best: Point | null = null, distance = Infinity;
+  for (const hole of all) {
+    const angle = Math.atan2(point.y - hole.y, point.x - hole.x), radius = holeRadius(hole) + GEMS.RADIUS * 2 + 1;
+    for (let i = 0; i < 16; i++) {
+      const a = angle + i * Math.PI / 8;
+      const candidate = { x: Math.round(hole.x + Math.cos(a) * radius), y: Math.round(hole.y + Math.sin(a) * radius) };
+      const d = Math.hypot(candidate.x - point.x, candidate.y - point.y);
+      if (d < distance && valid(candidate)) { best = candidate; distance = d; }
+    }
+  }
+  return best;
+}
 
 /** Distance to the fan's inner intake sector, including its two side edges. */
 function intakeDistance(point: Point, fan: Fan): number {
