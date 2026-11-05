@@ -16,6 +16,8 @@ function setup() {
   defender.stopInhale(now); defender.captureNeedsRelease = false;
   projectile.placeAt(defender.x-projectile.width-80,defender.y+(defender.height-projectile.height)/2);
   projectile.launch(now,1250,0,shooter.sessionId,CANNON.FLIGHT_MS);
+  // This raw-launch fixture represents a deliberate peer shot, including its real launch-size snapshot.
+  projectile.shotShooterWidth = shooter.width;
   updateFlights(s,now+100,.1); assert(projectile.flightHit); assert(defender.stunned); assert(defender.breathingBlocked);
   updateHolds(s,now+100);
   return {s,defender,held};

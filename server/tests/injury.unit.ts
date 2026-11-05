@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { GameState } from '../schema/GameState.js';
-import { INHALE, WORLD } from '../constants/gameConstants.js';
+import { WORLD } from '../constants/gameConstants.js';
 import { steal, exhale, planTheft } from '../systems/inhale.js';
 import { updateFlights } from '../systems/flights.js';
 
@@ -67,7 +67,8 @@ function setup() {
   a.launch(NOW, 1800, 0, 'launcher', 3000);
   updateFlights(s, NOW + 100, .1);
   assert(b.gems < 500 && b.state === 'alive');
-  assert.equal(b.injuredUntil, s.time + INHALE.INJURY_MS, 'a surviving missile victim is injured');
+  assert.equal(b.injuredUntil, 0, 'a weak raw missile chips without qualifying for injury');
+  assert(b.stunned, 'the existing brief impact stun remains');
 }
 {
   const { s, b } = setup(); b.injure(0); b.injure(1000);

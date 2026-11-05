@@ -1,0 +1,2377 @@
+{
+  "studyDate": "2026-11-04",
+  "referenceRelease": "9344b163c1c5295a5b17435248d362c75e760995",
+  "actualCheckoutAtHandoff": "9344b163c1c5295a5b17435248d362c75e760995",
+  "node": "v24.22.1",
+  "hashes": {
+    "compiledSha256": "8e7bed250ce41d36ed0bc610eb719b121f8ea1ac4eeaece2742cd3c7cdda1b7d",
+    "tuningSha256": "01e5f1713d2db607672caa57e6209d8969e29b3207d616bfdefd5e052b015f7a",
+    "simulationSourceSha256AtHandoff": "29d2b73b3e3422b1774eb4f6293a7f395b8a44160c182703e4686e5d08cab69e",
+    "driverSha256AtHandoff": "3b0f6031b132d7237398dd94334e8b6a7f1fdbf2553fc18e4ea83a9874c23a34"
+  },
+  "hashScopes": {
+    "compiled": "Sorted relative file paths and SHA256 values for every server/dist/**/*.js; aggregate SHA256 of compact JSON manifest.",
+    "source": "Sorted relative file paths and SHA256 values for direct TypeScript files in server/constants,game,schema,systems,rooms; aggregate SHA256 of compact JSON manifest. Source snapshot captured at durable handoff; full runs enforced immutable compiled/tuning hashes.",
+    "tuning": "SHA256 of JSON.stringify of compiled gameConstants module exports, without formatting.",
+    "provenanceCaveat": "Git HEAD identifies the checkout. Hashes identify the actual source and existing compiled files; this driver never rebuilds or assumes that an existing build corresponds to HEAD."
+  },
+  "method": "30Hz in-process full authoritative GameState updates with seeded Math.random and clock. Normal 20 actors, one human-flagged actor driven by the same ordinary BotBrain plus19 bots. Every system retained production defaults: traffic/bombs/shifts remained disabled; fans/weapons/field/holes/recovery stayed normal. Opening cases start newborn; separate artificial established mixes seed100k/50k/20k gems once, place all bodies with existing safe-spawn search, then leave all decisions/rules unchanged. Five-second population time series plus event/death/leader/life/hole histories retained. No networking/rendering/input latency; not human skill, fun or population-retention evidence.",
+  "defaults": {
+    "traffic": false,
+    "bombs": false,
+    "shifts": false,
+    "fans": true,
+    "weapons": true
+  },
+  "tickHz": 30,
+  "population": 20,
+  "seeds": [
+    11,
+    73,
+    218
+  ],
+  "naturalCases": 3,
+  "artificialGiantMixCases": 3,
+  "longerContinuationMinutes": 30,
+  "mechanicsAssertions": {
+    "peerHitShare": 0.25,
+    "standardPlayerBulletWidth": 60,
+    "shatterShooterRatio": 1.2,
+    "injuryMs": 7000,
+    "botFill": 20
+  },
+  "verification": {
+    "same600sPopulationSeries": true,
+    "same600sEventHistory": true,
+    "focusedReplayPopulationPrefixesMatch": true,
+    "metadataOnlyDriver61SecondPopulationPrefixMatch": true,
+    "compiledUnchangedAcrossFullStudy": true,
+    "tuningUnchangedInEveryCase": true
+  },
+  "caveats": [
+    "Setup giants are not naturally earned progression and consume extra placement RNG; do not interpret as controlled paired comparisons.",
+    "Potential size-eligible nearby pairs are five-second geometry-light availability samples; they omit aim, pressure, protection and exact theft/capture eligibility and do not guarantee a catch.",
+    "Projectile deaths are explicitly separated from ordinary body deaths. Credit events and actual transitions are separate; cannon events without projectileId mean spent ammunition.",
+    "Weapon-owner matchup width is its current body size; it does not imply weapon damage scales with owner mass.",
+    "Death causes without a matching same-tick credit remain explicitly uncredited; hitPlayer observations identify uncredited world traffic only.",
+    "This is accelerated simulation, not a server load/frame benchmark.",
+    "The30-minute seed11 opening repeats its first10minutes; it is not an independent fourth opening seed.",
+    "Counts of lives reaching milestones include censored lives still running at the observation boundary; they are not human success probabilities.",
+    "Arena-first milestones identify the earliest actor to reach a width, not a typical actor.",
+    "Leader can lose rank before later death; zero deaths while first on previous tick does not imply no former leader died.",
+    "Current exhale/gustHit/wallSlip are counted; gustHit does not enumerate every front shove or represent unique successful casts.",
+    "No human fun, feel, network/input latency, browser/device performance or retention claim is made."
+  ],
+  "harnessAudit": [
+    "game-loop-followup.cjs resets PEER_HIT_SHARE=0 even for its default current case and optionally monkeypatches impactGems; not used.",
+    "rival-damage-population.cjs intentionally compares0/.25/.33 process-local floors; not used.",
+    "balance-playtest.cjs exposes growth/decay/holes overrides, uses1000-gem giant scenarios and coarser minute samples; not used.",
+    "game-loop-review.cjs can take a seventh floor override and visible-world policies have old fixed threat heuristics; not reused. Current ordinary BotBrain is used directly."
+  ],
+  "cases": [
+    {
+      "scenario": "opening",
+      "seed": 11,
+      "seconds": 600,
+      "maxGems": 6950,
+      "maxWidth": 704,
+      "first": {
+        "partCollected": 7.37,
+        "weaponAssembled": 9.1,
+        "weaponPlaced": 10.23,
+        "death": 13.23,
+        "capture": 34.57,
+        "launch": 36.8,
+        "width100": 48.9,
+        "impact": 94.8,
+        "width300": 176.97,
+        "width500": 326.63
+      },
+      "bodyDeaths": 21,
+      "flightDeaths": 53,
+      "bodyDeathsByCause": {
+        "pulsar": 2,
+        "missile-target": 15,
+        "mouth": 3,
+        "comet": 1
+      },
+      "bodyDeathsByWidth": {
+        "below100": 11,
+        "100to300": 8,
+        "300to500": 2
+      },
+      "flightDeathsByCause": {
+        "spent-missile": 52,
+        "blackhole": 1
+      },
+      "leaderEntries": 9,
+      "longestLeaderTenure": 182.2,
+      "leaderBodyDeaths": 0,
+      "captures": 64,
+      "shots": 60,
+      "captureRelease": {
+        "captureRelease:fired": 60,
+        "captureRelease:alive-not-flight": 3
+      },
+      "holdMedianSeconds": 1.48,
+      "newbornLives": 94,
+      "newbornLivesEnded": 74,
+      "newbornReached": {
+        "100": {
+          "lives": 41,
+          "medianSecondsAmongReachers": 77.17
+        },
+        "300": {
+          "lives": 6,
+          "medianSecondsAmongReachers": 190.99
+        },
+        "500": {
+          "lives": 3,
+          "medianSecondsAmongReachers": 326.63
+        },
+        "800": {
+          "lives": 0,
+          "medianSecondsAmongReachers": null
+        },
+        "1000": {
+          "lives": 0,
+          "medianSecondsAmongReachers": null
+        }
+      },
+      "injuryOutcomes": {
+        "survived": 43,
+        "died": 4,
+        "unfinished": 0
+      },
+      "meanLoaded": 0.21,
+      "meanActive": 0.93,
+      "peakActive": 3,
+      "peakBolts": 7,
+      "weaponActivations": {
+        "pulsar": 12,
+        "pinwheel": 11,
+        "ricochet": 5,
+        "ion": 5,
+        "comet": 10,
+        "sentinel": 5
+      },
+      "respawnWaits": {},
+      "defenseEvents": {
+        "exhale": 63,
+        "gustHit": 34,
+        "wallSlip": 3
+      },
+      "selectedTimeSeries": [
+        {
+          "second": 0,
+          "leader": null,
+          "leaderGems": 0,
+          "maxWidth": 20,
+          "alive": 20,
+          "ordinaryGiants500": 0,
+          "loaded": 0,
+          "activeWeapons": 0,
+          "fieldCrystals": 950,
+          "playerGems": 0,
+          "bodyDeaths": 0,
+          "flightDeaths": 0
+        },
+        {
+          "second": 60,
+          "leader": "bot-1",
+          "leaderGems": 191,
+          "maxWidth": 138.5,
+          "alive": 20,
+          "ordinaryGiants500": 0,
+          "loaded": 0,
+          "activeWeapons": 1,
+          "fieldCrystals": 950,
+          "playerGems": 1527,
+          "bodyDeaths": 1,
+          "flightDeaths": 2
+        },
+        {
+          "second": 120,
+          "leader": "bot-3",
+          "leaderGems": 428,
+          "maxWidth": 203,
+          "alive": 19,
+          "ordinaryGiants500": 0,
+          "loaded": 0,
+          "activeWeapons": 2,
+          "fieldCrystals": 884,
+          "playerGems": 3325,
+          "bodyDeaths": 3,
+          "flightDeaths": 4
+        },
+        {
+          "second": 300,
+          "leader": "bot-17",
+          "leaderGems": 2797,
+          "maxWidth": 476,
+          "alive": 20,
+          "ordinaryGiants500": 0,
+          "loaded": 0,
+          "activeWeapons": 1,
+          "fieldCrystals": 637,
+          "playerGems": 8633,
+          "bodyDeaths": 6,
+          "flightDeaths": 22
+        },
+        {
+          "second": 600,
+          "leader": "bot-5",
+          "leaderGems": 6947,
+          "maxWidth": 704,
+          "alive": 20,
+          "ordinaryGiants500": 1,
+          "loaded": 1,
+          "activeWeapons": 2,
+          "fieldCrystals": 592,
+          "playerGems": 15049,
+          "bodyDeaths": 21,
+          "flightDeaths": 53
+        }
+      ],
+      "holes": [
+        {
+          "slot": 0,
+          "generation": 11,
+          "retries": 0,
+          "abortedWarnings": 3,
+          "activeOpenings": 9,
+          "maxCompletedDormantSeconds": 1.5,
+          "maxCompletedRelocationAbsenceSeconds": 15.5,
+          "ongoingAbsenceSeconds": 0,
+          "finalPhase": "active"
+        },
+        {
+          "slot": 1,
+          "generation": 12,
+          "retries": 0,
+          "abortedWarnings": 4,
+          "activeOpenings": 9,
+          "maxCompletedDormantSeconds": 1.5,
+          "maxCompletedRelocationAbsenceSeconds": 15.5,
+          "ongoingAbsenceSeconds": 0,
+          "finalPhase": "active"
+        },
+        {
+          "slot": 2,
+          "generation": 12,
+          "retries": 0,
+          "abortedWarnings": 4,
+          "activeOpenings": 9,
+          "maxCompletedDormantSeconds": 1.5,
+          "maxCompletedRelocationAbsenceSeconds": 15.5,
+          "ongoingAbsenceSeconds": 0,
+          "finalPhase": "active"
+        }
+      ],
+      "seededGiantsFirstLives": []
+    },
+    {
+      "scenario": "opening",
+      "seed": 73,
+      "seconds": 600,
+      "maxGems": 5676,
+      "maxWidth": 646,
+      "first": {
+        "partCollected": 6.77,
+        "weaponAssembled": 9,
+        "weaponPlaced": 10.13,
+        "capture": 12.73,
+        "death": 13.2,
+        "launch": 14.13,
+        "impact": 26.23,
+        "width100": 45.33,
+        "width300": 169.1,
+        "width500": 309.83
+      },
+      "bodyDeaths": 30,
+      "flightDeaths": 63,
+      "bodyDeathsByCause": {
+        "pulsar": 2,
+        "missile-target": 20,
+        "mouth": 5,
+        "ion": 1,
+        "comet": 2
+      },
+      "bodyDeathsByWidth": {
+        "below100": 15,
+        "100to300": 15
+      },
+      "flightDeathsByCause": {
+        "spent-missile": 62,
+        "burnup": 1
+      },
+      "leaderEntries": 8,
+      "longestLeaderTenure": 415.87,
+      "leaderBodyDeaths": 0,
+      "captures": 73,
+      "shots": 71,
+      "captureRelease": {
+        "captureRelease:fired": 71,
+        "captureRelease:alive-not-flight": 2
+      },
+      "holdMedianSeconds": 1.46,
+      "newbornLives": 112,
+      "newbornLivesEnded": 93,
+      "newbornReached": {
+        "100": {
+          "lives": 40,
+          "medianSecondsAmongReachers": 63.58
+        },
+        "300": {
+          "lives": 8,
+          "medianSecondsAmongReachers": 252.82
+        },
+        "500": {
+          "lives": 3,
+          "medianSecondsAmongReachers": 489.93
+        },
+        "800": {
+          "lives": 0,
+          "medianSecondsAmongReachers": null
+        },
+        "1000": {
+          "lives": 0,
+          "medianSecondsAmongReachers": null
+        }
+      },
+      "injuryOutcomes": {
+        "survived": 37,
+        "died": 5,
+        "unfinished": 0
+      },
+      "meanLoaded": 0.22,
+      "meanActive": 0.9,
+      "peakActive": 4,
+      "peakBolts": 7,
+      "weaponActivations": {
+        "pulsar": 11,
+        "pinwheel": 11,
+        "sentinel": 4,
+        "ricochet": 5,
+        "ion": 5,
+        "comet": 10
+      },
+      "respawnWaits": {},
+      "defenseEvents": {
+        "exhale": 92,
+        "gustHit": 52,
+        "wallSlip": 4
+      },
+      "selectedTimeSeries": [
+        {
+          "second": 0,
+          "leader": null,
+          "leaderGems": 0,
+          "maxWidth": 20,
+          "alive": 20,
+          "ordinaryGiants500": 0,
+          "loaded": 0,
+          "activeWeapons": 0,
+          "fieldCrystals": 950,
+          "playerGems": 0,
+          "bodyDeaths": 0,
+          "flightDeaths": 0
+        },
+        {
+          "second": 60,
+          "leader": "bot-19",
+          "leaderGems": 313,
+          "maxWidth": 175,
+          "alive": 18,
+          "ordinaryGiants500": 0,
+          "loaded": 0,
+          "activeWeapons": 1,
+          "fieldCrystals": 950,
+          "playerGems": 1450,
+          "bodyDeaths": 4,
+          "flightDeaths": 4
+        },
+        {
+          "second": 120,
+          "leader": "bot-19",
+          "leaderGems": 493,
+          "maxWidth": 217,
+          "alive": 20,
+          "ordinaryGiants500": 0,
+          "loaded": 0,
+          "activeWeapons": 3,
+          "fieldCrystals": 866,
+          "playerGems": 3316,
+          "bodyDeaths": 4,
+          "flightDeaths": 8
+        },
+        {
+          "second": 300,
+          "leader": "bot-19",
+          "leaderGems": 2959,
+          "maxWidth": 488,
+          "alive": 20,
+          "ordinaryGiants500": 0,
+          "loaded": 1,
+          "activeWeapons": 1,
+          "fieldCrystals": 646,
+          "playerGems": 8479,
+          "bodyDeaths": 14,
+          "flightDeaths": 25
+        },
+        {
+          "second": 600,
+          "leader": "bot-9",
+          "leaderGems": 5675,
+          "maxWidth": 646,
+          "alive": 19,
+          "ordinaryGiants500": 2,
+          "loaded": 0,
+          "activeWeapons": 0,
+          "fieldCrystals": 475,
+          "playerGems": 15127,
+          "bodyDeaths": 30,
+          "flightDeaths": 63
+        }
+      ],
+      "holes": [
+        {
+          "slot": 0,
+          "generation": 11,
+          "retries": 0,
+          "abortedWarnings": 3,
+          "activeOpenings": 9,
+          "maxCompletedDormantSeconds": 1.5,
+          "maxCompletedRelocationAbsenceSeconds": 10.5,
+          "ongoingAbsenceSeconds": 0,
+          "finalPhase": "active"
+        },
+        {
+          "slot": 1,
+          "generation": 10,
+          "retries": 0,
+          "abortedWarnings": 2,
+          "activeOpenings": 9,
+          "maxCompletedDormantSeconds": 1.5,
+          "maxCompletedRelocationAbsenceSeconds": 10.5,
+          "ongoingAbsenceSeconds": 0,
+          "finalPhase": "active"
+        },
+        {
+          "slot": 2,
+          "generation": 11,
+          "retries": 0,
+          "abortedWarnings": 3,
+          "activeOpenings": 9,
+          "maxCompletedDormantSeconds": 1.5,
+          "maxCompletedRelocationAbsenceSeconds": 15.5,
+          "ongoingAbsenceSeconds": 0,
+          "finalPhase": "active"
+        }
+      ],
+      "seededGiantsFirstLives": []
+    },
+    {
+      "scenario": "opening",
+      "seed": 218,
+      "seconds": 600,
+      "maxGems": 5625,
+      "maxWidth": 643.5,
+      "first": {
+        "partCollected": 6.67,
+        "weaponAssembled": 9.77,
+        "weaponPlaced": 10.77,
+        "capture": 29.57,
+        "launch": 30.97,
+        "death": 39.27,
+        "width100": 54.87,
+        "impact": 120.33,
+        "width300": 167.97,
+        "width500": 438.97
+      },
+      "bodyDeaths": 24,
+      "flightDeaths": 42,
+      "bodyDeathsByCause": {
+        "missile-target": 12,
+        "mouth": 9,
+        "comet": 2,
+        "sentinel": 1
+      },
+      "bodyDeathsByWidth": {
+        "100to300": 14,
+        "below100": 10
+      },
+      "flightDeathsByCause": {
+        "spent-missile": 40,
+        "burnup": 2
+      },
+      "leaderEntries": 17,
+      "longestLeaderTenure": 137.47,
+      "leaderBodyDeaths": 0,
+      "captures": 50,
+      "shots": 50,
+      "captureRelease": {
+        "captureRelease:fired": 50
+      },
+      "holdMedianSeconds": 1.45,
+      "newbornLives": 84,
+      "newbornLivesEnded": 66,
+      "newbornReached": {
+        "100": {
+          "lives": 37,
+          "medianSecondsAmongReachers": 78.14
+        },
+        "300": {
+          "lives": 8,
+          "medianSecondsAmongReachers": 303.19
+        },
+        "500": {
+          "lives": 2,
+          "medianSecondsAmongReachers": 491.37
+        },
+        "800": {
+          "lives": 0,
+          "medianSecondsAmongReachers": null
+        },
+        "1000": {
+          "lives": 0,
+          "medianSecondsAmongReachers": null
+        }
+      },
+      "injuryOutcomes": {
+        "survived": 34,
+        "died": 9,
+        "unfinished": 1
+      },
+      "meanLoaded": 0.14,
+      "meanActive": 0.94,
+      "peakActive": 4,
+      "peakBolts": 10,
+      "weaponActivations": {
+        "pulsar": 10,
+        "pinwheel": 12,
+        "ricochet": 5,
+        "ion": 5,
+        "comet": 11,
+        "sentinel": 5
+      },
+      "respawnWaits": {},
+      "defenseEvents": {
+        "exhale": 76,
+        "gustHit": 43,
+        "wallSlip": 6
+      },
+      "selectedTimeSeries": [
+        {
+          "second": 0,
+          "leader": null,
+          "leaderGems": 0,
+          "maxWidth": 20,
+          "alive": 20,
+          "ordinaryGiants500": 0,
+          "loaded": 0,
+          "activeWeapons": 0,
+          "fieldCrystals": 950,
+          "playerGems": 0,
+          "bodyDeaths": 0,
+          "flightDeaths": 0
+        },
+        {
+          "second": 60,
+          "leader": "bot-2",
+          "leaderGems": 146,
+          "maxWidth": 122,
+          "alive": 20,
+          "ordinaryGiants500": 0,
+          "loaded": 1,
+          "activeWeapons": 2,
+          "fieldCrystals": 950,
+          "playerGems": 1485,
+          "bodyDeaths": 0,
+          "flightDeaths": 1
+        },
+        {
+          "second": 120,
+          "leader": "bot-3",
+          "leaderGems": 339,
+          "maxWidth": 182,
+          "alive": 20,
+          "ordinaryGiants500": 0,
+          "loaded": 1,
+          "activeWeapons": 2,
+          "fieldCrystals": 906,
+          "playerGems": 3278,
+          "bodyDeaths": 0,
+          "flightDeaths": 3
+        },
+        {
+          "second": 300,
+          "leader": "bot-7",
+          "leaderGems": 1490,
+          "maxWidth": 360.5,
+          "alive": 20,
+          "ordinaryGiants500": 0,
+          "loaded": 0,
+          "activeWeapons": 1,
+          "fieldCrystals": 606,
+          "playerGems": 8756,
+          "bodyDeaths": 9,
+          "flightDeaths": 17
+        },
+        {
+          "second": 600,
+          "leader": "bot-9",
+          "leaderGems": 5625,
+          "maxWidth": 643.5,
+          "alive": 18,
+          "ordinaryGiants500": 1,
+          "loaded": 0,
+          "activeWeapons": 0,
+          "fieldCrystals": 424,
+          "playerGems": 15278,
+          "bodyDeaths": 24,
+          "flightDeaths": 42
+        }
+      ],
+      "holes": [
+        {
+          "slot": 0,
+          "generation": 10,
+          "retries": 0,
+          "abortedWarnings": 2,
+          "activeOpenings": 9,
+          "maxCompletedDormantSeconds": 1.5,
+          "maxCompletedRelocationAbsenceSeconds": 10.5,
+          "ongoingAbsenceSeconds": 0,
+          "finalPhase": "active"
+        },
+        {
+          "slot": 1,
+          "generation": 9,
+          "retries": 0,
+          "abortedWarnings": 1,
+          "activeOpenings": 9,
+          "maxCompletedDormantSeconds": 1.5,
+          "maxCompletedRelocationAbsenceSeconds": 10.5,
+          "ongoingAbsenceSeconds": 0,
+          "finalPhase": "active"
+        },
+        {
+          "slot": 2,
+          "generation": 11,
+          "retries": 0,
+          "abortedWarnings": 3,
+          "activeOpenings": 9,
+          "maxCompletedDormantSeconds": 1.5,
+          "maxCompletedRelocationAbsenceSeconds": 10.5,
+          "ongoingAbsenceSeconds": 0,
+          "finalPhase": "active"
+        }
+      ],
+      "seededGiantsFirstLives": []
+    },
+    {
+      "scenario": "giant-mix",
+      "seed": 11,
+      "seconds": 600,
+      "maxGems": 100107,
+      "maxWidth": 1386,
+      "first": {
+        "width100": 0.03,
+        "width300": 0.03,
+        "width500": 0.03,
+        "width800": 0.03,
+        "width1000": 0.03,
+        "width1200": 0.03,
+        "partCollected": 5,
+        "weaponAssembled": 5,
+        "weaponPlaced": 9.03,
+        "capture": 46.77,
+        "launch": 49.87,
+        "impact": 51.3,
+        "death": 51.3
+      },
+      "bodyDeaths": 28,
+      "flightDeaths": 69,
+      "bodyDeathsByCause": {
+        "drain": 3,
+        "missile-target": 22,
+        "mouth": 2,
+        "comet": 1
+      },
+      "bodyDeathsByWidth": {
+        "100to300": 4,
+        "below100": 21,
+        "1000plus": 1,
+        "300to500": 1,
+        "500to1000": 1
+      },
+      "flightDeathsByCause": {
+        "spent-missile": 62,
+        "blackhole": 6,
+        "burnup": 1
+      },
+      "leaderEntries": 6,
+      "longestLeaderTenure": 380.2,
+      "leaderBodyDeaths": 0,
+      "captures": 75,
+      "shots": 75,
+      "captureRelease": {
+        "captureRelease:fired": 75
+      },
+      "holdMedianSeconds": 1.54,
+      "newbornLives": 114,
+      "newbornLivesEnded": 96,
+      "newbornReached": {
+        "100": {
+          "lives": 24,
+          "medianSecondsAmongReachers": 84.16
+        },
+        "300": {
+          "lives": 10,
+          "medianSecondsAmongReachers": 62.98
+        },
+        "500": {
+          "lives": 5,
+          "medianSecondsAmongReachers": 62.2
+        },
+        "800": {
+          "lives": 5,
+          "medianSecondsAmongReachers": 63.83
+        },
+        "1000": {
+          "lives": 3,
+          "medianSecondsAmongReachers": 65.37
+        }
+      },
+      "injuryOutcomes": {
+        "survived": 20,
+        "died": 6,
+        "unfinished": 1
+      },
+      "meanLoaded": 0.21,
+      "meanActive": 0.9,
+      "peakActive": 3,
+      "peakBolts": 10,
+      "weaponActivations": {
+        "pulsar": 13,
+        "pinwheel": 11,
+        "sentinel": 4,
+        "ion": 5,
+        "ricochet": 4,
+        "comet": 10
+      },
+      "respawnWaits": {
+        "bot-8": {
+          "totalSeconds": 0.5333333333333333,
+          "maxContinuousSeconds": 0.5333333333333333
+        },
+        "bot-9": {
+          "totalSeconds": 0.5333333333333333,
+          "maxContinuousSeconds": 0.5333333333333333
+        }
+      },
+      "defenseEvents": {
+        "exhale": 164,
+        "gustHit": 113,
+        "wallSlip": 7
+      },
+      "selectedTimeSeries": [
+        {
+          "second": 0,
+          "leader": "probe",
+          "leaderGems": 100000,
+          "maxWidth": 1386,
+          "alive": 20,
+          "ordinaryGiants500": 3,
+          "loaded": 0,
+          "activeWeapons": 0,
+          "fieldCrystals": 950,
+          "playerGems": 170000,
+          "bodyDeaths": 0,
+          "flightDeaths": 0
+        },
+        {
+          "second": 60,
+          "leader": "bot-15",
+          "leaderGems": 57039,
+          "maxWidth": 1303.5,
+          "alive": 18,
+          "ordinaryGiants500": 4,
+          "loaded": 0,
+          "activeWeapons": 1,
+          "fieldCrystals": 195,
+          "playerGems": 143554,
+          "bodyDeaths": 0,
+          "flightDeaths": 3
+        },
+        {
+          "second": 120,
+          "leader": "bot-1",
+          "leaderGems": 54128,
+          "maxWidth": 1294,
+          "alive": 20,
+          "ordinaryGiants500": 4,
+          "loaded": 0,
+          "activeWeapons": 0,
+          "fieldCrystals": 159,
+          "playerGems": 154870,
+          "bodyDeaths": 3,
+          "flightDeaths": 9
+        },
+        {
+          "second": 300,
+          "leader": "bot-2",
+          "leaderGems": 69825,
+          "maxWidth": 1337.5,
+          "alive": 20,
+          "ordinaryGiants500": 3,
+          "loaded": 0,
+          "activeWeapons": 2,
+          "fieldCrystals": 286,
+          "playerGems": 135082,
+          "bodyDeaths": 12,
+          "flightDeaths": 30
+        },
+        {
+          "second": 600,
+          "leader": "bot-1",
+          "leaderGems": 53146,
+          "maxWidth": 1290.5,
+          "alive": 20,
+          "ordinaryGiants500": 2,
+          "loaded": 0,
+          "activeWeapons": 1,
+          "fieldCrystals": 259,
+          "playerGems": 108682,
+          "bodyDeaths": 28,
+          "flightDeaths": 69
+        }
+      ],
+      "holes": [
+        {
+          "slot": 0,
+          "generation": 8,
+          "retries": 0,
+          "abortedWarnings": 0,
+          "activeOpenings": 9,
+          "maxCompletedDormantSeconds": 1.5,
+          "maxCompletedRelocationAbsenceSeconds": 5.5,
+          "ongoingAbsenceSeconds": 0,
+          "finalPhase": "active"
+        },
+        {
+          "slot": 1,
+          "generation": 13,
+          "retries": 12,
+          "abortedWarnings": 5,
+          "activeOpenings": 8,
+          "maxCompletedDormantSeconds": 13.5,
+          "maxCompletedRelocationAbsenceSeconds": 17.5,
+          "ongoingAbsenceSeconds": 19.5,
+          "finalPhase": "warning"
+        },
+        {
+          "slot": 2,
+          "generation": 11,
+          "retries": 1,
+          "abortedWarnings": 3,
+          "activeOpenings": 9,
+          "maxCompletedDormantSeconds": 2.5,
+          "maxCompletedRelocationAbsenceSeconds": 10.5,
+          "ongoingAbsenceSeconds": 0,
+          "finalPhase": "active"
+        }
+      ],
+      "seededGiantsFirstLives": [
+        {
+          "id": "probe",
+          "initialGems": 100000,
+          "initialWidth": 1386,
+          "firstDeath": {
+            "t": 385.53,
+            "width": 977,
+            "gems": 15868,
+            "flying": false,
+            "flightKind": "missile",
+            "cause": "missile-target"
+          },
+          "capturesGiven": 7,
+          "capturesTaken": 0,
+          "shotsGiven": 7,
+          "creditedIncomingGemLossByHow": {
+            "ion": 256,
+            "stole": 82811,
+            "sentinel": 54,
+            "cannon": 25264
+          },
+          "selectedTimeSeries": [
+            {
+              "second": 0,
+              "gems": 100000,
+              "width": 1386,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            },
+            {
+              "second": 60,
+              "gems": 17833,
+              "width": 1014,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": true
+            },
+            {
+              "second": 120,
+              "gems": 21254,
+              "width": 1067,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": true
+            },
+            {
+              "second": 300,
+              "gems": 15563,
+              "width": 970.5,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            },
+            {
+              "second": 600,
+              "gems": 23,
+              "width": 52,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            }
+          ]
+        },
+        {
+          "id": "bot-1",
+          "initialGems": 50000,
+          "initialWidth": 1279,
+          "firstDeath": null,
+          "capturesGiven": 5,
+          "capturesTaken": 0,
+          "shotsGiven": 5,
+          "creditedIncomingGemLossByHow": {
+            "pinwheel": 719,
+            "ion": 363,
+            "ricochet": 85,
+            "stole": 2943,
+            "cannon": 2540
+          },
+          "selectedTimeSeries": [
+            {
+              "second": 0,
+              "gems": 50000,
+              "width": 1279,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            },
+            {
+              "second": 60,
+              "gems": 48750,
+              "width": 1274,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            },
+            {
+              "second": 120,
+              "gems": 54128,
+              "width": 1294,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            },
+            {
+              "second": 300,
+              "gems": 46907,
+              "width": 1266,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            },
+            {
+              "second": 600,
+              "gems": 53146,
+              "width": 1290.5,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            }
+          ]
+        },
+        {
+          "id": "bot-2",
+          "initialGems": 20000,
+          "initialWidth": 1049,
+          "firstDeath": null,
+          "capturesGiven": 9,
+          "capturesTaken": 0,
+          "shotsGiven": 9,
+          "creditedIncomingGemLossByHow": {
+            "ion": 92,
+            "stole": 23109,
+            "ricochet": 94,
+            "cannon": 12659
+          },
+          "selectedTimeSeries": [
+            {
+              "second": 0,
+              "gems": 20000,
+              "width": 1049,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            },
+            {
+              "second": 60,
+              "gems": 19474,
+              "width": 1041,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            },
+            {
+              "second": 120,
+              "gems": 51972,
+              "width": 1286.5,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            },
+            {
+              "second": 300,
+              "gems": 69825,
+              "width": 1337.5,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            },
+            {
+              "second": 600,
+              "gems": 50645,
+              "width": 1281.5,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": "giant-mix",
+      "seed": 73,
+      "seconds": 600,
+      "maxGems": 145650,
+      "maxWidth": 1421.5,
+      "first": {
+        "width100": 0.03,
+        "width300": 0.03,
+        "width500": 0.03,
+        "width800": 0.03,
+        "width1000": 0.03,
+        "width1200": 0.03,
+        "partCollected": 5,
+        "weaponAssembled": 5,
+        "weaponPlaced": 9.13,
+        "capture": 9.57,
+        "launch": 10.97,
+        "impact": 11.6,
+        "death": 11.6
+      },
+      "bodyDeaths": 21,
+      "flightDeaths": 59,
+      "bodyDeathsByCause": {
+        "ion": 1,
+        "missile-target": 16,
+        "drain": 2,
+        "mouth": 1,
+        "pulsar": 1
+      },
+      "bodyDeathsByWidth": {
+        "below100": 10,
+        "100to300": 10,
+        "1000plus": 1
+      },
+      "flightDeathsByCause": {
+        "spent-missile": 55,
+        "burnup": 3,
+        "blackhole": 1
+      },
+      "leaderEntries": 4,
+      "longestLeaderTenure": 422.3,
+      "leaderBodyDeaths": 0,
+      "captures": 64,
+      "shots": 64,
+      "captureRelease": {
+        "captureRelease:fired": 64
+      },
+      "holdMedianSeconds": 1.4,
+      "newbornLives": 96,
+      "newbornLivesEnded": 79,
+      "newbornReached": {
+        "100": {
+          "lives": 26,
+          "medianSecondsAmongReachers": 110.41
+        },
+        "300": {
+          "lives": 3,
+          "medianSecondsAmongReachers": 20.33
+        },
+        "500": {
+          "lives": 3,
+          "medianSecondsAmongReachers": 20.83
+        },
+        "800": {
+          "lives": 2,
+          "medianSecondsAmongReachers": 16.3
+        },
+        "1000": {
+          "lives": 2,
+          "medianSecondsAmongReachers": 16.97
+        }
+      },
+      "injuryOutcomes": {
+        "survived": 26,
+        "died": 3,
+        "unfinished": 0
+      },
+      "meanLoaded": 0.19,
+      "meanActive": 0.81,
+      "peakActive": 3,
+      "peakBolts": 9,
+      "weaponActivations": {
+        "pulsar": 10,
+        "ion": 5,
+        "ricochet": 5,
+        "comet": 9,
+        "pinwheel": 10,
+        "sentinel": 3
+      },
+      "respawnWaits": {},
+      "defenseEvents": {
+        "exhale": 172,
+        "gustHit": 103,
+        "wallSlip": 2
+      },
+      "selectedTimeSeries": [
+        {
+          "second": 0,
+          "leader": "probe",
+          "leaderGems": 100000,
+          "maxWidth": 1386,
+          "alive": 20,
+          "ordinaryGiants500": 3,
+          "loaded": 0,
+          "activeWeapons": 0,
+          "fieldCrystals": 950,
+          "playerGems": 170000,
+          "bodyDeaths": 0,
+          "flightDeaths": 0
+        },
+        {
+          "second": 60,
+          "leader": "bot-1",
+          "leaderGems": 142756,
+          "maxWidth": 1420,
+          "alive": 18,
+          "ordinaryGiants500": 2,
+          "loaded": 1,
+          "activeWeapons": 1,
+          "fieldCrystals": 377,
+          "playerGems": 162568,
+          "bodyDeaths": 0,
+          "flightDeaths": 5
+        },
+        {
+          "second": 120,
+          "leader": "bot-1",
+          "leaderGems": 135372,
+          "maxWidth": 1415.5,
+          "alive": 20,
+          "ordinaryGiants500": 2,
+          "loaded": 0,
+          "activeWeapons": 1,
+          "fieldCrystals": 310,
+          "playerGems": 155038,
+          "bodyDeaths": 2,
+          "flightDeaths": 10
+        },
+        {
+          "second": 300,
+          "leader": "bot-1",
+          "leaderGems": 105352,
+          "maxWidth": 1391.5,
+          "alive": 19,
+          "ordinaryGiants500": 2,
+          "loaded": 0,
+          "activeWeapons": 2,
+          "fieldCrystals": 340,
+          "playerGems": 135008,
+          "bodyDeaths": 10,
+          "flightDeaths": 30
+        },
+        {
+          "second": 600,
+          "leader": "bot-1",
+          "leaderGems": 67281,
+          "maxWidth": 1331.5,
+          "alive": 19,
+          "ordinaryGiants500": 3,
+          "loaded": 0,
+          "activeWeapons": 1,
+          "fieldCrystals": 299,
+          "playerGems": 108626,
+          "bodyDeaths": 21,
+          "flightDeaths": 59
+        }
+      ],
+      "holes": [
+        {
+          "slot": 0,
+          "generation": 15,
+          "retries": 0,
+          "abortedWarnings": 7,
+          "activeOpenings": 9,
+          "maxCompletedDormantSeconds": 1.5,
+          "maxCompletedRelocationAbsenceSeconds": 20.5,
+          "ongoingAbsenceSeconds": 0,
+          "finalPhase": "active"
+        },
+        {
+          "slot": 1,
+          "generation": 10,
+          "retries": 0,
+          "abortedWarnings": 2,
+          "activeOpenings": 9,
+          "maxCompletedDormantSeconds": 1.5,
+          "maxCompletedRelocationAbsenceSeconds": 10.5,
+          "ongoingAbsenceSeconds": 0,
+          "finalPhase": "active"
+        },
+        {
+          "slot": 2,
+          "generation": 8,
+          "retries": 6,
+          "abortedWarnings": 0,
+          "activeOpenings": 9,
+          "maxCompletedDormantSeconds": 7.5,
+          "maxCompletedRelocationAbsenceSeconds": 11.5,
+          "ongoingAbsenceSeconds": 0,
+          "finalPhase": "active"
+        }
+      ],
+      "seededGiantsFirstLives": [
+        {
+          "id": "probe",
+          "initialGems": 100000,
+          "initialWidth": 1386,
+          "firstDeath": {
+            "t": 38.53,
+            "width": 60,
+            "gems": 32,
+            "flying": true,
+            "flightKind": "missile",
+            "cause": "spent-missile"
+          },
+          "capturesGiven": 0,
+          "capturesTaken": 1,
+          "shotsGiven": 0,
+          "creditedIncomingGemLossByHow": {
+            "stole": 72417,
+            "cannon": 21084
+          },
+          "selectedTimeSeries": [
+            {
+              "second": 0,
+              "gems": 100000,
+              "width": 1386,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            },
+            {
+              "second": 60,
+              "gems": 3,
+              "width": 26.5,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            },
+            {
+              "second": 120,
+              "gems": 53,
+              "width": 75.5,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            },
+            {
+              "second": 300,
+              "gems": 10,
+              "width": 37.5,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            },
+            {
+              "second": 600,
+              "gems": 127,
+              "width": 114,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            }
+          ]
+        },
+        {
+          "id": "bot-1",
+          "initialGems": 50000,
+          "initialWidth": 1279,
+          "firstDeath": null,
+          "capturesGiven": 6,
+          "capturesTaken": 0,
+          "shotsGiven": 6,
+          "creditedIncomingGemLossByHow": {
+            "comet": 235,
+            "ion": 79,
+            "stole": 109278,
+            "sentinel": 132,
+            "cannon": 19631
+          },
+          "selectedTimeSeries": [
+            {
+              "second": 0,
+              "gems": 50000,
+              "width": 1279,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            },
+            {
+              "second": 60,
+              "gems": 142756,
+              "width": 1420,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            },
+            {
+              "second": 120,
+              "gems": 135372,
+              "width": 1415.5,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            },
+            {
+              "second": 300,
+              "gems": 105352,
+              "width": 1391.5,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            },
+            {
+              "second": 600,
+              "gems": 67281,
+              "width": 1331.5,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            }
+          ]
+        },
+        {
+          "id": "bot-2",
+          "initialGems": 20000,
+          "initialWidth": 1049,
+          "firstDeath": null,
+          "capturesGiven": 6,
+          "capturesTaken": 0,
+          "shotsGiven": 6,
+          "creditedIncomingGemLossByHow": {
+            "ion": 128,
+            "ricochet": 402,
+            "comet": 121
+          },
+          "selectedTimeSeries": [
+            {
+              "second": 0,
+              "gems": 20000,
+              "width": 1049,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            },
+            {
+              "second": 60,
+              "gems": 19242,
+              "width": 1037.5,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            },
+            {
+              "second": 120,
+              "gems": 18248,
+              "width": 1021,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            },
+            {
+              "second": 300,
+              "gems": 27398,
+              "width": 1139,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            },
+            {
+              "second": 600,
+              "gems": 36129,
+              "width": 1208.5,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": "giant-mix",
+      "seed": 218,
+      "seconds": 600,
+      "maxGems": 127823,
+      "maxWidth": 1410.5,
+      "first": {
+        "width100": 0.03,
+        "width300": 0.03,
+        "width500": 0.03,
+        "width800": 0.03,
+        "width1000": 0.03,
+        "width1200": 0.03,
+        "partCollected": 5,
+        "weaponAssembled": 5,
+        "weaponPlaced": 9.03,
+        "capture": 11.6,
+        "launch": 13.57,
+        "impact": 13.77,
+        "death": 13.77
+      },
+      "bodyDeaths": 31,
+      "flightDeaths": 66,
+      "bodyDeathsByCause": {
+        "missile-target": 23,
+        "mouth": 2,
+        "drain": 2,
+        "ion": 1,
+        "comet": 2,
+        "pinwheel": 1
+      },
+      "bodyDeathsByWidth": {
+        "below100": 18,
+        "1000plus": 2,
+        "500to1000": 3,
+        "100to300": 8
+      },
+      "flightDeathsByCause": {
+        "spent-missile": 64,
+        "blackhole": 1,
+        "burnup": 1
+      },
+      "leaderEntries": 13,
+      "longestLeaderTenure": 228.7,
+      "leaderBodyDeaths": 0,
+      "captures": 72,
+      "shots": 70,
+      "captureRelease": {
+        "captureRelease:fired": 70,
+        "captureRelease:alive-not-flight": 2
+      },
+      "holdMedianSeconds": 1.43,
+      "newbornLives": 114,
+      "newbornLivesEnded": 94,
+      "newbornReached": {
+        "100": {
+          "lives": 30,
+          "medianSecondsAmongReachers": 68.42
+        },
+        "300": {
+          "lives": 12,
+          "medianSecondsAmongReachers": 28.9
+        },
+        "500": {
+          "lives": 9,
+          "medianSecondsAmongReachers": 28.87
+        },
+        "800": {
+          "lives": 7,
+          "medianSecondsAmongReachers": 29.47
+        },
+        "1000": {
+          "lives": 7,
+          "medianSecondsAmongReachers": 29.87
+        }
+      },
+      "injuryOutcomes": {
+        "survived": 20,
+        "died": 5,
+        "unfinished": 0
+      },
+      "meanLoaded": 0.22,
+      "meanActive": 0.82,
+      "peakActive": 4,
+      "peakBolts": 8,
+      "weaponActivations": {
+        "pulsar": 10,
+        "pinwheel": 10,
+        "ricochet": 5,
+        "ion": 4,
+        "comet": 9,
+        "sentinel": 4
+      },
+      "respawnWaits": {},
+      "defenseEvents": {
+        "exhale": 141,
+        "gustHit": 71,
+        "wallSlip": 5
+      },
+      "selectedTimeSeries": [
+        {
+          "second": 0,
+          "leader": "probe",
+          "leaderGems": 100000,
+          "maxWidth": 1386,
+          "alive": 20,
+          "ordinaryGiants500": 3,
+          "loaded": 0,
+          "activeWeapons": 0,
+          "fieldCrystals": 950,
+          "playerGems": 170000,
+          "bodyDeaths": 0,
+          "flightDeaths": 0
+        },
+        {
+          "second": 60,
+          "leader": "bot-5",
+          "leaderGems": 124678,
+          "maxWidth": 1408.5,
+          "alive": 20,
+          "ordinaryGiants500": 3,
+          "loaded": 1,
+          "activeWeapons": 2,
+          "fieldCrystals": 298,
+          "playerGems": 162737,
+          "bodyDeaths": 2,
+          "flightDeaths": 5
+        },
+        {
+          "second": 120,
+          "leader": "bot-2",
+          "leaderGems": 66931,
+          "maxWidth": 1331,
+          "alive": 20,
+          "ordinaryGiants500": 4,
+          "loaded": 0,
+          "activeWeapons": 2,
+          "fieldCrystals": 170,
+          "playerGems": 155371,
+          "bodyDeaths": 5,
+          "flightDeaths": 15
+        },
+        {
+          "second": 300,
+          "leader": "bot-13",
+          "leaderGems": 72139,
+          "maxWidth": 1342.5,
+          "alive": 20,
+          "ordinaryGiants500": 3,
+          "loaded": 0,
+          "activeWeapons": 0,
+          "fieldCrystals": 381,
+          "playerGems": 135017,
+          "bodyDeaths": 15,
+          "flightDeaths": 31
+        },
+        {
+          "second": 600,
+          "leader": "bot-7",
+          "leaderGems": 87176,
+          "maxWidth": 1369,
+          "alive": 20,
+          "ordinaryGiants500": 2,
+          "loaded": 0,
+          "activeWeapons": 1,
+          "fieldCrystals": 329,
+          "playerGems": 108724,
+          "bodyDeaths": 31,
+          "flightDeaths": 66
+        }
+      ],
+      "holes": [
+        {
+          "slot": 0,
+          "generation": 12,
+          "retries": 0,
+          "abortedWarnings": 4,
+          "activeOpenings": 9,
+          "maxCompletedDormantSeconds": 1.5,
+          "maxCompletedRelocationAbsenceSeconds": 20.5,
+          "ongoingAbsenceSeconds": 0,
+          "finalPhase": "active"
+        },
+        {
+          "slot": 1,
+          "generation": 11,
+          "retries": 2,
+          "abortedWarnings": 3,
+          "activeOpenings": 9,
+          "maxCompletedDormantSeconds": 2.5,
+          "maxCompletedRelocationAbsenceSeconds": 11.5,
+          "ongoingAbsenceSeconds": 0,
+          "finalPhase": "active"
+        },
+        {
+          "slot": 2,
+          "generation": 13,
+          "retries": 2,
+          "abortedWarnings": 5,
+          "activeOpenings": 8,
+          "maxCompletedDormantSeconds": 3.5,
+          "maxCompletedRelocationAbsenceSeconds": 15.5,
+          "ongoingAbsenceSeconds": 7.5,
+          "finalPhase": "warning"
+        }
+      ],
+      "seededGiantsFirstLives": [
+        {
+          "id": "probe",
+          "initialGems": 100000,
+          "initialWidth": 1386,
+          "firstDeath": {
+            "t": 39.1,
+            "width": 1084,
+            "gems": 22494,
+            "flying": false,
+            "flightKind": "missile",
+            "cause": "missile-target"
+          },
+          "capturesGiven": 3,
+          "capturesTaken": 0,
+          "shotsGiven": 3,
+          "creditedIncomingGemLossByHow": {
+            "stole": 94522,
+            "cannon": 32372
+          },
+          "selectedTimeSeries": [
+            {
+              "second": 0,
+              "gems": 100000,
+              "width": 1386,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            },
+            {
+              "second": 60,
+              "gems": 7,
+              "width": 33,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            },
+            {
+              "second": 120,
+              "gems": 3,
+              "width": 26.5,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            },
+            {
+              "second": 300,
+              "gems": 38,
+              "width": 65,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            },
+            {
+              "second": 600,
+              "gems": 26,
+              "width": 55,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            }
+          ]
+        },
+        {
+          "id": "bot-1",
+          "initialGems": 50000,
+          "initialWidth": 1279,
+          "firstDeath": {
+            "t": 39.1,
+            "width": 60,
+            "gems": 32,
+            "flying": true,
+            "flightKind": "missile",
+            "cause": "spent-missile"
+          },
+          "capturesGiven": 0,
+          "capturesTaken": 1,
+          "shotsGiven": 0,
+          "creditedIncomingGemLossByHow": {
+            "stole": 16453,
+            "cannon": 28553
+          },
+          "selectedTimeSeries": [
+            {
+              "second": 0,
+              "gems": 50000,
+              "width": 1279,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            },
+            {
+              "second": 60,
+              "gems": 13,
+              "width": 41,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            },
+            {
+              "second": 120,
+              "gems": 30,
+              "width": 58.5,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            },
+            {
+              "second": 300,
+              "gems": 9,
+              "width": 36,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            },
+            {
+              "second": 600,
+              "gems": 28,
+              "width": 56.5,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            }
+          ]
+        },
+        {
+          "id": "bot-2",
+          "initialGems": 20000,
+          "initialWidth": 1049,
+          "firstDeath": {
+            "t": 440.87,
+            "width": 87,
+            "gems": 72,
+            "flying": false,
+            "flightKind": "missile",
+            "cause": "drain"
+          },
+          "capturesGiven": 10,
+          "capturesTaken": 0,
+          "shotsGiven": 10,
+          "creditedIncomingGemLossByHow": {
+            "drain": 0,
+            "pinwheel": 923,
+            "stole": 31529,
+            "cannon": 23661
+          },
+          "selectedTimeSeries": [
+            {
+              "second": 0,
+              "gems": 20000,
+              "width": 1049,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            },
+            {
+              "second": 60,
+              "gems": 33246,
+              "width": 1188.5,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            },
+            {
+              "second": 120,
+              "gems": 66931,
+              "width": 1331,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            },
+            {
+              "second": 300,
+              "gems": 57663,
+              "width": 1305.5,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            },
+            {
+              "second": 600,
+              "gems": 185,
+              "width": 136.5,
+              "state": "alive",
+              "captured": false,
+              "flying": false,
+              "injured": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": "opening",
+      "seed": 11,
+      "seconds": 1800,
+      "maxGems": 11473,
+      "maxWidth": 868.5,
+      "first": {
+        "partCollected": 7.37,
+        "weaponAssembled": 9.1,
+        "weaponPlaced": 10.23,
+        "death": 13.23,
+        "capture": 34.57,
+        "launch": 36.8,
+        "width100": 48.9,
+        "impact": 94.8,
+        "width300": 176.97,
+        "width500": 326.63,
+        "width800": 1530.1
+      },
+      "bodyDeaths": 65,
+      "flightDeaths": 162,
+      "bodyDeathsByCause": {
+        "pulsar": 5,
+        "missile-target": 39,
+        "mouth": 13,
+        "comet": 5,
+        "drain": 1,
+        "ion": 1,
+        "pinwheel": 1
+      },
+      "bodyDeathsByWidth": {
+        "below100": 37,
+        "100to300": 21,
+        "300to500": 7
+      },
+      "flightDeathsByCause": {
+        "spent-missile": 155,
+        "blackhole": 7
+      },
+      "leaderEntries": 34,
+      "longestLeaderTenure": 231.97,
+      "leaderBodyDeaths": 0,
+      "captures": 183,
+      "shots": 178,
+      "captureRelease": {
+        "captureRelease:fired": 178,
+        "captureRelease:alive-not-flight": 4
+      },
+      "holdMedianSeconds": 1.5,
+      "newbornLives": 247,
+      "newbornLivesEnded": 227,
+      "newbornReached": {
+        "100": {
+          "lives": 98,
+          "medianSecondsAmongReachers": 81.72
+        },
+        "300": {
+          "lives": 18,
+          "medianSecondsAmongReachers": 156.68
+        },
+        "500": {
+          "lives": 12,
+          "medianSecondsAmongReachers": 238.42
+        },
+        "800": {
+          "lives": 3,
+          "medianSecondsAmongReachers": 593.7
+        },
+        "1000": {
+          "lives": 0,
+          "medianSecondsAmongReachers": null
+        }
+      },
+      "injuryOutcomes": {
+        "survived": 114,
+        "died": 15,
+        "unfinished": 1
+      },
+      "meanLoaded": 0.19,
+      "meanActive": 0.91,
+      "peakActive": 3,
+      "peakBolts": 8,
+      "weaponActivations": {
+        "pulsar": 33,
+        "pinwheel": 33,
+        "ricochet": 16,
+        "ion": 13,
+        "comet": 31,
+        "sentinel": 14
+      },
+      "respawnWaits": {},
+      "defenseEvents": {
+        "exhale": 273,
+        "gustHit": 156,
+        "wallSlip": 8
+      },
+      "selectedTimeSeries": [
+        {
+          "second": 0,
+          "leader": null,
+          "leaderGems": 0,
+          "maxWidth": 20,
+          "alive": 20,
+          "ordinaryGiants500": 0,
+          "loaded": 0,
+          "activeWeapons": 0,
+          "fieldCrystals": 950,
+          "playerGems": 0,
+          "bodyDeaths": 0,
+          "flightDeaths": 0
+        },
+        {
+          "second": 60,
+          "leader": "bot-1",
+          "leaderGems": 191,
+          "maxWidth": 138.5,
+          "alive": 20,
+          "ordinaryGiants500": 0,
+          "loaded": 0,
+          "activeWeapons": 1,
+          "fieldCrystals": 950,
+          "playerGems": 1527,
+          "bodyDeaths": 1,
+          "flightDeaths": 2
+        },
+        {
+          "second": 120,
+          "leader": "bot-3",
+          "leaderGems": 428,
+          "maxWidth": 203,
+          "alive": 19,
+          "ordinaryGiants500": 0,
+          "loaded": 0,
+          "activeWeapons": 2,
+          "fieldCrystals": 884,
+          "playerGems": 3325,
+          "bodyDeaths": 3,
+          "flightDeaths": 4
+        },
+        {
+          "second": 300,
+          "leader": "bot-17",
+          "leaderGems": 2797,
+          "maxWidth": 476,
+          "alive": 20,
+          "ordinaryGiants500": 0,
+          "loaded": 0,
+          "activeWeapons": 1,
+          "fieldCrystals": 637,
+          "playerGems": 8633,
+          "bodyDeaths": 6,
+          "flightDeaths": 22
+        },
+        {
+          "second": 600,
+          "leader": "bot-5",
+          "leaderGems": 6947,
+          "maxWidth": 704,
+          "alive": 20,
+          "ordinaryGiants500": 1,
+          "loaded": 1,
+          "activeWeapons": 2,
+          "fieldCrystals": 592,
+          "playerGems": 15049,
+          "bodyDeaths": 21,
+          "flightDeaths": 53
+        },
+        {
+          "second": 900,
+          "leader": "bot-1",
+          "leaderGems": 6701,
+          "maxWidth": 693.5,
+          "alive": 18,
+          "ordinaryGiants500": 2,
+          "loaded": 0,
+          "activeWeapons": 2,
+          "fieldCrystals": 458,
+          "playerGems": 20060,
+          "bodyDeaths": 35,
+          "flightDeaths": 79
+        },
+        {
+          "second": 1200,
+          "leader": "bot-11",
+          "leaderGems": 5460,
+          "maxWidth": 635.5,
+          "alive": 20,
+          "ordinaryGiants500": 2,
+          "loaded": 1,
+          "activeWeapons": 2,
+          "fieldCrystals": 316,
+          "playerGems": 23925,
+          "bodyDeaths": 44,
+          "flightDeaths": 105
+        },
+        {
+          "second": 1500,
+          "leader": "bot-8",
+          "leaderGems": 6685,
+          "maxWidth": 692.5,
+          "alive": 20,
+          "ordinaryGiants500": 4,
+          "loaded": 0,
+          "activeWeapons": 2,
+          "fieldCrystals": 383,
+          "playerGems": 26522,
+          "bodyDeaths": 54,
+          "flightDeaths": 134
+        },
+        {
+          "second": 1800,
+          "leader": "bot-17",
+          "leaderGems": 10849,
+          "maxWidth": 849,
+          "alive": 20,
+          "ordinaryGiants500": 2,
+          "loaded": 1,
+          "activeWeapons": 3,
+          "fieldCrystals": 507,
+          "playerGems": 28209,
+          "bodyDeaths": 65,
+          "flightDeaths": 162
+        }
+      ],
+      "holes": [
+        {
+          "slot": 0,
+          "generation": 32,
+          "retries": 0,
+          "abortedWarnings": 7,
+          "activeOpenings": 26,
+          "maxCompletedDormantSeconds": 1.5,
+          "maxCompletedRelocationAbsenceSeconds": 15.5,
+          "ongoingAbsenceSeconds": 0,
+          "finalPhase": "active"
+        },
+        {
+          "slot": 1,
+          "generation": 34,
+          "retries": 1,
+          "abortedWarnings": 9,
+          "activeOpenings": 26,
+          "maxCompletedDormantSeconds": 2,
+          "maxCompletedRelocationAbsenceSeconds": 16.5,
+          "ongoingAbsenceSeconds": 0,
+          "finalPhase": "active"
+        },
+        {
+          "slot": 2,
+          "generation": 34,
+          "retries": 7,
+          "abortedWarnings": 9,
+          "activeOpenings": 26,
+          "maxCompletedDormantSeconds": 8.5,
+          "maxCompletedRelocationAbsenceSeconds": 20.5,
+          "ongoingAbsenceSeconds": 0,
+          "finalPhase": "active"
+        }
+      ],
+      "seededGiantsFirstLives": []
+    }
+  ],
+  "criticalCascades": [
+    {
+      "scenario": "giant-mix",
+      "seed": 11,
+      "tSeconds": 51.3,
+      "tick": 1539,
+      "kind": "cannon",
+      "projectileId": "bot-18",
+      "launcherId": "bot-8",
+      "directSpillGems": 91,
+      "knockoutAtImpact": false,
+      "targetBefore": {
+        "x": 1988.4558958105195,
+        "y": 785.7781294592368,
+        "width": 1380.5,
+        "gems": 95562,
+        "state": "alive",
+        "flying": false,
+        "flightKind": "missile",
+        "shotOwner": "",
+        "shotShooterWidth": 0,
+        "capturedBy": "",
+        "injured": false,
+        "injuredUntil": 0,
+        "stunned": false,
+        "stunRemainingMs": 0,
+        "spawnProtected": false,
+        "movementVx": -2.5887738521646497,
+        "movementVy": 22.13423737193005,
+        "flightVx": 0,
+        "flightVy": 0
+      },
+      "targetAfterTick": {
+        "x": 1984.6227536443148,
+        "y": 786.0436601106517,
+        "width": 1380.5,
+        "gems": 95467,
+        "state": "alive",
+        "flying": false,
+        "flightKind": "missile",
+        "shotOwner": "",
+        "shotShooterWidth": 0,
+        "capturedBy": "",
+        "injured": true,
+        "injuredUntil": 58300,
+        "stunned": true,
+        "stunRemainingMs": 450,
+        "spawnProtected": false,
+        "movementVx": -102.39682707713085,
+        "movementVy": 7.644064320168503,
+        "flightVx": 0,
+        "flightVy": 0
+      },
+      "projectileBefore": {
+        "x": 2118.8981300657624,
+        "y": 75.70035046621356,
+        "width": 60,
+        "gems": 12,
+        "state": "alive",
+        "flying": true,
+        "flightKind": "missile",
+        "shotOwner": "bot-8",
+        "shotShooterWidth": 56.5,
+        "capturedBy": "",
+        "injured": false,
+        "injuredUntil": 0,
+        "stunned": false,
+        "stunRemainingMs": 0,
+        "spawnProtected": false,
+        "movementVx": -654.749708477716,
+        "movementVy": 39.31542128377622,
+        "flightVx": -765.5331769704278,
+        "flightVy": 19.558806529964695
+      },
+      "launcherBefore": {
+        "x": 3422.0678252801754,
+        "y": 41.311497062176215,
+        "width": 56.5,
+        "gems": 28,
+        "state": "alive",
+        "flying": false,
+        "flightKind": "missile",
+        "shotOwner": "",
+        "shotShooterWidth": 0,
+        "capturedBy": "",
+        "injured": false,
+        "injuredUntil": 0,
+        "stunned": false,
+        "stunRemainingMs": 0,
+        "spawnProtected": false,
+        "movementVx": 0,
+        "movementVy": -237.07904216567084,
+        "flightVx": 0,
+        "flightVy": 0
+      },
+      "theftNoticeGemsWithinSevenSeconds": 68321,
+      "successiveTheftActors": [
+        "bot-1",
+        "bot-10",
+        "bot-15"
+      ],
+      "theftNoticeCaveat": "These credits summarize a theft run when it ends; they are not a per-tick transfer ledger. Both observed targets were uninjured before the initiating hit.",
+      "defenseEventsInWindow": []
+    },
+    {
+      "scenario": "giant-mix",
+      "seed": 218,
+      "tSeconds": 27.27,
+      "tick": 818,
+      "kind": "turbine",
+      "projectileId": "bot-5",
+      "launcherId": "",
+      "directSpillGems": 9,
+      "knockoutAtImpact": false,
+      "targetBefore": {
+        "x": 2036.5236946188984,
+        "y": 2026.1497670636259,
+        "width": 1410.5,
+        "gems": 127440,
+        "state": "alive",
+        "flying": false,
+        "flightKind": "missile",
+        "shotOwner": "",
+        "shotShooterWidth": 0,
+        "capturedBy": "",
+        "injured": false,
+        "injuredUntil": 0,
+        "stunned": false,
+        "stunRemainingMs": 0,
+        "spawnProtected": false,
+        "movementVx": -42.772129088719964,
+        "movementVy": 67.00089920360422,
+        "flightVx": 0,
+        "flightVy": 0
+      },
+      "targetAfterTick": {
+        "x": 2033.5815122300496,
+        "y": 2023.8311494942575,
+        "width": 1410.5,
+        "gems": 127427,
+        "state": "alive",
+        "flying": false,
+        "flightKind": "missile",
+        "shotOwner": "",
+        "shotShooterWidth": 0,
+        "capturedBy": "",
+        "injured": true,
+        "injuredUntil": 34267,
+        "stunned": true,
+        "stunRemainingMs": 450,
+        "spawnProtected": false,
+        "movementVx": -78.36793410520438,
+        "movementVy": -61.758669204228966,
+        "flightVx": 0,
+        "flightVy": 0
+      },
+      "projectileBefore": {
+        "x": 2758.745841639773,
+        "y": 2037.9236791016854,
+        "width": 24.5,
+        "gems": 2,
+        "state": "alive",
+        "flying": true,
+        "flightKind": "turbine",
+        "shotOwner": "",
+        "shotShooterWidth": 0,
+        "capturedBy": "",
+        "injured": false,
+        "injuredUntil": 0,
+        "stunned": false,
+        "stunRemainingMs": 0,
+        "spawnProtected": false,
+        "movementVx": -230.41149128414418,
+        "movementVy": -168.55656928350072,
+        "flightVx": -230.41149128414236,
+        "flightVy": -168.55656928350118
+      },
+      "launcherBefore": null,
+      "theftNoticeGemsWithinSevenSeconds": 83628,
+      "successiveTheftActors": [
+        "bot-18",
+        "bot-2",
+        "bot-5"
+      ],
+      "theftNoticeCaveat": "These credits summarize a theft run when it ends; they are not a per-tick transfer ledger. Both observed targets were uninjured before the initiating hit.",
+      "defenseEventsInWindow": [
+        {
+          "t": 22.43,
+          "tick": 673,
+          "type": "gustHit",
+          "id": "bot-16",
+          "targetId": "probe",
+          "rear": true
+        },
+        {
+          "t": 24.37,
+          "tick": 731,
+          "type": "gustHit",
+          "id": "bot-1",
+          "targetId": "probe",
+          "rear": true
+        },
+        {
+          "t": 26.43,
+          "tick": 793,
+          "type": "gustHit",
+          "id": "bot-3",
+          "targetId": "probe",
+          "rear": true
+        }
+      ]
+    }
+  ],
+  "regeneration": {
+    "driver": "scripts/overall-balance-population.cjs",
+    "defaultRawDirectory": ".tmp/overall-balance-population",
+    "fullStudyCommand": "node scripts/overall-balance-population.cjs",
+    "focusedCommands": [
+      "node scripts/overall-balance-population.cjs --case giant-mix 11 65 .tmp/overall-balance-population/cascade-giant-mix-11-65.json",
+      "node scripts/overall-balance-population.cjs --case giant-mix 218 45 .tmp/overall-balance-population/cascade-giant-mix-218-45.json"
+    ],
+    "note": "Historical compact evidence is curated here. The driver regenerates full raw population/event traces for the actual checkout and existing build; reproducing historical values requires the same compiled/tuning hashes and deterministic setup."
+  }
+}

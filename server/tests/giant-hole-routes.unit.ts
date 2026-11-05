@@ -36,17 +36,20 @@ for(const corner of[id(0,0),id(n,0),id(0,n),id(n,n)]) for(const bot of[false,tru
   const s=new GameState(0);s.botFill=s.fieldGemTarget=0;s.gems.clear();s.weaponsOn=s.surgesOn=s.trafficHits=false;s.setTurbines('off');s.update(0,NOW);
   const p=s.addPlayer('giant','Giant',NOW);p.isBot=bot;p.setGems(1e9,W,W);p.placeAt(path[0].x-size/2,path[0].y-size/2);p.dropProtection();
   const upkeepOnly=new PlayerSchema('upkeep',0);upkeepOnly.setGems(1e9,W,W);
-  let at=1,tick=0,last={x:p.x,y:p.y};
+  let at=1,tick=0,last={x:p.x+p.width/2,y:p.y+p.width/2};
   while(at<path.length&&tick<5000) {
-    const dx=path[at].x-p.x-size/2,dy=path[at].y-p.y-size/2,d=Math.hypot(dx,dy);
+    const dx=path[at].x-p.x-p.width/2,dy=path[at].y-p.y-p.width/2,d=Math.hypot(dx,dy);
     if(d<6){at++;continue;}
+    const speed=moveSpeed(p.width);
     p.steer(dx/d,dy/d);tick++;s.update(1/30,NOW+tick*1000/30);upkeepOnly.decay(1/30,W,W);
-    assert(arenaClearance(p.x+size/2,p.y+size/2,W,W)>=pad-1e-5);
-    assert(s.blackHoles.every(h=>Math.hypot(p.x+size/2-h.x,p.y+size/2-h.y)>=h.radius+size/2+8-.01),'ordinary walking preserves the full body/rim clearance');
-    assert(Math.hypot(p.x-last.x,p.y-last.y)<=moveSpeed(size)/30+.01,'no teleport or speed bonus');last={x:p.x,y:p.y};
+    const center={x:p.x+p.width/2,y:p.y+p.width/2};
+    assert(arenaClearance(center.x,center.y,W,W)>=p.width/2+8-1e-5);
+    assert(s.blackHoles.every(h=>Math.hypot(center.x-h.x,center.y-h.y)>=h.radius+p.width/2+8-.01),'ordinary walking preserves the full body/rim clearance');
+    assert(Math.hypot(center.x-last.x,center.y-last.y)<=speed/30+.01,'no teleport or speed bonus as ordinary upkeep reduces body size');last=center;
   }
   assert.equal(at,path.length,'actual authoritative movement can follow the clear route');
   assert.equal(p.state,'alive');assert.equal(p.gems,upkeepOnly.gems,'walking around holes causes no gem damage beyond existing upkeep');
+  assert.equal(p.width,upkeepOnly.width,'the route loses only the same physical growth as ordinary upkeep');
   if(!bot)routeTimes.push({corner,seconds:tick/30});
 }
 console.log(JSON.stringify({maximumWidth:size,cornerToCenterRouteSeconds:routeTimes}));

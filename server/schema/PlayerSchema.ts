@@ -4,7 +4,7 @@ import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 import { turnStep, walk } from "../game/movement.js";
 import { breathRate } from "../game/airflow.js";
 import { CANNON, EXHALE } from "../constants/gameConstants.js";
-import { creatureSize } from '../game/creatureSize.js';
+import { addBodyGrowth, bodyGrowthForGems, bodyMass, bodyWidthForGrowth, maximumBodyGrowth } from '../game/creatureSize.js';
 import { puffDrift } from '../game/puffImpulse.js';
 import { constrainArena } from '../game/arenaBoundary.js';
 import { WeaponInjuryPressure } from '../game/weaponInjury.js';
@@ -27,8 +27,10 @@ class PlayerSchema extends Schema {
   height: number;
   /** "alive", or "dead" while knocked out and waiting to come back */
   state: string;
-  /** Score and weight: more gems make a bigger player with longer hops */
+  /** Uncapped transferable gem wealth; ordinary physical growth is tracked separately. */
   gems: number;
+  /** Server-only ordinary growth, above newborn mass. Overflow is never stored here. */
+  private bodyGrowthMass = 0;
   /** Just (re)spawned: drawn translucent in a bubble, and traffic passes through for a moment */
   spawnProtected: boolean;
   /** Just hit and lost gems: blinking, and traffic passes through for a moment */
@@ -274,7 +276,7 @@ class PlayerSchema extends Schema {
     this.protectedUntil = now + ms;
   }
 
-  /** Start a fixed exposure after real damage; further hits still hurt but cannot extend it. */
+  /** Start a fixed exposure after qualifying damage; further hits still hurt but cannot extend it. */
   injure(worldTime: number): void {
     if (this.state !== PLAYER_STATE.ALIVE || this.spawnProtected || worldTime < this.injuredUntil) return;
     this.weaponInjury.clear();
@@ -395,11 +397,42 @@ class PlayerSchema extends Schema {
     return true;
   }
 
-  /** Change the gem count; the player grows or shrinks around their center, staying inside the world */
+  /** Live transaction: actual losses debit current growth; only new receipts can regrow it. */
   setGems(count: number, worldWidth: number, worldHeight: number): void {
+    if (!Number.isFinite(count)) return;
+    const next = Math.max(0, Math.round(count)), before = this.gems;
+    if (next < before) this.bodyGrowthMass *= next / before;
+    else if (next > before) this.bodyGrowthMass = addBodyGrowth(this.bodyGrowthMass, next - before, worldWidth, worldHeight);
+    this.gems = next;
+    this.applyGrowth(worldWidth, worldHeight);
+  }
+
+  /** Explicit fresh setup, not a live receipt or a way to heal from retained wealth. */
+  resetGems(count: number, worldWidth: number, worldHeight: number): void {
+    if (!Number.isFinite(count)) return;
     this.gems = Math.max(0, Math.round(count));
+    this.bodyGrowthMass = bodyGrowthForGems(this.gems, worldWidth, worldHeight);
+    this.decayProgress = 0;
+    this.applyGrowth(worldWidth, worldHeight);
+  }
+
+  /** Capture converts excess wealth once, preserving a small body and never inflating it to ammo size. */
+  captureGems(kept: number, worldWidth: number, worldHeight: number): void {
+    if (!Number.isFinite(kept)) return;
+    this.gems = Math.min(this.gems, Math.max(0, Math.round(kept)));
+    this.bodyGrowthMass = Math.min(this.bodyGrowthMass, bodyGrowthForGems(this.gems, worldWidth, worldHeight),
+      Math.max(0, bodyMass(CANNON.BULLET_SIZE) - GEMS.BASE_MASS));
+    this.applyGrowth(worldWidth, worldHeight);
+  }
+
+  private applyGrowth(worldWidth: number, worldHeight: number): void {
     this.bodyWorldWidth = worldWidth; this.bodyWorldHeight = worldHeight;
-    this.resizeBody(this.flying && this.flightKind === 'missile' ? CANNON.BULLET_SIZE : creatureSize(this.gems, worldWidth, worldHeight));
+    this.bodyGrowthMass = Math.min(maximumBodyGrowth(worldWidth, worldHeight), Math.max(0, this.bodyGrowthMass));
+    this.resizeBody(this.flying && this.flightKind === 'missile' ? CANNON.BULLET_SIZE : this.ordinaryWidth());
+  }
+
+  private ordinaryWidth(): number {
+    return bodyWidthForGrowth(this.bodyGrowthMass, this.bodyWorldWidth, this.bodyWorldHeight);
   }
 
   /** Flight's fixed shell changes geometry, never banked growth. Keep the same center at every transition. */
@@ -497,7 +530,7 @@ class PlayerSchema extends Schema {
     this.flightVy = vy;
     this.flightDrag = drag;
     this.flightKind = kind;
-    this.resizeBody(kind === 'missile' ? CANNON.BULLET_SIZE : creatureSize(this.gems, this.bodyWorldWidth, this.bodyWorldHeight));
+    this.resizeBody(kind === 'missile' ? CANNON.BULLET_SIZE : this.ordinaryWidth());
     this.flightStartedAt = now;
     this.flightEndsAt = now + maxMs;
     this.launchedBy = by;
@@ -518,7 +551,7 @@ class PlayerSchema extends Schema {
   land(): void {
     this.shotMassBonus = 0; this.shotShooterWidth = 0; this.shotOwner = "";
     this.flying = false;
-    this.resizeBody(creatureSize(this.gems, this.bodyWorldWidth, this.bodyWorldHeight));
+    this.resizeBody(this.ordinaryWidth());
     this.flightKind = 'missile';
     this.flightVx = 0;
     this.flightVy = 0;

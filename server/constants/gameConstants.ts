@@ -89,7 +89,7 @@ export const GEMS = {
   FIELD_COUNT: 950, // about 25% fewer background gems; combat sprays remain available on top
   FIELD_REPLENISH_PER_S: 30, // shared arena resource flow, rather than an unlimited reward for sweeping faster
   RADIUS: 9,
-  // creatureSize converts banked gems to physical mass; late growth tapers to fit a finite arena.
+  // Earned growth follows creatureSize; live losses debit current body growth without an overflow reserve.
   BASE_MASS: 2, // newborn body mass; opening width = PLAYER_SIZE x sqrt(1 + gems * GROWTH_MASS_PER_GEM / this)
   GROWTH_OPENING_GEMS: 40, // keep the opening rewarding, then increase the crystal cost of visible size
   GROWTH_MASS_PER_GEM: 0.5, // slower earned growth; score/value, combat tuning and recovery rules are unchanged
@@ -429,6 +429,11 @@ export const CANNON = {
   IMPACT_SUCTION_SAFE_MS: 1500, // shared nonlethal-hit recovery: about a second of movement after the 450ms daze
   TARGET_SHOVE: 120, // ...and knocked up to this far along the hit (less the heavier it is than the flier)
   BOUNCE: 0.35, // the flier bounces back keeping this share of its speed; one damaging hit per launch
+} as const;
+
+/** Provisional body-projectile injury qualification; does not change damage or the injury timer. */
+export const PROJECTILE_INJURY = {
+  MIN_POWER_SHARE: 0.08,
 } as const;
 
 export const SHIFT = {

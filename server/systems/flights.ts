@@ -5,6 +5,7 @@ import { CANNON } from "../constants/gameConstants.js";
 import { circleEntry, blackHoleIsLethal } from "../game/blackHole.js";
 import { arenaExit } from '../game/arenaBoundary.js';
 import { flightStep, impactGems, missileMassAfterImpact, sweptHit, lethalPlayerImpact } from "../game/cannon.js";
+import { projectileEarnsInjury } from '../game/projectileInjury.js';
 import { sprayGems } from "./gems.js";
 import { knockOutWithGems, finishWithReward } from "./inhale.js";
 
@@ -104,7 +105,8 @@ function impact(state: GameState, flier: PlayerSchema, target: PlayerSchema, spe
     if (deliberate) earned = finishWithReward(state, target, launcher, now, 'cannon');
     else knockOutWithGems(state, target, now);
   } else if (spill > 0) {
-    target.injure(state.time);
+    if (projectileEarnsInjury({ speed, ammoWidth: flier.width, targetWidth: hitSize, kind: flier.flightKind,
+      deliberate, shooterWidth: flier.shotShooterWidth, shooterMassBonus: flier.shotMassBonus })) target.injure(state.time);
     target.setGems(target.gems - spill, state.worldWidth, state.worldHeight);
     sprayGems(state, target.x + target.width / 2, target.y + target.height / 2, spill, now, target.sessionId);
   }

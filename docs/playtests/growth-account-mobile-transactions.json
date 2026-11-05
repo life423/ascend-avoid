@@ -1,0 +1,104 @@
+[
+  {
+    "action": "reset",
+    "before": {
+      "gems": 0,
+      "width": 20,
+      "state": "alive",
+      "flying": false,
+      "time": 1965
+    },
+    "after": {
+      "gems": 1999727,
+      "width": 1470,
+      "state": "alive",
+      "flying": false,
+      "time": 2168
+    }
+  },
+  {
+    "action": "loss",
+    "before": {
+      "gems": 1999321,
+      "width": 1470,
+      "state": "alive",
+      "flying": false,
+      "time": 2371
+    },
+    "after": {
+      "gems": 1498949,
+      "width": 1272.5,
+      "state": "alive",
+      "flying": false,
+      "time": 2608
+    }
+  },
+  {
+    "action": "noop",
+    "before": {
+      "gems": 1498495,
+      "width": 1272.5,
+      "state": "alive",
+      "flying": false,
+      "time": 2911
+    },
+    "after": {
+      "gems": 1498293,
+      "width": 1272.5,
+      "state": "alive",
+      "flying": false,
+      "time": 3046
+    }
+  },
+  {
+    "action": "land",
+    "before": {
+      "gems": 1497890,
+      "width": 1272,
+      "state": "alive",
+      "flying": false,
+      "time": 3315
+    },
+    "after": {
+      "gems": 1497686,
+      "width": 1272,
+      "state": "alive",
+      "flying": false,
+      "time": 3451
+    }
+  },
+  {
+    "action": "gain",
+    "before": {
+      "gems": 1497330,
+      "width": 1272,
+      "state": "alive",
+      "flying": false,
+      "time": 3689
+    },
+    "after": {
+      "gems": 1507024,
+      "width": 1307.5,
+      "state": "alive",
+      "flying": false,
+      "time": 3892
+    }
+  },
+  {
+    "action": "land",
+    "before": {
+      "gems": 1506770,
+      "width": 1307.5,
+      "state": "alive",
+      "flying": false,
+      "time": 4061
+    },
+    "after": {
+      "gems": 1506464,
+      "width": 1307,
+      "state": "alive",
+      "flying": false,
+      "time": 4264
+    }
+  }
+]

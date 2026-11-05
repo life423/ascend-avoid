@@ -1,0 +1,99 @@
+{
+  "sourceCommit": "9344b16",
+  "seed": 73,
+  "worldSeconds": 6.333,
+  "body": {
+    "gems": 1000000000,
+    "width": 1470,
+    "startCenter": {
+      "x": 743,
+      "y": 743
+    },
+    "goalCenter": {
+      "x": 2208.56,
+      "y": 1882.88
+    }
+  },
+  "fans": [
+    {
+      "id": "t1",
+      "x": 1754,
+      "y": 2540,
+      "intake": 3.171,
+      "sweepFrom": 4233,
+      "phase": "active",
+      "phaseEndsAt": 67775.50590316951
+    },
+    {
+      "id": "t2",
+      "x": 1582,
+      "y": 1324,
+      "intake": 1.476,
+      "sweepFrom": 5733,
+      "phase": "active",
+      "phaseEndsAt": 82008.28364304453
+    },
+    {
+      "id": "t3",
+      "x": 3446,
+      "y": 2202,
+      "intake": 0.491,
+      "sweepFrom": 6333,
+      "phase": "active",
+      "phaseEndsAt": 88575.09932377562
+    }
+  ],
+  "blackHoles": [
+    {
+      "x": 1680,
+      "y": 420,
+      "radius": 64,
+      "phase": "warning",
+      "at": 9000,
+      "activeAt": 9000,
+      "generation": 1
+    },
+    {
+      "x": 3150,
+      "y": 1680,
+      "radius": 64,
+      "phase": "active",
+      "at": 76000,
+      "activeAt": 4000,
+      "generation": 0
+    },
+    {
+      "x": 2100,
+      "y": 3108,
+      "radius": 64,
+      "phase": "active",
+      "at": 88000,
+      "activeAt": 4000,
+      "generation": 0
+    }
+  ],
+  "observed": {
+    "allStatic": {
+      "arrived": false,
+      "attemptSeconds": 100,
+      "remainingDistance": 1043.2532427455296
+    },
+    "onlyT1Ends": {
+      "releaseWorldSeconds": 67.8,
+      "arrivalWorldSeconds": 78.833,
+      "arrivalElapsedSeconds": 72.5
+    },
+    "targetClearance": {
+      "wall": 1139.88,
+      "hole": 156.05221457613618,
+      "fan": 4.019078620779737
+    }
+  },
+  "notes": [
+    "Centers use world coordinates; player top-left = center - width/2.",
+    "Hole phases are held fixed in the focused fixture to isolate fan geometry; a separate control retains actual fan phase deadlines.",
+    "Only active fans are solid in current server rules.",
+    "The artificial 1e9 gem count reaches the legal physical cap and is not a normal progression claim.",
+    "No steering path is supplied before a topology change: the control continuously aims at the clear goal. At a fan phase change, the harness follows a new continuous-edge route if one exists."
+  ]
+}

@@ -143,7 +143,16 @@ export class GameRoom extends Room<GameState> {
         hole.cycling = true; hole.at = this.state.time;
       });
       this.onMessage("test:setGems", (client, data: any) => {
-        playerOf(client)?.setGems(Number(data?.count) || 0, worldWidth, worldHeight);
+        playerOf(client)?.resetGems(Number(data?.count) || 0, worldWidth, worldHeight);
+      });
+      this.onMessage("test:changeGems", (client, data: { delta?: unknown }) => {
+        const player = playerOf(client), delta = data?.delta;
+        if (!player || typeof delta !== 'number' || !Number.isFinite(delta) || !Number.isInteger(delta)) return;
+        const total = player.gems + delta;
+        if (Number.isFinite(total)) player.setGems(total, worldWidth, worldHeight);
+      });
+      this.onMessage("test:land", (client) => {
+        playerOf(client)?.land();
       });
       this.onMessage("test:placeGem", (client, data: any) => {
         const player = playerOf(client);

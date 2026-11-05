@@ -1,0 +1,1153 @@
+{
+  "reference": {
+    "revision": "9344b163c1c5295a5b17435248d362c75e760995",
+    "compiledTreeSha256": "d81e3d31942fbfef6eff1e8cd307751e0e672a350999833ddccc3d1630d2d6e1",
+    "compiledJavaScriptFiles": 70,
+    "compiledCannonSha256": "5c4417d7b03067a11bc6dace8d9dec91cea6db73fe6ddad3db64f8aa37bb2f8a",
+    "overallRunAt": "2026-11-04T20:04:32.797Z",
+    "weakProjectileRunAt": "2026-11-04T20:02:41.737Z",
+    "coreSourceUnchanged": true
+  },
+  "method": "Historical compact snapshot only. Current-rule server simulation at30Hz; no tuning/profile/RNG overrides, ambient bots/field/hazards disabled, scripted controls. Full methods/limits: OVERALL_COMBAT.md. Full timelines stay in ignored .tmp; rerun drivers record current source revision and compiled-tree hashes separately.",
+  "counts": {
+    "closeCaptureCells": 28,
+    "realShotFollowups": 171,
+    "escapeControls": 864,
+    "acceptedWeaponBudgetCells": 168,
+    "realWeaponEmitters": 15,
+    "realArmedBoltCollisions": 56,
+    "weakProjectileScenarios": 52,
+    "weakProjectileRepeats": 20
+  },
+  "settings": {
+    "injuryMs": 7000,
+    "puffCost": 0.75,
+    "weaponMassShare": 0.05,
+    "burstWindowMs": 2000,
+    "cannonImpactSuctionRecoveryMs": 1500,
+    "cannonImpactStunMs": 450,
+    "peerHitShare": 0.25,
+    "shatterShooterRatio": 1.2,
+    "captureWidthRatio": 1.3,
+    "physicalWidthCap": 1470,
+    "firstRoundedCapStock": 1227436
+  },
+  "weakProjectiles": {
+    "directImpacts": [
+      {
+        "stock": 20000,
+        "kind": "cannon",
+        "sourceWidth": 80,
+        "damage": 48,
+        "damagePercent": 0.24,
+        "widthBefore": 1049,
+        "widthAfter": 1048.5,
+        "injuryMs": 7000,
+        "stunMs": 450,
+        "suctionRecoveryMs": 1500,
+        "assembledGateSameLoss": false,
+        "ordinaryTheft": 0
+      },
+      {
+        "stock": 20000,
+        "kind": "fan",
+        "sourceWidth": 36,
+        "damage": 5,
+        "damagePercent": 0.025,
+        "widthBefore": 1049,
+        "widthAfter": 1049,
+        "injuryMs": 7000,
+        "stunMs": 450,
+        "suctionRecoveryMs": 0,
+        "assembledGateSameLoss": false,
+        "ordinaryTheft": 0
+      },
+      {
+        "stock": 50000,
+        "kind": "cannon",
+        "sourceWidth": 80,
+        "damage": 81,
+        "damagePercent": 0.162,
+        "widthBefore": 1279,
+        "widthAfter": 1278.5,
+        "injuryMs": 7000,
+        "stunMs": 450,
+        "suctionRecoveryMs": 1500,
+        "assembledGateSameLoss": false,
+        "ordinaryTheft": 0
+      },
+      {
+        "stock": 50000,
+        "kind": "fan",
+        "sourceWidth": 36,
+        "damage": 9,
+        "damagePercent": 0.018,
+        "widthBefore": 1279,
+        "widthAfter": 1279,
+        "injuryMs": 7000,
+        "stunMs": 450,
+        "suctionRecoveryMs": 0,
+        "assembledGateSameLoss": false,
+        "ordinaryTheft": 0
+      },
+      {
+        "stock": 100000,
+        "kind": "cannon",
+        "sourceWidth": 26.5,
+        "damage": 126,
+        "damagePercent": 0.126,
+        "widthBefore": 1386,
+        "widthAfter": 1385.5,
+        "injuryMs": 7000,
+        "stunMs": 450,
+        "suctionRecoveryMs": 1500,
+        "assembledGateSameLoss": false,
+        "ordinaryTheft": 0
+      },
+      {
+        "stock": 100000,
+        "kind": "cannon",
+        "sourceWidth": 80,
+        "damage": 138,
+        "damagePercent": 0.138,
+        "widthBefore": 1386,
+        "widthAfter": 1385.5,
+        "injuryMs": 7000,
+        "stunMs": 450,
+        "suctionRecoveryMs": 1500,
+        "assembledGateSameLoss": false,
+        "ordinaryTheft": 0
+      },
+      {
+        "stock": 100000,
+        "kind": "fan",
+        "sourceWidth": 36,
+        "damage": 16,
+        "damagePercent": 0.016,
+        "widthBefore": 1385.5,
+        "widthAfter": 1385.5,
+        "injuryMs": 7000,
+        "stunMs": 450,
+        "suctionRecoveryMs": 0,
+        "assembledGateSameLoss": false,
+        "ordinaryTheft": 0
+      },
+      {
+        "stock": 1000000,
+        "kind": "cannon",
+        "sourceWidth": 26.5,
+        "damage": 1121,
+        "damagePercent": 0.1121,
+        "widthBefore": 1469.5,
+        "widthAfter": 1469.5,
+        "injuryMs": 7000,
+        "stunMs": 450,
+        "suctionRecoveryMs": 1500,
+        "assembledGateSameLoss": true,
+        "ordinaryTheft": 0
+      },
+      {
+        "stock": 1000000,
+        "kind": "cannon",
+        "sourceWidth": 80,
+        "damage": 1228,
+        "damagePercent": 0.1228,
+        "widthBefore": 1469.5,
+        "widthAfter": 1469.5,
+        "injuryMs": 7000,
+        "stunMs": 450,
+        "suctionRecoveryMs": 1500,
+        "assembledGateSameLoss": true,
+        "ordinaryTheft": 0
+      },
+      {
+        "stock": 1000000,
+        "kind": "fan",
+        "sourceWidth": 36,
+        "damage": 138,
+        "damagePercent": 0.0138,
+        "widthBefore": 1469.5,
+        "widthAfter": 1469.5,
+        "injuryMs": 7000,
+        "stunMs": 450,
+        "suctionRecoveryMs": 0,
+        "assembledGateSameLoss": false,
+        "ordinaryTheft": 0
+      }
+    ],
+    "onePursuerRetreat": [
+      {
+        "stock": 20000,
+        "kind": "cannon",
+        "pursuers": 1,
+        "response": "retreat",
+        "directDamage": 48,
+        "ordinaryTheft": 10494,
+        "mouthFinishReward": 0,
+        "ended": "recovered",
+        "endMs": 7267,
+        "impactMs": 267,
+        "firstTheftMs": 1767,
+        "edge": false,
+        "nonvictimCapture": false
+      },
+      {
+        "stock": 20000,
+        "kind": "fan",
+        "pursuers": 1,
+        "response": "retreat",
+        "directDamage": 5,
+        "ordinaryTheft": 13126,
+        "mouthFinishReward": 6761,
+        "ended": "knocked-out",
+        "endMs": 7100,
+        "impactMs": 400,
+        "firstTheftMs": 700,
+        "edge": false,
+        "nonvictimCapture": false
+      },
+      {
+        "stock": 50000,
+        "kind": "cannon",
+        "pursuers": 1,
+        "response": "retreat",
+        "directDamage": 81,
+        "ordinaryTheft": 34315,
+        "mouthFinishReward": 0,
+        "ended": "recovered",
+        "endMs": 7267,
+        "impactMs": 267,
+        "firstTheftMs": 1767,
+        "edge": false,
+        "nonvictimCapture": false
+      },
+      {
+        "stock": 50000,
+        "kind": "fan",
+        "pursuers": 1,
+        "response": "retreat",
+        "directDamage": 9,
+        "ordinaryTheft": 36211,
+        "mouthFinishReward": 13537,
+        "ended": "knocked-out",
+        "endMs": 6500,
+        "impactMs": 400,
+        "firstTheftMs": 700,
+        "edge": false,
+        "nonvictimCapture": false
+      },
+      {
+        "stock": 100000,
+        "kind": "cannon",
+        "pursuers": 1,
+        "response": "retreat",
+        "directDamage": 138,
+        "ordinaryTheft": 79745,
+        "mouthFinishReward": 19598,
+        "ended": "knocked-out",
+        "endMs": 7167,
+        "impactMs": 267,
+        "firstTheftMs": 1767,
+        "edge": false,
+        "nonvictimCapture": false
+      },
+      {
+        "stock": 100000,
+        "kind": "fan",
+        "pursuers": 1,
+        "response": "retreat",
+        "directDamage": 16,
+        "ordinaryTheft": 79973,
+        "mouthFinishReward": 19581,
+        "ended": "knocked-out",
+        "endMs": 6133,
+        "impactMs": 400,
+        "firstTheftMs": 700,
+        "edge": false,
+        "nonvictimCapture": false
+      },
+      {
+        "stock": 1000000,
+        "kind": "cannon",
+        "pursuers": 1,
+        "response": "retreat",
+        "directDamage": 1228,
+        "ordinaryTheft": 969758,
+        "mouthFinishReward": 24474,
+        "ended": "knocked-out",
+        "endMs": 7067,
+        "impactMs": 267,
+        "firstTheftMs": 1767,
+        "edge": false,
+        "nonvictimCapture": false
+      },
+      {
+        "stock": 1000000,
+        "kind": "fan",
+        "pursuers": 1,
+        "response": "retreat",
+        "directDamage": 138,
+        "ordinaryTheft": 970702,
+        "mouthFinishReward": 25662,
+        "ended": "knocked-out",
+        "endMs": 6000,
+        "impactMs": 400,
+        "firstTheftMs": 700,
+        "edge": false,
+        "nonvictimCapture": false
+      }
+    ],
+    "twoPursuer100k": [
+      {
+        "stock": 100000,
+        "kind": "cannon",
+        "pursuers": 2,
+        "response": "idle",
+        "directDamage": 138,
+        "ordinaryTheft": 85073,
+        "mouthFinishReward": 14413,
+        "ended": "knocked-out",
+        "endMs": 6400,
+        "impactMs": 267,
+        "firstTheftMs": 1767,
+        "edge": false,
+        "nonvictimCapture": false
+      },
+      {
+        "stock": 100000,
+        "kind": "cannon",
+        "pursuers": 2,
+        "response": "retreat",
+        "directDamage": 138,
+        "ordinaryTheft": 85152,
+        "mouthFinishReward": 14233,
+        "ended": "knocked-out",
+        "endMs": 6700,
+        "impactMs": 267,
+        "firstTheftMs": 1767,
+        "edge": false,
+        "nonvictimCapture": false
+      },
+      {
+        "stock": 100000,
+        "kind": "fan",
+        "pursuers": 2,
+        "response": "idle",
+        "directDamage": 16,
+        "ordinaryTheft": 85202,
+        "mouthFinishReward": 14396,
+        "ended": "knocked-out",
+        "endMs": 5333,
+        "impactMs": 400,
+        "firstTheftMs": 700,
+        "edge": false,
+        "nonvictimCapture": false
+      },
+      {
+        "stock": 100000,
+        "kind": "fan",
+        "pursuers": 2,
+        "response": "retreat",
+        "directDamage": 16,
+        "ordinaryTheft": 85459,
+        "mouthFinishReward": 14114,
+        "ended": "knocked-out",
+        "endMs": 5700,
+        "impactMs": 400,
+        "firstTheftMs": 700,
+        "edge": false,
+        "nonvictimCapture": false
+      }
+    ],
+    "stationaryOffRangeInhale": [
+      {
+        "stock": 20000,
+        "shooterStolen": 0,
+        "ordinaryTheft": 0,
+        "ended": "recovered"
+      },
+      {
+        "stock": 50000,
+        "shooterStolen": 0,
+        "ordinaryTheft": 0,
+        "ended": "recovered"
+      },
+      {
+        "stock": 100000,
+        "shooterStolen": 0,
+        "ordinaryTheft": 0,
+        "ended": "recovered"
+      },
+      {
+        "stock": 1000000,
+        "shooterStolen": 0,
+        "ordinaryTheft": 0,
+        "ended": "recovered"
+      }
+    ],
+    "repeats": [
+      {
+        "stock": 50000,
+        "kind": "cannon",
+        "pursuers": 1,
+        "response": "retreat",
+        "cases": 5,
+        "knockouts": 0,
+        "ordinaryTheftMin": 34268,
+        "ordinaryTheftMax": 34336,
+        "endMsMin": 7267,
+        "endMsMax": 7267,
+        "wallContacts": 0,
+        "nonvictimCaptures": 0
+      },
+      {
+        "stock": 50000,
+        "kind": "fan",
+        "pursuers": 1,
+        "response": "retreat",
+        "cases": 5,
+        "knockouts": 5,
+        "ordinaryTheftMin": 36198,
+        "ordinaryTheftMax": 36211,
+        "endMsMin": 6500,
+        "endMsMax": 6500,
+        "wallContacts": 0,
+        "nonvictimCaptures": 0
+      },
+      {
+        "stock": 100000,
+        "kind": "cannon",
+        "pursuers": 1,
+        "response": "retreat",
+        "cases": 5,
+        "knockouts": 5,
+        "ordinaryTheftMin": 79722,
+        "ordinaryTheftMax": 80303,
+        "endMsMin": 7167,
+        "endMsMax": 7200,
+        "wallContacts": 0,
+        "nonvictimCaptures": 0
+      },
+      {
+        "stock": 100000,
+        "kind": "fan",
+        "pursuers": 1,
+        "response": "retreat",
+        "cases": 5,
+        "knockouts": 5,
+        "ordinaryTheftMin": 79973,
+        "ordinaryTheftMax": 79973,
+        "endMsMin": 6133,
+        "endMsMax": 6133,
+        "wallContacts": 0,
+        "nonvictimCaptures": 0
+      }
+    ]
+  },
+  "physicalGrowth": {
+    "sizes": [
+      {
+        "requestedWidth": 60,
+        "width": 60,
+        "gems": 32,
+        "mass": 18,
+        "speed": 243.1474,
+        "reach": 200,
+        "injuryGemsThreshold": 1.8
+      },
+      {
+        "requestedWidth": 200,
+        "width": 200,
+        "gems": 414,
+        "mass": 200,
+        "speed": 179.9492,
+        "reach": 480,
+        "injuryGemsThreshold": 20
+      },
+      {
+        "requestedWidth": 600,
+        "width": 600,
+        "gems": 4768,
+        "mass": 1800,
+        "speed": 136.7318,
+        "reach": 1280,
+        "injuryGemsThreshold": 180
+      },
+      {
+        "requestedWidth": 1000,
+        "width": 1000,
+        "gems": 17048,
+        "mass": 5000,
+        "speed": 120.3393,
+        "reach": 2080,
+        "injuryGemsThreshold": 500
+      },
+      {
+        "requestedWidth": 1400,
+        "width": 1400,
+        "gems": 113964,
+        "mass": 9800,
+        "speed": 110.6307,
+        "reach": 2880,
+        "injuryGemsThreshold": 980
+      },
+      {
+        "requestedWidth": 1470,
+        "width": 1470,
+        "gems": 1227436,
+        "mass": 10804.5,
+        "speed": 109.2894,
+        "reach": 3020,
+        "injuryGemsThreshold": 1080.45
+      }
+    ],
+    "equalShotEffects": [
+      {
+        "targetWidth": 200,
+        "targetGems": 414,
+        "speed": 1657.5362,
+        "damage": 104,
+        "lossShare": 0.2512,
+        "afterWidth": 174,
+        "widthLossShare": 0.13,
+        "speedAfter": 186.3246,
+        "instantShatter": false,
+        "hypotheticalNextShotShatter": false
+      },
+      {
+        "targetWidth": 600,
+        "targetGems": 4768,
+        "speed": 2000,
+        "damage": 1192,
+        "lossShare": 0.25,
+        "afterWidth": 530,
+        "widthLossShare": 0.1167,
+        "speedAfter": 141.0388,
+        "instantShatter": false,
+        "hypotheticalNextShotShatter": false
+      },
+      {
+        "targetWidth": 1000,
+        "targetGems": 17048,
+        "speed": 2000,
+        "damage": 4262,
+        "lossShare": 0.25,
+        "afterWidth": 905.5,
+        "widthLossShare": 0.0945,
+        "speedAfter": 123.3631,
+        "instantShatter": false,
+        "hypotheticalNextShotShatter": false
+      },
+      {
+        "targetWidth": 1400,
+        "targetGems": 113964,
+        "speed": 2000,
+        "damage": 28491,
+        "lossShare": 0.25,
+        "afterWidth": 1366.5,
+        "widthLossShare": 0.0239,
+        "speedAfter": 111.3025,
+        "instantShatter": false,
+        "hypotheticalNextShotShatter": false
+      }
+    ],
+    "cappedStockShots": [
+      {
+        "gems": 20000,
+        "width": 1049,
+        "mass": 5502.005,
+        "damage": 5000,
+        "afterGems": 15000,
+        "afterWidth": 958.5,
+        "widthLossShare": 0.0863,
+        "speedBefore": 118.9087,
+        "speedAfter": 121.6212,
+        "nextShotShatter": false
+      },
+      {
+        "gems": 100000,
+        "width": 1386,
+        "mass": 9604.98,
+        "damage": 25000,
+        "afterGems": 75000,
+        "afterWidth": 1348.5,
+        "widthLossShare": 0.0271,
+        "speedBefore": 110.909,
+        "speedAfter": 111.6721,
+        "nextShotShatter": false
+      },
+      {
+        "gems": 1227436,
+        "width": 1470,
+        "mass": 10804.5,
+        "damage": 306859,
+        "afterGems": 920577,
+        "afterWidth": 1469.5,
+        "widthLossShare": 0.0003,
+        "speedBefore": 109.2894,
+        "speedAfter": 109.2987,
+        "nextShotShatter": false
+      },
+      {
+        "gems": 2000000,
+        "width": 1470,
+        "mass": 10804.5,
+        "damage": 500000,
+        "afterGems": 1500000,
+        "afterWidth": 1470,
+        "widthLossShare": 0,
+        "speedBefore": 109.2894,
+        "speedAfter": 109.2894,
+        "nextShotShatter": false
+      },
+      {
+        "gems": 10000000,
+        "width": 1470,
+        "mass": 10804.5,
+        "damage": 2500000,
+        "afterGems": 7500000,
+        "afterWidth": 1470,
+        "widthLossShare": 0,
+        "speedBefore": 109.2894,
+        "speedAfter": 109.2894,
+        "nextShotShatter": false
+      }
+    ]
+  },
+  "captures": [
+    {
+      "width": 200,
+      "requestedRatio": 1.299,
+      "requestedAttackerWidth": 259.8,
+      "physicallyReachable": true,
+      "actualRatio": 1.3,
+      "eligible": true,
+      "captured": true,
+      "transfer": 382,
+      "targetKept": 32,
+      "attackerWidthAfter": 315.5,
+      "targetWidthAfter": 60,
+      "holdMs": 5000
+    },
+    {
+      "width": 600,
+      "requestedRatio": 1.299,
+      "requestedAttackerWidth": 779.4,
+      "physicallyReachable": true,
+      "actualRatio": 1.2992,
+      "eligible": false,
+      "captured": false,
+      "transfer": 0,
+      "targetKept": 4768,
+      "attackerWidthAfter": 779.5,
+      "targetWidthAfter": 600,
+      "holdMs": null
+    },
+    {
+      "width": 600,
+      "requestedRatio": 1.3,
+      "requestedAttackerWidth": 780,
+      "physicallyReachable": true,
+      "actualRatio": 1.3,
+      "eligible": true,
+      "captured": true,
+      "transfer": 4736,
+      "targetKept": 32,
+      "attackerWidthAfter": 926,
+      "targetWidthAfter": 60,
+      "holdMs": 5000
+    },
+    {
+      "width": 1000,
+      "requestedRatio": 1.3,
+      "requestedAttackerWidth": 1300,
+      "physicallyReachable": true,
+      "actualRatio": 1.3,
+      "eligible": true,
+      "captured": true,
+      "transfer": 17016,
+      "targetKept": 32,
+      "attackerWidthAfter": 1344,
+      "targetWidthAfter": 60,
+      "holdMs": 5000
+    },
+    {
+      "width": 1400,
+      "requestedRatio": 1.3,
+      "requestedAttackerWidth": 1820,
+      "physicallyReachable": false,
+      "actualRatio": 1.05,
+      "eligible": false,
+      "captured": false,
+      "transfer": 0,
+      "targetKept": 113964,
+      "attackerWidthAfter": 1470,
+      "targetWidthAfter": 1400,
+      "holdMs": null
+    }
+  ],
+  "followupGrid": {
+    "note": "Counts summarize the chosen test cells, not human win rates. Ratios above1470px cap clamp to1470, so width1400 cannot reach1.2×. Ratios are requested, not always physically available.",
+    "summary": [
+      {
+        "ratio": 0.9,
+        "response": "idle",
+        "cases": 12,
+        "directKnockouts": 0,
+        "followupKnockouts": 12,
+        "recoveries": 0,
+        "wallContacts": 0
+      },
+      {
+        "ratio": 0.9,
+        "response": "retreat",
+        "cases": 12,
+        "directKnockouts": 0,
+        "followupKnockouts": 4,
+        "recoveries": 8,
+        "wallContacts": 0
+      },
+      {
+        "ratio": 0.9,
+        "response": "strafe",
+        "cases": 12,
+        "directKnockouts": 0,
+        "followupKnockouts": 7,
+        "recoveries": 5,
+        "wallContacts": 0
+      },
+      {
+        "ratio": 1,
+        "response": "idle",
+        "cases": 12,
+        "directKnockouts": 0,
+        "followupKnockouts": 12,
+        "recoveries": 0,
+        "wallContacts": 0
+      },
+      {
+        "ratio": 1,
+        "response": "retreat",
+        "cases": 12,
+        "directKnockouts": 0,
+        "followupKnockouts": 4,
+        "recoveries": 8,
+        "wallContacts": 0
+      },
+      {
+        "ratio": 1,
+        "response": "strafe",
+        "cases": 12,
+        "directKnockouts": 0,
+        "followupKnockouts": 8,
+        "recoveries": 4,
+        "wallContacts": 0
+      },
+      {
+        "ratio": 1.19,
+        "response": "idle",
+        "cases": 12,
+        "directKnockouts": 0,
+        "followupKnockouts": 12,
+        "recoveries": 0,
+        "wallContacts": 0
+      },
+      {
+        "ratio": 1.19,
+        "response": "retreat",
+        "cases": 12,
+        "directKnockouts": 0,
+        "followupKnockouts": 4,
+        "recoveries": 8,
+        "wallContacts": 0
+      },
+      {
+        "ratio": 1.19,
+        "response": "strafe",
+        "cases": 12,
+        "directKnockouts": 0,
+        "followupKnockouts": 8,
+        "recoveries": 4,
+        "wallContacts": 0
+      },
+      {
+        "ratio": 1.2,
+        "response": "idle",
+        "cases": 12,
+        "directKnockouts": 9,
+        "followupKnockouts": 3,
+        "recoveries": 0,
+        "wallContacts": 0
+      },
+      {
+        "ratio": 1.2,
+        "response": "retreat",
+        "cases": 12,
+        "directKnockouts": 9,
+        "followupKnockouts": 1,
+        "recoveries": 2,
+        "wallContacts": 0
+      },
+      {
+        "ratio": 1.2,
+        "response": "strafe",
+        "cases": 12,
+        "directKnockouts": 9,
+        "followupKnockouts": 2,
+        "recoveries": 1,
+        "wallContacts": 0
+      }
+    ]
+  },
+  "escapeControls": {
+    "summary": [
+      {
+        "width": 300,
+        "cases": 216,
+        "captured": 152,
+        "escaped-cone": 38,
+        "survived-in-reach": 26,
+        "wallContacts": 6
+      },
+      {
+        "width": 600,
+        "cases": 216,
+        "captured": 126,
+        "escaped-cone": 45,
+        "survived-in-reach": 45,
+        "wallContacts": 12
+      },
+      {
+        "width": 1000,
+        "cases": 216,
+        "captured": 114,
+        "survived-in-reach": 66,
+        "escaped-cone": 36,
+        "wallContacts": 30
+      },
+      {
+        "width": 1400,
+        "cases": 216,
+        "captured": 108,
+        "survived-in-reach": 108,
+        "wallContacts": 96
+      }
+    ],
+    "selected": [
+      {
+        "hunterWidth": 600,
+        "runnerWidth": 60,
+        "mouthReachShare": 0.3,
+        "puff": "none",
+        "ended": "captured",
+        "endMs": 733,
+        "puffCast": false,
+        "validPuffHit": false,
+        "wallContact": false
+      },
+      {
+        "hunterWidth": 600,
+        "runnerWidth": 60,
+        "mouthReachShare": 0.3,
+        "puff": "rear",
+        "ended": "captured",
+        "endMs": 733,
+        "puffCast": true,
+        "validPuffHit": true,
+        "wallContact": false
+      },
+      {
+        "hunterWidth": 600,
+        "runnerWidth": 60,
+        "mouthReachShare": 0.9,
+        "puff": "none",
+        "ended": "escaped-cone",
+        "endMs": 3967,
+        "puffCast": false,
+        "validPuffHit": false,
+        "wallContact": false
+      },
+      {
+        "hunterWidth": 600,
+        "runnerWidth": 60,
+        "mouthReachShare": 0.9,
+        "puff": "rear",
+        "ended": "escaped-cone",
+        "endMs": 3967,
+        "puffCast": true,
+        "validPuffHit": true,
+        "wallContact": false
+      },
+      {
+        "hunterWidth": 1400,
+        "runnerWidth": 60,
+        "mouthReachShare": 0.3,
+        "puff": "none",
+        "ended": "captured",
+        "endMs": 4100,
+        "puffCast": false,
+        "validPuffHit": false,
+        "wallContact": false
+      },
+      {
+        "hunterWidth": 1400,
+        "runnerWidth": 60,
+        "mouthReachShare": 0.3,
+        "puff": "rear",
+        "ended": "captured",
+        "endMs": 4100,
+        "puffCast": true,
+        "validPuffHit": true,
+        "wallContact": false
+      },
+      {
+        "hunterWidth": 1400,
+        "runnerWidth": 60,
+        "mouthReachShare": 0.9,
+        "puff": "none",
+        "ended": "survived-in-reach",
+        "endMs": 12000,
+        "puffCast": false,
+        "validPuffHit": false,
+        "wallContact": true
+      },
+      {
+        "hunterWidth": 1400,
+        "runnerWidth": 60,
+        "mouthReachShare": 0.9,
+        "puff": "rear",
+        "ended": "survived-in-reach",
+        "endMs": 12000,
+        "puffCast": true,
+        "validPuffHit": true,
+        "wallContact": true
+      }
+    ]
+  },
+  "weaponInjury": {
+    "acceptedSingleKindCadence": [
+      {
+        "stock": 20000,
+        "width": 1049,
+        "kind": "pinwheel",
+        "intervalMs": 960,
+        "firstInjuringHit": 2,
+        "firstDamage": 340,
+        "nominalMassShare": 0.0309,
+        "visibleMassLossShare": 0.0095
+      },
+      {
+        "stock": 20000,
+        "width": 1049,
+        "kind": "pulsar",
+        "intervalMs": 2600,
+        "firstInjuringHit": 1,
+        "firstDamage": 3000,
+        "nominalMassShare": 0.2726,
+        "visibleMassLossShare": 0.0931
+      },
+      {
+        "stock": 20000,
+        "width": 1049,
+        "kind": "sentinel",
+        "intervalMs": 1600,
+        "firstInjuringHit": 0,
+        "firstDamage": 227,
+        "nominalMassShare": 0.0206,
+        "visibleMassLossShare": 0.0067
+      },
+      {
+        "stock": 20000,
+        "width": 1049,
+        "kind": "comet",
+        "intervalMs": 1500,
+        "firstInjuringHit": 2,
+        "firstDamage": 425,
+        "nominalMassShare": 0.0386,
+        "visibleMassLossShare": 0.0124
+      },
+      {
+        "stock": 50000,
+        "width": 1279,
+        "kind": "pinwheel",
+        "intervalMs": 960,
+        "firstInjuringHit": 2,
+        "firstDamage": 537,
+        "nominalMassShare": 0.0328,
+        "visibleMassLossShare": 0.0031
+      },
+      {
+        "stock": 50000,
+        "width": 1279,
+        "kind": "pulsar",
+        "intervalMs": 2600,
+        "firstInjuringHit": 1,
+        "firstDamage": 7500,
+        "nominalMassShare": 0.4585,
+        "visibleMassLossShare": 0.0517
+      },
+      {
+        "stock": 50000,
+        "width": 1279,
+        "kind": "sentinel",
+        "intervalMs": 1600,
+        "firstInjuringHit": 0,
+        "firstDamage": 358,
+        "nominalMassShare": 0.0219,
+        "visibleMassLossShare": 0.0023
+      },
+      {
+        "stock": 50000,
+        "width": 1279,
+        "kind": "comet",
+        "intervalMs": 1500,
+        "firstInjuringHit": 2,
+        "firstDamage": 671,
+        "nominalMassShare": 0.041,
+        "visibleMassLossShare": 0.0047
+      },
+      {
+        "stock": 100000,
+        "width": 1386,
+        "kind": "pinwheel",
+        "intervalMs": 960,
+        "firstInjuringHit": 2,
+        "firstDamage": 759,
+        "nominalMassShare": 0.0395,
+        "visibleMassLossShare": 0.0014
+      },
+      {
+        "stock": 100000,
+        "width": 1386,
+        "kind": "pulsar",
+        "intervalMs": 2600,
+        "firstInjuringHit": 1,
+        "firstDamage": 15000,
+        "nominalMassShare": 0.7808,
+        "visibleMassLossShare": 0.0287
+      },
+      {
+        "stock": 100000,
+        "width": 1386,
+        "kind": "sentinel",
+        "intervalMs": 1600,
+        "firstInjuringHit": 2,
+        "firstDamage": 506,
+        "nominalMassShare": 0.0263,
+        "visibleMassLossShare": 0.0014
+      },
+      {
+        "stock": 100000,
+        "width": 1386,
+        "kind": "comet",
+        "intervalMs": 1500,
+        "firstInjuringHit": 2,
+        "firstDamage": 949,
+        "nominalMassShare": 0.0494,
+        "visibleMassLossShare": 0.0022
+      },
+      {
+        "stock": 1227436,
+        "width": 1470,
+        "kind": "pinwheel",
+        "intervalMs": 960,
+        "firstInjuringHit": 1,
+        "firstDamage": 2659,
+        "nominalMassShare": 0.1231,
+        "visibleMassLossShare": 0.0007
+      },
+      {
+        "stock": 1227436,
+        "width": 1470,
+        "kind": "pulsar",
+        "intervalMs": 2600,
+        "firstInjuringHit": 1,
+        "firstDamage": 184116,
+        "nominalMassShare": 8.5203,
+        "visibleMassLossShare": 0.0007
+      },
+      {
+        "stock": 1227436,
+        "width": 1470,
+        "kind": "sentinel",
+        "intervalMs": 1600,
+        "firstInjuringHit": 1,
+        "firstDamage": 1773,
+        "nominalMassShare": 0.082,
+        "visibleMassLossShare": 0.0007
+      },
+      {
+        "stock": 1227436,
+        "width": 1470,
+        "kind": "comet",
+        "intervalMs": 1500,
+        "firstInjuringHit": 1,
+        "firstDamage": 3324,
+        "nominalMassShare": 0.1538,
+        "visibleMassLossShare": 0.0007
+      }
+    ],
+    "realCollisionChecks": {
+      "cases": 56,
+      "central": 28,
+      "graze": 28,
+      "grazesCausingInjury": 0
+    },
+    "selectedEmitters": [
+      {
+        "stock": 20000,
+        "kind": "pinwheel",
+        "initialCenterDistance": 854.5,
+        "hits": 2,
+        "centralHits": 1,
+        "injuredAtEnd": false,
+        "creditedDamage": 423
+      },
+      {
+        "stock": 20000,
+        "kind": "comet",
+        "initialCenterDistance": 854.5,
+        "hits": 4,
+        "centralHits": 4,
+        "injuredAtEnd": true,
+        "creditedDamage": 1668
+      },
+      {
+        "stock": 100000,
+        "kind": "pinwheel",
+        "initialCenterDistance": 1023,
+        "hits": 3,
+        "centralHits": 0,
+        "injuredAtEnd": false,
+        "creditedDamage": 568
+      },
+      {
+        "stock": 100000,
+        "kind": "comet",
+        "initialCenterDistance": 1023,
+        "hits": 4,
+        "centralHits": 4,
+        "injuredAtEnd": true,
+        "creditedDamage": 3761
+      },
+      {
+        "stock": 1227436,
+        "kind": "pinwheel",
+        "initialCenterDistance": 1065,
+        "hits": 3,
+        "centralHits": 0,
+        "injuredAtEnd": false,
+        "creditedDamage": 1991
+      },
+      {
+        "stock": 1227436,
+        "kind": "comet",
+        "initialCenterDistance": 1065,
+        "hits": 4,
+        "centralHits": 4,
+        "injuredAtEnd": true,
+        "creditedDamage": 13240
+      }
+    ]
+  }
+}
