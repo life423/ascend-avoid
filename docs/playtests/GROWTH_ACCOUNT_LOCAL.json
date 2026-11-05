@@ -1,0 +1,77 @@
+{
+  "date": "2026-11-05",
+  "status": "local uncommitted candidate",
+  "lossRule": "growthMassAfter = growthMassBefore * gemsAfter / gemsBefore",
+  "rows": [
+    {
+      "gemsBefore": 40,
+      "gemsAfter": 30,
+      "legacyWidthAfter": 58.5,
+      "widthBefore": 66.5,
+      "widthAfter": 58.5,
+      "widthAfterNoopAndLanding": 58.5,
+      "widthAfter1000NewGems": 305
+    },
+    {
+      "gemsBefore": 1000,
+      "gemsAfter": 750,
+      "legacyWidthAfter": 263.5,
+      "widthBefore": 301,
+      "widthAfter": 260.5,
+      "widthAfterNoopAndLanding": 260.5,
+      "widthAfter1000NewGems": 385.5
+    },
+    {
+      "gemsBefore": 100000,
+      "gemsAfter": 75000,
+      "legacyWidthAfter": 1348.5,
+      "widthBefore": 1386,
+      "widthAfter": 1200,
+      "widthAfterNoopAndLanding": 1200,
+      "widthAfter1000NewGems": 1207
+    },
+    {
+      "gemsBefore": 1000000,
+      "gemsAfter": 750000,
+      "legacyWidthAfter": 1468.5,
+      "widthBefore": 1469.5,
+      "widthAfter": 1272.5,
+      "widthAfterNoopAndLanding": 1272.5,
+      "widthAfter1000NewGems": 1276.5
+    },
+    {
+      "gemsBefore": 2000000,
+      "gemsAfter": 1500000,
+      "legacyWidthAfter": 1470,
+      "widthBefore": 1470,
+      "widthAfter": 1273,
+      "widthAfterNoopAndLanding": 1273,
+      "widthAfter1000NewGems": 1277
+    },
+    {
+      "gemsBefore": 10000000,
+      "gemsAfter": 5000000,
+      "legacyWidthAfter": 1470,
+      "widthBefore": 1470,
+      "widthAfter": 1039.5,
+      "widthAfterNoopAndLanding": 1039.5,
+      "widthAfter1000NewGems": 1054.5
+    },
+    {
+      "gemsBefore": 10000000,
+      "gemsAfter": 1000000,
+      "legacyWidthAfter": 1469.5,
+      "widthBefore": 1470,
+      "widthAfter": 465,
+      "widthAfterNoopAndLanding": 465,
+      "widthAfter1000NewGems": 534.5
+    }
+  ],
+  "oneMinuteUpkeepAt10m": {
+    "gems": 9417654,
+    "width": 1426.5,
+    "rate": 0.001,
+    "threshold": 300
+  },
+  "injuryMs": 7000
+}

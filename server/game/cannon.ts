@@ -46,7 +46,7 @@ export function launchSpeed(captorWidth: number, captiveWidth: number = CANNON.B
 
 /** Width is proportional to the square root of mass, so keeping 10% width retains about 1% mass. */
 export function missileMassAfterImpact(gems: number, width: number = creatureSize(gems)): number {
-  return Math.floor(gemsForGrowthMass(Math.max(0, bodyMass(width * CANNON.MISSILE_WIDTH_KEEP) - GEMS.BASE_MASS)));
+  return Math.min(gems, Math.floor(gemsForGrowthMass(Math.max(0, bodyMass(width * CANNON.MISSILE_WIDTH_KEEP) - GEMS.BASE_MASS))));
 }
 
 /** Stored physical-mass bonus: only a player's deliberate captive launch sets it. */

@@ -1,21 +1,79 @@
 # Ascend Avoid — current work and next-session handoff
 
-Updated November 4, 2026. Verified live baseline is `4bf5cb7` (earned weapon
-injury, later growth and inhale framing, PR #83), deployed successfully with live
-bundle and WebSocket checks on Azure revision `ascend-avoid--0000123`.
+Updated November 5, 2026. Verified live baseline before this release was `9344b16` (safe black-hole
+relocation, circular hole art and HUD readability, PR #84), deployed successfully
+with matching live assets and three browser smokes on Azure revision
+`ascend-avoid--0000124`, healthy with 100% traffic.
 Rounded camera/corners, 75% defense, ownership visuals and the single-outline
 minimap are shipped. The original top-right Menu box is retained. This is the active list.
 The complete earlier request inventory is preserved in [TODO_HISTORY.md](TODO_HISTORY.md).
 Historical studies and checklists can describe removed mechanics; do not treat
 those descriptions as unfinished implementation work.
 
-## Current release — approved November 4
+## November 5 release — approved
+
+The user reviewed the local result, said it feels good, and authorized commit,
+merge to main, GitHub push and live deployment. The
+[production workflow](https://github.com/life423/ascend-avoid/actions/workflows/deploy.yml)
+records the merged revision and rollout result for this batch.
+
+- [x] Run a current-rule overall growth/combat playtest against `9344b16`:
+  fresh/established population time series, controlled shot/escape/weapon sweeps,
+  full-layout giant navigation and recorded desktop/mobile browser encounters.
+  Findings and limits: [OVERALL_GROWTH_COMBAT_PLAYTEST.md](OVERALL_GROWTH_COMBAT_PLAYTEST.md).
+  The initial research pass was read-only; the following implementation and
+  release were subsequently authorized.
+- [x] Implement the requested meaningful player/fan projectile injury gate locally.
+  Provisional minimum normalized power: 8%, using physical bodies and existing
+  stored shooter power independently of banked gems. Weak hits retain their
+  exact damage and brief stun; meaningful hits retain fixed non-refreshing 7s
+  injury. See [EARNED_PROJECTILE_INJURY.md](EARNED_PROJECTILE_INJURY.md).
+- [x] Complete automated desktop/mobile encounter review of the projectile gate:
+  build/types/schema/lint, 59 server suites, 18 multiplayer scenarios and 28
+  browser cases across desktop Chrome, Android Chrome emulation, iPhone WebKit
+  and Firefox phone viewport pass. No physical-phone result is implied. The
+  original pressure driver now records zero theft/knockouts in 72 weak-hit
+  encounters. Root also checked normal input and weak/peer impacts in the local UI.
+- [x] User reviewed the local candidate and approved release of both gameplay fixes.
+- [ ] Continue ordinary human matches with the new projectile gate; the local
+  controlled encounter remains at <http://localhost:3001/projectile-injury.html>.
+- [ ] Review combined fan/hole placement for giant routes. A reproduced legal
+  max-body layout stays compartmentalized until a fan retires; holes-only
+  connectivity does not guarantee complete-layout connectivity. Keep physical
+  collision and ordinary speed unchanged until a specific fix is chosen.
+- [x] Implement the authorized persistent physical-growth account locally.
+  Live gem losses now debit current growth proportionally; only new receipts
+  regrow it. Overflow wealth, no-op updates, landing and spawn retries cannot
+  restore old growth. Capture conversion, 60-unit flight shells, exact transfers
+  and once-only pending rewards remain intact. No other tuning values changed.
+  See [GROWTH_ACCOUNTING.md](GROWTH_ACCOUNTING.md) and its measured comparisons.
+- [x] Verify build/production package, client/server types, unchanged wire schema
+  and lint; all 60 server suites, 18 multiplayer scenarios and 38 browser cases
+  pass. Browser coverage includes four growth-review profiles, 28 combat cases,
+  plus standard bullets and the full five-lesson sequence on desktop/Android
+  emulation. Independent review also caught and fixed a near-cap rounding issue;
+  tiny new pickups no longer erase accumulated fractional losses.
+- [ ] Continue ordinary-match review of growth loss and genuine regrowth; the controlled review is at
+  <http://localhost:3001/growth-account.html> and in ordinary matches. Existing
+  upkeep now physically shrinks capped players at its unchanged rate (about
+  1470→1426.5 width after one minute from 10m gems without gains).
+- [ ] Review the remaining assembled-weapon injury credit dependence on banked
+  gems at extreme totals. Its nominal lost-gem mass proxy is unchanged by the
+  growth account; player/fan projectile qualification already ignores the bank.
+- [ ] Consider fan-opening revalidation for late growth/forced-entry overlaps.
+  Existing selection already reserves players; the controlled 795-unit opening
+  correction is an edge case, not proof of ordinary fans spawning under giants.
+- [ ] Continue human matches and newcomer/device checks after choosing fixes.
+  Current simulations and scripted controls do not validate human fun or final balance.
+
+## Released November 4 — PR #84
 
 The user reviewed this local candidate, said it feels good and authorized commit,
 merge to main, GitHub push and live deployment. The
 [production workflow](https://github.com/life423/ascend-avoid/actions/workflows/deploy.yml)
-records its final published commit and rollout result. The baseline at the top
-identifies the preceding verified release.
+records published commit `9344b16` and its successful rollout. Required CI passed
+normally; the earlier one-time override was not reused. The local main checkout
+was synchronized and clean before this subsequent playtest work.
 
 - [x] Implement periodic black-hole retirement and safe relocation, with a
   closing warning, harmless new-location warning, activation revalidation and
@@ -42,8 +100,9 @@ identifies the preceding verified release.
 - [x] Review later hole-size, size-tiered weapon and pre-launch fan-aim directions.
   Concrete proposals and dependencies are in
   [NEXT_GAMEPLAY_DESIGNS.md](NEXT_GAMEPLAY_DESIGNS.md); these ideas are not enabled
-  or agreed balance values. Fan impacts currently injure/stun on any spill, so
-  deliberate fan aim first needs a decision about small-ammunition limits.
+  or agreed balance values. At this release fan impacts injured on any spill;
+  the November 5 projectile gate now requires physical impact power for injury.
+  Deliberate fan aim remains a separate design decision.
 - [x] Verify build, schema, client/server types and lint; 58 server suites,
   18 multiplayer scenarios and 49 browser cases across the hole, mobile,
   starfield and HUD suites pass. Three 180s/20-bot simulations recorded 19 safe
@@ -71,7 +130,7 @@ records the final published revision and deployment result.
 - [x] Accommodate the new maximum through initial hole placement: upper holes
   now start at 40% arena height. Full-body routes from all corners to the center
   pass authoritative human/bot checks; no reduced body/rim collision or walking
-  damage. Dynamic relocation is now implemented in the separate local batch above.
+  damage. Dynamic relocation shipped separately in PR #84 above.
 - [x] Measure speed, body-length travel and turns across size tiers. Current
   formula gives 109.3 units/s and a roughly 1.03s 90° turn at maximum width;
   half-width prey retain 18.9% faster walking. Clear hole-only corner-to-center
@@ -201,16 +260,21 @@ strength, speed and unrelated tuning.
 
 ## Suggested next session
 
-1. Continue ordinary-match review of relocation, circular hole icons and HUD readability.
-2. Finish physical-device checks documented below; Android Firefox is still
+1. Choose the weak body/fan impact injury follow-up from the current balance review.
+   No formula or new tuning value has been agreed yet.
+2. Address full-layout giant routes through fans and holes before considering a
+   walking-speed change or another size-cap increase.
+3. Review the late-stock physical-size/damage coupling separately; retain the
+   current arena and bot count while deciding the next experiment.
+4. Finish physical-device checks documented below; Android Firefox is still
    pending because the user selected Chrome-only testing this session.
-3. Continue ordinary-match [bot giant-awareness](BOT_GIANT_AVOIDANCE.md) and
+5. Continue ordinary-match [bot giant-awareness](BOT_GIANT_AVOIDANCE.md) and
    human-match playtests of giant/small-player escape and the released rear-hit
    wall slip. Keep 75% breath, shove strength and other balance unchanged.
-4. Review ordinary-match pacing, weapon assembly and long-run growth together.
+6. Review ordinary-match pacing, weapon assembly and long-run growth together.
    Use recordings and measurements; do not require the user to replay as a
    prerequisite to reproducible technical investigations.
-5. Select a later gameplay experiment from [NEXT_GAMEPLAY_DESIGNS.md](NEXT_GAMEPLAY_DESIGNS.md).
+7. Select a later gameplay experiment from [NEXT_GAMEPLAY_DESIGNS.md](NEXT_GAMEPLAY_DESIGNS.md).
    Hole-size variation, tiered weapons and fan aim still require their specific
    tuning/interaction decisions; arena enlargement and extra bots remain deferred.
 
@@ -251,6 +315,10 @@ strength, speed and unrelated tuning.
   See [GUST_DEFENSE.md](GUST_DEFENSE.md) and [CONTROL_LOCK_AUDIT.md](CONTROL_LOCK_AUDIT.md).
 
 ### Growth, combat and the whole game loop
+
+The November 4 [current-rule playtest](OVERALL_GROWTH_COMBAT_PLAYTEST.md) now
+supplies reproducible evidence for the questions below. It identifies specific
+follow-ups above; it does not close broader human-match validation.
 
 - [ ] Validate time to a worthwhile first capture, shot, escape or build in
   ordinary play. Earlier scripted opportunity counts were much lower for passive

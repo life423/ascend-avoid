@@ -124,7 +124,7 @@ export class PracticeController {
   private resetLearner(gems: number, now: number): PlayerSchema {
     const p = this.learner;
     if (!p) throw new Error('Practice setup requires its authorized learner');
-    p.land(); p.spawnAt(0, 0, now); p.setGems(gems, this.state.worldWidth, this.state.worldHeight);
+    p.land(); p.spawnAt(0, 0, now); p.resetGems(gems, this.state.worldWidth, this.state.worldHeight);
     p.placeAt(PRACTICE_ARENA.x - p.width / 2, PRACTICE_ARENA.y - p.height / 2);
     p.dropProtection(); p.facing = 0; p.spin = 0; p.stamina = 1; p.staminaAt = now;
     p.exhaleReadyAt = p.puffReadyAt = p.inhaleBlockedUntil = 0;
@@ -135,7 +135,7 @@ export class PracticeController {
     const id = `practice-${this.view.lesson}-${role}-${this.view.attempt}`;
     const p = new PlayerSchema(id, this.state.nextPlayerIndex++);
     p.name = role === 'ammo' ? 'Ammunition' : role === 'attacker' ? 'Practice pursuer' : role === 'soft-contact' ? 'Soft body' : 'Practice rival';
-    p.isBot = true; p.setGems(gems, this.state.worldWidth, this.state.worldHeight);
+    p.isBot = true; p.resetGems(gems, this.state.worldWidth, this.state.worldHeight);
     p.placeAt(x - p.width / 2, y - p.height / 2); p.dropProtection();
     this.state.players.set(id, p); return p;
   }

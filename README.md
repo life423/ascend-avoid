@@ -8,6 +8,8 @@
 
 The server owns movement, collisions, damage, gem accounting, and capture rules. The browser predicts movement and renders the arena. Public matches and private practice lessons use the same gameplay systems. Rooms live in memory; no database or other local service is required.
 
+Gem losses reduce current physical growth, including at maximum size. Overflow gems remain transferable wealth; only newly collected or earned gems can rebuild lost growth. The existing growth curve and physical size limit still apply. See [growth accounting](docs/GROWTH_ACCOUNTING.md) for the local implementation and checks.
+
 ## Controls and practice
 
 | Action | Desktop | Phone / tablet |

@@ -192,7 +192,7 @@ export function updateInhales(state: GameState, now: number, deltaTime: number) 
       caught.weaponInjury.clear();
       state.clearTheftFor(caught.sessionId); state.clearTheftFor(eater.sessionId);
       const amount = captureGrowthTransfer(caught.gems, state.worldWidth, state.worldHeight);
-      caught.setGems(caught.gems - amount, state.worldWidth, state.worldHeight);
+      caught.captureGems(caught.gems - amount, state.worldWidth, state.worldHeight);
       eater.setGems(eater.gems + amount, state.worldWidth, state.worldHeight);
       eater.stolenTotal += amount; caught.robbedTotal += amount;
       stealCapturedPart(state, eater, caught);

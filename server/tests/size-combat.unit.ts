@@ -113,12 +113,13 @@ assert(windows[2].firstSecond > windows[1].firstSecond * 2 && windows[3].firstSe
   'near-peer pressure is substantially more immediate than small-attacker pressure');
 {
   const { s, target, flier } = shot(20, 1000);
-  assert(target.gems >= 950 && target.injuredUntil > s.time && target.stunned, 'a standard shot still chips, stuns and exposes a much wider target');
+  assert(target.gems >= 950 && target.injuredUntil === 0 && target.stunned, 'a weak standard shot still chips and briefly stuns a much wider target');
   assert.equal(flier.state, 'dead', 'the separately approved spent-missile consequence remains');
+  const afterChip = target.gems;
   const thieves = [add(s, 'left-thief', 4), add(s, 'right-thief', 4)];
   injuryWindow(s, target, thieves);
-  assert(target.gems < 500, 'a small hit followed by two sustained thieves now has serious consequences');
-  assert(thieves.every(p => p.gems > 4), 'both small attackers can take exposed gems without a shared allowance');
+  assert.equal(target.gems, afterChip, 'a weak chip cannot open injury theft for sustained pursuers');
+  assert(thieves.every(p => p.gems === 4), 'healthy gems stay unavailable after the hit protection ends');
   assert.equal(total(s), 1028);
 }
 {
@@ -157,7 +158,7 @@ assert(windows[2].firstSecond > windows[1].firstSecond * 2 && windows[3].firstSe
   target.placeAt(flier.x + flier.width / 2 + ux * 600 - target.width / 2, flier.y + flier.height / 2 + uy * 600 - target.height / 2);
   for (let tick = 1; tick <= 40 && !flier.flightHit; tick++) { s.time = tick * 50; s.now = NOW + s.time; updateFlights(s, s.now, .05); }
   assert(flier.flightHit && flier.state === 'alive', 'the fan comeback shot hits without player-cannon burnup');
-  assert(target.gems < 1000 && target.gems >= 970 && target.injuredUntil > s.time, 'fan hits yield a real but modest giant opening');
+  assert(target.gems < 1000 && target.gems >= 970 && target.injuredUntil === 0, 'a weak fan hit chips a giant without opening injury theft');
 }
-console.log('Size combat regressions passed: durable giants, useful small hits, near-peer threats, damage plus multiple thieves, lethal large ammunition, fan counterplay and conserved value.');
+console.log('Size combat regressions passed: durable giants, useful chip hits, near-peer threats, qualified injury theft, lethal large ammunition, fan counterplay and conserved value.');
 console.log(JSON.stringify({ isolatedSevenSecondTheft: windows }));
