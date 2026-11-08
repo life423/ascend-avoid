@@ -35,8 +35,8 @@ function isTyping(e: KeyboardEvent): boolean {
 /**
  * Touch and mouse controls for the online game, drawn on the canvas. On a touchscreen, a joystick
  * appears wherever your thumb lands on the left half, and the right half is the button: hold it to
- * inhale (slide off to stop). With a mouse, move the cursor over the arena to steer without holding;
- * space works like the on-screen button (Esc stops an inhale). The
+ * inhale (slide off to stop). In mouse steering mode, move the cursor over the arena to steer.
+ * Space works like the on-screen button (Esc stops an inhale). The
  * arrow keys and WASD stay with the InputManager.
  */
 export class OnlineControls {
@@ -62,7 +62,8 @@ export class OnlineControls {
     // Minimum visible diameters stay 80px for the stick and 56px for the action.
     private get controlScale(): number { return Math.min(1, (this.canvas.width - this.insets.left - this.insets.right) / 320, (this.canvas.height - this.insets.top - this.insets.bottom) / 480) }
     private get stickRadius(): number { return Math.max(40, STICK_RADIUS * this.controlScale) }
-    get isPointerSteering(): boolean { return !!this.stick || !!this.mouse }
+    private readonly finePointer = window.matchMedia('(pointer: fine)')
+    get followsMouse(): boolean { return this.finePointer.matches && mouseControlEnabled() }
 
     private stickLayout() {
         const radius = this.stickRadius, knob = Math.min(28, radius / 2)
@@ -173,7 +174,7 @@ export class OnlineControls {
             const push = Math.min(1, ((reach - DEAD_ZONE) / (1 - DEAD_ZONE)) * 1.25)
             return { x: (dx / reach) * push, y: (dy / reach) * push }
         }
-        if (this.mouse) {
+        if (this.followsMouse && this.mouse) {
             const dx = this.mouse.x - playerX
             const dy = this.mouse.y - playerY
             const distance = Math.hypot(dx, dy)
@@ -345,7 +346,7 @@ export class OnlineControls {
         sound.unlock()
         const point = this.toCanvas(e)
         if (e.pointerType === 'mouse') {
-            if (!mouseControlEnabled()) return
+            if (!this.followsMouse) return
             if (e.button !== 0) return
             this.mouse = { id: e.pointerId, x: point.x, y: point.y }
         } else if (point.x < this.canvas.width / 2) {
@@ -362,7 +363,7 @@ export class OnlineControls {
 
     private onMove = (e: PointerEvent): void => {
         if (e.pointerType === 'mouse') {
-            if (!mouseControlEnabled()) { this.mouse = null; return }
+            if (!this.followsMouse) { this.mouse = null; return }
             const editing = document.activeElement?.matches('input, textarea, [contenteditable="true"]')
             if (e.target !== this.canvas || editing || document.querySelector('.drawer.active')) { this.mouse = null; return }
             this.mouse = { id: e.pointerId, ...this.toCanvas(e) }
@@ -405,8 +406,6 @@ export class OnlineControls {
     private onKeyDown = (e: KeyboardEvent): void => {
         if (isTyping(e) || document.querySelector('.drawer.active')) return
         sound.unlock()
-        const direction: Record<string, string> = { KeyW: 'U', ArrowUp: 'U', KeyS: 'D', ArrowDown: 'D', KeyA: 'L', ArrowLeft: 'L', KeyD: 'R', ArrowRight: 'R' }
-        if (direction[e.code]) this.mouse = null // keyboard takes over until the mouse moves again
         if (e.code === 'Escape') this.cancelPress()
         if (e.code !== 'Space') return
         e.preventDefault()

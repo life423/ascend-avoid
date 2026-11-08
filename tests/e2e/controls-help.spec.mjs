@@ -8,13 +8,54 @@ async function start(page) {
     postData: JSON.stringify({ ...route.request().postDataJSON(), testBots: 0, testFieldGems: 0 }),
   }));
   await page.goto('/');
+  await waitForArena(page);
+}
+async function waitForArena(page) {
   await page.waitForFunction(() => window.game?.currentGameMode?.lastView && window.game?.currentGameMode?.multiplayerManager?.room?.state?.players?.size === 1);
   await expect.poll(() => page.evaluate(() => document.body.classList.contains('intro-playing'))).toBe(false);
 }
 const position = page => page.evaluate(() => {
-  const p = window.game.currentGameMode.multiplayerManager.getLocalPlayer();
-  return { x: p.x, y: p.y, facing: p.facing, inhaling: p.inhaling };
+  const manager = window.game.currentGameMode.multiplayerManager;
+  const p = manager.getLocalPlayer();
+  return { x: p.x, y: p.y, facing: p.facing, inhaling: p.inhaling, time: manager.room.state.time, speed: Math.hypot(p.movementVx, p.movementVy) };
 });
+const mouseSwitch = page => page.getByRole('switch', { name: 'Mouse steering', exact: true });
+
+async function centerPlayer(page) {
+  const center = await page.evaluate(() => {
+    const manager = window.game.currentGameMode.multiplayerManager;
+    const player = manager.getLocalPlayer(), { worldWidth, worldHeight } = manager.room.state;
+    const point = { x: (worldWidth - player.width) / 2, y: (worldHeight - player.height) / 2 };
+    manager.room.send('test:moveTo', point);
+    return point;
+  });
+  await expect.poll(async () => {
+    const player = await position(page);
+    return Math.hypot(player.x - center.x, player.y - center.y);
+  }).toBeLessThan(1);
+}
+
+async function moveCursorRight(page) {
+  const box = await page.locator('canvas.game-canvas').boundingBox();
+  await page.mouse.move(box.x + box.width * .8, box.y + box.height * .5);
+}
+
+async function afterMovementWindow(page, before) {
+  await expect.poll(async () => (await position(page)).time - before.time).toBeGreaterThanOrEqual(350);
+  return position(page);
+}
+
+async function expectStill(page) {
+  const before = await position(page);
+  const after = await afterMovementWindow(page, before);
+  expect(Math.hypot(after.x - before.x, after.y - before.y)).toBeLessThan(2);
+}
+
+async function holdKey(page, key, check) {
+  await page.keyboard.down(key);
+  try { await check(); }
+  finally { await page.keyboard.up(key); }
+}
 
 test('short Help fits, has reachable actions and keeps keyboard focus inside', async ({ page }) => {
   await start(page);
@@ -59,52 +100,84 @@ test('the arena stays free of duplicate surge countdowns while the event continu
   expect(await page.evaluate(() => window.game.currentGameMode.multiplayerManager.room.state.surgePhase)).toBe('active');
 });
 
-test('desktop follows an unpressed mouse and keyboard can take over', async ({ page, hasTouch }) => {
-  test.skip(hasTouch, 'desktop mouse control');
+test('a first-time desktop visitor enters the arena with keyboard steering ready', async ({ page, hasTouch }) => {
+  test.skip(hasTouch, 'desktop steering');
+  // The page context has no saved preference. Enter and move without dismissing
+  // a prompt or choosing a mode.
   await start(page);
-  const box = await page.locator('canvas').first().boundingBox(), before = await position(page);
-  await page.mouse.move(box.x + box.width * .8, box.y + box.height * .5);
-  await expect.poll(async () => (await position(page)).x).toBeGreaterThan(before.x + 25);
-  await page.keyboard.down('ArrowLeft'); const left = await position(page);
-  await expect.poll(async () => (await position(page)).x).toBeLessThan(left.x - 25);
-  await page.keyboard.up('ArrowLeft');
-  await expect.poll(async () => {
-    const stopped = await position(page); await page.waitForTimeout(250);
-    return Math.abs((await position(page)).x - stopped.x);
-  }).toBeLessThan(2);
-  await page.mouse.move(box.x + box.width * .8, box.y + box.height * .6);
+  await expect(mouseSwitch(page)).toHaveAttribute('aria-checked', 'false');
+  expect(await page.evaluate(() => window.game.currentGameMode.multiplayerManager.room.state.practice.enabled)).toBe(false);
+  await centerPlayer(page);
+  await moveCursorRight(page);
+  await expectStill(page);
+  const before = await position(page);
+  await holdKey(page, 'ArrowRight', async () => {
+    await expect.poll(async () => (await position(page)).x).toBeGreaterThan(before.x + 25);
+  });
+});
+
+test('desktop Mouse steering is exclusive and remembers both choices across reloads', async ({ page, hasTouch }) => {
+  test.skip(hasTouch, 'desktop steering');
+  await start(page);
+  const control = mouseSwitch(page);
+  await centerPlayer(page);
+  await control.click();
+  await expect(control).toHaveAttribute('aria-checked', 'true');
+  // A toolbar click leaves the cursor outside the arena. Mouse mode must stay
+  // stationary even with a direction key held and no cursor target.
+  await holdKey(page, 'ArrowLeft', () => expectStill(page));
+  const beforeMouse = await position(page);
+  await moveCursorRight(page);
+  await expect.poll(async () => (await position(page)).x).toBeGreaterThan(beforeMouse.x + 25);
+  await holdKey(page, 'ArrowLeft', async () => {
+    const beforeKey = await position(page);
+    const afterKey = await afterMovementWindow(page, beforeKey);
+    expect(afterKey.x).toBeGreaterThan(beforeKey.x + 25);
+  });
+
   await page.evaluate(() => window.drawerUI.open());
-  await expect.poll(async () => {
-    const menu = await position(page); await page.waitForTimeout(250);
-    return Math.abs((await position(page)).x - menu.x);
-  }).toBeLessThan(2);
-});
-
-test('mouse switch defaults on, remembers off and leaves keyboard movement working', async ({ page, hasTouch }) => {
-  test.skip(hasTouch, 'desktop mouse preference');
-  await start(page);
-  const control = page.getByRole('switch', { name: 'Mouse control', exact: true });
+  await expect.poll(async () => (await position(page)).speed).toBeLessThan(2);
+  await expectStill(page);
+  await page.getByRole('dialog', { name: 'Game Menu' }).getByRole('button', { name: 'Close', exact: true }).click();
+  await control.hover();
+  await page.reload();
+  await waitForArena(page);
   await expect(control).toHaveAttribute('aria-checked', 'true');
-  await control.click(); await expect(control).toHaveAttribute('aria-checked', 'false');
-  const before = await position(page), box = await page.locator('canvas').first().boundingBox();
-  await page.mouse.move(box.x + box.width * .8, box.y + box.height * .5); await page.waitForTimeout(250);
-  expect(Math.abs((await position(page)).x - before.x)).toBeLessThan(2);
-  await page.keyboard.down('ArrowRight'); await expect.poll(async () => (await position(page)).x).toBeGreaterThan(before.x + 20); await page.keyboard.up('ArrowRight');
-  await page.reload(); await page.waitForFunction(() => !!window.game?.currentGameMode?.multiplayerManager?.getLocalPlayer());
+  await centerPlayer(page);
+  const afterReload = await position(page);
+  await moveCursorRight(page);
+  await expect.poll(async () => (await position(page)).x).toBeGreaterThan(afterReload.x + 25);
+
+  await control.focus();
+  await page.keyboard.press('Space');
   await expect(control).toHaveAttribute('aria-checked', 'false');
-  await expect.poll(() => page.evaluate(() => document.body.classList.contains('intro-playing'))).toBe(false);
-  await control.focus(); await page.keyboard.press('Space');
-  await expect(control).toHaveAttribute('aria-checked', 'true');
   expect((await position(page)).inhaling, 'keyboard activation of the switch must not also inhale').toBe(false);
-  await page.setViewportSize({ width: 1200, height: 800 });
-  expect((await control.boundingBox()).width).toBe(112);
-  await expect.poll(() => page.evaluate(() => [...document.querySelector('.app-header').children].every(el => el.getBoundingClientRect().right <= innerWidth + .1))).toBe(true);
-  await page.screenshot({ path: test.info().outputPath('mouse-control-switch.png') });
+  await control.hover();
+  await page.reload();
+  await waitForArena(page);
+  await expect(control).toHaveAttribute('aria-checked', 'false');
+  await centerPlayer(page);
+  await moveCursorRight(page);
+  await expectStill(page);
+  const beforeKeys = await position(page);
+  await holdKey(page, 'ArrowRight', async () => {
+    await expect.poll(async () => (await position(page)).x).toBeGreaterThan(beforeKeys.x + 25);
+  });
 });
 
-test('touch can walk left while aiming the inhale up with the existing action control', async ({ page, hasTouch }) => {
+test('touch can walk left while aiming inhale up even with a saved mouse preference', async ({ page, hasTouch }) => {
   test.skip(!hasTouch, 'touch aiming');
+  await page.addInitScript(() => localStorage.setItem('ascend.mouseFollow', 'on'));
   await start(page);
+  if (await page.evaluate(() => matchMedia('(pointer: coarse)').matches)) {
+    await expect(mouseSwitch(page)).toHaveCount(0);
+    await page.evaluate(() => window.drawerUI.open());
+    const drawer = page.getByRole('dialog', { name: 'Game Menu' });
+    await expect(drawer).toBeVisible();
+    await expect(drawer.getByRole('switch', { name: 'Mouse steering', exact: true })).toHaveCount(0);
+    await drawer.getByRole('button', { name: 'Close', exact: true }).click();
+    await expect(drawer).toBeHidden();
+  }
   await page.evaluate(() => {
     const c = document.querySelector('canvas'), r = c.getBoundingClientRect();
     const emit = (type, id, x, y) => c.dispatchEvent(new PointerEvent(type, { pointerType: 'touch', pointerId: id, clientX: r.left + x, clientY: r.top + y, bubbles: true, cancelable: true }));

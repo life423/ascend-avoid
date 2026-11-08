@@ -6,7 +6,7 @@ test.beforeEach(({page})=>{page.on('pageerror',error=>{throw error;});});
 test('desktop practice exposes the shared mouse switch without firing or losing preferences',async({page,hasTouch})=>{
   test.skip(hasTouch,'mouse preference is a desktop control');
   await openLesson(page,'combat');
-  const control=page.locator('.practice-panel').getByRole('switch',{name:'Mouse control',exact:true});
+  const control=page.locator('.practice-panel').getByRole('switch',{name:'Mouse steering',exact:true});
   await expect(control).toHaveAttribute('aria-checked','false');
   const before=await readPractice(page);
   await control.click();await expect(control).toHaveAttribute('aria-checked','true');
@@ -19,7 +19,7 @@ test('desktop practice exposes the shared mouse switch without firing or losing 
   await page.screenshot({path:test.info().outputPath('tutorial-mouse-switch.png'),scale:'css'});
   await page.getByRole('button',{name:'Exit tutorial',exact:true}).click();
   await page.waitForFunction(()=>window.game.currentGameMode.multiplayerManager?.getState()?.practice?.enabled===false);
-  await expect(page.locator('.app-header').getByRole('switch',{name:'Mouse control',exact:true})).toHaveAttribute('aria-checked','false');
+  await expect(page.locator('.app-header').getByRole('switch',{name:'Mouse steering',exact:true})).toHaveAttribute('aria-checked','false');
 });
 
 test('old completions are retained while new combat and rear-cover mastery remain honest',async({page})=>{
