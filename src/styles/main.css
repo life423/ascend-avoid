@@ -706,7 +706,7 @@ body.online-mode .game-canvas { border: 0; border-radius: 12px; box-shadow: 0 0 
     body.bar-hidden .app-header { margin-top: -64px; }
     html.bar-start-hidden .app-header { margin-top: -64px; }
     .bar-actions { gap: 8px; }
-    .bar-button.bar-mouse { min-height: 44px; width: 112px; justify-content: space-between; }
+    .bar-button.bar-mouse { min-height: 44px; width: 138px; justify-content: space-between; }
     .bar-mouse span { color: #8af0d3; font-weight: 700; }
     .bar-mouse[aria-checked="false"] span { color: #c7d1df; }
     .bar-button { height: 40px; width: auto; padding: 0 10px; gap: 8px; font-size: 12px; border-radius: 10px; border-color: rgba(255,255,255,.15); background: rgba(255,255,255,.055); white-space: nowrap; }
@@ -747,7 +747,10 @@ body.online-mode .hamburger-button { top: calc(10px + var(--arena-top, 0px) + va
 body.online-mode .bar-tab[hidden] { display: none !important; }
 body.online-mode .bar-tab { z-index: 30; }
 .drawer .mouse-preference { display: none; min-height: 44px; margin: 4px; padding: 8px 14px; border-radius: 8px; border: 1px solid #4fd1c5; background: #153746; color: white; font: inherit; cursor: pointer; }
-@media (any-pointer: fine) { .drawer .mouse-preference { display: inline-flex; gap: 8px; } }
+@media (pointer: fine) { .drawer .mouse-preference { display: inline-flex; gap: 8px; } }
+@media not all and (pointer: fine) {
+    .bar-button.bar-mouse, .practice-actions [data-action="mouse"] { display: none; }
+}
 @media (min-width: 1200px) {
     body.online-mode .app-header {
         position: absolute; top: calc(12px + var(--arena-safe-top)); right: calc(12px + var(--arena-safe-right));

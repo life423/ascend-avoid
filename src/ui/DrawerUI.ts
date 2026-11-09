@@ -84,7 +84,7 @@ export class DrawerUI {
                     <div class="settings-row">
                         <h3>Settings</h3>
                         <div class="settings-controls">
-                            <button type="button" role="switch" class="mouse-preference" data-action="mouse" aria-label="Mouse control" aria-checked="${mouseControlEnabled()}">Mouse <span>${mouseControlEnabled() ? 'On' : 'Off'}</span></button>
+                            <button type="button" role="switch" class="mouse-preference" data-action="mouse" aria-label="Mouse steering" aria-checked="${mouseControlEnabled()}">Steering <span>${mouseControlEnabled() ? 'Mouse' : 'Keyboard'}</span></button>
                             <button type="button" class="sound-toggle" data-action="sound" aria-label="Mute sound" aria-pressed="${sound.muted}">Sound ${sound.muted ? 'off' : 'on'}</button>
                         </div>
                     </div>

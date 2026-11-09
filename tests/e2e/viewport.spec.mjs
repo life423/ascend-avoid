@@ -72,8 +72,9 @@ test('floating controls preserve canvas size and mouse access in focus view', as
   const before = await page.locator('canvas').boundingBox();
   await page.getByRole('button', { name: 'Focus view', exact: true }).click();
   await expect(page.locator('.app-header')).toHaveAttribute('aria-hidden', 'true');
-  const mouse = page.getByRole('switch', { name: 'Mouse control', exact: true });
-  await mouse.click(); await expect(mouse).toHaveAttribute('aria-checked', 'false');
+  const mouse = page.getByRole('switch', { name: 'Mouse steering', exact: true });
+  await expect(mouse).toHaveAttribute('aria-checked', 'false');
+  await mouse.click(); await expect(mouse).toHaveAttribute('aria-checked', 'true');
   await page.getByRole('button', { name: 'Help & settings', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Game Menu' });
   await dialog.getByRole('button', { name: 'Close', exact: true }).click();
@@ -84,8 +85,8 @@ test('floating controls preserve canvas size and mouse access in focus view', as
   // A desktop window narrower than the toolbar retains the preference in Help.
   await page.setViewportSize({ width: 900, height: 700 });
   await page.evaluate(() => window.drawerUI.open());
-  await expect(mouse).toHaveAttribute('aria-checked', 'false'); await mouse.click();
-  await expect(mouse).toHaveAttribute('aria-checked', 'true');
+  await expect(mouse).toHaveAttribute('aria-checked', 'true'); await mouse.click();
+  await expect(mouse).toHaveAttribute('aria-checked', 'false');
   await page.keyboard.press('Escape'); await fills(page);
 });
 

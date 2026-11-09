@@ -150,18 +150,18 @@ export class PracticeUI {
     const rest = (completed ? '<button type="button" data-do="exit" class="practice-primary">Play now</button><button type="button" data-do="open">Other lessons</button>' : '<button type="button" data-do="skip">Skip lesson</button>') + `<button type="button" data-do="exit">Exit tutorial</button>${this.soundButton()}${this.mouseButton()}`;
     return `<div class="practice-actions" role="group" aria-label="Tutorial actions">${this.touch ? rest + primary : primary + rest}</div>`;
   }
-  private mouseButton(): string { return this.touch ? '' : `<button type="button" data-do="mouse" data-action="mouse" role="switch" aria-label="Mouse control" aria-checked="${mouseControlEnabled()}">Mouse <span>${mouseControlEnabled() ? 'On' : 'Off'}</span></button>`; }
+  private mouseButton(): string { return `<button type="button" data-do="mouse" data-action="mouse" role="switch" aria-label="Mouse steering" aria-checked="${mouseControlEnabled()}">Steering <span>${mouseControlEnabled() ? 'Mouse' : 'Keyboard'}</span></button>`; }
   private actions(): string { return `<div class="practice-actions"><button type="button" data-do="skip">Skip lesson</button><button type="button" data-do="exit">Exit tutorial</button>${this.soundButton()}${this.mouseButton()}</div>`; }
   private instruction(v: SyncedPractice): string {
     const hold = this.touch ? 'Hold INHALE' : 'Hold Space';
     const fire = this.touch ? 'tap FIRE' : 'tap Space';
-    if (v.lesson === 'basics') return v.stage === 'grow' ? (this.touch ? 'Use the left stick to gather gems. Soft bodies squish; keep moving.' : 'Move with WASD, arrows or the mouse. Gather gems and slide past the soft body.')
+    if (v.lesson === 'basics') return v.stage === 'grow' ? (this.touch ? 'Use the left stick to gather gems. Soft bodies squish; keep moving.' : 'Use WASD or arrows in Keyboard mode. In Mouse mode, follow the cursor. Gather gems and slide past the soft body.')
       : `${hold} toward the smaller healthy rival to capture it.`;
     if (v.lesson === 'combat') {
       if (v.stage === 'aim' && ['ready'].includes(v.phase)) return (this.touch
         ? 'Read first: drag on the right to aim, then lift before firing. Your captive waits here.'
-        : 'Read first: aim with the mouse or movement, then tap Space to fire. Your captive waits here.') + ' Press Ready to begin.';
-      if (v.stage === 'aim') return this.touch ? 'Full cheeks: a shot is ready. Drag on the right to aim through the outlined rival. Do not fire yet.' : 'A shot is ready. Aim through the outlined rival with the mouse or movement. Do not fire yet.';
+        : 'Steer to aim, then tap Space to fire. Your captive waits here.') + ' Press Ready to begin.';
+      if (v.stage === 'aim') return this.touch ? 'Full cheeks: a shot is ready. Drag on the right to aim through the outlined rival. Do not fire yet.' : 'A shot is ready. Steer to aim through the outlined rival. Do not fire yet.';
       if (v.stage === 'shatter') return `Aim set. You are over 20% wider. ${this.touch ? 'Lift your aiming thumb' : 'Release your aim'}, then ${fire} to shatter the rival.`;
       if (v.stage === 'wound') return `This larger rival will survive. Aim, then ${fire} to expose its gems.`;
       if (v.cue === 'recovering') return 'The split shell shows exposed gems. Move closer while the mint recovery ring fades.';
@@ -173,7 +173,7 @@ export class PracticeUI {
     if (v.lesson === 'weapon') return v.stage === 'collect' ? 'Collect three matching parts. After the first, follow their radar marks to assemble your weapon.'
       : v.stage === 'place' ? (this.touch ? 'Assembled. Tap Place weapon to deploy your Pulsar.' : 'Assembled. Press E to place your Pulsar.')
       : 'Placed. Your Pulsar locks, charges and fires a wave. Its mint shield means it cannot hurt you. Watch the marked rival.';
-    if (v.stage === 'injured-escape') return v.phase === 'ready' ? `${this.touch ? 'Hold the left stick right' : 'Hold Right'}, away from the pursuer. Keep moving when the lesson starts, until your shell closes.` : 'Keep moving right, away from the pursuer. Your shell heals after seven seconds; breathing returns when it closes.';
+    if (v.stage === 'injured-escape') return v.phase === 'ready' ? `${this.touch ? 'Hold the left stick right' : 'Steer right'}, away from the pursuer. Keep moving when the lesson starts, until your shell closes.` : 'Keep moving right, away from the pursuer. Your shell heals after seven seconds; breathing returns when it closes.';
     if (['ready'].includes(v.phase)) return 'A pursuer starts behind you. Move right and quick-tap a puff to push them back. The air will not stop them for you.';
     if (v.cue === 'move-clear') return 'The gust pushed the pursuer back. Keep moving: there is no shield or stun.';
     if (v.cue === 'wrapping') return 'The wave is wrapping behind you. Keep moving clear.';
@@ -182,7 +182,7 @@ export class PracticeUI {
   private hint(v: SyncedPractice): string {
     if (v.lesson === 'defense') return v.stage === 'injured-escape' ? 'Use movement only. Smaller bodies can outrun the larger pursuer; wait for the cracks to close.' : 'Use a quick tap, not a hold. The puff wraps behind you and shoves once. Both players can still move, so keep fleeing.';
     if (v.stage === 'finish') return 'Keep the cracked rival in front. Move closer while inhaling; theft makes the size gap work for you.';
-    if (['aim', 'shatter', 'wound', 'shoot'].includes(v.stage)) return this.touch ? 'Drag on the right, lift, then tap FIRE. Aim through the center.' : 'Aim with the mouse or movement. Release Space before tapping it again.';
+    if (['aim', 'shatter', 'wound', 'shoot'].includes(v.stage)) return this.touch ? 'Drag on the right, lift, then tap FIRE. Aim through the center.' : 'Steer to aim. Release Space before tapping it again.';
     return 'Follow the single outlined target. Only this step needs another try.';
   }
   open = (): void => {

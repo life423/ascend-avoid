@@ -771,7 +771,7 @@ export class MultiplayerMode extends GameMode {
         this.showGems()
     }
 
-    /** Where you're steering: the joystick or mouse if in use (analog), otherwise the keys (eight ways) */
+    /** Route steering through the joystick or the selected desktop mode. */
     private steerVector(input: InputState, me: SyncedPlayer): { x: number; y: number } {
         const view = this.lastView
         const canvas = this.game.canvas
@@ -782,6 +782,7 @@ export class MultiplayerMode extends GameMode {
             const pointer = this.controls.vector(x, y, me.width * view.scale)
             if (pointer) return pointer
         }
+        if (this.controls?.followsMouse) return { x: 0, y: 0 }
         const x = (input.right ? 1 : 0) - (input.left ? 1 : 0)
         const y = (input.down ? 1 : 0) - (input.up ? 1 : 0)
         const length = Math.hypot(x, y)
@@ -852,10 +853,7 @@ export class MultiplayerMode extends GameMode {
             this.multiplayerManager?.sendMessage(event, {})
         }
         // A hard impact stun blocks prediction; ordinary contact and air pushes do not.
-        const keyX = Number(input.right) - Number(input.left)
-        const keyY = Number(input.down) - Number(input.up)
-        const keyLength = Math.hypot(keyX, keyY)
-        const steer = this.introPlaying || (me.stunned && !me.capturedBy) || editing ? { x: 0, y: 0 } : me.capturedBy && keyLength > 0 ? { x: keyX / keyLength, y: keyY / keyLength } : this.steerVector(input, me)
+        const steer = this.introPlaying || (me.stunned && !me.capturedBy) || editing ? { x: 0, y: 0 } : this.steerVector(input, me)
         this.sendSteer(steer)
         if (me.state !== 'alive') {
             this.shotAim = null
