@@ -82,15 +82,25 @@ jobs:
           mkdir -p "$logs"
           adb start-server
           "$ANDROID_HOME/emulator/emulator" -avd ascend-firefox -port 5554 -accel on -gpu swiftshader \
-            -no-window -no-audio -no-boot-anim -no-snapshot >"$logs/emulator.log" 2>&1 &
+            -no-window -no-audio -no-boot-anim -no-snapshot -no-metrics >"$logs/emulator.log" 2>&1 &
           timeout 120 adb wait-for-device
           timeout 180 bash -c 'until [[ "$(adb shell getprop sys.boot_completed | tr -d "\r")" == 1 ]]; do sleep 2; done'
           adb shell input keyevent 82
+          adb shell wm size 540x1200
+          adb shell wm density 200
+          adb shell settings put global window_animation_scale 0
+          adb shell settings put global transition_animation_scale 0
+          adb shell settings put global animator_duration_scale 0
           adb install "$tools/firefox.apk"
           adb reverse tcp:3002 tcp:3002
 
+          # Populate app and graphics caches before geckodriver starts Firefox.
+          # Its adb socket has a fixed five-second timeout for am start -W.
+          timeout 45 adb shell am start -W -n org.mozilla.firefox/org.mozilla.fenix.IntentReceiverActivity \
+            -a android.intent.action.VIEW -d about:blank --ez automationtest true
+
           NODE_ENV=production PORT=3002 node server/dist/index.js >"$logs/game-server.log" 2>&1 &
-          "$tools/geckodriver" --host 127.0.0.1 --port 4444 >"$logs/geckodriver.log" 2>&1 &
+          "$tools/geckodriver" --host 127.0.0.1 --port 4444 --log debug >"$logs/geckodriver.log" 2>&1 &
           curl --fail --silent --show-error --retry 20 --retry-connrefused --retry-delay 1 --max-time 5 http://127.0.0.1:3002/health
           curl --fail --silent --show-error --retry 20 --retry-connrefused --retry-delay 1 --max-time 5 http://127.0.0.1:4444/status
           FIREFOX_ANDROID_RESULTS="$logs" node scripts/firefox-android-smoke.mjs

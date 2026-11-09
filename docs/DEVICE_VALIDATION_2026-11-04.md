@@ -169,5 +169,8 @@ completed on revision `ascend-avoid--0000129` with 100% traffic. The live health
 endpoint reported production healthy, the live bundle matched the tested build
 byte for byte, and Firefox smoke tests joined a room on the release. The short
 performance numbers above are from a real Pixel on the matching local build.
-The longer live phone session, landscape and a second Android device still need
-measurement. Desktop Firefox and Android emulator CI cover functionality only.
+Two 30-second foreground samples on the live release gave 71.4 and 70.0
+animation callbacks per second, with no gaps over 50 ms. The first included
+movement and inhale in a 20-player arena. Longer sessions, landscape and
+another Android device still need measurement. Desktop Firefox and Android
+emulator CI cover functionality only.

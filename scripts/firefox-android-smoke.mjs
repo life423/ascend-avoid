@@ -18,7 +18,7 @@ async function command(path, method, body, timeout = 10000) {
     return value;
 }
 
-const session = await command('/session', 'POST', {
+const capabilities = {
     capabilities: {
         alwaysMatch: {
             browserName: 'firefox',
@@ -30,7 +30,21 @@ const session = await command('/session', 'POST', {
             },
         },
     },
-}, 90000);
+};
+
+async function openSession() {
+    try {
+        return await command('/session', 'POST', capabilities, 90000);
+    } catch (error) {
+        // Only retry the known launch timeout; failed gameplay checks still fail CI.
+        if (!String(error).includes('Could not launch Android') || !String(error).includes('os error 11')) throw error;
+        console.warn('Firefox exceeded geckodriver’s Android launch timeout; retrying the session once.');
+        await delay(2000);
+        return command('/session', 'POST', capabilities, 90000);
+    }
+}
+
+const session = await openSession();
 assert(session.sessionId, 'geckodriver created an Android Firefox session');
 const sessionPath = `/session/${session.sessionId}`;
 const execute = (fn) => command(`${sessionPath}/execute/sync`, 'POST', { script: `return (${fn})();`, args: [] });
