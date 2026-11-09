@@ -15,7 +15,7 @@ Gem losses reduce current physical growth, including at maximum size. Overflow g
 | Action | Desktop | Phone / tablet |
 | --- | --- | --- |
 | Move | WASD, arrow keys, or enabled mouse-follow | Left joystick |
-| Aim | Mouse or movement direction | Drag the right action control |
+| Aim | Movement direction or the cursor in Mouse mode. While loaded in Keyboard mode, hold A/D or Left/Right to turn and release to keep the angle. | Drag the right action control |
 | Inhale | Hold Space | Hold the action control |
 | Puff / fire a captive | Tap Space; release the capture input before firing | Tap the action control; release after capture first |
 | Deploy an assembled weapon | E or Place weapon | Place weapon |

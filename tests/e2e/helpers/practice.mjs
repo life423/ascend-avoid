@@ -29,6 +29,38 @@ export const settled = page => page.waitForFunction(() => {
   return m.renderView && m.practiceReset === m.multiplayerManager.getState().practice.resetSerial;
 });
 
+/** Turn a loaded mouth with real left/right keys, then let the server settle each release. */
+export async function aimLoadedKeyboard(page, dx, dy) {
+  const angle = Math.atan2(dy, dx);
+  const { me: { gulping: captive } } = await readPractice(page);
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const { me } = await readPractice(page);
+    if (!captive || me.gulping !== captive) return;
+    const error = Math.atan2(Math.sin(angle - me.facing), Math.cos(angle - me.facing));
+    if (Math.abs(error) <= .06) return;
+    const direction = Math.sign(error), key = direction > 0 ? 'ArrowRight' : 'ArrowLeft';
+    await page.keyboard.down(key);
+    try {
+      // Use the visible predicted facing to release before a network update can overshoot.
+      await page.waitForFunction(({ angle, captive, direction }) => {
+        const mode = window.game.currentGameMode;
+        const error = Math.atan2(Math.sin(angle - mode.localFacing), Math.cos(angle - mode.localFacing));
+        return mode.multiplayerManager.getLocalPlayer()?.gulping !== captive || direction * error <= .025;
+      }, { angle, captive, direction }, { timeout: 2500 });
+    } finally {
+      await page.keyboard.up(key);
+    }
+    await page.waitForFunction(captive => {
+      const mode = window.game.currentGameMode;
+      return mode.multiplayerManager.getLocalPlayer()?.gulping !== captive || mode.keyboardTurn?.direction === 0;
+    }, captive, { timeout: 2000 });
+    const { time } = await readPractice(page);
+    await page.waitForFunction(time => window.game.currentGameMode.multiplayerManager.getState().time >= time + 67,
+      time, { timeout: 2000 });
+  }
+  throw Error('Loaded keyboard aim did not settle on the requested direction');
+}
+
 /** Chromium sends trusted touches; WebKit uses explicit pointer events. Neither changes game state. */
 export async function practiceInput(page, browserName, hasTouch) {
   const points = new Map(), keys = new Set();
@@ -66,7 +98,11 @@ export async function practiceInput(page, browserName, hasTouch) {
     held = true;
   };
   const aim = async (dx, dy) => {
-    if (!hasTouch) { await move(dx, dy); return; }
+    if (!hasTouch) {
+      if ((await readPractice(page)).me.gulping) { await move(); await aimLoadedKeyboard(page, dx, dy); }
+      else await move(dx, dy);
+      return;
+    }
     await hold();
     const { width, height } = page.viewportSize();
     await touch('touchMove', 2, width - 74 + dx * 60, height - 80 + dy * 60);
