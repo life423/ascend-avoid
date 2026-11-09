@@ -54,11 +54,22 @@ for (const wall of walls) for (const direction of [-1, 1]) {
         const m = window.game.currentGameMode, p = m.multiplayerManager.getLocalPlayer();
         return Math.abs(p.x - x) < 1 && Math.abs(p.y - y) < 1 && Math.abs(m.predicted.x - x) < 2 && Math.abs(m.predicted.y - y) < 2;
       }, { x, y });
-      await input.move(wall.tangent.x * direction, wall.tangent.y * direction);
-      await send('test:face', { angle: wall.facing });
+      const intent = { x: wall.tangent.x * direction, y: wall.tangent.y * direction };
+      await input.move(intent.x, intent.y);
+      await expect.poll(() => page.evaluate(({ x, y }) => {
+        const p = window.game.currentGameMode.multiplayerManager.getLocalPlayer();
+        return p.movementVx * x + p.movementVy * y;
+      }, intent)).toBeGreaterThan(20);
       peer.send('inhale');
       await expect.poll(() => peer.state.players.get(peer.sessionId).inhaling, { intervals: [10, 20] }).toBe(true);
-      await input.tap();
+      // Keep the real steering input while controlling the puff's starting pose.
+      // Waiting between facing and tapping lets walking turn the body out of the hit cone.
+      await page.evaluate(({ x, y, angle }) => {
+        const room = window.game.currentGameMode.multiplayerManager.room;
+        room.send('test:moveTo', { x, y });
+        room.send('test:face', { angle });
+        room.send('tap');
+      }, { x, y, angle: wall.facing });
       await page.waitForFunction(() => window.wallPuffs.length > 0);
       const cast = await page.evaluate(() => window.wallPuffs.at(-1));
       expect(cast.wallSlideX * wall.tangent.x * direction + cast.wallSlideY * wall.tangent.y * direction).toBeGreaterThan(0);
