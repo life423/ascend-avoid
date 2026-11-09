@@ -1,4 +1,5 @@
 import type { Breath } from '../core/OnlineControls'
+import { ANDROID_FIREFOX_RENDERING } from './browserRendering'
 import { drawInjury } from './injury'
 import type { InjuryVisual } from './injury'
 
@@ -19,8 +20,45 @@ export function mouthOf(x: number, y: number, size: number, facing: number): { x
     return { x: x + Math.cos(facing) * size * MOUTH_OFFSET, y: y + Math.sin(facing) * size * MOUTH_OFFSET }
 }
 
+// Healthy, idle faces are just rigid rotations of the same art. Reuse the
+// raster on Gecko/Android instead of filling and stroking its paths every frame.
+const idleCreatures = new Map<string, HTMLCanvasElement>()
+const IDLE_SPRITE_CACHE_LIMIT = 32
+const IDLE_SPRITE_SIZE = 256
+const IDLE_SPRITE_BODY = 234
+
+function drawIdleCreature(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string, facing: number): boolean {
+    let image = idleCreatures.get(color)
+    if (!image) {
+        image = document.createElement('canvas')
+        image.width = image.height = IDLE_SPRITE_SIZE
+        const paint = image.getContext('2d')
+        if (!paint) return false
+        drawCreaturePaths(paint, IDLE_SPRITE_SIZE / 2, IDLE_SPRITE_SIZE / 2, IDLE_SPRITE_BODY, color, 0, 0, '', false, 0, false, null)
+        // The arena palette is fixed. Bound memory even if a new color is added elsewhere.
+        if (idleCreatures.size >= IDLE_SPRITE_CACHE_LIMIT) {
+            const oldest = idleCreatures.keys().next()
+            if (!oldest.done) idleCreatures.delete(oldest.value)
+        }
+        idleCreatures.set(color, image)
+    }
+    const side = size * IDLE_SPRITE_SIZE / IDLE_SPRITE_BODY
+    ctx.save()
+    ctx.translate(x, y)
+    ctx.rotate(facing)
+    ctx.drawImage(image, -side / 2, -side / 2, side, side)
+    ctx.restore()
+    return true
+}
+
 /** A round creature with eyes toward where it faces, so everyone can see which side is its back */
 export function drawCreature(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string, facing: number, timestamp = 0, mouth = '', inhaling = false, cheeks = 0, dizzy = false, injury:InjuryVisual|null=null): void {
+    if (ANDROID_FIREFOX_RENDERING && size >= 24 && !mouth && !inhaling && !cheeks && !dizzy && !injury
+        && drawIdleCreature(ctx, x, y, size, color, facing)) return
+    drawCreaturePaths(ctx, x, y, size, color, facing, timestamp, mouth, inhaling, cheeks, dizzy, injury)
+}
+
+function drawCreaturePaths(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string, facing: number, timestamp: number, mouth: string, inhaling: boolean, cheeks: number, dizzy: boolean, injury: InjuryVisual | null): void {
     const r = size / 2
     const fullness = Math.max(0, Math.min(1, cheeks))
     ctx.fillStyle = color

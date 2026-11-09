@@ -32,10 +32,10 @@ export function pulsarPartIcon(ctx: CanvasRenderingContext2D, kind: number): voi
 }
 
 /** A braced forward emitter releases a crescent, then rotates independently of the traveling front. */
-export function drawPulsarArray(ctx: CanvasRenderingContext2D, w: SyncedPinwheel, now: number, own = false, unit = 1): void {
+export function drawPulsarArray(ctx: CanvasRenderingContext2D, w: SyncedPinwheel, now: number, own: boolean, unit: number, bodyVisible: boolean, waveVisible: boolean): void {
     const windup = w.phase === 'active' ? Math.max(0, Math.min(1, 1 - (w.beatAt - now) / SHOCKWAVE.WINDUP_MS)) : 0;
     const age = now - w.pulseAt;
-    if (w.phase === 'active' && w.pulseAt > 0 && age >= 0 && age <= SHOCKWAVE.WAVE_MS + SHOCKWAVE.FADE_MS) {
+    if (waveVisible) {
         const progress = Math.min(1, age / SHOCKWAVE.WAVE_MS), radius = pulsarRadius(age);
         const alpha = age <= SHOCKWAVE.WAVE_MS ? .6 + .4 * (1 - progress) : .6 * (1 - (age - SHOCKWAVE.WAVE_MS) / SHOCKWAVE.FADE_MS);
         const start = w.pulseFacing - SHOCKWAVE.HALF_ARC, end = w.pulseFacing + SHOCKWAVE.HALF_ARC;
@@ -54,6 +54,7 @@ export function drawPulsarArray(ctx: CanvasRenderingContext2D, w: SyncedPinwheel
         }
         ctx.restore();
     }
+    if (!bodyVisible) return;
     ctx.save(); ctx.rotate(w.phase === 'active' ? pulsarHeading(w, now) : w.angle);
     const recoil = w.pulseAt > 0 && age >= 0 && age < SHOCKWAVE.FOLLOW_THROUGH_MS && !reducedMotion.matches
         ? Math.sin(Math.PI * age / SHOCKWAVE.FOLLOW_THROUGH_MS) * 7 : 0;
@@ -62,7 +63,9 @@ export function drawPulsarArray(ctx: CanvasRenderingContext2D, w: SyncedPinwheel
     hexagon(ctx, 36); ctx.fill(); ctx.stroke();
     // Rear heat fins and two forward jaws make orientation readable without a target ray.
     ctx.strokeStyle = '#9385b1'; ctx.lineWidth = 4; ctx.lineCap = 'round';
-    for (const y of [-16, 0, 16]) { ctx.beginPath(); ctx.moveTo(-39, y); ctx.lineTo(-26, y); ctx.stroke(); }
+    ctx.beginPath();
+    for (const y of [-16, 0, 16]) { ctx.moveTo(-39, y); ctx.lineTo(-26, y); }
+    ctx.stroke();
     for (const side of [-1, 1]) {
         const y = side * (25 - windup * 5);
         ctx.fillStyle = '#354466'; ctx.strokeStyle = '#d1c2ee'; ctx.lineWidth = 2;

@@ -33,3 +33,9 @@ export function inView(view: View | null | undefined, x: number, y: number, radi
     return !view || (x + radius >= view.x - view.width / 2 && x - radius <= view.x + view.width / 2
         && y + radius >= view.y - view.height / 2 && y - radius <= view.y + view.height / 2)
 }
+
+/** Conservative bounds for effects that can cross the view from an offscreen source. */
+export function segmentInView(view: View | null | undefined, x1: number, y1: number, x2: number, y2: number, pad: number): boolean {
+    return !view || (Math.max(x1, x2) + pad >= view.x - view.width / 2 && Math.min(x1, x2) - pad <= view.x + view.width / 2
+        && Math.max(y1, y2) + pad >= view.y - view.height / 2 && Math.min(y1, y2) - pad <= view.y + view.height / 2)
+}

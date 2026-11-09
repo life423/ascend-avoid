@@ -10,6 +10,7 @@ import Background from '../entities/Background'
 import Player from '../entities/Player'
 import ResponsiveManager from '../managers/ResponsiveManager'
 import TouchControls from '../ui/TouchControls'
+import { ANDROID_FIREFOX_RENDERING } from '../render/browserRendering'
 
 // Fallback constants in case imports fail
 // const BASE_CANVAS_WIDTH = 560 // Unused
@@ -124,8 +125,13 @@ export default class Game {
             document.createElement('canvas')
         console.log('Canvas element:', this.canvas)
 
+        // On the tested Android Gecko renderer, the software-backed 2D path
+        // keeps frame pacing more stable under animated stroke-heavy scenes.
+        const canvasOptions: CanvasRenderingContext2DSettings & { willReadFrequently?: boolean } = ANDROID_FIREFOX_RENDERING
+            ? { alpha: false, willReadFrequently: true }
+            : { alpha: false }
         if (this.canvas) {
-            this.ctx = this.canvas.getContext('2d', { alpha: false })!
+            this.ctx = this.canvas.getContext('2d', canvasOptions)!
             console.log('Canvas context:', this.ctx)
 
             // Check canvas dimensions
@@ -144,7 +150,7 @@ export default class Game {
             console.error('Canvas element not found in DOM!')
             // Create a dummy canvas to prevent errors
             this.canvas = document.createElement('canvas')
-            this.ctx = this.canvas.getContext('2d', { alpha: false })!
+            this.ctx = this.canvas.getContext('2d', canvasOptions)!
         }
 
         this.scoreElement = document.querySelector(

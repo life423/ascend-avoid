@@ -1,3 +1,5 @@
+import { ANDROID_FIREFOX_RENDERING } from './browserRendering'
+import { inView } from './shared'
 import type { MultiplayerMode } from '../core/GameModes'
 import { ARENA_RULES, INHALE, LATCH } from '../../server/constants/gameConstants'
 import { cleanAir, latchSizeFactor, streamLook } from '../../server/game/airflow'
@@ -87,6 +89,8 @@ export function drawAirflow(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
     const beamShare = coherent * coherent * (3 - 2 * coherent)
     // ...pinching tighter the longer the hold (as the drain escalates)
     const pinch = 1 - 0.5 * straight
+    if (ANDROID_FIREFOX_RENDERING && !isLocal && !target && !player.robbing
+        && !inView(mode.renderView, mouthX, mouthY, Math.max(reach, .95 * size) + 4)) return
     ctx.save()
     // The real pull area, only hinted at
     const hint = ctx.createRadialGradient(mouthX, mouthY, 0, mouthX, mouthY, reach)
