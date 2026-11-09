@@ -1,14 +1,14 @@
 import * as schema from "@colyseus/schema";
 const { Schema, type } = schema;
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
-import { turnStep, walk } from "../game/movement.js";
+import { loadedTurnStep, turnStep, walk } from "../game/movement.js";
 import { breathRate } from "../game/airflow.js";
 import { CANNON, EXHALE } from "../constants/gameConstants.js";
 import { addBodyGrowth, bodyGrowthForGems, bodyMass, bodyWidthForGrowth, maximumBodyGrowth } from '../game/creatureSize.js';
 import { puffDrift } from '../game/puffImpulse.js';
 import { constrainArena } from '../game/arenaBoundary.js';
 import { WeaponInjuryPressure } from '../game/weaponInjury.js';
-import type { Box, Direction } from "../game/movement.js";
+import type { Box, Direction, LoadedTurnDirection } from "../game/movement.js";
 
 const { ARENA_RULES, GEMS, INHALE, PLAYER_STATE, PUSH, WORLD } = GAME_CONSTANTS;
 
@@ -208,6 +208,7 @@ class PlayerSchema extends Schema {
   /** Server-only: where an inhale is aimed (the creature turns to face it) */
   aimX = 0;
   aimY = 0;
+  private loadedTurn: { captive: string; startedAt: number; direction: LoadedTurnDirection } | null = null;
 
   constructor(sessionId: string, playerIndex: number) {
     super();
@@ -301,6 +302,7 @@ class PlayerSchema extends Schema {
   /** Hit with no gems left: out of play until respawnAt */
   knockOut(now: number): void {
     this.weaponInjury.clear();
+    this.clearLoadedTurn();
     this.shotMassBonus = 0; this.shotShooterWidth = 0; this.shotOwner = "";
     this.capturedBy = this.gulping = ""; this.captureNeedsRelease = false;
     this.state = PLAYER_STATE.DEAD;
@@ -524,6 +526,7 @@ class PlayerSchema extends Schema {
   /** Launched at this velocity until it slows or `maxMs` passes. Only turbine throws opt into steering. */
   launch(now: number, vx: number, vy: number, by: string, maxMs: number, drag: number = CANNON.DRAG, kind: 'missile' | 'turbine' = 'missile'): void {
     this.weaponInjury.clear();
+    this.clearLoadedTurn();
     this.shotMassBonus = 0; this.shotShooterWidth = 0;
     this.flying = true;
     this.flightVx = vx;
@@ -549,6 +552,7 @@ class PlayerSchema extends Schema {
 
   /** The flight is over */
   land(): void {
+    this.clearLoadedTurn();
     this.shotMassBonus = 0; this.shotShooterWidth = 0; this.shotOwner = "";
     this.flying = false;
     this.resizeBody(this.ordinaryWidth());
@@ -583,9 +587,26 @@ class PlayerSchema extends Schema {
   aimAt(x: number, y: number): void {
     const length = Math.hypot(x, y);
     if ((!this.inhaling && !this.gulping) || !Number.isFinite(length)) return;
+    this.loadedTurn = null;
     if (length < 1e-6) { this.aimX = this.aimY = 0; return; }
     this.aimX = x / length;
     this.aimY = y / length;
+  }
+
+  /** Keyboard aim is bound to this hold and stays independent of walking. */
+  turnLoaded(captive: string, direction: LoadedTurnDirection | null): boolean {
+    if (!captive || this.gulping !== captive || this.state !== PLAYER_STATE.ALIVE || this.flying || this.capturedBy || this.inhaling) return false;
+    if (direction && (this.stunned || this.sliding || this.recovering)) return false;
+    // A release or cancel must still be able to stop a turn while movement is blocked.
+    this.loadedTurn = direction === null ? null : { captive, startedAt: this.captureStartedAt, direction };
+    if (direction !== null) this.aimX = this.aimY = 0;
+    if (direction === 0) this.spin = 0;
+    return true;
+  }
+
+  private clearLoadedTurn(): void {
+    if (this.loadedTurn) this.spin = 0;
+    this.loadedTurn = null;
   }
 
   /** Start inhaling (for up to `forMs`, INHALE.MAX_MS for players): you move as usual, and your mouth turns toward your aim */
@@ -647,6 +668,9 @@ class PlayerSchema extends Schema {
    */
   updateMovement(worldWidth: number, worldHeight: number, now: number, deltaTime: number): void {
     if (this.state !== PLAYER_STATE.ALIVE) return;
+    if (this.loadedTurn && (this.loadedTurn.captive !== this.gulping || this.loadedTurn.startedAt !== this.captureStartedAt || this.flying || this.capturedBy)) {
+      this.clearLoadedTurn();
+    }
     if (this.spawnProtected && now >= this.protectedUntil) this.spawnProtected = false;
     if (this.recovering && now >= this.recoverUntil) this.recovering = false;
     // Breath runs out (a clean beam uses less, or even refills it)
@@ -683,7 +707,9 @@ class PlayerSchema extends Schema {
     // A focused latch adds a little aim toward its target; your turning (rate, acceleration, size) does the rest
     const intent = this.inhaling || (this.gulping && Math.hypot(this.aimX, this.aimY) > 0) ? { x: this.aimX + this.assistX, y: this.aimY + this.assistY } : { x: this.steerX, y: this.steerY };
     const aiming = Math.hypot(intent.x, intent.y) > 0.25;
-    const turn = turnStep(this.facing, this.spin, aiming ? Math.atan2(intent.y, intent.x) : null, this.width, this.inhaling, deltaTime);
+    const turn = this.loadedTurn
+      ? loadedTurnStep(this.facing, this.spin, this.recovering ? 0 : this.loadedTurn.direction, this.width, deltaTime)
+      : turnStep(this.facing, this.spin, aiming ? Math.atan2(intent.y, intent.x) : null, this.width, this.inhaling, deltaTime);
     this.spin = turn.spin;
     if (turn.facing !== this.facing) this.facing = turn.facing;
     if (box.x !== this.x) this.x = box.x;

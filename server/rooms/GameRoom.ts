@@ -68,6 +68,17 @@ export class GameRoom extends Room<GameState> {
       const player = this.state.players.get(client.sessionId);
       if (player && !player.capturedBy) player.aimAt(Number(data?.x) || 0, Number(data?.y) || 0);
     });
+    this.onMessage("turnLoaded", (client, data: { captive?: unknown; direction?: unknown; sequence?: unknown }) => {
+      if (!this.allowMessage(client) || !this.gameplayReady) return;
+      const { captive, direction, sequence } = data ?? {};
+      if (typeof captive !== 'string' || !captive || (direction !== -1 && direction !== 0 && direction !== 1 && direction !== null)) return;
+      if (sequence !== undefined && (typeof sequence !== 'number' || !Number.isSafeInteger(sequence) || sequence < 0)) return;
+      const player = this.state.players.get(client.sessionId), held = this.state.players.get(captive);
+      if (!player || !held || held.capturedBy !== player.sessionId || held.flying || held.state !== GAME_CONSTANTS.PLAYER_STATE.ALIVE) return;
+      if (player.turnLoaded(captive, direction) && direction === 0) {
+        client.send('loadedTurnStopped', { captive, sequence, facing: player.facing });
+      }
+    });
     // Hold the button to inhale, release to stop; tap with something in your mouth to spit it, or with
     // someone caught inside to fire them (a full mouth can't inhale until it's empty)
     this.onMessage("inhale", (client) => {

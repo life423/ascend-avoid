@@ -9,6 +9,7 @@ import { freeAreas, type Bounds } from './layout';
 const LESSON_NAMES: Record<PracticeLesson, string> = { basics: 'Move, grow & capture', combat: 'Aim, hit & finish', defense: 'Escape & recover', blackhole: 'Black-hole shot', weapon: 'Build a weapon' };
 const descriptions: Record<PracticeLesson, string> = { basics: 'Gather gems and capture a smaller healthy rival.', combat: 'Aim a shot, shatter a smaller rival, then learn an injured finish.', defense: 'Two exercises: Puff & flee, then Escape while injured.', blackhole: 'Capture a rival, then aim a long shot into the core.', weapon: 'Three matching parts. One automatic weapon.' };
 const defenseStages: Record<string, string> = { 'rear-cover': 'Puff & flee', 'injured-escape': 'Escape while injured' };
+const DESKTOP_LOADED_AIM = 'Hold A/D or Left/Right to turn, or use the cursor in Mouse mode.';
 export class PracticeUI {
   private store = browserPracticeStore();
   private root = document.createElement('div');
@@ -156,9 +157,9 @@ export class PracticeUI {
     if (v.lesson === 'combat') {
       if (v.stage === 'aim' && ['ready'].includes(v.phase)) return (this.touch
         ? 'Read first: drag on the right to aim, then lift before firing. Your captive waits here.'
-        : 'Steer to aim, then tap Space to fire. Your captive waits here.') + ' Press Ready to begin.';
-      if (v.stage === 'aim') return this.touch ? 'Full cheeks: a shot is ready. Drag on the right to aim through the outlined rival. Do not fire yet.' : 'A shot is ready. Steer to aim through the outlined rival. Do not fire yet.';
-      if (v.stage === 'shatter') return `Aim set. You are over 20% wider. ${this.touch ? 'Lift your aiming thumb' : 'Release your aim'}, then ${fire} to shatter the rival.`;
+        : `${DESKTOP_LOADED_AIM} Release the turn key to keep the angle, then tap Space to fire. Your captive waits here.`) + ' Press Ready to begin.';
+      if (v.stage === 'aim') return this.touch ? 'Full cheeks: a shot is ready. Drag on the right to aim through the outlined rival. Do not fire yet.' : `${DESKTOP_LOADED_AIM} Aim through the outlined rival. Do not fire yet.`;
+      if (v.stage === 'shatter') return `Aim set. You are over 20% wider. ${this.touch ? 'Lift your aiming thumb' : 'Keep that angle'}, then ${fire} to shatter the rival.`;
       if (v.stage === 'wound') return `This larger rival will survive. Aim, then ${fire} to expose its gems.`;
       if (v.cue === 'recovering') return 'The split shell shows exposed gems. Move closer while the mint recovery ring fades.';
       if (v.stage === 'approach') return 'The split shell shows exposed gems. Move toward the injured rival.';
@@ -178,7 +179,7 @@ export class PracticeUI {
   private hint(v: SyncedPractice): string {
     if (v.lesson === 'defense') return v.stage === 'injured-escape' ? 'Use movement only. Smaller bodies can outrun the larger pursuer; wait for the cracks to close.' : 'Use a quick tap, not a hold. The puff wraps behind you and shoves once. Both players can still move, so keep fleeing.';
     if (v.stage === 'finish') return 'Keep the cracked rival in front. Move closer while inhaling; theft makes the size gap work for you.';
-    if (['aim', 'shatter', 'wound', 'shoot'].includes(v.stage)) return this.touch ? 'Drag on the right, lift, then tap FIRE. Aim through the center.' : 'Steer to aim. Release Space before tapping it again.';
+    if (['aim', 'shatter', 'wound', 'shoot'].includes(v.stage)) return this.touch ? 'Drag on the right, lift, then tap FIRE. Aim through the center.' : `${DESKTOP_LOADED_AIM} Release Space before tapping it again.`;
     return 'Follow the single outlined target. Only this step needs another try.';
   }
   open = (): void => {

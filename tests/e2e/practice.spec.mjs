@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { enterGame } from './helpers/enter-game.mjs';
+import { aimLoadedKeyboard } from './helpers/practice.mjs';
 
 // Runs against a local production server: no test commands, state injection or fake success.
 test.skip(!process.env.PRACTICE_E2E, 'explicit local practice release checks');
@@ -96,9 +97,11 @@ test('black-hole lesson: actual capture, distant shot and visible once-only spat
   expect((await read(page)).me.gems).toBe(350);
 });
 
-test('a missed shot restores its attempt, preserves held movement and cancels held action', async ({ page }) => {
+test('a missed shot restores its attempt, preserves held movement and cancels held action', async ({ page, hasTouch }) => {
   await start(page, 'blackhole'); await captureForBlackHole(page); const attempt = (await read(page)).attempt;
-  await page.keyboard.down('ArrowUp'); await page.waitForTimeout(400); await page.keyboard.up('ArrowUp');
+  if (hasTouch) {
+    await page.keyboard.down('ArrowUp'); await page.waitForTimeout(400); await page.keyboard.up('ArrowUp');
+  } else await aimLoadedKeyboard(page, 0, -1);
   await shot(page); await page.keyboard.down('Space'); await page.keyboard.down('ArrowDown');
   await page.waitForFunction(previous => window.game.currentGameMode.multiplayerManager.getState().practice.attempt > previous, attempt);
   await page.waitForTimeout(100); const v = await read(page);

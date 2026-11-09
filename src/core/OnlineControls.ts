@@ -215,7 +215,8 @@ export class OnlineControls {
             ctx.textAlign = 'left'
             ctx.font = `700 12px ${FONT}`
             ctx.fillStyle = inhaling ? breathColor : `rgba(255, 255, 255, ${recovering ? 0.35 : 0.65})`
-            const hint = this.action === 'CAPTURED' ? 'Captured' : this.action === 'INJURED' ? 'Injured · move to escape' : this.action === 'FIRE' ? 'SPACE  tap to FIRE' : this.action === 'SPIT' ? 'SPACE  tap to SPIT' : release ? 'SPACE  release, then hold again' : inhaling ? 'SPACE  inhaling' : `SPACE  hold to inhale · ${this.puffCooldown > 0 ? `puff in ${this.puffCooldown.toFixed(1)}s` : this.puffNeedsBreath ? `puff needs ${PUFF_COST} breath` : `puff costs ${PUFF_COST} breath`}`
+            const fireHint = this.followsMouse ? 'SPACE  tap to FIRE' : 'A/D or ←/→ to aim · SPACE to fire'
+            const hint = this.action === 'CAPTURED' ? 'Captured' : this.action === 'INJURED' ? 'Injured · move to escape' : this.action === 'FIRE' ? fireHint : this.action === 'SPIT' ? 'SPACE  tap to SPIT' : release ? 'SPACE  release, then hold again' : inhaling ? 'SPACE  inhaling' : `SPACE  hold to inhale · ${this.puffCooldown > 0 ? `puff in ${this.puffCooldown.toFixed(1)}s` : this.puffNeedsBreath ? `puff needs ${PUFF_COST} breath` : `puff costs ${PUFF_COST} breath`}`
             if (release) ctx.fillStyle = breathColor
             ctx.fillText(hint, 14 + this.insets.left, height - this.insets.bottom - 16)
             if (inhaling || recovering) {

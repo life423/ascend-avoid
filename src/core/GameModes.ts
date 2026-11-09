@@ -17,7 +17,7 @@ import { drawSurge } from '../render/surge'
 import { breathRate } from '../../server/game/airflow'
 import { CameraRig, InhaleFraming, constrainArenaView, type CameraSubject } from '../../server/game/camera'
 import { ArenaPreview, PREVIEW_SHORT_SIDE } from './ArenaPreview'
-import { turnStep, walk } from '../../server/game/movement'
+import { loadedTurnStep, turnStep, walk } from '../../server/game/movement'
 import { puffDrift } from '../../server/game/puffImpulse'
 import { constrainArena } from '../../server/game/arenaBoundary'
 import { traceArena } from '../render/arenaBoundary'
@@ -489,6 +489,7 @@ const SHAKE_MS = 300
 /** Traffic is drawn at most this far ahead (seconds), in case updates stall */
 const MAX_TRAFFIC_LEAD = 0.4
 type ConnectionStatus = 'connecting' | 'connected' | 'reconnecting' | 'closed'
+type TurnDirection = -1 | 0 | 1
 
 /** It plays once per page load */
 let introPlayed = false
@@ -515,11 +516,14 @@ export class MultiplayerMode extends GameMode {
     private wasCaptured = false
     private releaseControls = (): void => { this.clearControls() }
     private clearControls(preserveMovement = false): void {
+        const captive = this.keyboardTurn?.captive
         if (this.shotAim) this.facing = { ...this.shotAim }
         this.shotAim = null
         this.controls?.reset(preserveMovement)
         this.sendSteer({ x: 0, y: 0 })
         this.multiplayerManager?.sendMessage('cancel', {})
+        this.keyboardTurn = null
+        if (captive) this.sendKeyboardTurn(captive, 0)
         this.resetMotion()
     }
     private visibilityChanged = (): void => { if (document.hidden) this.releaseControls() }
@@ -582,6 +586,8 @@ export class MultiplayerMode extends GameMode {
     /** The aim last sent (your eyes turn toward it for everyone), and which way you face */
     private sentAim = { x: 0, y: 0 }
     private aimedCaptive = ''
+    private keyboardTurn: { captive: string; direction: TurnDirection; sequence: number } | null = null
+    private keyboardTurnSequence = 0
     /** A loaded touch shot keeps its chosen direction between the aim drag and fire tap. */
     private shotAim: { x: number; y: number } | null = null
     localFacing = -Math.PI / 2
@@ -672,6 +678,7 @@ export class MultiplayerMode extends GameMode {
             this.camera = null
             if (this.watchingArena) this.arenaPreview = new ArenaPreview()
             this.resetMotion()
+            this.keyboardTurn = null
             this.sentSteer = { x: 2, y: 2 } // force fresh input into the new session
         })
         eventBus.on(GameEvents.PLAYER_JOINED, (data: any) => {
@@ -708,6 +715,14 @@ export class MultiplayerMode extends GameMode {
         eventBus.on('multiplayer:launch', (data: { byId?: string; id?: string }) => {
             const id = this.multiplayerManager?.localSessionId
             if (data?.byId === id || data?.id === id) sound.play('launch')
+        })
+        eventBus.on('multiplayer:loadedTurnStopped', (data: { captive: string; sequence: number; facing: number }) => {
+            const turn = this.keyboardTurn
+            if (turn?.direction !== 0 || turn.captive !== data?.captive || turn.sequence !== data.sequence || !Number.isFinite(data.facing)) return
+            if (this.multiplayerManager?.getLocalPlayer()?.gulping !== turn.captive) return
+            this.localFacing = data.facing
+            this.localSpin = 0
+            this.facing = { x: Math.cos(data.facing), y: Math.sin(data.facing) }
         })
         eventBus.on('multiplayer:parry', (data: { id?: string }) => {
             if (data?.id === this.multiplayerManager?.localSessionId) { sound.play('parry'); this.addNotice('Suction broken! Move clear.') }
@@ -780,7 +795,7 @@ export class MultiplayerMode extends GameMode {
     }
 
     /** Route steering through the joystick or the selected desktop mode. */
-    private steerVector(input: InputState, me: SyncedPlayer): { x: number; y: number } {
+    private steerVector(input: InputState, me: SyncedPlayer, turning = false): { x: number; y: number } {
         const view = this.lastView
         const canvas = this.game.canvas
         if (this.controls && view && canvas) {
@@ -791,7 +806,7 @@ export class MultiplayerMode extends GameMode {
             if (pointer) return pointer
         }
         if (this.controls?.followsMouse) return { x: 0, y: 0 }
-        const x = (input.right ? 1 : 0) - (input.left ? 1 : 0)
+        const x = turning ? 0 : (input.right ? 1 : 0) - (input.left ? 1 : 0)
         const y = (input.down ? 1 : 0) - (input.up ? 1 : 0)
         const length = Math.hypot(x, y)
         return length > 0 ? { x: x / length, y: y / length } : { x: 0, y: 0 }
@@ -812,6 +827,23 @@ export class MultiplayerMode extends GameMode {
         this.velocity = { x: 0, y: 0 }
         this.inhaleHeld = false
         this.history = []
+    }
+
+    private sendKeyboardTurn(captive: string, direction: TurnDirection | null): void {
+        const previous = this.keyboardTurn
+        if (direction === null) {
+            this.keyboardTurn = null
+            if (previous?.captive === captive) {
+                this.multiplayerManager?.sendMessage('turnLoaded', { captive, direction })
+                this.sentAim = { x: 0, y: 0 }
+            }
+            return
+        }
+        if (previous?.captive === captive && previous.direction === direction) return
+        const turn = { captive, direction, sequence: ++this.keyboardTurnSequence }
+        this.keyboardTurn = turn
+        if (direction === 0) this.localSpin = 0
+        this.multiplayerManager?.sendMessage('turnLoaded', turn)
     }
 
     /** Keep the header's Score (your gems) and High Score (your most this visit) current */
@@ -846,6 +878,7 @@ export class MultiplayerMode extends GameMode {
         const me = state && localId ? state.players.get(localId) : undefined
         if (!state || !me) {
             this.predicted = null
+            this.keyboardTurn = null
             return
         }
         const readingPractice = this.isPractice && ['ready'].includes(state.practice?.phase ?? '')
@@ -856,12 +889,23 @@ export class MultiplayerMode extends GameMode {
             return
         }
         // Send releases before any disabled-movement early return, including while stunned or flying.
+        const cancelled = events.includes('cancel')
         for (const event of events.filter(event => event === 'cancel' || event === 'exhale')) {
             this.inhaleHeld = false
             this.multiplayerManager?.sendMessage(event, {})
         }
+        if (cancelled) this.keyboardTurn = null
+        const keyboardLoaded = Boolean(me.gulping && me.state === 'alive' && !me.flying && !me.capturedBy &&
+            this.controls && !this.controls.touchDevice && !this.controls.followsMouse)
+        const canTurn = !editing && !this.introPlaying && !cancelled && !me.stunned && !me.sliding && !me.recovering
+        const turnDirection: TurnDirection = !canTurn || input.right === input.left ? 0 : input.right ? 1 : -1
+        if (keyboardLoaded && this.keyboardTurn?.captive !== me.gulping) {
+            this.localFacing = me.facing
+            this.localSpin = 0
+        }
+        this.sendKeyboardTurn(me.gulping, keyboardLoaded ? turnDirection : null)
         // A hard impact stun blocks prediction; ordinary contact and air pushes do not.
-        const steer = this.introPlaying || (me.stunned && !me.capturedBy) || editing ? { x: 0, y: 0 } : this.steerVector(input, me)
+        const steer = this.introPlaying || (me.stunned && !me.capturedBy) || editing ? { x: 0, y: 0 } : this.steerVector(input, me, keyboardLoaded)
         this.sendSteer(steer)
         if (me.state !== 'alive') {
             this.shotAim = null
@@ -883,7 +927,7 @@ export class MultiplayerMode extends GameMode {
         if (me.gulping && !me.stunned && !me.flying && !me.capturedBy && (me.sliding || me.recovering)) {
             const length = Math.hypot(steer.x, steer.y)
             const aim = touchAim ?? this.shotAim ?? (length > .2 ? { x: steer.x / length, y: steer.y / length } : this.facing)
-            if (Math.hypot(aim.x - this.sentAim.x, aim.y - this.sentAim.y) > .1) {
+            if (!keyboardLoaded && Math.hypot(aim.x - this.sentAim.x, aim.y - this.sentAim.y) > .1) {
                 this.sentAim = { ...aim }; this.multiplayerManager?.sendMessage('aim', aim)
             }
             for (const event of events) if (event === 'tap' || event === 'inhale') this.multiplayerManager?.sendMessage(event, {})
@@ -901,10 +945,10 @@ export class MultiplayerMode extends GameMode {
         }
 
         const steering = Math.hypot(steer.x, steer.y)
-        if (steering > 0.2) this.facing = { x: steer.x / steering, y: steer.y / steering }
+        if (!keyboardLoaded && steering > 0.2) this.facing = { x: steer.x / steering, y: steer.y / steering }
         // Walking aims normally; an explicitly aimed touch shot stays independent until firing.
         this.aim = touchAim ?? this.shotAim ?? (steering > 0.2 ? { x: steer.x / steering, y: steer.y / steering } : { ...this.facing })
-        if ((this.inhaleHeld || me.gulping) && Math.hypot(this.aim.x - this.sentAim.x, this.aim.y - this.sentAim.y) > 0.1) {
+        if (!keyboardLoaded && (this.inhaleHeld || me.gulping) && Math.hypot(this.aim.x - this.sentAim.x, this.aim.y - this.sentAim.y) > 0.1) {
             // You turn to face your aim, for everyone to see
             this.sentAim = { ...this.aim }
             this.multiplayerManager?.sendMessage('aim', { x: this.aim.x, y: this.aim.y })
@@ -941,9 +985,12 @@ export class MultiplayerMode extends GameMode {
             const d = Math.max(1e-6, Math.hypot(dx, dy))
             aimed = { x: intent.x + (dx / d) * LATCH.ASSIST * me.latchPull, y: intent.y + (dy / d) * LATCH.ASSIST * me.latchPull }
         }
-        const turn = turnStep(this.localFacing, this.localSpin, Math.hypot(aimed.x, aimed.y) > 0.25 ? Math.atan2(aimed.y, aimed.x) : null, me.width, Boolean(me.inhaling), deltaTime)
+        const turn = keyboardLoaded
+            ? loadedTurnStep(this.localFacing, this.localSpin, turnDirection, me.width, deltaTime)
+            : turnStep(this.localFacing, this.localSpin, Math.hypot(aimed.x, aimed.y) > 0.25 ? Math.atan2(aimed.y, aimed.x) : null, me.width, Boolean(me.inhaling), deltaTime)
         this.localFacing = turn.facing
         this.localSpin = turn.spin
+        if (keyboardLoaded) this.facing = { x: Math.cos(turn.facing), y: Math.sin(turn.facing) }
         const rimFrom = { x: box.x, y: box.y }
         puffDrift(box, { x: me.puffVx, y: me.puffVy }, deltaTime, state.worldWidth, state.worldHeight)
         puffDrift(box, { x: me.gustVx, y: me.gustVy }, deltaTime, state.worldWidth, state.worldHeight, EXHALE.REAR_DRAG)

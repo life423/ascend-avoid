@@ -2,6 +2,7 @@ import { ARENA_RULES, FACING } from "../constants/gameConstants.js";
 import { constrainArena } from './arenaBoundary.js';
 
 export type Direction = "up" | "down" | "left" | "right";
+export type LoadedTurnDirection = -1 | 0 | 1;
 
 export interface Box {
   x: number;
@@ -97,4 +98,10 @@ export function turnStep(facing: number, spin: number, target: number | null, wi
   if (target !== null && Math.sign(next) === Math.sign(diff) && Math.abs(diff) <= Math.abs(next * deltaTime)) return { facing: target, spin: 0 };
   const turned = facing + next * deltaTime;
   return { facing: Math.atan2(Math.sin(turned), Math.cos(turned)), spin: next };
+}
+
+/** Continuous loaded keyboard aim uses the ordinary body turn, with an exact stop on release. */
+export function loadedTurnStep(facing: number, spin: number, direction: number, width: number, deltaTime: number): { facing: number; spin: number } {
+  if (direction === 0) return { facing, spin: 0 };
+  return turnStep(facing, spin, facing + Math.sign(direction) * Math.PI / 2, width, false, deltaTime);
 }

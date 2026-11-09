@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { CANNON } from '../constants/gameConstants.js';
+import { turnRate } from '../game/movement.js';
 import { GameState } from '../schema/GameState.js';
 import { clearCapture, fireCaptive, updateHolds, updateInhales } from '../systems/inhale.js';
 
@@ -90,5 +91,63 @@ try {
   }
 } finally {
   Object.assign(CANNON, { CAPTURE_FIRE_DELAY_MS: original.delay, PEER_HIT_SHARE: original.share });
+}
+
+for (const direction of [-1, 1] as const) {
+  const { state, owner, ammo, replacement } = setup(false);
+  const step = (now: number) => owner.updateMovement(state.worldWidth, state.worldHeight, now, 1 / 30);
+  const startX = owner.x;
+  owner.steer(1, 0);
+  assert(!owner.turnLoaded(replacement.sessionId, direction), 'a different captive cannot steer the loaded mouth');
+  assert(owner.turnLoaded(ammo.sessionId, direction));
+  let turned = 0;
+  for (let tick = 1; tick <= 45; tick++) {
+    const before = owner.facing;
+    step(NOW + tick * 1000 / 30);
+    turned += Math.atan2(Math.sin(owner.facing - before), Math.cos(owner.facing - before));
+    assert(Math.abs(owner.spin) <= turnRate(owner.width) + 1e-12);
+  }
+  assert(turned * direction > Math.PI / 2, 'holding the key turns continuously past a cardinal heading');
+  assert(owner.x > startX, 'steering remains independent of keyboard turn');
+
+  const heldAngle = owner.facing;
+  owner.stun(NOW + 1500, 200, true);
+  assert(!owner.turnLoaded(ammo.sessionId, direction), 'stun blocks new turning input');
+  assert(owner.turnLoaded(ammo.sessionId, 0), 'releasing the key can stop a turn during stun');
+  for (let time = NOW + 1500; time <= NOW + 1900; time += 100) step(time);
+  assert.equal(owner.facing, heldAngle, 'release holds the exact facing through recovery and continued movement');
+  assert.equal(owner.spin, 0);
+
+  assert(!fireCaptive(state, owner, NOW + 1900), 'keyboard turning does not release the capture-causing action');
+  owner.captureNeedsRelease = false;
+  assert(fireCaptive(state, owner, NOW + 1900));
+  const shotAngle = Math.atan2(ammo.flightVy, ammo.flightVx);
+  assert(Math.abs(Math.atan2(Math.sin(shotAngle - heldAngle), Math.cos(shotAngle - heldAngle))) < 1e-12);
+  assert(!owner.turnLoaded(ammo.sessionId, direction), 'fired ammunition cannot receive stale turn input');
+}
+
+{
+  const { state, owner, ammo, replacement, capture } = setup(false);
+  const step = (now: number) => owner.updateMovement(state.worldWidth, state.worldHeight, now, 1 / 30);
+  assert(owner.turnLoaded(ammo.sessionId, -1));
+  owner.aimAt(0, 1);
+  step(NOW + 33);
+  assert(owner.facing > 0, 'ordinary mouse, touch or bot aim overrides keyboard turn');
+
+  assert(owner.turnLoaded(ammo.sessionId, -1));
+  assert(owner.turnLoaded(ammo.sessionId, null));
+  owner.steer(0, 1);
+  const before = owner.facing;
+  step(NOW + 66);
+  assert(owner.facing > before, 'null returns to normal movement aim');
+
+  assert(owner.turnLoaded(ammo.sessionId, -1));
+  clearCapture(state, owner.sessionId, NOW + 100);
+  owner.facing = 0;
+  owner.steer(0, 0);
+  capture(replacement, NOW + 133);
+  step(NOW + 166);
+  assert.equal(owner.facing, 0, 'a replacement captive never inherits the previous turn');
+  assert.equal(owner.spin, 0);
 }
 console.log('Capture-fire delay passed: shared exact deadlines, preserved ammo/growth/hold/aim/movement, separate actions, fresh captures, no queued shots, injured firing and lifecycle cleanup.');
