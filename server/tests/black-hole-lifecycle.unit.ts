@@ -53,6 +53,42 @@ for (const flying of [false, true]) {
 }
 {
   const { s, h, step } = setup();
+  h.phase = 'warning'; h.activeAt = h.at = BLACK_HOLE.WARNING_MS;
+  const original = { x: h.x, y: h.y };
+  step(h.at);
+  assert.equal(h.phase, 'active'); assert.deepEqual({ x: h.x, y: h.y }, original);
+  assert.equal(h.at - s.time, BLACK_HOLE.ACTIVE_MS);
+
+  step(h.at); step(h.at); step(h.at);
+  assert.equal(h.phase, 'warning');
+  const cancelled = { x: h.x, y: h.y };
+  assert(Math.hypot(cancelled.x - original.x, cancelled.y - original.y) >= BLACK_HOLE.RELOCATE_MIN);
+  const blocker = s.addPlayer('late', 'Late entrant', NOW);
+  blocker.placeAt(h.x - blocker.width / 2, h.y - blocker.width / 2);
+  step(h.at);
+  assert.equal(h.phase, 'dormant');
+  s.removePlayer(blocker.sessionId);
+
+  // Leave only the former live grid point eligible by floor geometry.
+  const isFloorAt = s.isFloorAt;
+  s.isFloorAt = (x, y) => Math.hypot(x - original.x, y - original.y) < 160;
+  step(h.at);
+  assert.equal(h.phase, 'dormant', 'a cancelled warning must not make the old active core eligible again');
+  assert.equal(h.at - s.time, BLACK_HOLE.RETRY_MS);
+  s.isFloorAt = isFloorAt;
+  step(h.at);
+  assert.equal(h.phase, 'warning');
+  assert.equal(h.at - s.time, BLACK_HOLE.WARNING_MS);
+  for (const point of [original, cancelled]) {
+    assert(Math.hypot(h.x - point.x, h.y - point.y) >= BLACK_HOLE.RELOCATE_MIN, 'the retry clears both prior sites');
+  }
+  const next = { x: h.x, y: h.y };
+  step(h.at);
+  assert.equal(h.phase, 'active'); assert.deepEqual({ x: h.x, y: h.y }, next);
+  assert.equal(h.at - s.time, BLACK_HOLE.ACTIVE_MS);
+}
+{
+  const { s, h, step } = setup();
   step(1e6); assert.equal(h.phase, 'closing'); assert.equal(h.at, 1e6 + BLACK_HOLE.CLOSING_MS);
   step(2e6); assert.equal(h.phase, 'dormant'); assert.equal(h.at, 2e6 + BLACK_HOLE.DORMANT_MS);
   step(3e6); assert.equal(h.phase, 'warning'); assert.equal(h.at, 3e6 + BLACK_HOLE.WARNING_MS, 'server pauses cannot fast-forward a new-location warning');
@@ -101,4 +137,4 @@ for (const phase of ['warning', 'active', 'closing', 'dormant']) {
   }
   assert(!ammo.flying, 'hole selection never skips normal observation/aiming delay');
 }
-console.log('Black-hole lifecycle passed: stationary closing, harmless full warnings/dormancy, safe late-entry cancellation, staggered retirement, bounded retries, pause safety, static tutorials, phase-matched rims/flights, exact rewards and stale bot target rejection.');
+console.log('Black-hole lifecycle passed: stationary closing, harmless full warnings/dormancy, safe late-entry cancellation and retry spacing, staggered retirement, bounded retries, pause safety, static tutorials, phase-matched rims/flights, exact rewards and stale bot target rejection.');

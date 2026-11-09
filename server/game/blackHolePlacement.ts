@@ -106,9 +106,12 @@ export function blackHoleSpotClear(state: GameState, hole: BlackHoleSchema, x: n
 export function findBlackHoleSpot(state: GameState, hole: BlackHoleSchema): Point | null {
   const candidates: Point[] = [];
   const minimumMove = BLACK_HOLE.RELOCATE_MIN * Math.min(1, state.worldWidth / WORLD.WIDTH, state.worldHeight / WORLD.HEIGHT);
+  const lastCore = hole.lastCorePosition;
   for (let row = 0; row <= 16; row++) for (let col = 0; col <= 16; col++) {
     const candidate = { x: state.worldWidth * (.1 + col * .05), y: state.worldHeight * (.1 + row * .05) };
-    if (Math.hypot(candidate.x - hole.x, candidate.y - hole.y) >= minimumMove) candidates.push(candidate);
+    if (Math.hypot(candidate.x - hole.x, candidate.y - hole.y) < minimumMove) continue;
+    if (lastCore && Math.hypot(candidate.x - lastCore.x, candidate.y - lastCore.y) < minimumMove) continue;
+    candidates.push(candidate);
   }
   for (let i = candidates.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));

@@ -11,6 +11,7 @@ export function updateBlackHoles(state: GameState): void {
     }
     if (state.time < hole.at) continue;
     if (hole.phase === 'active') {
+      hole.lastCorePosition = { x: hole.x, y: hole.y };
       hole.phase = 'closing'; hole.at = state.time + BLACK_HOLE.CLOSING_MS;
     } else if (hole.phase === 'closing') {
       hole.phase = 'dormant'; hole.at = state.time + BLACK_HOLE.DORMANT_MS;
