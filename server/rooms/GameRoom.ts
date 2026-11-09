@@ -8,6 +8,7 @@ import { beginSurge } from "../systems/surges";
 import { spawnWeapon, deployWeapon, initializeWeaponSets } from "../systems/weapons";
 import { balanceBots } from "../systems/bots";
 import { allWeapons, weaponKinds } from '../game/weaponKit';
+import { enableRelic, fireRelicComet, placeRelicForTest } from '../systems/relic.js';
 
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
@@ -115,6 +116,13 @@ export class GameRoom extends Room<GameState> {
       const player = this.state.players.get(client.sessionId);
       if (player) deployWeapon(this.state, player);
     });
+    this.onMessage("fireRelicComet", (client, data: { x?: unknown; y?: unknown; requestId?: unknown }) => {
+      if (!this.allowMessage(client) || !this.gameplayReady) return;
+      const { x, y, requestId } = data ?? {};
+      if (requestId !== undefined && (typeof requestId !== 'number' || !Number.isSafeInteger(requestId) || requestId < 0)) return;
+      const result = fireRelicComet(this.state, this.state.players.get(client.sessionId), x, y);
+      client.send('relicCometResult', requestId === undefined ? result : { ...result, requestId });
+    });
     this.onMessage("cancel", (client) => {
       if (!this.allowMessage(client)) return;
       // The press cut short (slid off the button, Esc, a cancelled touch): stop, but it isn't a release
@@ -138,6 +146,12 @@ export class GameRoom extends Room<GameState> {
 
     // Hooks for the automated test; never available in production
     if (!IS_PRODUCTION && this.testHooksEnabled) {
+      if (options.testRelic === true) this.onMessage("test:placeRelic", (_client, data: { x?: unknown; y?: unknown; relayX?: unknown; relayY?: unknown }) => {
+        const { x, y, relayX, relayY } = data ?? {};
+        if (typeof x === 'number' && typeof y === 'number' && typeof relayX === 'number' && typeof relayY === 'number') {
+          placeRelicForTest(this.state, x, y, relayX, relayY);
+        }
+      });
       this.onMessage("test:pinwheel", (_client, data: { x?: number; y?: number; kind?: string; slot?: number }) => {
         this.state.weaponsOn = true;
         const kind = weaponKinds.find(kind => kind === data?.kind) ?? 'pinwheel';
@@ -311,12 +325,14 @@ export class GameRoom extends Room<GameState> {
     // ...and one with no bots
     if (!IS_PRODUCTION && Number.isInteger(options.testBots)) this.state.botFill = options.testBots;
     // Test worlds have no turbines unless they ask: testTurbines true runs them as usual, "manual" places them by hand
-    if (!IS_PRODUCTION && Object.keys(options).some((key) => key.startsWith("test"))) {
+    const testRoom = !IS_PRODUCTION && Object.keys(options).some((key) => key.startsWith("test"));
+    if (testRoom) {
       await this.setPrivate(true);
       this.state.surgesOn = options.testSurges === true;
       this.state.weaponsOn = options.testWeapons === true;
       this.state.setTurbines(options.testTurbines === true ? "auto" : options.testTurbines === "manual" ? "manual" : "off");
     }
+    if (!testRoom || options.testRelic === true) enableRelic(this.state);
   }
   protected stepArena(deltaMs: number): void { this.state.update(deltaMs / 1000); }
   protected observeEvent(_type: string, _data: Record<string, unknown>): void {}

@@ -589,6 +589,28 @@ export const WEAPON_SHOTS = {
   BOT_REACT_MAX_MS: 450,
 } as const;
 
+/** Provisional relic haul and center-tested comet strike. */
+export const RELIC = {
+  MIN_WIDTH: 1100,
+  RADIUS: 250,
+  RELAY_RADIUS: 375,
+  TOW_GAP: 18,
+  TOW_SPEED: 650,
+  FIRST_MS: 45_000,
+  UNCLAIMED_MS: 40_000,
+  RESPAWN_MS: 90_000,
+  RETRY_MS: 2500,
+  WARNING_MS: 6500,
+  DIRECT_RADIUS: 350,
+  GRAZE_RADIUS: 425,
+  INNER_RADIUS: 500,
+  OUTER_RADIUS: Math.min(WORLD.WIDTH, WORLD.HEIGHT) * GEMS.SIZE_MAX_SHARE / 2,
+  IMPACT_VISIBLE_MS: 650,
+  DAMAGE_SHARE: .75,
+  GRAZE_DAMAGE_SHARE: .50,
+  SHOVE_SPEED: 460,
+} as const;
+
 export const EXHALE = {
   WAVE_WRAP_MS: 220,
   WAVE_PUSH_MS: 140, // one passing gust, never continuous cover

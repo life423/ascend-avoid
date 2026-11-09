@@ -64,6 +64,10 @@ export class OnlineControls {
     private get stickRadius(): number { return Math.max(40, STICK_RADIUS * this.controlScale) }
     private readonly finePointer = window.matchMedia('(pointer: fine)')
     get followsMouse(): boolean { return this.finePointer.matches && mouseControlEnabled() }
+    get steeringWithTouch(): boolean {
+        const stick = this.stick
+        return !!stick && Math.hypot(stick.x - stick.originX, stick.y - stick.originY) >= DEAD_ZONE * this.stickRadius
+    }
 
     private stickLayout() {
         const radius = this.stickRadius, knob = Math.min(28, radius / 2)
@@ -91,7 +95,7 @@ export class OnlineControls {
         }))
     }
 
-    constructor(private canvas: HTMLCanvasElement) {
+    constructor(private canvas: HTMLCanvasElement, private readonly actionsBlocked = () => false) {
         this.touchDevice = window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0
         canvas.style.touchAction = 'none'
         canvas.addEventListener('pointerdown', this.onDown)
@@ -354,7 +358,7 @@ export class OnlineControls {
             if (this.stick) return
             this.touchedOnce = true
             this.stick = { id: e.pointerId, originX: point.x, originY: point.y, x: point.x, y: point.y }
-        } else {
+        } else if (!this.actionsBlocked()) {
             this.touchedOnce = true
             this.touchAim = { id: e.pointerId, originX: point.x, originY: point.y, ...point }
             this.pressDown(e.pointerId)
@@ -405,7 +409,7 @@ export class OnlineControls {
     private mousePreferenceChanged = (): void => { this.mouse = null }
 
     private onKeyDown = (e: KeyboardEvent): void => {
-        if (isTyping(e) || document.querySelector('.drawer.active')) return
+        if (this.actionsBlocked() || isTyping(e) || document.querySelector('.drawer.active')) return
         sound.unlock()
         if (e.code === 'Escape') this.cancelPress()
         if (e.code !== 'Space') return

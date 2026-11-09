@@ -1,5 +1,5 @@
 import type { MultiplayerMode } from '../core/GameModes'
-import { GEMS, PLAYER_COLORS, SHIFT, WORLD } from '../../server/constants/gameConstants'
+import { GEMS, PLAYER_COLORS, RELIC, SHIFT, WORLD } from '../../server/constants/gameConstants'
 import { COMPACT, FONT, GOLD, drawCrown, hudPanel, roundedRect } from './style'
 import { JOIN_NOTICE_MS, View } from './shared'
 import type { SyncedGameState, SyncedPlayer, SyncedTurbine } from '../types/synced'
@@ -11,7 +11,9 @@ import { ownsWeapon, ownershipStroke, ownershipShield, WEAPON_OWNERSHIP } from '
 import { traceArena } from './arenaBoundary'
 import { blackHoleLook, drawBlackHoleMarker } from './blackHoleStyle'
 import { HudBackingFade, hudFocus, hudObstruction, type HudRect } from './hudReadability'
+import { RELIC_STYLE, relicCometSeconds } from './relicComet'
 
+const reducedMotion = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null
 const backingFades = new WeakMap<MultiplayerMode, Map<string, HudBackingFade>>()
 function readablePanel(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, me: SyncedPlayer | undefined, key: string, rect: HudRect, radius: number): void {
     let fades = backingFades.get(mode)
@@ -57,8 +59,7 @@ function weaponMarker(ctx: CanvasRenderingContext2D, x: number, y: number, kind:
     ctx.restore();
 }
 
-/** The whole world in a corner: everyone in it, and the part your screen shows */
-export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, state: SyncedGameState, view: View, localId: string | null, leaderId: string | null) : void {
+function minimapLayout(mode: MultiplayerMode, canvas: HTMLCanvasElement, state: SyncedGameState) {
     const compact = COMPACT.matches, u = compact ? mode.cssScale : 1
     const size = compact ? (canvas.clientHeight < 500 ? 84 : Math.min(128, Math.max(96, canvas.clientWidth * .27))) * u
         : Math.round(Math.min(150, Math.max(84, Math.min(canvas.width, canvas.height) * .24)))
@@ -67,7 +68,14 @@ export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
     const dockX = canvas.width - width - mode.hudInsets.right - 26 * u
     const dockY = mode.hudInsets.top + 10 * u
     const x = compact ? dockX + 8 * u : canvas.width - width - mode.hudInsets.right - 12
-    const y = compact ? dockY + 62 * u : mode.controls?.touchDevice ? Math.max(mode.hudInsets.top + 76, mode.chromeBottom + 24) : canvas.height - height - mode.hudInsets.bottom - 12
+    const bottomDock = !compact && !mode.controls?.touchDevice
+    const y = compact ? dockY + 62 * u : bottomDock ? canvas.height - height - mode.hudInsets.bottom - 12 : Math.max(mode.hudInsets.top + 76, mode.chromeBottom + 24)
+    return { x, y, width, height, scale, u, bottomDock }
+}
+
+/** The whole world in a corner: everyone in it, and the part your screen shows */
+export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, state: SyncedGameState, view: View, localId: string | null, leaderId: string | null) : void {
+    const { x, y, width, height, scale, u } = minimapLayout(mode, canvas, state)
     mode.minimapBottom = y + height
     ctx.save()
     // One arena-shaped surface; a second panel frame makes the small map feel boxed in.
@@ -86,6 +94,24 @@ export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
             if (state.floor[i] === '0') ctx.fillRect(x + (i % SHIFT.GRID) * tile, y + Math.floor(i / SHIFT.GRID) * tile, tile, tile)
         }
     }
+    const maxPlayerWidth = Math.min(state.worldWidth, state.worldHeight) * GEMS.SIZE_MAX_SHARE
+    const dotRadius = (player: SyncedPlayer) => 2 + 6 * Math.min(1, player.width / maxPlayerWidth) ** .6
+    // Keep the rounded arena path as a clip for physical footprints only, below the map symbols.
+    ctx.save()
+    ctx.clip()
+    ctx.globalAlpha *= .55
+    ctx.lineWidth = u
+    state.players.forEach((player, sessionId) => {
+        if (player.state !== 'alive' || player.capturedBy || player.flying) return
+        const radius = player.width * scale / 2
+        if (radius <= dotRadius(player) + 1.5 * u) return
+        const center = mode.centerOf(sessionId, player)
+        ctx.strokeStyle = sessionId === localId ? '#ffffff' : PLAYER_COLORS[player.playerIndex % PLAYER_COLORS.length]
+        ctx.beginPath()
+        ctx.arc(x + center.x * scale, y + center.y * scale, radius, 0, Math.PI * 2)
+        ctx.stroke()
+    })
+    ctx.restore()
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)'
     ctx.strokeRect(
         x + (view.x - view.width / 2) * scale,
@@ -94,29 +120,23 @@ export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
         view.height * scale
     )
     // Landmark rings sit below player dots so an approaching player never disappears beneath one.
-    const holeTime = mode.worldNow(state, performance.now())
+    const worldTime = mode.worldNow(state, performance.now())
     state.blackHoles?.forEach(hole => {
         if (state.floor && state.floor[Math.floor(hole.y / state.worldHeight * SHIFT.GRID) * SHIFT.GRID + Math.floor(hole.x / state.worldWidth * SHIFT.GRID)] !== '1') return
-        drawBlackHoleMarker(ctx, x + hole.x * scale, y + hole.y * scale, hole, blackHoleLook(hole, holeTime), u)
+        drawBlackHoleMarker(ctx, x + hole.x * scale, y + hole.y * scale, hole, blackHoleLook(hole, worldTime), u)
     })
     state.players.forEach((player: SyncedPlayer, sessionId: string) => {
         if (player.state !== 'alive') return
         const isLocal = sessionId === localId
-        const position = isLocal && mode.predicted ? mode.predicted : player
-        const markerRadius = 2 + 6 * Math.min(1, player.width / (Math.min(state.worldWidth, state.worldHeight) * GEMS.SIZE_MAX_SHARE)) ** .6
+        const center = mode.centerOf(sessionId, player)
+        const mx = x + center.x * scale, my = y + center.y * scale
+        const markerRadius = dotRadius(player)
         ctx.fillStyle = isLocal ? '#ffffff' : PLAYER_COLORS[player.playerIndex % PLAYER_COLORS.length]
         ctx.beginPath()
-        ctx.arc(
-            x + (position.x + player.width / 2) * scale,
-            y + (position.y + player.height / 2) * scale,
-            // Preserve size differences without a late giant hiding the minimap's other landmarks.
-            markerRadius,
-            0,
-            Math.PI * 2
-        )
+        ctx.arc(mx, my, markerRadius, 0, Math.PI * 2)
         ctx.fill()
         if (sessionId === leaderId) {
-            drawCrown(ctx, x + (position.x + player.width / 2) * scale, y + (position.y + player.height / 2) * scale - markerRadius - 2, 10)
+            drawCrown(ctx, mx, my - markerRadius - 2, 10)
         }
     })
     state.turbines?.forEach((turbine: SyncedTurbine) => {
@@ -184,7 +204,99 @@ export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
         }
     }
     ctx.globalAlpha = 1;
+    drawRelicMapMarkers(ctx, state, x, y, scale, u, worldTime, localId)
     ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.restore()
+}
+
+function drawRelicMapMarkers(ctx: CanvasRenderingContext2D, state: SyncedGameState, x: number, y: number, scale: number, unit: number, now: number, localId: string | null): void {
+    const relic = state.relic, comet = state.relicComet
+    const local = localId ? state.players.get(localId) : undefined
+    const canHaul = local?.state === 'alive' && !local.isBot && local.width >= RELIC.MIN_WIDTH && !local.relicCometReady && !local.spawnProtected &&
+        !local.flying && !local.capturedBy && !local.breathingBlocked && local.injuredUntil <= now
+    const showRelic = relic?.phase === 'towed' || (relic?.phase === 'available' && canHaul)
+    if (!showRelic && (!comet || comet.phase === 'idle')) return
+    ctx.save()
+    ctx.beginPath()
+    traceArena(ctx, x, y, state.worldWidth * scale, state.worldHeight * scale, arenaCornerRadius(state.worldWidth, state.worldHeight) * scale)
+    ctx.clip()
+    ctx.lineWidth = 1.5 * unit
+    if (showRelic) {
+        if (relic.relayX > 0 && relic.relayY > 0) {
+            const relayX = x + relic.relayX * scale, relayY = y + relic.relayY * scale
+            ctx.beginPath()
+            ctx.arc(relayX, relayY, 5.5 * unit, 0, Math.PI * 2)
+            ctx.strokeStyle = RELIC_STYLE.relay
+            ctx.stroke()
+        }
+        const rx = x + relic.x * scale, ry = y + relic.y * scale, r = 5 * unit
+        ctx.beginPath()
+        ctx.moveTo(rx - .5 * r, ry - .9 * r)
+        ctx.lineTo(rx + .6 * r, ry - .8 * r)
+        ctx.lineTo(rx + r, ry)
+        ctx.lineTo(rx + .45 * r, ry + .9 * r)
+        ctx.lineTo(rx - .6 * r, ry + .8 * r)
+        ctx.lineTo(rx - r, ry)
+        ctx.closePath()
+        ctx.fillStyle = RELIC_STYLE.ink
+        ctx.strokeStyle = RELIC_STYLE.relic
+        ctx.fill()
+        ctx.stroke()
+        ctx.beginPath()
+        ctx.moveTo(rx - .35 * r, ry + .15 * r)
+        ctx.lineTo(rx + .35 * r, ry - .15 * r)
+        ctx.stroke()
+    }
+    if (comet?.phase === 'inbound' || comet?.phase === 'impact') {
+        const cx = x + comet.x * scale, cy = y + comet.y * scale
+        const r = Math.max(7 * unit, RELIC.OUTER_RADIUS * scale)
+        ctx.strokeStyle = RELIC_STYLE.danger
+        ctx.beginPath()
+        ctx.arc(cx, cy, r, 0, Math.PI * 2)
+        ctx.moveTo(cx - 2.5 * unit, cy)
+        ctx.lineTo(cx + 2.5 * unit, cy)
+        ctx.moveTo(cx, cy - 2.5 * unit)
+        ctx.lineTo(cx, cy + 2.5 * unit)
+        ctx.stroke()
+        const pulseAge = now - (comet.impactAt - RELIC.WARNING_MS)
+        if (comet.phase === 'inbound' && !reducedMotion?.matches && pulseAge >= 0 && pulseAge < 420) {
+            const progress = pulseAge / 420
+            ctx.globalAlpha *= .7 * (1 - progress)
+            ctx.lineWidth = unit
+            ctx.beginPath()
+            ctx.arc(cx, cy, r + (2 + 4 * progress) * unit, 0, Math.PI * 2)
+            ctx.stroke()
+        }
+    }
+    ctx.restore()
+}
+
+/** A short warning anchored to the map, clear of the arena center and touch controls. */
+export function drawCometInbound(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, state: SyncedGameState, timestamp: number): void {
+    const comet = state.relicComet
+    if (comet?.phase !== 'inbound') return
+    const map = minimapLayout(mode, canvas, state)
+    const unit = mode.cssScale
+    const height = 25 * unit
+    const width = Math.min(148 * unit, canvas.width - mode.hudInsets.left - mode.hudInsets.right - 20 * unit)
+    const x = Math.max(mode.hudInsets.left + 10 * unit, map.x + map.width - width)
+    const y = map.bottomDock ? map.y - height - 8 * unit : map.y + map.height + 7 * unit
+    if (width <= 30 * unit || y < mode.hudInsets.top || y + height > canvas.height - mode.hudInsets.bottom) return
+    // Edge projectile arrows use this boundary to stay clear of the top-right dock.
+    if (!map.bottomDock) mode.minimapBottom = Math.max(mode.minimapBottom, y + height)
+    const text = `Comet inbound · ${relicCometSeconds(comet.impactAt, mode.worldNow(state, timestamp))}`
+    ctx.save()
+    roundedRect(ctx, x, y, width, height, height / 2)
+    ctx.fillStyle = '#201922'
+    ctx.strokeStyle = RELIC_STYLE.caution
+    ctx.lineWidth = unit
+    ctx.fill()
+    ctx.stroke()
+    ctx.font = `700 ${11 * unit}px ${FONT}`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillStyle = '#ffe2db'
+    ctx.fillText(text, x + width / 2, y + height / 2, width - 16 * unit)
     ctx.restore()
 }
 
