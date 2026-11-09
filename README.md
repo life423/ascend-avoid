@@ -91,7 +91,9 @@ $env:E2E_URL = 'http://127.0.0.1:3002'
 npm run test:browsers
 ```
 
-The test harness starts the compiled server on port 3002. Tests requiring fixtures need `E2E_TEST_HOOKS=1` and a non-production server. Production rejects those test commands. **Without `E2E_URL`, browser tests target the live website**, so prefer the isolated command for development. Firefox phone profiles exercise Gecko in touch-enabled viewports; they are not physical Android device tests. The Ubuntu browser CI job is currently deferred; build, schema, unit, and multiplayer checks remain enabled.
+The test harness starts the compiled server on port 3002. Tests requiring fixtures need `E2E_TEST_HOOKS=1` and a non-production server. Production rejects those test commands. **Without `E2E_URL`, browser tests target the live website**, so prefer the isolated command for development.
+
+Pull request CI checks desktop Firefox with Playwright and runs Mozilla's Android Firefox app on an Android emulator. Both join an isolated game; the Android check also verifies the mobile Canvas renderer. The Playwright Firefox phone profiles exercise desktop Gecko with touch and phone-sized viewports. Neither viewport emulation nor an Android emulator measures frame pacing, battery use or touch latency on a real phone. The wider Linux Chrome and WebKit matrix remains deferred.
 
 For private tutorial playthroughs and Android website metadata checks against a running local **production** build, enable their explicit release flags:
 

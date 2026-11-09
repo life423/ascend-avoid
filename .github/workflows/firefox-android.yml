@@ -1,0 +1,123 @@
+name: Real Android Firefox check
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Firefox on Android emulator
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      ANDROID_SERIAL: emulator-5554
+      FIREFOX_VERSION: '159.0.1'
+      FIREFOX_APK_SHA256: dc4310b6193a5cadf3b7eff119e677aea006071c8484fa7a35874c2613fd18e1
+      GECKODRIVER_VERSION: '0.37.1'
+      GECKODRIVER_SHA256: e815130ea95983e162ae91843b48d3a3ce991735635fce83a647afde21e09f7e
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Build the game served to Firefox
+        run: |
+          npm ci
+          npm ci --prefix server
+          npm run build
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install Android command-line tools
+        shell: bash
+        run: |
+          sdk="$RUNNER_TEMP/android-sdk"
+          archive="$RUNNER_TEMP/android-command-line-tools.zip"
+          curl --fail --silent --show-error --location --retry 3 --max-time 180 \
+            'https://dl.google.com/android/repository/commandlinetools-linux-15859902_latest.zip' -o "$archive"
+          printf '%s  %s\n' '4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583' "$archive" | sha256sum --check
+          unzip -q "$archive" -d "$sdk"
+          mv "$sdk/cmdline-tools" "$sdk/cmdline-tools-unpacked"
+          mkdir -p "$sdk/cmdline-tools"
+          mv "$sdk/cmdline-tools-unpacked" "$sdk/cmdline-tools/latest"
+          printf 'ANDROID_HOME=%s\nANDROID_SDK_ROOT=%s\n' "$sdk" "$sdk" >> "$GITHUB_ENV"
+          printf '%s\n' "$sdk/cmdline-tools/latest/bin" "$sdk/platform-tools" >> "$GITHUB_PATH"
+
+      - name: Install Android emulator and pinned Mozilla releases
+        shell: bash
+        run: |
+          test -c /dev/kvm
+          sudo chmod a+rw /dev/kvm
+          sdkmanager --licenses < <(yes) >/dev/null
+          sdkmanager platform-tools emulator 'system-images;android-36;google_apis;x86_64' 'build-tools;36.0.0'
+          "$ANDROID_HOME/emulator/emulator" -accel-check
+          avdmanager create avd --force --name ascend-firefox --package 'system-images;android-36;google_apis;x86_64' --device pixel_6 <<< no
+
+          tools="$RUNNER_TEMP/firefox-tools"
+          mkdir -p "$tools"
+          filename="fenix-${FIREFOX_VERSION}.multi.android-x86_64.apk"
+          apk_url="https://archive.mozilla.org/pub/fenix/releases/${FIREFOX_VERSION}/android/fenix-${FIREFOX_VERSION}-android-x86_64/${filename}"
+          driver_url="https://github.com/mozilla/geckodriver/releases/download/v${GECKODRIVER_VERSION}/geckodriver-v${GECKODRIVER_VERSION}-linux64.tar.gz"
+          curl --fail --silent --show-error --location --retry 3 --max-time 120 "$apk_url" -o "$tools/firefox.apk"
+          curl --fail --silent --show-error --location --retry 3 --max-time 60 "$driver_url" -o "$tools/geckodriver.tar.gz"
+          printf '%s  %s\n' "$FIREFOX_APK_SHA256" "$tools/firefox.apk" "$GECKODRIVER_SHA256" "$tools/geckodriver.tar.gz" | sha256sum --check
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify "$tools/firefox.apk"
+          tar -xzf "$tools/geckodriver.tar.gz" -C "$tools" geckodriver
+
+      - name: Play in Firefox for Android
+        shell: bash
+        run: |
+          logs="$RUNNER_TEMP/firefox-android"
+          tools="$RUNNER_TEMP/firefox-tools"
+          mkdir -p "$logs"
+          adb start-server
+          "$ANDROID_HOME/emulator/emulator" -avd ascend-firefox -port 5554 -accel on -gpu swiftshader \
+            -no-window -no-audio -no-boot-anim -no-snapshot -no-metrics >"$logs/emulator.log" 2>&1 &
+          timeout 120 adb wait-for-device
+          timeout 180 bash -c 'until [[ "$(adb shell getprop sys.boot_completed | tr -d "\r")" == 1 ]]; do sleep 2; done'
+          adb shell input keyevent 82
+          adb shell wm size 540x1200
+          adb shell wm density 200
+          adb shell settings put global window_animation_scale 0
+          adb shell settings put global transition_animation_scale 0
+          adb shell settings put global animator_duration_scale 0
+          adb install "$tools/firefox.apk"
+          adb reverse tcp:3002 tcp:3002
+
+          # Populate app and graphics caches before geckodriver starts Firefox.
+          # Its adb socket has a fixed five-second timeout for am start -W.
+          timeout 45 adb shell am start -W -n org.mozilla.firefox/org.mozilla.fenix.IntentReceiverActivity \
+            -a android.intent.action.VIEW -d about:blank --ez automationtest true
+
+          NODE_ENV=production PORT=3002 node server/dist/index.js >"$logs/game-server.log" 2>&1 &
+          "$tools/geckodriver" --host 127.0.0.1 --port 4444 --log debug >"$logs/geckodriver.log" 2>&1 &
+          curl --fail --silent --show-error --retry 20 --retry-connrefused --retry-delay 1 --max-time 5 http://127.0.0.1:3002/health
+          curl --fail --silent --show-error --retry 20 --retry-connrefused --retry-delay 1 --max-time 5 http://127.0.0.1:4444/status
+          FIREFOX_ANDROID_RESULTS="$logs" node scripts/firefox-android-smoke.mjs
+
+      - name: Collect emulator diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          logs="$RUNNER_TEMP/firefox-android"
+          mkdir -p "$logs"
+          timeout 15 adb logcat -d -t 4000 >"$logs/logcat.txt" 2>&1 || true
+          timeout 10 adb exec-out screencap -p >"$logs/device.png" || rm -f "$logs/device.png"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: firefox-android-smoke
+          path: ${{ runner.temp }}/firefox-android/
+          if-no-files-found: ignore
+          retention-days: 7
