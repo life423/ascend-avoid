@@ -50,6 +50,21 @@ body:has(.join-dialog[open]) .hamburger-button {
 }
 
 .join-dialog h2 { margin-bottom: 18px; font-size: 23px; line-height: 1.2; }
+
+@supports (background-clip: text) or (-webkit-background-clip: text) {
+    .join-dialog h2 {
+        width: fit-content;
+        background-image: linear-gradient(90deg, var(--join-text), #c9eee6);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+    }
+}
+
+@media (forced-colors: active) {
+    .join-dialog h2 { background-image: none; color: CanvasText; }
+}
+
 .join-form { display: grid; gap: 16px; }
 .join-name { display: grid; gap: 6px; }
 .join-name label, .join-steering legend { font-weight: 700; }
@@ -144,13 +159,18 @@ body:has(.join-dialog[open]) .hamburger-button {
     outline-offset: 2px;
 }
 
-.join-status { color: var(--join-muted); }
-.join-status:not(:empty) { margin-top: 12px; }
-.join-status.join-error { color: #ffb9ad; }
+.join-status {
+    min-height: 1.35em;
+    margin-top: 4px;
+    color: #ffb9ad;
+    font-size: 12px;
+    line-height: 1.35;
+    text-align: center;
+}
 
 @media (pointer: coarse) and (orientation: portrait) {
     .join-dialog {
-        --join-preview-offset: clamp(0px, (var(--join-viewport-height) - 520px) * .23, 88px);
+        --join-preview-offset: clamp(0px, (var(--join-viewport-height) - 560px) * .06, 16px);
     }
 }
 
