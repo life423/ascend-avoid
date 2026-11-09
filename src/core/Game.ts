@@ -48,6 +48,7 @@ interface GameConfigInterface {
 // Import our manager classes
 import ParticleSystem from '../entities/ParticleSystem'
 import { sound } from './Sound'
+import { playerName } from './PlayerName'
 import InputManager from '../managers/InputManager'
 import ObstacleManager from '../managers/ObstacleManager'
 import UIManager from '../managers/UIManager'
@@ -57,6 +58,7 @@ import GameConfig from './GameConfig'
 import { PracticeUI } from '../practice/PracticeUI'
 import type { PracticeLesson } from '../../server/practice/definitions'
 import { GameMode, MultiplayerMode, SinglePlayerMode } from './GameModes'
+import { JoinUI } from '../ui/JoinUI'
 
 // Removed unused interfaces
 
@@ -84,6 +86,7 @@ export default class Game {
     background: Background
     touchControls: TouchControls
     practiceUI: PracticeUI | null = null
+    joinUI: JoinUI | null = null
     private modeGeneration = 0
     currentGameMode: GameMode | null
 
@@ -280,9 +283,26 @@ export default class Game {
             preserveMovement => { if (this.currentGameMode instanceof MultiplayerMode) this.currentGameMode.cancelInput(preserveMovement) }
         )
 
-        // Everyone who opens the site joins the shared multiplayer game
-        // (initializeGameMode falls back to single player if multiplayer can't load)
-        await this.initializeGameMode('multiplayer')
+        await this.initializeGameMode('spectator')
+        const offerTutorial = this.practiceUI.offerAtJoin()
+        this.joinUI = new JoinUI(async destination => {
+            if (destination === 'tutorial') {
+                await this.initializeGameMode('practice', 'basics', true)
+                const mode = this.currentGameMode
+                if (mode instanceof MultiplayerMode && mode.isPractice && await mode.multiplayerManager?.connect()) {
+                    this.practiceUI?.begin('basics')
+                    return true
+                }
+                await this.initializeGameMode('spectator')
+                return false
+            }
+            const mode = this.currentGameMode
+            if (!(mode instanceof MultiplayerMode) || !await mode.multiplayerManager?.joinArena(playerName())) return false
+            mode.cancelInput()
+            if (offerTutorial) this.practiceUI?.skipJoinTutorial()
+            return true
+        })
+        this.joinUI.open(!offerTutorial)
 
         // Hide loading screen
         this.uiManager.hideLoading()
@@ -298,11 +318,11 @@ export default class Game {
 
     /**
      * Initialize the specified game mode
-     * @param mode - The mode to initialize ('singlePlayer' or 'multiplayer')
+     * @param mode - The mode to initialize
      * @returns A promise that resolves when the mode is initialized
      */
     async initializeGameMode(
-        mode: 'singlePlayer' | 'multiplayer' | 'practice', lesson: PracticeLesson = 'basics', sequence = false
+        mode: 'singlePlayer' | 'multiplayer' | 'practice' | 'spectator', lesson: PracticeLesson = 'basics', sequence = false
     ): Promise<void> {
         const generation = ++this.modeGeneration
         // Clean up any existing game mode
@@ -319,6 +339,9 @@ export default class Game {
                     break
                 case 'multiplayer':
                     this.currentGameMode = new MultiplayerMode(this)
+                    break
+                case 'spectator':
+                    this.currentGameMode = new MultiplayerMode(this, { kind: 'play', spectator: true })
                     break
 
                 case 'singlePlayer':

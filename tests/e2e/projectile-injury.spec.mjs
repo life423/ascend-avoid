@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { enterGame } from './helpers/enter-game.mjs';
 import { Client } from 'colyseus.js';
 import { practiceInput } from './helpers/practice.mjs';
 
@@ -16,7 +17,7 @@ async function start(page) {
     url:route.request().url().replace('/joinOrCreate/','/create/'),
     postData:JSON.stringify({...route.request().postDataJSON(),testBots:0,testFieldGems:0,testCores:0,testCalm:true,testTurbines:'manual'}),
   }));
-  await page.goto('/');
+  await enterGame(page);
   await page.waitForFunction(() => window.game?.currentGameMode?.lastView && !document.body.classList.contains('intro-playing'));
   await send(page,'test:clearHoles');
   await page.evaluate(() => {

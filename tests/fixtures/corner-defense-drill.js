@@ -35,7 +35,9 @@ window.addEventListener('load',()=>{
  $('puff').onclick=()=>{attempts++;const c=window.game.canvas;c.focus();c.dispatchEvent(new KeyboardEvent('keydown',{key:' ',code:'Space',bubbles:true}));c.dispatchEvent(new KeyboardEvent('keyup',{key:' ',code:'Space',bubbles:true}));};
  $('start').onclick=()=>{active=true;started=performance.now();panel.querySelector('#setup').hidden=true;$('start').disabled=true;$('puff').disabled=false;window.game.canvas.focus();move();};
  const timer=setInterval(async()=>{
-  const m=window.game?.currentGameMode;if(!m?.multiplayerManager?.room||m.introStart===null||m.introPlaying)return;clearInterval(timer);mode=m;room=m.multiplayerManager.room;window.game.canvas.tabIndex=0;
+  const m=window.game?.currentGameMode;
+  if(!m?.lastView||m.introPlaying||!m.multiplayerManager?.getLocalPlayer())return;
+  clearInterval(timer);mode=m;room=m.multiplayerManager.room;window.game.canvas.tabIndex=0;
   room.send('test:clearHoles');room.send('test:setGems',{count:gems});
   for(let i=0;i<count;i++){const p=await mode.multiplayerManager.client.joinById(room.id,{name:'Tracking hunter '+(i+1)});p.onMessage('*',()=>{});peers.push(p);}
   await new Promise(r=>setTimeout(r,200));const me=mode.multiplayerManager.getLocalPlayer(),width=me.width;let lo=0,hi=1e9;while(lo<hi){const mid=Math.floor((lo+hi)/2);if(DefenseSizes.creatureSize(mid)<width*ratio)lo=mid+1;else hi=mid;}

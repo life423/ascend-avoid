@@ -1,11 +1,12 @@
 import {test,expect} from '@playwright/test';
+import { enterGame } from './helpers/enter-game.mjs';
 import {practiceInput} from './helpers/practice.mjs';
 test.skip(process.env.E2E_TEST_HOOKS!=='1','isolated local server only');
 test('the new maximum can walk above a live black hole with full body clearance',async({page,browserName,hasTouch})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.addInitScript(()=>{localStorage.setItem('ascend.practice.v2',JSON.stringify({version:2,offered:true,lessons:{}}));localStorage.setItem('ascend.mouseFollow','off');});
  await page.route('**/matchmake/joinOrCreate/game_room',r=>r.continue({url:r.request().url().replace('/joinOrCreate/','/create/'),postData:JSON.stringify({...r.request().postDataJSON(),testBots:0,testFieldGems:0,testCores:0,testCalm:true,testTurbines:'manual'})}));
- await page.goto('/');await page.waitForFunction(()=>window.game?.currentGameMode?.lastView&&!document.body.classList.contains('intro-playing'));
+ await enterGame(page);await page.waitForFunction(()=>window.game?.currentGameMode?.lastView&&!document.body.classList.contains('intro-playing'));
  const send=(type,data)=>page.evaluate(({type,data})=>window.game.currentGameMode.multiplayerManager.room.send(type,data),{type,data});
  await send('test:setGems',{count:1e9});await page.waitForFunction(()=>window.game.currentGameMode.multiplayerManager.getLocalPlayer().width===1470);
  await send('test:moveTo',{x:8,y:8});await send('test:protect',{ms:0});

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { enterGame } from './helpers/enter-game.mjs';
 import { Client } from 'colyseus.js';
 
 // This suite uses development-only placement hooks against an isolated local test server.
@@ -15,7 +16,7 @@ test('a hard-impact stun blocks keyboard input and held movement resumes afterwa
     url: route.request().url().replace('/joinOrCreate/', '/create/'),
     postData: JSON.stringify({ ...route.request().postDataJSON(), testBots: 0, testFieldGems: 0, testCores: 0 }),
   }));
-  await page.goto('/');
+  await enterGame(page);
   await page.waitForFunction(() => window.game?.currentGameMode?.multiplayerManager?.room?.state?.players?.size === 1);
   await expect.poll(() => page.evaluate(() => document.body.classList.contains('intro-playing'))).toBe(false);
   const send = (type, data) => page.evaluate(({ type, data }) => window.game.currentGameMode.multiplayerManager.room.send(type, data), { type, data });

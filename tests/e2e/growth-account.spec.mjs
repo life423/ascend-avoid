@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { enterGame } from './helpers/enter-game.mjs';
 import { writeFile } from 'node:fs/promises';
 import { practiceInput } from './helpers/practice.mjs';
 
@@ -21,7 +22,7 @@ async function action(page, name, key) {
 
 test('late-bank loss shrinks the real body; no-op and landing preserve it, while new gems regrow it', async ({ page, browserName, hasTouch }, info) => {
     const errors = []; page.on('pageerror', error => errors.push(error.message));
-    await page.goto('/growth-account.html');
+    await enterGame(page, '/growth-account.html');
     await page.waitForFunction(() => window.growthAccountDrill?.ready);
     const initial = await read(page); expect(initial.gems).toBeGreaterThan(1990000); expect(initial.width).toBeGreaterThan(1460);
     await screenshot(page, info, 'two-million-start.png');

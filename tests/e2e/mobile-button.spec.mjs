@@ -1,9 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { enterGame } from './helpers/enter-game.mjs';
 
 test('mobile action labels are centered as a block with a consistent gap', async ({ page, hasTouch }) => {
   test.skip(!hasTouch, 'touch button layout');
   await page.addInitScript(() => localStorage.setItem('ascend.guideSeen', 'true'));
-  await page.goto('/');
+  await enterGame(page);
   await page.waitForFunction(() => window.game?.currentGameMode?.lastView && window.game?.currentGameMode?.multiplayerManager?.getLocalPlayer() && !document.body.classList.contains('intro-playing'));
   await page.evaluate(() => document.fonts.ready);
   const layouts = await page.evaluate(() => {

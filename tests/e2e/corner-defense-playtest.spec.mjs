@@ -1,4 +1,5 @@
 import {test,expect} from '@playwright/test';
+import { enterGame } from './helpers/enter-game.mjs';
 import {Client} from 'colyseus.js';
 import {writeFileSync} from 'node:fs';
 import {creatureSize} from '../../server/dist/game/creatureSize.js';
@@ -23,7 +24,7 @@ for(const scene of cases)test(`${scene.name}: record live tracking, defensive in
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.addInitScript(()=>{localStorage.setItem('ascend.practice.v2',JSON.stringify({version:2,offered:true,lessons:{}}));localStorage.setItem('ascend.mouseFollow','off');});
  await page.route('**/matchmake/joinOrCreate/game_room',r=>r.continue({url:r.request().url().replace('/joinOrCreate/','/create/'),postData:JSON.stringify({...r.request().postDataJSON(),testBots:0,testFieldGems:0,testCores:0,testCalm:true,testTurbines:'manual'})}));
- await page.goto('/');await page.waitForFunction(()=>window.game?.currentGameMode?.lastView&&!document.body.classList.contains('intro-playing'));
+ await enterGame(page);await page.waitForFunction(()=>window.game?.currentGameMode?.lastView&&!document.body.classList.contains('intro-playing'));
  const send=(type,data)=>page.evaluate(({type,data})=>window.game.currentGameMode.multiplayerManager.room.send(type,data),{type,data});
  const read=()=>page.evaluate(()=>{const m=window.game.currentGameMode,p=m.multiplayerManager.getLocalPlayer();return{x:p.x,y:p.y,width:p.width,height:p.height,captured:!!p.capturedBy,state:p.state,inhaling:p.inhaling,stunned:p.stunned,sliding:p.sliding,breath:m.stamina};});
  await send('test:clearHoles');await send('test:setGems',{count:scene.gems});await page.waitForFunction(gems=>window.game.currentGameMode.multiplayerManager.getLocalPlayer().gems===gems,scene.gems);

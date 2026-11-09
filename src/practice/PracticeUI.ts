@@ -12,7 +12,6 @@ const defenseStages: Record<string, string> = { 'rear-cover': 'Puff & flee', 'in
 export class PracticeUI {
   private store = browserPracticeStore();
   private root = document.createElement('div');
-  private offer = document.createElement('aside');
   private panel = document.createElement('section');
   private chooser = document.createElement('div');
   private view: SyncedPractice | null = null;
@@ -27,14 +26,11 @@ export class PracticeUI {
   constructor(private choose: (lesson: PracticeLesson, sequence?: boolean) => void, private exit: () => void, private command: (type: string, data: unknown) => void, private cancel: (preserveMovement?: boolean) => void) {
     this.root.className = 'practice-ui';
     this.root.dataset.touch = String(this.touch);
-    this.offer.className = 'practice-offer'; this.offer.hidden = true;
-    this.offer.setAttribute('aria-label', 'Optional practice');
-    this.offer.innerHTML = '<span>New here? Learn the moves.</span><button type="button" data-do="sequence" class="practice-primary">Play tutorial</button><button type="button" data-do="dismiss">Not now</button>';
     this.panel.className = 'practice-panel'; this.panel.hidden = true;
     this.panel.setAttribute('aria-label', 'Current tutorial lesson');
     this.chooser.className = 'practice-chooser'; this.chooser.hidden = true;
     this.chooser.setAttribute('role', 'dialog'); this.chooser.setAttribute('aria-modal', 'true'); this.chooser.setAttribute('aria-labelledby', 'practice-title');
-    this.root.append(this.offer, this.panel, this.chooser); document.body.append(this.root);
+    this.root.append(this.panel, this.chooser); document.body.append(this.root);
     this.root.addEventListener('click', this.click);
     this.root.addEventListener('pointerdown', this.pointerDown);
     this.chooser.addEventListener('keydown', this.key);
@@ -93,7 +89,7 @@ export class PracticeUI {
     }
   begin(lesson: PracticeLesson): void {
     this.pendingLesson = lesson;
-    this.active = true; this.view = null; this.signature = ''; this.currentLesson = ''; this.offer.hidden = true;
+    this.active = true; this.view = null; this.signature = ''; this.currentLesson = '';
     this.store.mark(lesson, 'in-progress'); this.close(); document.body.classList.add('practice-mode');
     this.panel.hidden = false;
     this.panel.innerHTML = `<div class="practice-heading">${LESSON_NAMES[lesson]}</div><p role="status">Preparing your private arena…</p>${this.actions()}`;
@@ -107,12 +103,12 @@ export class PracticeUI {
     this.cancel(); this.close(); this.view = null;
     this.panel.innerHTML = '<div class="practice-heading">Practice paused</div><p class="practice-instruction" role="status">Your private session ended. Choose any lesson to start again.</p><div class="practice-actions"><button type="button" data-do="open">Choose lesson</button><button type="button" data-do="exit">Exit tutorial</button></div>';
   }
-  offerIfReady(): void {
-    if (!this.active && !this.modalOpen && this.store.shouldOffer) {
-      this.offer.hidden = false; this.store.offered();
-      setTimeout(() => { this.offer.hidden = true; }, 8000);
-    }
+  offerAtJoin(): boolean {
+    if (!this.store.shouldOffer) return false;
+    this.store.offered();
+    return true;
   }
+  skipJoinTutorial(): void { this.store.skipOffer(); }
   update(view: SyncedPractice | undefined): void {
     if (!this.active || !view?.enabled) return;
     if (this.pendingLesson && (view.lesson !== this.pendingLesson || !['ready', 'waiting', 'resolving'].includes(view.phase))) return;
@@ -186,7 +182,7 @@ export class PracticeUI {
     return 'Follow the single outlined target. Only this step needs another try.';
   }
   open = (): void => {
-    this.cancel(); this.offer.hidden = true; this.store.offered(); this.returnFocus = document.activeElement as HTMLElement;
+    this.cancel(); this.store.offered(); this.returnFocus = document.activeElement as HTMLElement;
     this.chooser.innerHTML = `<div class="practice-dialog"><div class="practice-dialog-heading"><h2 id="practice-title">Practice / Tutorials</h2><button type="button" data-do="close" aria-label="Close lesson picker">Close</button></div><p>Follow all five in order, or choose any lesson.</p><button type="button" data-do="sequence" class="practice-start practice-primary">Start full tutorial</button><div class="practice-lessons">${PRACTICE_LESSONS.map(id => `<button type="button" data-lesson="${id}"><strong>${LESSON_NAMES[id]}</strong><span>${descriptions[id]}</span><small>${this.store.value.lessons[id] === 'completed' ? 'Completed' : this.store.value.lessons[id] === 'skipped' ? 'Unfinished · skipped' : this.store.value.legacyCompleted[id] ? 'Updated — try the escape gust' : this.store.value.lessons[id] === 'in-progress' ? 'Unfinished · in progress' : 'Ready to try'}</small></button>`).join('')}</div><button type="button" data-do="${this.active ? 'exit' : 'close'}">${this.active ? 'Exit tutorial' : 'Keep playing'}</button></div>`;
     this.chooser.hidden = false; this.chooser.querySelector<HTMLButtonElement>('.practice-start')?.focus();
   };
@@ -216,7 +212,6 @@ export class PracticeUI {
       case 'ready':
         if (!event.detail || performance.now() - this.readyTouchAt >= 700) this.startAttempt();
         break;
-      case 'dismiss': this.store.skipOffer(); this.offer.hidden = true; break;
       case 'close': this.close(); break;
       case 'exit': this.stop(); this.exit(); break;
       case 'skip':

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { enterGame } from './helpers/enter-game.mjs';
 import { Client } from 'colyseus.js';
 
 test.skip(process.env.E2E_TEST_HOOKS !== '1', 'isolated local test server only');
@@ -10,7 +11,7 @@ for (const sourceGems of [12, 100]) test(`standard bullet from ${sourceGems === 
     url:route.request().url().replace('/joinOrCreate/','/create/'),
     postData:JSON.stringify({...route.request().postDataJSON(),testBots:0,testFieldGems:0,testCalm:true}),
   }));
-  await page.goto('/');await page.waitForFunction(()=>window.game?.currentGameMode?.lastView&&!document.body.classList.contains('intro-playing'));
+  await enterGame(page);await page.waitForFunction(()=>window.game?.currentGameMode?.lastView&&!document.body.classList.contains('intro-playing'));
   const roomId=await page.evaluate(()=>window.game.currentGameMode.multiplayerManager.room.id);
   const peer=await new Client(baseURL.replace(/^http/,'ws')).joinById(roomId,{name:sourceGems===12?'Small captive':'Large captive'});peer.onMessage('*',()=>{});
   const send=(type,data)=>page.evaluate(({type,data})=>window.game.currentGameMode.multiplayerManager.room.send(type,data),{type,data});

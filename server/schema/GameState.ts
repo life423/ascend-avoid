@@ -119,6 +119,8 @@ class GameState extends Schema {
   waveAt: number;
   /** Server-only: bots fill in until this many are playing (the automated test sets 0) */
   botFill: number = BOTS.FILL_TO;
+  /** Server-only: keep a bot-only world running while a visitor watches before joining. */
+  botPreview = false;
   brains = new Map<string, BotBrain>();
   private spawnRetries = new Map<string, number>();
   nextBotId = 1;

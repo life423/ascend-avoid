@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { enterGame } from './helpers/enter-game.mjs';
 import { Client } from 'colyseus.js';
 import { practiceInput } from './helpers/practice.mjs';
 
@@ -17,7 +18,7 @@ test('weak real shots cost gems; concentrated follow-up earns fixed injury, with
     url:route.request().url().replace('/joinOrCreate/', '/create/'),
     postData:JSON.stringify({...route.request().postDataJSON(), testBots:0, testFieldGems:0, testCores:0, testCalm:true}),
   }));
-  await page.goto('/');
+  await enterGame(page);
   await page.waitForFunction(() => window.game?.currentGameMode?.lastView && !document.body.classList.contains('intro-playing'));
   await send(page, 'test:clearHoles');
   await send(page, 'test:setGems', {count:20000});

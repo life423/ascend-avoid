@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { enterGame } from './helpers/enter-game.mjs';
 
 test.skip(process.env.E2E_TEST_HOOKS !== '1', 'isolated local test server only');
 for (const kind of ['pinwheel', 'pulsar']) test(`a bot collects, carries and places a real ${kind} without human-only UI`, async ({ page }) => {
@@ -7,7 +8,7 @@ for (const kind of ['pinwheel', 'pulsar']) test(`a bot collects, carries and pla
     url: route.request().url().replace('/joinOrCreate/', '/create/'),
     postData: JSON.stringify({ ...route.request().postDataJSON(), testBots: 2, testFieldGems: 0, testTurbines: 'manual' }),
   }));
-  await page.goto('/');
+  await enterGame(page);
   await page.waitForFunction(() => window.game?.currentGameMode?.multiplayerManager?.room?.state?.players?.size === 2 && !document.body.classList.contains('intro-playing'));
   const send = (type, data) => page.evaluate(({ type, data }) => window.game.currentGameMode.multiplayerManager.room.send(type, data), { type, data });
   await send('test:moveTo', { x: 100, y: 100 }); await send('test:protect', { ms: 60000 });
@@ -32,7 +33,7 @@ test('extreme gem totals keep a playable body and full arena at center and corne
     url: route.request().url().replace('/joinOrCreate/', '/create/'),
     postData: JSON.stringify({ ...route.request().postDataJSON(), testBots: 0, testFieldGems: 0, testTurbines: 'manual' }),
   }));
-  await page.goto('/');
+  await enterGame(page);
   await page.waitForFunction(() => window.game?.currentGameMode?.lastView && !document.body.classList.contains('intro-playing'));
   const send = (type, data) => page.evaluate(({ type, data }) => window.game.currentGameMode.multiplayerManager.room.send(type, data), { type, data });
   for (const count of [0, 1500, 10000, 1e9]) {

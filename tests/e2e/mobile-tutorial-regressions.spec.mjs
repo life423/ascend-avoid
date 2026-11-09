@@ -48,7 +48,7 @@ async function controls(page, browserName) {
 }
 async function start(page, lesson) {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Play tutorial', exact: true }).tap();
+  await page.getByRole('button', { name: /^(Tutorial|Play tutorial)$/ }).tap();
   await page.waitForFunction(() => window.game?.currentGameMode?.multiplayerManager?.getState()?.practice?.sequence === true);
   const previousAttempt = (await state(page)).attempt;
   await page.getByRole('button', { name: 'Choose any lesson', exact: true }).tap();

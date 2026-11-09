@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { enterGame } from './helpers/enter-game.mjs';
 
 test.skip(process.env.E2E_TEST_HOOKS !== '1', 'isolated local render checks');
 
@@ -42,7 +43,7 @@ test('giant face overlap softens HUD glass, keeps glyphs opaque and leaves reada
     url: route.request().url().replace('/joinOrCreate/', '/create/'),
     postData: JSON.stringify({ ...route.request().postDataJSON(), name: 'HUD reviewer', testBots: 0, testFieldGems: 0, testCalm: true }),
   }));
-  await page.goto('/');
+  await enterGame(page);
   await page.waitForFunction(() => window.game?.currentGameMode?.lastView && !document.body.classList.contains('intro-playing'));
   const send = (type, data) => page.evaluate(({ type, data }) => window.game.currentGameMode.multiplayerManager.room.send(type, data), { type, data });
   await send('test:setGems', { count: 200000 });

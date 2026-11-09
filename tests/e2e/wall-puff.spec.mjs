@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { enterGame } from './helpers/enter-game.mjs';
 import { Client } from 'colyseus.js';
 import { practiceInput } from './helpers/practice.mjs';
 
@@ -20,10 +21,10 @@ async function scene(page, baseURL) {
     url: route.request().url().replace('/joinOrCreate/', '/create/'),
     postData: JSON.stringify({ ...route.request().postDataJSON(), testBots: 0, testFieldGems: 0, testCores: 0, testCalm: true, testTurbines: 'manual' }),
   }));
-  await page.goto('/');
+  await enterGame(page);
   await page.waitForFunction(() => {
     const m = window.game?.currentGameMode;
-    return m?.lastView && m.introStart !== null && !m.introPlaying;
+    return m?.lastView && !m.introPlaying;
   });
   const id = await page.evaluate(() => window.game.currentGameMode.multiplayerManager.room.id);
   const peer = await new Client(baseURL.replace(/^http/, 'ws')).joinById(id, { name: 'Pursuer' });

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { enterGame } from './helpers/enter-game.mjs';
 import { openLesson, readPractice, practiceInput, playPractice, settled } from './helpers/practice.mjs';
 test.skip(!process.env.PRACTICE_E2E, 'explicit local tutorial checks');
 test.beforeEach(({page})=>{page.on('pageerror',error=>{throw error;});});
@@ -24,7 +25,7 @@ test('desktop practice exposes the shared mouse switch without firing or losing 
 
 test('old completions are retained while new combat and rear-cover mastery remain honest',async({page})=>{
   await page.addInitScript(()=>localStorage.setItem('ascend.practice.v1',JSON.stringify({version:1,offered:true,status:'completed',lessons:{basics:'completed',weapon:'completed',blackhole:'completed',defense:'completed'}})));
-  await page.goto('/');await page.waitForFunction(()=>!!window.game?.currentGameMode?.multiplayerManager?.getLocalPlayer());
+  await enterGame(page);await page.waitForFunction(()=>!!window.game?.currentGameMode?.multiplayerManager?.getLocalPlayer());
   await expect(page.locator('.practice-offer')).toBeHidden();
   await page.evaluate(()=>window.drawerUI.open());await page.getByRole('button',{name:'Practice / Tutorials',exact:true}).click();
   const picker=page.getByRole('dialog',{name:'Practice / Tutorials'});

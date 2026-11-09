@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { enterGame } from './helpers/enter-game.mjs';
 import { practiceInput } from './helpers/practice.mjs';
 test.skip(process.env.E2E_TEST_HOOKS !== '1', 'isolated local fixture only');
 const W = 4200, R = 700, M = 8;
@@ -13,10 +14,10 @@ for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const [label, gems] of 
       url: route.request().url().replace('/joinOrCreate/', '/create/'),
       postData: JSON.stringify({ ...route.request().postDataJSON(), testBots: 0, testFieldGems: 0, testCores: 0, testCalm: true, testTurbines: 'manual' }),
     }));
-    await page.goto('/');
+    await enterGame(page);
     await page.waitForFunction(() => {
       const m = window.game?.currentGameMode;
-      return m?.lastView && m.introStart !== null && !m.introPlaying;
+      return m?.lastView && !m.introPlaying;
     });
     const send = (type, data) => page.evaluate(({ type, data }) => window.game.currentGameMode.multiplayerManager.room.send(type, data), { type, data });
     await send('test:clearHoles');

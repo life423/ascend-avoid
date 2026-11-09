@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { enterGame, playFromEntry } from './helpers/enter-game.mjs';
 
 test.skip(!process.env.PRACTICE_E2E, 'explicit local production interface checks');
 test.beforeEach(async ({ page }) => {
@@ -6,7 +7,7 @@ test.beforeEach(async ({ page }) => {
     localStorage.setItem('ascend.guideSeen', 'true');
     localStorage.setItem('ascend.mouseFollow', 'off');
   });
-  await page.goto('/');
+  await enterGame(page);
   await page.waitForFunction(() => !!window.game?.currentGameMode?.multiplayerManager?.getLocalPlayer() && !document.body.classList.contains('intro-playing'));
 });
 
@@ -68,6 +69,7 @@ test('sound is reachable, synchronizes with settings, persists and does not inha
   expect(await page.evaluate(() => window.game.currentGameMode.multiplayerManager.getLocalPlayer().inhaling)).toBe(false);
   await page.screenshot({ path: test.info().outputPath('one-tap-mute.png') });
   await page.reload();
+  await playFromEntry(page);
   await page.waitForFunction(() => !!window.game?.currentGameMode?.multiplayerManager?.getLocalPlayer() && !document.body.classList.contains('intro-playing'));
   await expect(await soundControl(page)).toHaveText('Sound off');
 });

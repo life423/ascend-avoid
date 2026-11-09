@@ -165,7 +165,7 @@ export function balanceBots(state: GameState, now: number) : void {
   state.players.forEach((player) => {
     if (!player.isBot) people++;
   });
-  const wanted = people === 0 ? 0 : Math.max(0, state.botFill - people);
+  const wanted = people === 0 && !state.botPreview ? 0 : Math.max(0, state.botFill - people);
   while (state.brains.size < wanted) addBot(state, now);
   while (state.brains.size > wanted) removeBot(state);
 }
