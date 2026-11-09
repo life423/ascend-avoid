@@ -1,5 +1,5 @@
 import { mouseControlEnabled, setMouseControl } from '../core/MouseControl';
-import { playerName, setPlayerName } from '../core/PlayerName';
+import { isGeneratedPlayerName, playerName, setPlayerName } from '../core/PlayerName';
 import { sound } from '../core/Sound';
 import './join.css';
 
@@ -17,6 +17,8 @@ export class JoinUI {
     private readonly tutorial: HTMLButtonElement;
     private readonly status: HTMLParagraphElement;
     private readonly finePointer = window.matchMedia('(pointer: fine)');
+    private readonly coarsePointer = window.matchMedia('(pointer: coarse)');
+    private selectGeneratedName = false;
     private busy = false;
 
     constructor(private readonly choose: (destination: JoinDestination) => Promise<boolean>) {
@@ -75,7 +77,15 @@ export class JoinUI {
             event.preventDefault();
             void this.start(event.submitter === this.tutorial ? 'tutorial' : 'play');
         });
-        this.name.addEventListener('input', () => this.name.setCustomValidity(''));
+        this.name.addEventListener('click', () => {
+            if (!this.selectGeneratedName || !this.previewEditing) return;
+            this.selectGeneratedName = false;
+            this.name.select();
+        });
+        this.name.addEventListener('input', () => {
+            this.selectGeneratedName = false;
+            this.name.setCustomValidity('');
+        });
         // Entry requires choosing an action. Keep arena shortcuts outside the dialog.
         this.dialog.addEventListener('cancel', event => event.preventDefault());
         this.dialog.addEventListener('keydown', event => event.stopPropagation());
@@ -84,13 +94,20 @@ export class JoinUI {
     }
 
     get isOpen(): boolean { return this.dialog.open; }
+    private get touchLayout(): boolean {
+        return !this.finePointer.matches && (this.coarsePointer.matches || navigator.maxTouchPoints > 0);
+    }
+    get previewEditing(): boolean {
+        return this.isOpen && this.touchLayout && document.activeElement === this.name;
+    }
     previewBounds(): DOMRect | undefined { return this.isOpen ? this.dialog.getBoundingClientRect() : undefined; }
 
     open(returning: boolean): void {
         if (this.isOpen) return;
         this.name.value = playerName();
+        this.selectGeneratedName = isGeneratedPlayerName(this.name.value);
         this.name.setCustomValidity('');
-        this.touchHint.hidden = !window.matchMedia('(pointer: coarse)').matches && navigator.maxTouchPoints === 0;
+        this.touchHint.hidden = !this.touchLayout;
         this.mouse.checked = mouseControlEnabled();
         this.keyboard.checked = !this.mouse.checked;
         this.play.textContent = returning ? 'Play' : 'Play now';
@@ -131,9 +148,11 @@ export class JoinUI {
         if (this.finePointer.matches) setMouseControl(this.mouse.checked);
         sound.unlock();
         const action = destination === 'play' ? this.play : this.tutorial;
+        const idleLabel = action.textContent;
         action.focus({ preventScroll: true });
         this.setBusy(true);
-        this.status.textContent = destination === 'play' ? 'Joining the arena…' : 'Opening the tutorial…';
+        this.status.textContent = '';
+        action.textContent = destination === 'play' ? 'Joining…' : 'Opening…';
         try {
             if (await this.choose(destination)) {
                 this.close();
@@ -142,12 +161,12 @@ export class JoinUI {
         } catch {
             // A failed connection and a rejected launch share the same retry prompt.
         } finally {
+            action.textContent = idleLabel;
             this.setBusy(false);
         }
         this.status.textContent = destination === 'play'
-            ? 'Couldn’t join the arena. Try again.'
-            : 'Couldn’t open the tutorial. Try again.';
-        this.status.classList.add('join-error');
+            ? 'Couldn’t join. Try again.'
+            : 'Couldn’t open Tutorial. Try again.';
     }
 
     private setBusy(busy: boolean): void {
@@ -157,6 +176,5 @@ export class JoinUI {
         this.steering.disabled = busy;
         this.play.setAttribute('aria-disabled', String(busy));
         this.tutorial.setAttribute('aria-disabled', String(busy));
-        this.status.classList.remove('join-error');
     }
 }

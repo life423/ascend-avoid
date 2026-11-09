@@ -51,7 +51,7 @@ import { weaponRecipe } from '../render/weaponStyle'
 // Forward reference for the Game type to avoid circular dependencies
 interface Game {
     practiceUI?: import('../practice/PracticeUI').PracticeUI | null
-    joinUI?: { readonly isOpen: boolean; previewBounds(): DOMRect | undefined } | null
+    joinUI?: { readonly isOpen: boolean; readonly previewEditing: boolean; previewBounds(): DOMRect | undefined } | null
     inputManager?: { reset(): void } | null
     responsiveManager: { safeArea: { top: number; right: number; bottom: number; left: number } }
     gameState: string
@@ -1235,7 +1235,7 @@ export class MultiplayerMode extends GameMode {
             const scale = Math.max(canvas.width / (short * Math.max(1, aspect)), canvas.height / (short / Math.min(1, aspect)))
             this.lastRenderAt = timestamp
             return this.arenaPreview.update(state, { width: canvas.width / scale, height: canvas.height / scale, scale },
-                canvasBox, () => this.game.joinUI?.previewBounds(), timestamp, dt)
+                canvasBox, () => this.game.joinUI?.previewBounds(), timestamp, dt, this.game.joinUI?.previewEditing)
         }
         let subject: CameraSubject | null = null
         if (me && me.state === 'alive') {
