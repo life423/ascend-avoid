@@ -14,6 +14,8 @@ export class BlackHoleSchema extends Schema {
   cycling = false;
   firstStagger = 0;
   generation = 0;
+  /** Server-only. A cancelled warning must not replace the last live position. */
+  lastCorePosition: { x: number; y: number } | null = null;
   constructor(x = 0, y = 0, radius = BLACK_HOLE.CORE_RADIUS, activeAt = 0) {
     super(); this.x = x; this.y = y; this.radius = radius; this.activeAt = activeAt;
     this.phase = activeAt > 0 ? 'warning' : 'active'; this.at = activeAt;

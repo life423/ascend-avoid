@@ -6,19 +6,19 @@ Black holes change location through authoritative server phases. These are provi
 
 | Phase | Duration | Behavior |
 | --- | --- | --- |
-| Active | 60 seconds | Fixed position with the existing fired-player hazard and safe walking rim. |
+| Active | 90 seconds | Fixed position with the existing fired-player hazard and safe walking rim. |
 | Closing | 3 seconds | The full core and rim remain present at the old position for the entire warning. Lethality does not shrink with the countdown. |
 | Dormant | 1.5 seconds after closing | No visible marker, core, collision or reserved old location. Coordinates may change only while dormant. |
 | Warning | 4 seconds at a new position | Visible, hollow, harmless warning; no walking displacement or lethal core. |
 | Blocked retry | 1 second | Stay dormant and retry when a safe location cannot be found or a warning fails its final safety check. |
 
-The first active period is staggered by **12 seconds per slot**: 60, 72 and 84 seconds. Later active periods are 60 seconds. Initial arena locations also receive the four-second opening warning. Tutorial and explicitly placed test landmarks remain static. Only one phase transition occurs per server tick, so a pause cannot silently skip an entire warning.
+The first active periods last **90, 102 and 114 seconds**, with 12 seconds of stagger between slots. Later active periods last 90 seconds. Initial arena locations also receive the four-second opening warning. Tutorial and explicitly placed test landmarks remain static. Only one phase transition occurs per server tick, so a pause cannot silently skip an entire warning.
 
 Immediately before opening, the server repeats placement checks. A late-arriving player, including a flying player, can invalidate the warning: the hole becomes dormant rather than opening underneath them. There is no forced relocation fallback when the arena is crowded.
 
 ## Placement and giant routes
 
-The selector shuffles a fixed **17 × 17** grid covering normalized coordinates **0.1–0.9**. A new location must be at least **600 world units** from the old one; this minimum scales down for smaller arenas. It reserves the visible ring against rounded arena walls, fans, loose part badges and charging/active machines. Every alive player reserves their full physical body plus **120 units** beyond the visible ring, regardless of flight, bot status or spawn protection. Warning, active and closing holes reserve their future physical space; dormant holes do not.
+The selector shuffles a fixed **17 × 17** grid covering normalized coordinates **0.1–0.9**. A new location must be at least **600 world units** from the last active core and from the most recent warning if it was cancelled. This minimum scales down for smaller arenas. It reserves the visible ring against rounded arena walls, fans, loose part badges and charging/active machines. Every alive player reserves their full physical body plus **120 units** beyond the visible ring, regardless of flight, bot status or spawn protection. Warning, active and closing holes reserve their future physical space; dormant holes do not.
 
 On the current 4,200-unit arena, the maximum legal player width is **1,470**. Hole-pair spacing includes that full width, both cores, both eight-unit rims and a further **64-unit** corridor margin. A conservative 64 × 64 route search also requires all four legal corner body positions to connect to the center. Both nodes and continuous route edges are checked against expanded circular cores; an extra 24-unit routing buffer favors deferral over a narrow placement.
 
@@ -53,7 +53,7 @@ The crowded case correctly found no safe space. Exhaustively checking all 289 ca
 
 ### Ordinary-population simulation
 
-Three deterministic seeds (**11, 29, 73**) each ran **180 seconds at 30 Hz** against the existing compiled server, with the default field, fans, weapons, traffic and combat settings. The initial host was converted into a bot after default population fill, yielding **20 autonomous bots** without an idle or invulnerable human affecting the arena. Every run reached five simultaneous fans and at least one charging/active assembled weapon.
+Three deterministic seeds (**11, 29, 73**) each ran **180 seconds at 30 Hz** with the original 60-second active period and the default field, fans, weapons, traffic and combat settings. The initial host was converted into a bot after default population fill, yielding **20 autonomous bots** without an idle or invulnerable human affecting the arena. Every run reached five simultaneous fans and at least one charging/active assembled weapon.
 
 | Seed | Successful generation > 0 openings, by slot | No-space selector retries | Cancelled warnings | Longest dormant interval |
 | --- | --- | --- | --- | --- |
