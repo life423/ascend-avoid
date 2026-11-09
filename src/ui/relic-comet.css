@@ -1,0 +1,125 @@
+.relic-comet-ready {
+    position: fixed;
+    z-index: 29;
+    left: calc(var(--arena-left, 0px) + var(--arena-width, 100vw) / 2);
+    bottom: calc(var(--arena-bottom, 0px) + var(--arena-safe-bottom, 0px) + 94px);
+    transform: translateX(-50%);
+    min-height: 48px;
+    padding: 8px 18px;
+    border: 1px solid #fff0c7;
+    border-radius: 12px;
+    background: #ffdb94;
+    color: #201409;
+    font: 750 14px system-ui, sans-serif;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+
+.relic-comet-ready[hidden] { display: none; }
+body.online-mode.relic-comet-aiming .hamburger-button { display: none; }
+
+.relic-comet-aim {
+    position: fixed;
+    z-index: 60;
+    top: var(--arena-top, 0px);
+    left: var(--arena-left, 0px);
+    box-sizing: border-box;
+    width: var(--arena-width, 100vw);
+    height: var(--arena-height, 100dvh);
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    border: 0;
+    padding: calc(12px + var(--arena-safe-top, 0px)) calc(12px + var(--arena-safe-right, 0px))
+        calc(12px + var(--arena-safe-bottom, 0px)) calc(12px + var(--arena-safe-left, 0px));
+    background: #0a1521;
+    color: #f2f8fc;
+    font: 500 14px system-ui, sans-serif;
+    overflow: hidden;
+}
+
+.relic-comet-aim[open] {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    justify-items: center;
+    gap: 10px;
+}
+
+.relic-comet-aim::backdrop { background: #0a1521; }
+
+.relic-comet-heading { position: relative; z-index: 1; grid-row: 1; text-align: center; }
+.relic-comet-heading h2 { margin: 0 0 4px; font-size: clamp(20px, 4.5vw, 27px); line-height: 1.1; color: #ffdb94; }
+.relic-comet-heading p { margin: 0; font-size: 13px; line-height: 1.35; color: #c2d4e4; }
+.relic-comet-heading .relic-comet-warning {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0 10px;
+    margin-inline: auto;
+    padding: 4px 9px;
+    border: 1px solid #ff866f;
+    border-radius: 7px;
+    background: #351f24;
+    color: #ffe2db;
+}
+.relic-comet-warning[hidden] { display: none; }
+.relic-comet-warning-time { font-variant-numeric: tabular-nums; }
+
+.relic-comet-map {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    max-width: 900px;
+    min-width: 0;
+    min-height: 0;
+    border-radius: 8px;
+    background: #0a1521;
+    cursor: crosshair;
+    touch-action: none;
+}
+
+.relic-comet-ready:focus-visible, .relic-comet-aim button:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 3px;
+}
+.relic-comet-map:focus-visible { outline: 2px solid #7195a9; outline-offset: -2px; }
+
+.relic-comet-footer { width: min(100%, 540px); text-align: center; }
+.relic-comet-footer p { margin: 0; }
+.relic-comet-actions { display: flex; justify-content: center; gap: 8px; margin: 0 0 4px; }
+.relic-comet-actions button {
+    min-height: 44px;
+    padding: 6px 16px;
+    border: 1px solid #718497;
+    border-radius: 9px;
+    background: #192e40;
+    color: #f2f8fc;
+    font: 750 14px system-ui, sans-serif;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+.relic-comet-actions .relic-comet-fire { border-color: #fff0c7; background: #ffdb94; color: #201409; }
+.relic-comet-actions button:disabled { opacity: .55; cursor: default; }
+.relic-comet-status { min-height: 2em; color: #d3e3ee; font-size: 13px; }
+
+.relic-comet-touch {
+    --relic-control-lane: 140px;
+    padding-bottom: calc(var(--relic-control-lane) + var(--arena-safe-bottom, 0px));
+    background: linear-gradient(#0a1521 0 calc(100% - var(--relic-control-lane)), rgba(10, 21, 33, .15));
+    pointer-events: none;
+}
+.relic-comet-touch .relic-comet-map, .relic-comet-touch button { pointer-events: auto; }
+
+@media (max-width: 1199px), (pointer: coarse) {
+    .relic-comet-ready { bottom: calc(var(--arena-bottom, 0px) + var(--arena-safe-bottom, 0px) + 246px); }
+}
+
+@media (max-height: 500px) and (pointer: coarse) {
+    .relic-comet-ready { bottom: calc(var(--arena-bottom, 0px) + var(--arena-safe-bottom, 0px) + 68px); }
+    .relic-comet-touch { --relic-control-lane: 104px; }
+    .relic-comet-touch[open] { grid-template-columns: minmax(0, 1fr) minmax(156px, 28%); grid-template-rows: auto minmax(0, 1fr); }
+    .relic-comet-heading { grid-column: 1 / -1; }
+    .relic-comet-footer { align-self: center; }
+    .relic-comet-actions button { padding-inline: 10px; }
+}

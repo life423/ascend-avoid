@@ -3,6 +3,7 @@ const { Schema, MapSchema, ArraySchema, type } = schema;
 import { BlackHoleSchema } from "./BlackHoleSchema.js";
 import { PracticeSchema } from "./PracticeSchema.js";
 import { GustWaveSchema } from './GustWaveSchema.js';
+import { RelicCometSchema, RelicSchema } from './RelicSchema.js';
 import { updateGustWaves } from '../systems/gustWaves.js';
 import { BLACK_HOLE } from "../constants/gameConstants.js";
 import { updateBlackHoles } from '../systems/blackHoles.js';
@@ -39,6 +40,7 @@ import { chooseSpawn, SPAWN_RETRY_MS } from '../game/spawnSafety.js';
 import { fanClearOfHole, partClearOfFan, clearGemPoint } from '../game/arenaPlacement.js';
 import { allWeapons } from '../game/weaponKit.js';
 import { arenaClearance, constrainArenaPoint } from '../game/arenaBoundary.js';
+import { dropRelic, relicReservesHazard, updateRelic } from '../systems/relic.js';
 
 const { WORLD, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS, COMETS, BOMBS, TURBINE, SURGE } = GAME_CONSTANTS;
 /** Which way each of a bot's decisions steers it */
@@ -103,6 +105,8 @@ class GameState extends Schema {
   weaponSets = new ArraySchema<PinwheelSchema>();
   blackHoles = new ArraySchema<BlackHoleSchema>();
   practice = new PracticeSchema();
+  relic = new RelicSchema();
+  relicComet = new RelicCometSchema();
   weaponsOn: boolean = PINWHEEL.ENABLED;
   /** Shared release clock for new/replacement component sets; never an actor-specific cooldown. */
   nextWeaponPartsAt = 0;
@@ -218,6 +222,7 @@ class GameState extends Schema {
 
   removePlayer(sessionId: string): void {
     this.players.get(sessionId)?.weaponInjury.clear();
+    dropRelic(this, sessionId);
     if (this.gustWaves.has(sessionId)) this.gustWaves.delete(sessionId);
     this.spawnRetries.delete(sessionId);
     clearCapture(this, sessionId, this.now);
@@ -385,6 +390,7 @@ class GameState extends Schema {
       p.flightRemainingMs = p.flying ? Math.max(0, p.flightEndsAt - now) : 0;
       p.flightAgeMs = p.flying ? Math.max(0, now - p.flightStartedAt) : 0;
     });
+    updateRelic(this, now, deltaTime);
     topUpField(this);
   }
 
@@ -630,7 +636,7 @@ class GameState extends Schema {
         const near = Math.hypot(player.x + player.width / 2 - x, player.y + player.height / 2 - y);
         if (player.state === PLAYER_STATE.ALIVE && near < TURBINE.PLAYER_CLEARANCE + player.width / 2) open = false;
       });
-      if (!open || !this.turbineFits(x, y)) continue;
+      if (!open || !this.turbineFits(x, y) || relicReservesHazard(this, x, y, TURBINE.BODY_RADIUS)) continue;
       const spot = { x, y, intake: Math.round(Math.random() * Math.PI * 2 * 1000) / 1000 };
       if (this.blackHoles.every(hole => fanClearOfHole(spot, hole)) && parts.every(part => partClearOfFan(part, spot))) return spot;
     }
@@ -726,5 +732,7 @@ type([PinwheelSchema])(GameState.prototype, "weaponSets");
 type([BlackHoleSchema])(GameState.prototype, "blackHoles");
 type(PracticeSchema)(GameState.prototype, "practice");
 type({ map: GustWaveSchema })(GameState.prototype, "gustWaves");
+type(RelicSchema)(GameState.prototype, "relic");
+type(RelicCometSchema)(GameState.prototype, "relicComet");
 
 export { GameState };

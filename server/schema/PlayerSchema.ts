@@ -45,6 +45,7 @@ class PlayerSchema extends Schema {
   /** Earned during the two-second respawn wait; awarded on the next safe spawn. */
   pendingWeaponGems = 0;
   pendingCombatGems = 0;
+  relicCometReady = false;
   breathingBlocked = false;
   /** Positional forces contribute to warning telemetry, never to movement integration. */
   tickNudgeX = 0;
@@ -250,6 +251,7 @@ class PlayerSchema extends Schema {
   /** Put the player at a spot, in play and protected for a moment */
   spawnAt(x: number, y: number, now: number): void {
     this.land();
+    this.relicCometReady = false;
     this.shotMassBonus = 0; this.shotShooterWidth = 0; this.shotOwner = "";
     this.capturedBy = this.gulping = ""; this.captureNeedsRelease = false;
     this.x = x;
@@ -303,6 +305,7 @@ class PlayerSchema extends Schema {
   knockOut(now: number): void {
     this.weaponInjury.clear();
     this.clearLoadedTurn();
+    this.relicCometReady = false;
     this.shotMassBonus = 0; this.shotShooterWidth = 0; this.shotOwner = "";
     this.capturedBy = this.gulping = ""; this.captureNeedsRelease = false;
     this.state = PLAYER_STATE.DEAD;
@@ -407,6 +410,12 @@ class PlayerSchema extends Schema {
     else if (next > before) this.bodyGrowthMass = addBodyGrowth(this.bodyGrowthMass, next - before, worldWidth, worldHeight);
     this.gems = next;
     this.applyGrowth(worldWidth, worldHeight);
+  }
+
+  /** Predict the survivor's pickup width before the comet commits its spill. */
+  widthAfterLosingGems(lost: number): number {
+    const remainingShare = Math.max(0, this.gems - lost) / Math.max(1, this.gems);
+    return bodyWidthForGrowth(this.bodyGrowthMass * remainingShare, this.bodyWorldWidth, this.bodyWorldHeight);
   }
 
   /** Explicit fresh setup, not a live receipt or a way to heal from retained wealth. */
@@ -807,3 +816,4 @@ type("number")(PlayerSchema.prototype, "puffVx");
 type("number")(PlayerSchema.prototype, "puffVy");
 type("number")(PlayerSchema.prototype, "gustVx");
 type("number")(PlayerSchema.prototype, "gustVy");
+type("boolean")(PlayerSchema.prototype, "relicCometReady");

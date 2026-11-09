@@ -166,6 +166,7 @@ export class MultiplayerManager {
         onMessage('impact', (data) => this.eventBus.emit('multiplayer:impact', data));
         onMessage('launch', (data) => this.eventBus.emit('multiplayer:launch', data));
         onMessage('loadedTurnStopped', (data) => this.eventBus.emit('multiplayer:loadedTurnStopped', data));
+        onMessage('relicCometResult', (data) => this.eventBus.emit('multiplayer:relicCometResult', data));
         onMessage('parry', (data) => this.eventBus.emit('multiplayer:parry', data));
         onMessage('surge', (data) => this.eventBus.emit('multiplayer:surge', data));
         onMessage('blast', (data) => this.eventBus.emit('multiplayer:blast', data));

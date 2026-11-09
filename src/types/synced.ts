@@ -98,6 +98,8 @@ export interface SyncedGameState {
     blackHoles: SyncedArray<SyncedBlackHole>
     practice: SyncedPractice
     gustWaves: SyncedMap<SyncedGustWave>
+    relic: SyncedRelic
+    relicComet: SyncedRelicComet
 }
 
 /** GemSchema, as synced to the browser */
@@ -226,6 +228,7 @@ export interface SyncedPlayer {
     puffVy: number
     gustVx: number
     gustVy: number
+    relicCometReady: boolean
 }
 
 /** PracticeSchema, as synced to the browser */
@@ -248,6 +251,28 @@ export interface SyncedPractice {
     resetSerial: number
     sequence: boolean
     feedback: string
+}
+
+/** RelicSchema, as synced to the browser */
+export interface SyncedRelic {
+    phase: string
+    x: number
+    y: number
+    relayX: number
+    relayY: number
+    carrierId: string
+    availableAt: number
+    expiresAt: number
+}
+
+/** RelicCometSchema, as synced to the browser */
+export interface SyncedRelicComet {
+    phase: string
+    id: number
+    x: number
+    y: number
+    impactAt: number
+    ownerId: string
 }
 
 /** TurbineSchema, as synced to the browser */

@@ -6,6 +6,7 @@ import { fanClearOfHole, PLACEMENT } from './arenaPlacement.js';
 import { blackHoleReservesSpace } from './blackHole.js';
 import { distanceToSegment } from './geometry.js';
 import { allWeapons } from './weaponKit.js';
+import { relicReservesHazard } from '../systems/relic.js';
 
 interface Point { x: number; y: number }
 interface Core extends Point { radius: number }
@@ -79,6 +80,7 @@ export function blackHoleSpotClear(state: GameState, hole: BlackHoleSchema, x: n
   const candidate = { x, y, radius: hole.radius, phase: 'warning' };
   const ring = hole.radius + BLACK_HOLE.RING_RADIUS - BLACK_HOLE.CORE_RADIUS + 8;
   if (arenaClearance(x, y, state.worldWidth, state.worldHeight) < ring) return false;
+  if (relicReservesHazard(state, x, y, hole.radius + BLACK_HOLE.RIM_CLEARANCE)) return false;
   if (!state.isFloorAt(x, y) || neighbours.some(([dx, dy]) => !state.isFloorAt(x + dx * ring, y + dy * ring))) return false;
   if (state.turbines.some(fan => !fanClearOfHole(fan, candidate))) return false;
   for (const player of state.players.values()) if (player.state === 'alive') {
