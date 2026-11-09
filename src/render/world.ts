@@ -180,6 +180,14 @@ export function gemColor(id: string): string {
     return GEM_COLORS[Math.abs(hash) % GEM_COLORS.length] ?? GOLD
 }
 
+export function traceGemFace(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number): void {
+    ctx.moveTo(x, y - radius)
+    ctx.lineTo(x + radius * 0.78, y)
+    ctx.lineTo(x, y + radius)
+    ctx.lineTo(x - radius * 0.78, y)
+    ctx.closePath()
+}
+
 export function drawGem(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, color: string = GOLD): void {
     const alpha = ctx.globalAlpha
     ctx.globalAlpha = alpha * 0.2
@@ -189,11 +197,7 @@ export function drawGem(ctx: CanvasRenderingContext2D, x: number, y: number, rad
     ctx.fill()
     ctx.globalAlpha = alpha
     ctx.beginPath()
-    ctx.moveTo(x, y - radius)
-    ctx.lineTo(x + radius * 0.78, y)
-    ctx.lineTo(x, y + radius)
-    ctx.lineTo(x - radius * 0.78, y)
-    ctx.closePath()
+    traceGemFace(ctx, x, y, radius)
     ctx.fillStyle = color
     ctx.fill()
     ctx.beginPath()

@@ -2,7 +2,8 @@ import type { MultiplayerMode } from '../core/GameModes'
 import { CANNON, GEMS, INHALE, PLAYER_COLORS } from '../../server/constants/gameConstants'
 import { drawBreath, drawCreature, drawDizzy, drawProjectile, mouthOf } from './creatures'
 import { FONT, GOLD, drawCrown, drawRobot, roundedRect } from './style'
-import { SMOOTHING, SNAP_DISTANCE } from './shared'
+import { inView, segmentInView, SMOOTHING, SNAP_DISTANCE } from './shared'
+import { ANDROID_FIREFOX_RENDERING } from './browserRendering'
 import { drawAirflow } from './stream'
 import type { SyncedGameState, SyncedPlayer } from '../types/synced'
 import { formatGems } from '../utils/score'
@@ -74,20 +75,6 @@ export function drawPlayer(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
         drawn.y += (player.y - drawn.y) * SMOOTHING
     }
 
-    ctx.save()
-    if (player.spawnProtected || mode.inGrace) {
-        // Just back in: translucent inside a soft bubble until the protection wears off
-        ctx.globalAlpha = 0.45 + 0.15 * Math.sin(timestamp / 90)
-        ctx.strokeStyle = 'rgba(160, 235, 255, 0.95)'
-        ctx.lineWidth = 3
-        ctx.beginPath()
-        ctx.arc(drawn.x + player.width / 2, drawn.y + player.height / 2, player.width * 0.85, 0, Math.PI * 2)
-        ctx.stroke()
-    }
-    if (player.recovering) {
-        // Keep damage readable; injury must not resemble blinking invincibility.
-        ctx.globalAlpha = 0.9
-    }
     // Size changes pop: a quick overshoot and settle, centered on where the player is
     let grow = mode.drawnSizes.get(sessionId)
     if (!grow) {
@@ -108,6 +95,48 @@ export function drawPlayer(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
     const top = drawn.y + (player.height - size) / 2
     const centerX = drawn.x + player.width / 2
     const centerY = drawn.y + player.height / 2
+    const facing = isLocal ? mode.localFacing : (player.facing ?? -Math.PI / 2)
+    // Fired: it flies nose first, the way it's actually moving
+    if (player.flying) {
+        const dx = before ? drawn.x - before.x : 0
+        const dy = before ? drawn.y - before.y : 0
+        if (Math.hypot(dx, dy) > 0.5) headings.set(sessionId, Math.atan2(dy, dx))
+    } else {
+        headings.delete(sessionId)
+    }
+    const heading = headings.get(sessionId) ?? facing
+    const view = ANDROID_FIREFOX_RENDERING && !isLocal && !held ? mode.renderView : null
+    const u = 1 / Math.max(.001, view?.scale ?? 1)
+    const bodyRadius = Math.max(.95 * size, .85 * player.width) + 16 * u + 5
+    const labelRadius = String(player.name ?? '').length * 20 + 32
+    const labelVisible = segmentInView(view, centerX - labelRadius, drawn.y - 68, centerX + labelRadius, drawn.y, 0)
+    // Keep pose and flight heading current even when no body art is visible. A mouthful
+    // still needs its bookkeeping, and an inhale can reach in from outside the view.
+    if (!player.gulping && !player.inhaling && !inView(view, centerX, centerY, bodyRadius)) {
+        const flow = mode.flows.get(sessionId)
+        if (flow) flow.inhaling = false
+        mode.contactShapes.delete(sessionId)
+        if (labelVisible) {
+            ctx.save()
+            drawPlayerLabel(ctx, player, centerX, drawn.y, isLocal, isLeader)
+            ctx.restore()
+        }
+        return
+    }
+    ctx.save()
+    if (player.spawnProtected || mode.inGrace) {
+        // Just back in: translucent inside a soft bubble until the protection wears off
+        ctx.globalAlpha = 0.45 + 0.15 * Math.sin(timestamp / 90)
+        ctx.strokeStyle = 'rgba(160, 235, 255, 0.95)'
+        ctx.lineWidth = 3
+        ctx.beginPath()
+        ctx.arc(drawn.x + player.width / 2, drawn.y + player.height / 2, player.width * 0.85, 0, Math.PI * 2)
+        ctx.stroke()
+    }
+    if (player.recovering) {
+        // Keep damage readable; injury must not resemble blinking invincibility.
+        ctx.globalAlpha = 0.9
+    }
     const world = mode.multiplayerManager?.getState() as SyncedGameState | undefined
     const shieldLeft = world ? player.launchSafeUntil - mode.worldNow(world, timestamp) : 0
     if (shieldLeft > 0 && !player.flying) {
@@ -167,17 +196,6 @@ export function drawPlayer(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
             ctx.fill()
         }
     }
-    // A round creature whose eyes show which way it faces (its back is where it's vulnerable)
-    const facing = isLocal ? mode.localFacing : (player.facing ?? -Math.PI / 2)
-    // Fired: it flies nose first, the way it's actually moving
-    if (player.flying) {
-        const dx = before ? drawn.x - before.x : 0
-        const dy = before ? drawn.y - before.y : 0
-        if (Math.hypot(dx, dy) > 0.5) headings.set(sessionId, Math.atan2(dy, dx))
-    } else {
-        headings.delete(sessionId)
-    }
-    const heading = headings.get(sessionId) ?? facing
     // Pressed against someone, the body gives a little along the line of contact
     const squash = held || player.flying ? { angle: 0, amount: 0 } : squashFor(mode, sessionId, left + size / 2, top + size / 2, size, timestamp)
     // A full belly breathes gently; the captive cannot nudge its captor.
@@ -243,23 +261,26 @@ export function drawPlayer(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
         }
         ctx.restore()
     }
+    if (labelVisible) drawPlayerLabel(ctx, player, centerX, drawn.y, isLocal, isLeader)
+    ctx.restore()
+}
+
+function drawPlayerLabel(ctx: CanvasRenderingContext2D, player: SyncedPlayer, labelX: number, y: number, isLocal: boolean, isLeader: boolean): void {
     ctx.globalAlpha = 1
     ctx.font = `600 16px ${FONT}`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'bottom'
     ctx.fillStyle = isLocal ? '#ffffff' : '#cfd8dc'
     const label = String(player.name ?? '')
-    const labelX = drawn.x + player.width / 2
-    ctx.fillText(label, labelX, drawn.y - 6)
-    if (player.isBot) drawRobot(ctx, labelX - ctx.measureText(label).width / 2 - 11, drawn.y - 14, 12)
+    ctx.fillText(label, labelX, y - 6)
+    if (player.isBot) drawRobot(ctx, labelX - ctx.measureText(label).width / 2 - 11, y - 14, 12)
     if (isLeader) {
-        drawCrown(ctx, drawn.x + player.width / 2, drawn.y - 26, 22)
+        drawCrown(ctx, labelX, y - 26, 22)
         // What the leader is worth
         ctx.font = `800 14px ${FONT}`
         ctx.fillStyle = GOLD
-        ctx.fillText(formatGems(player.gems), drawn.x + player.width / 2, drawn.y - 50)
+        ctx.fillText(formatGems(player.gems), labelX, y - 50)
     }
-    ctx.restore()
 }
 
 /** A compact hold countdown below the body keeps the face and eyes unobscured. */
@@ -355,9 +376,10 @@ function squashFor(mode: MultiplayerMode, id: string, x: number, y: number, size
         const at = mode.drawnPositions.get(otherId) ?? other
         const ox = at.x + other.width / 2
         const oy = at.y + other.height / 2
-        const d = Math.hypot(ox - x, oy - y)
-        const overlap = (size + other.width) / 2 - d
-        if (overlap <= 0 || d < 1e-6) return
+        const dx = ox - x, dy = oy - y, distanceSquared = dx * dx + dy * dy
+        const reach = (size + other.width) / 2
+        if (distanceSquared >= reach * reach || distanceSquared < 1e-12) return
+        const overlap = reach - Math.sqrt(distanceSquared)
         const squash = Math.min(0.14, (overlap / size) * (other.width / (other.width + size)) * 1.6)
         if (squash > amount) {
             amount = squash

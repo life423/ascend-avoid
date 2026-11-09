@@ -43,7 +43,7 @@ function profileOrbit(kind: string): boolean { return ['sentinel', 'ricochet', '
 export function minimap(canvas: HTMLCanvasElement, kind: string, own: boolean, localId: string | null = 'me', unit = 1): void {
     canvas.width = 240 * unit; canvas.height = 240 * unit; canvas.style.width = '240px'; canvas.style.height = '240px';
     const ctx = canvas.getContext('2d')!;
-    const mode = {cssScale:unit,hudInsets:{top:0,right:0,bottom:0,left:0},controls:{touchDevice:false},chromeBottom:0};
+    const mode = {cssScale:unit,hudInsets:{top:0,right:0,bottom:0,left:0},controls:{touchDevice:false},chromeBottom:0,worldNow:()=>0};
     const state = {worldWidth:4200,worldHeight:4200,players:new Map(),pinwheel:{kind,phase:'active',owner:own?'me':'other',x:2100,y:2100},weaponSets:[]};
     drawMinimap(mode as never,ctx,canvas,state as never,{x:2100,y:2100,width:1000,height:1000,scale:1},localId,null);
 }

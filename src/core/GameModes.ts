@@ -29,7 +29,8 @@ import { Airflow } from '../render/airflow'
 import { bounce } from '../render/creatures'
 import { INTRO, IntroSpark, drawIntro, makeIntroSparks } from '../render/intro'
 import { COMPACT, GOLD } from '../render/style'
-import { drawBall, drawBomb, drawComet, drawGem, drawLaunchPuff, gemColor } from '../render/world'
+import { ANDROID_FIREFOX_RENDERING } from '../render/browserRendering'
+import { drawBall, drawBomb, drawComet, drawGem, drawLaunchPuff, gemColor, traceGemFace } from '../render/world'
 import { SMOOTHING, SNAP_DISTANCE, View } from '../render/shared'
 import { drawTopBar, drawLeaderboard, drawMinimap, drawBanner, drawShiftChip, drawTrafficChip, drawNotices, drawKnockedOut, drawMessage, drawCapturePrompt } from '../render/hud'
 import { drawGemBursts, drawBlasts, drawBursts, drawTheft } from '../render/effects'
@@ -1557,6 +1558,9 @@ export class MultiplayerMode extends GameMode {
         const present = new Set<string>()
         const localId = this.multiplayerManager?.localSessionId
         const clock = this.worldNow(state, timestamp)
+        const gemsByColor = ANDROID_FIREFOX_RENDERING
+            ? new Map<string, { x: number; y: number; radius: number }[]>()
+            : null
         state.gems?.forEach((gem: SyncedGem, id: string) => {
             present.add(id)
             let drawn = this.drawnGems.get(id)
@@ -1605,8 +1609,29 @@ export class MultiplayerMode extends GameMode {
                 ctx.globalAlpha = 1
                 return
             }
-            drawGem(ctx, drawn.x, drawn.y, radius, gemColor(id))
+            const color = gemColor(id)
+            if (gemsByColor) {
+                let gems = gemsByColor.get(color)
+                if (!gems) {
+                    gems = []
+                    gemsByColor.set(color, gems)
+                }
+                gems.push({ x: drawn.x, y: drawn.y, radius })
+            } else {
+                drawGem(ctx, drawn.x, drawn.y, radius, color)
+            }
         })
+        if (gemsByColor?.size) {
+            // One opaque fill per color for ordinary gems. Preserve the full art for special states.
+            ctx.save()
+            for (const [color, gems] of gemsByColor) {
+                ctx.beginPath()
+                for (const { x, y, radius } of gems) traceGemFace(ctx, x, y, radius)
+                ctx.fillStyle = color
+                ctx.fill()
+            }
+            ctx.restore()
+        }
         for (const id of this.drawnGems.keys()) {
             if (!present.has(id)) this.drawnGems.delete(id)
         }

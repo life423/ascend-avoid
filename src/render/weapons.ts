@@ -1,13 +1,15 @@
 import { constrainArenaPoint } from '../../server/game/arenaBoundary';
 import type { MultiplayerMode } from '../core/GameModes';
 import type { SyncedGameState, SyncedWeaponPart, SyncedPinwheel } from '../types/synced';
-import { PINWHEEL, WEAPON_FLEET, WEAPON_SHOTS } from '../../server/constants/gameConstants';
+import { PINWHEEL, SHOCKWAVE, WEAPON_FLEET, WEAPON_SHOTS } from '../../server/constants/gameConstants';
 import { COMPACT, FONT, roundedRect } from './style';
 import { PART_COLORS, weaponRecipe } from './weaponStyle';
 import { drawPulsarArray, pulsarPartIcon } from './shockwave';
 
 import { allWeapons, weaponProfile, orbitalPosition, ionFiring } from '../../server/game/weaponKit';
-import { inView } from './shared';
+import { inView, segmentInView } from './shared';
+import { ANDROID_FIREFOX_RENDERING } from './browserRendering';
+import { pulsarRadius } from '../../server/game/pulsar';
 import { drawWeaponBolts } from './weaponShots';
 import { ownsWeapon, ownershipReveal, drawOwnership, ownershipStroke, WEAPON_OWNERSHIP } from './weaponOwnership';
 
@@ -79,17 +81,18 @@ function drawPart(ctx: CanvasRenderingContext2D, part: SyncedWeaponPart, remaini
 
 export function drawWeapons(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state: SyncedGameState, timestamp: number): void {
     const weapons = allWeapons(state);
-    for (const w of weapons) drawWeapon(mode, ctx, state, timestamp, w);
+    const now = mode.worldNow(state, timestamp);
+    const unit = mode.cssScale / Math.max(.001, Math.abs(ctx.getTransform().a));
+    for (const w of weapons) drawWeapon(mode, ctx, state, timestamp, w, now, unit, weapons);
 }
 
-function drawWeapon(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state: SyncedGameState, timestamp: number, w: SyncedPinwheel): void {
+function drawWeapon(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state: SyncedGameState, timestamp: number, w: SyncedPinwheel, now: number, unit: number, weapons: readonly SyncedPinwheel[]): void {
     if (!w) return;
-    const now = mode.worldNow(state, timestamp);
     const reveal = ownershipReveal(w, mode.multiplayerManager?.localSessionId, now);
     if (w.phase === 'waiting') return;
-    const unit = mode.cssScale / Math.max(.001, Math.abs(ctx.getTransform().a));
     const localId = mode.multiplayerManager?.localSessionId;
     const own = ownsWeapon(w, localId), locked = Boolean(w.owner && !own);
+    const view = ANDROID_FIREFOX_RENDERING ? mode.renderView : null;
     if (w.phase === 'parts') {
         // Claim links fan out toward the locked siblings as soon as a first piece is collected.
         const claimAge = now - w.claimedAt;
@@ -99,8 +102,13 @@ function drawWeapon(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state:
                 const at = mode.centerOf(w.owner, source), t = claimAge / WEAPON_FLEET.CLAIM_PULSE_MS;
                 ctx.save(); ctx.strokeStyle = own ? '#80fff1' : '#aabbd3'; ctx.globalAlpha = 1 - t; ctx.lineWidth = 2;
                 for (const p of w.parts) {
-                    ctx.beginPath(); ctx.moveTo(at.x, at.y); ctx.lineTo(at.x + (p.x - at.x) * t, at.y + (p.y - at.y) * t); ctx.stroke();
-                    ctx.beginPath(); ctx.arc(p.x, p.y, 30 + (1 - t) * 35, 0, Math.PI * 2); ctx.stroke();
+                    const x = at.x + (p.x - at.x) * t, y = at.y + (p.y - at.y) * t;
+                    if (segmentInView(view, at.x, at.y, x, y, 2)) {
+                        ctx.beginPath(); ctx.moveTo(at.x, at.y); ctx.lineTo(x, y); ctx.stroke();
+                    }
+                    if (inView(view, p.x, p.y, 66)) {
+                        ctx.beginPath(); ctx.arc(p.x, p.y, 30 + (1 - t) * 35, 0, Math.PI * 2); ctx.stroke();
+                    }
                 }
                 ctx.restore();
             }
@@ -117,9 +125,11 @@ function drawWeapon(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state:
                 let y = Math.max(30, Math.min(state.worldHeight - 30, at.y + Math.sin(a) * radius));
                 const bounded = { x, y }; constrainArenaPoint(bounded, state.worldWidth, state.worldHeight, 30);
                 x = bounded.x; y = bounded.y;
-                ctx.save(); ctx.strokeStyle = 'rgba(200, 225, 240, 0.4)'; ctx.lineWidth = 1.5;
-                ctx.beginPath(); ctx.moveTo(at.x, at.y); ctx.lineTo(x, y); ctx.stroke(); ctx.restore();
-                if (inView(mode.renderView, x, y, 85)) drawPart(ctx, { ...p, x, y }, w.claimUntil - now, timestamp, w.kind, own, locked, locked && !carrier.spawnProtected && carrier.launchSafeUntil <= now && !allWeapons(state).some(other => other !== w && other.owner === localId && (other.phase === 'parts' || other.phase === 'carried')));
+                if (segmentInView(view, at.x, at.y, x, y, 2)) {
+                    ctx.save(); ctx.strokeStyle = 'rgba(200, 225, 240, 0.4)'; ctx.lineWidth = 1.5;
+                    ctx.beginPath(); ctx.moveTo(at.x, at.y); ctx.lineTo(x, y); ctx.stroke(); ctx.restore();
+                }
+                if (inView(mode.renderView, x, y, 85)) drawPart(ctx, { ...p, x, y }, w.claimUntil - now, timestamp, w.kind, own, locked, locked && !carrier.spawnProtected && carrier.launchSafeUntil <= now && !weapons.some(other => other && other !== w && other.owner === localId && (other.phase === 'parts' || other.phase === 'carried')));
             } else if (inView(mode.renderView, p.x, p.y, 85)) drawPart(ctx, p, w.claimUntil - now, timestamp, w.kind, own, locked);
         });
         return;
@@ -140,21 +150,34 @@ function drawWeapon(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, state:
     }
     const bounded = { x: drawX, y: drawY }; constrainArenaPoint(bounded, state.worldWidth, state.worldHeight, 56);
     drawX = bounded.x; drawY = bounded.y;
-    ctx.save(); ctx.translate(drawX, drawY);
-    const charging = w.phase === 'charging';
-    ctx.strokeStyle = charging ? '#ffd47d' : '#8195aa'; ctx.lineWidth = 2;
-    ctx.fillStyle = 'rgba(22, 41, 58, 0.95)'; ctx.beginPath(); ctx.arc(0, 0, 43, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    if (w.kind === 'pulsar') drawPulsarArray(ctx, w, now, own, unit);
-    else if (w.kind !== 'pinwheel') drawSatellite(ctx, w, now, own, unit);
-    else {
-    // Barrel-local preparation, with no arena-spanning dotted firing lanes.
-    ctx.save(); ctx.rotate(w.angle);
-    partIcon(ctx, 2, 31, 0, 0); ctx.restore();
-    ctx.save(); ctx.scale(1.3, 1.3); partIcon(ctx, 1, 0, 0, charging ? timestamp / 160 : w.angle * 2); partIcon(ctx, 0, 0, 0, w.angle); ctx.restore();
-    if (w.phase === 'active') { ctx.save(); ctx.rotate(w.angle); drawMuzzleCharge(ctx, 1 - (w.nextShotAt - now) / profile.shotMs, own, unit); ctx.restore(); }
+    // A weapon can fire into the view even when its chassis is offscreen.
+    const bodyVisible = inView(view, drawX, drawY, 85 + 28 * unit);
+    const age = now - w.pulseAt;
+    const waveVisible = w.kind === 'pulsar' && w.phase === 'active' && w.pulseAt > 0
+        && age >= 0 && age <= SHOCKWAVE.WAVE_MS + SHOCKWAVE.FADE_MS
+        && inView(view, drawX + w.pulseX - w.x, drawY + w.pulseY - w.y, pulsarRadius(age) + 12 + 4 * unit);
+    const ionVisible = w.kind === 'ion' && !carried
+        && segmentInView(view, drawX + 48 * Math.cos(w.angle), drawY + 48 * Math.sin(w.angle),
+            drawX + WEAPON_FLEET.ION_RANGE * Math.cos(w.angle), drawY + WEAPON_FLEET.ION_RANGE * Math.sin(w.angle), 10 + 4 * unit);
+    if (bodyVisible || waveVisible || ionVisible) {
+        ctx.save(); ctx.translate(drawX, drawY);
+        const charging = w.phase === 'charging';
+        if (bodyVisible) {
+            ctx.strokeStyle = charging ? '#ffd47d' : '#8195aa'; ctx.lineWidth = 2;
+            ctx.fillStyle = 'rgba(22, 41, 58, 0.95)'; ctx.beginPath(); ctx.arc(0, 0, 43, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        }
+        if (w.kind === 'pulsar') drawPulsarArray(ctx, w, now, own, unit, bodyVisible, waveVisible);
+        else if (w.kind !== 'pinwheel') drawSatellite(ctx, w, now, own, unit, bodyVisible, ionVisible);
+        else if (bodyVisible) {
+            // Barrel-local preparation, with no arena-spanning dotted firing lanes.
+            ctx.save(); ctx.rotate(w.angle);
+            partIcon(ctx, 2, 31, 0, 0); ctx.restore();
+            ctx.save(); ctx.scale(1.3, 1.3); partIcon(ctx, 1, 0, 0, charging ? timestamp / 160 : w.angle * 2); partIcon(ctx, 0, 0, 0, w.angle); ctx.restore();
+            if (w.phase === 'active') { ctx.save(); ctx.rotate(w.angle); drawMuzzleCharge(ctx, 1 - (w.nextShotAt - now) / profile.shotMs, own, unit); ctx.restore(); }
+        }
+        if (own && bodyVisible) drawOwnership(ctx, unit, reveal, reducedMotion.matches);
+        ctx.restore();
     }
-    if (own) drawOwnership(ctx, unit, reveal, reducedMotion.matches);
-    ctx.restore();
     drawWeaponBolts(mode, ctx, w, now, timestamp);
 }
 
@@ -164,8 +187,9 @@ function satellitePart(ctx: CanvasRenderingContext2D, weapon: string, kind: numb
     ctx.strokeStyle = color; ctx.fillStyle = '#233b56'; ctx.lineWidth = 2;
     if (kind === 0) {
         roundedRect(ctx, -20, -13, 40, 26, 3); ctx.fill(); ctx.stroke();
-        for (let x = -12; x <= 12; x += 8) { ctx.beginPath(); ctx.moveTo(x, -12); ctx.lineTo(x, 12); ctx.stroke(); }
-        ctx.beginPath(); ctx.moveTo(-20, 0); ctx.lineTo(20, 0); ctx.stroke();
+        ctx.beginPath();
+        for (let x = -12; x <= 12; x += 8) { ctx.moveTo(x, -12); ctx.lineTo(x, 12); }
+        ctx.moveTo(-20, 0); ctx.lineTo(20, 0); ctx.stroke();
     } else if (kind === 1) {
         ctx.beginPath(); ctx.moveTo(-18, -12); ctx.quadraticCurveTo(0, 24, 18, -12); ctx.closePath(); ctx.fill(); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(0, 4); ctx.lineTo(0, -21); ctx.stroke();
@@ -176,13 +200,13 @@ function satellitePart(ctx: CanvasRenderingContext2D, weapon: string, kind: numb
     }
 }
 
-function drawSatellite(ctx: CanvasRenderingContext2D, w: SyncedPinwheel, now: number, own: boolean, unit: number): void {
-    const profile = weaponProfile(w.kind), active = w.phase === 'active', carried = w.phase === 'carried';
+function drawSatellite(ctx: CanvasRenderingContext2D, w: SyncedPinwheel, now: number, own: boolean, unit: number, bodyVisible: boolean, ionVisible: boolean): void {
+    const profile = weaponProfile(w.kind), active = w.phase === 'active';
     const phase = Math.max(0, now - w.activatedAt) % WEAPON_FLEET.ION_PERIOD_MS;
     ctx.save(); ctx.rotate(w.angle);
     const chargingShot = active && now >= w.nextShotAt - WEAPON_SHOTS.CHARGE_MS;
-    if (!carried && w.kind === 'ion') {
-        const firing = active && w.kind === 'ion' && ionFiring(now - w.activatedAt);
+    if (ionVisible) {
+        const firing = active && ionFiring(now - w.activatedAt);
         const color = own ? WEAPON_OWNERSHIP.mint : WEAPON_OWNERSHIP.hostile;
         const reach = WEAPON_FLEET.ION_RANGE;
         if (!firing) ctx.setLineDash([9, 12]);
@@ -196,6 +220,7 @@ function drawSatellite(ctx: CanvasRenderingContext2D, w: SyncedPinwheel, now: nu
         }
         ctx.setLineDash([]); ctx.globalAlpha = 1;
     }
+    if (!bodyVisible) { ctx.restore(); return; }
     // Wide solar wings make moving satellites recognizable at a glance.
     if (profile.orbit) {
         ctx.save(); ctx.rotate(Math.PI / 2);
@@ -205,7 +230,9 @@ function drawSatellite(ctx: CanvasRenderingContext2D, w: SyncedPinwheel, now: nu
         ctx.restore();
     } else {
         ctx.strokeStyle = profile.color; ctx.lineWidth = 5;
-        for (const side of [-1, 1]) { ctx.beginPath(); ctx.moveTo(-22, side * 13); ctx.lineTo(-40, side * 35); ctx.stroke(); }
+        ctx.beginPath();
+        for (const side of [-1, 1]) { ctx.moveTo(-22, side * 13); ctx.lineTo(-40, side * 35); }
+        ctx.stroke();
     }
     satellitePart(ctx, w.kind, 1);
     ctx.save(); ctx.translate(27, 0); satellitePart(ctx, w.kind, 2); ctx.restore();

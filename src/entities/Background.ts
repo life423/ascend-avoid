@@ -3,6 +3,8 @@
  * Moved to entities/ directory and converted to TypeScript for better organization.
  */
 
+import { ANDROID_FIREFOX_RENDERING } from '../render/browserRendering';
+
 // Define interface for a star object
 interface Star {
   x: number;
@@ -22,6 +24,7 @@ export default class Background {
   private ctx: CanvasRenderingContext2D;
   private stars: Star[];
   private atlas: HTMLCanvasElement;
+  private starLayer: HTMLCanvasElement | null = null;
   private gradient: CanvasGradient | null = null;
   private width = 0;
   private height = 0;
@@ -64,6 +67,7 @@ export default class Background {
         sprite: color * SIZES + Math.round((size - .5) / 2 * (SIZES - 1))
       });
     }
+    if (ANDROID_FIREFOX_RENDERING) this.cacheStars();
   }
   
   /**
@@ -84,6 +88,29 @@ export default class Background {
     });
     return atlas;
   }
+
+  private drawStar(ctx: CanvasRenderingContext2D, star: Star, brightness: number): void {
+    ctx.globalAlpha = brightness;
+    ctx.drawImage(this.atlas, (star.sprite % SIZES) * CELL, Math.floor(star.sprite / SIZES) * CELL,
+      CELL, CELL, Math.round(star.x - CELL / 2), Math.round(star.y - CELL / 2), CELL, CELL);
+  }
+
+  private cacheStars(): void {
+    if (this.width === 0 || this.height === 0) {
+      this.starLayer = null;
+      return;
+    }
+    const layer = this.starLayer ?? document.createElement('canvas');
+    layer.width = this.width;
+    layer.height = this.height;
+    const ctx = layer.getContext('2d');
+    if (!ctx) {
+      this.starLayer = null;
+      return;
+    }
+    for (const star of this.stars) this.drawStar(ctx, star, star.brightness);
+    this.starLayer = layer;
+  }
   
   /**
    * Update and draw background
@@ -103,10 +130,17 @@ export default class Background {
    * @param timestamp - Current animation timestamp
    */
   private updateStars(timestamp: number): void {
+    const twinkleFactor = Math.sin(timestamp / 1000) * 0.2 + 0.8;
+    if (this.starLayer) {
+      // Android Firefox composites one star layer and shares its twinkle.
+      this.ctx.globalAlpha = twinkleFactor;
+      this.ctx.drawImage(this.starLayer, 0, 0);
+      this.ctx.globalAlpha = 1;
+      return;
+    }
+
     const elapsed = this.lastAt ? Math.min(4, Math.max(0, (timestamp - this.lastAt) / (1000 / 60))) : 1;
     this.lastAt = timestamp;
-    // Twinkle effect timing
-    const twinkleFactor = Math.sin(timestamp / 1000) * 0.2 + 0.8;
     
     for (const star of this.stars) {
       // Move star down slightly (parallax scrolling effect)
@@ -118,11 +152,7 @@ export default class Background {
         star.x = Math.random() * this.canvas.width;
       }
       
-      // Draw star with twinkle effect
-      const brightness = star.brightness * twinkleFactor;
-      this.ctx.globalAlpha = brightness;
-      this.ctx.drawImage(this.atlas, (star.sprite % SIZES) * CELL, Math.floor(star.sprite / SIZES) * CELL,
-        CELL, CELL, Math.round(star.x - CELL / 2), Math.round(star.y - CELL / 2), CELL, CELL);
+      this.drawStar(this.ctx, star, star.brightness * twinkleFactor);
     }
     
     // Restore opacity for the game scene
@@ -151,8 +181,7 @@ export default class Background {
    * Clean up resources
    */
   dispose(): void {
-    // No resources to clean up currently, 
-    // but included for consistency with other entity classes
+    this.starLayer = null;
     this.stars = [];
   }
 }
