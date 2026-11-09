@@ -414,8 +414,9 @@ follow-ups above; it does not close broader human-match validation.
 ### Physical device checks
 
 - [ ] Confirm the Android Firefox rendering fix resolves the reported severe lag
-  on the user's phone; compare with Chrome on the same device. Cached/cullable
-  rendering shipped, but emulation is not proof of actual Firefox performance.
+  in a longer live session on the user's Pixel and compare with Chrome. The
+  Android Firefox renderer shipped as `47941d2`; short local Pixel runs improved
+  at both ordinary and giant size. See [device validation](DEVICE_VALIDATION_2026-11-04.md#november-8-firefox-rendering-release).
 - [ ] Test Android Chrome/Firefox and the installed regular/Test wrappers in both
   orientations: movement/aim, puff/fire, weapon placement while steering, capture,
   flight, knockout/respawn, five lessons, sound/mute, menu finger scrolling,
@@ -463,11 +464,9 @@ follow-ups above; it does not close broader human-match validation.
 
 ### Deferred CI and maintenance
 
-- [ ] Repair the Ubuntu Chromium/Gecko/WebKit browser matrix and re-enable it
-  when that deferred work is resumed. Preserve the required gameplay CI gate.
-  Current Mac Firefox desktop/phone-viewport runs pass; the historical Mac
-  runtime failure is not a current blocker. Those runs do not establish Android
-  Firefox performance or repair the deferred Ubuntu matrix.
+- [ ] Restore wider Chromium and WebKit browser coverage on Linux. Preserve the
+  required gameplay, desktop Firefox, and Android Firefox emulator checks.
+  Physical Android performance remains a device playtest.
 - [ ] Reconcile GitHub #66/#68/#69 with the later shipped changes when updating
   those trackers; retain their genuinely open physical-device/store/design work.
 - [ ] Keep current docs separate from historical studies. Confirmed dead code/files

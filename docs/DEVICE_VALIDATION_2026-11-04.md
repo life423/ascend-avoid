@@ -126,7 +126,7 @@ connection to remain available; it is not a public website or deployment. The
 diagnostic's Chrome debug forwards and port-3002 reverse route were removed.
 Pairing was preserved and no extra browser tab was opened for this handoff.
 
-**Physical Android Firefox remains deferred by the user's Chrome-only choice.**
+**At the November 4 checkpoint, physical Android Firefox was deferred for Chrome-only testing.**
 The old severe-lag report is still open; successful Chrome and desktop Gecko
 checks do not establish that it is fixed.
 
@@ -146,6 +146,28 @@ latency. Compare a short idle scene and a busy multi-effect scene with Chrome,
 then a longer session for stalls, heat and battery. No lag fix or human balance
 validation should be declared from device connection or desktop tests.
 
-Ubuntu browser CI remains deferred by the user. The active TODO now reflects the
-successful Mac Firefox desktop/phone-viewport runs; those runs still do not settle
-Android lag or repair the deferred Ubuntu matrix.
+At that checkpoint, the Ubuntu browser matrix was deferred. The Mac Firefox
+viewport runs did not measure Android performance.
+
+## November 8 Firefox rendering release
+
+Firefox remote debugging worked over Wi-Fi on the Pixel. The live site initially
+recorded 8.6 animation callbacks per second and 75 gaps over 50 ms in ten
+seconds. Chrome on the same phone recorded 60 callbacks per second and no such
+gaps. Each arena had 20 players.
+
+The local fix reduces unnecessary Canvas work and requests the software 2D path
+only on Android Firefox. In 10-second local tests on the Pixel, the animated
+20-player room went from 15.8 to 74.4 animation callbacks per second at ordinary
+size and from 13.2 to 44.9 at maximum size. Both samples went from 116 gaps over
+50 ms to zero. These are callbacks, not compositor frame measurements or an
+end-to-end input latency test.
+
+The fix shipped in [PR #89](https://github.com/life423/ascend-avoid/pull/89) at
+`47941d2`. [Azure rollout](https://github.com/life423/ascend-avoid/actions/runs/42569652826)
+completed on revision `ascend-avoid--0000129` with 100% traffic. The live health
+endpoint reported production healthy, the live bundle matched the tested build
+byte for byte, and Firefox smoke tests joined a room on the release. The short
+performance numbers above are from a real Pixel on the matching local build.
+The longer live phone session, landscape and a second Android device still need
+measurement. Desktop Firefox and Android emulator CI cover functionality only.
