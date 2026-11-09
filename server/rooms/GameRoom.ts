@@ -6,6 +6,7 @@ import { GameState } from "../schema/GameState";
 import { exhale, fireCaptive } from "../systems/inhale";
 import { beginSurge } from "../systems/surges";
 import { spawnWeapon, deployWeapon, initializeWeaponSets } from "../systems/weapons";
+import { balanceBots } from "../systems/bots";
 import { allWeapons, weaponKinds } from '../game/weaponKit';
 
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
@@ -22,6 +23,7 @@ interface JoinOptions {
   name?: unknown;
   /** Older clients send the name under this key */
   playerName?: unknown;
+  spectator?: unknown;
 }
 
 /** Clean up a player-supplied name: printable characters only, at most 20. Returns null if unusable. */
@@ -34,11 +36,12 @@ function sanitizeName(raw: unknown): string | null {
 
 /**
  * The shared online world. The server runs everything; browsers ask for hops. Players drop in
- * when they join and come back two seconds after a hit (see GameState). The room closes when
- * the last player leaves.
+ * when they join and come back two seconds after a hit (see GameState). A passive connection
+ * watches the same room before entering play. The room closes when the last connection leaves.
  */
 export class GameRoom extends Room<GameState> {
   maxClients: number = GAME_CONSTANTS.GAME.MAX_PLAYERS;
+  private spectators = new Set<string>();
 
   async onCreate(options: any = {}): Promise<void> {
     await this.configureArena(options);
@@ -263,6 +266,18 @@ export class GameRoom extends Room<GameState> {
       if (player && name) player.name = name;
     });
 
+    this.onMessage("joinArena", (client, data: { name?: unknown }) => {
+      if (!this.allowMessage(client) || !this.spectators.has(client.sessionId)) return;
+      const name = sanitizeName(data?.name);
+      if (!name) {
+        client.send("joinArenaResult", { ok: false, reason: "invalid-name" });
+        return;
+      }
+      this.spectators.delete(client.sessionId);
+      this.state.botPreview = this.spectators.size > 0;
+      this.enterArena(client, name);
+    });
+
     logger.info(`Room ${this.roomId} created (world ${this.state.worldWidth}×${this.state.worldHeight})`);
   }
 
@@ -328,17 +343,33 @@ export class GameRoom extends Room<GameState> {
   }
 
   onJoin(client: Client, options: JoinOptions = {}): void {
-    const player = this.state.addPlayer(client.sessionId, sanitizeName(options.name ?? options.playerName));
+    if (options.spectator === true) {
+      this.spectators.add(client.sessionId);
+      this.state.botPreview = true;
+      balanceBots(this.state, Date.now());
+      return;
+    }
+    this.enterArena(client, sanitizeName(options.name ?? options.playerName));
+  }
+
+  private enterArena(client: Client, name: string | null): void {
+    const player = this.state.addPlayer(client.sessionId, name);
     this.broadcast("playerJoined", { id: client.sessionId, name: player.name });
     logger.info(`${player.name} joined room ${this.roomId} (${this.state.players.size} players)`);
   }
 
   onLeave(client: Client, _consented?: boolean): void | Promise<void> {
     this.messageBudgets.delete(client.sessionId);
-    const name = this.state.players.get(client.sessionId)?.name ?? client.sessionId;
+    if (this.spectators.delete(client.sessionId)) {
+      this.state.botPreview = this.spectators.size > 0;
+      balanceBots(this.state, Date.now());
+      return;
+    }
+    const player = this.state.players.get(client.sessionId);
+    if (!player) return;
     this.state.removePlayer(client.sessionId);
     this.broadcast("playerLeft", { id: client.sessionId });
-    logger.info(`${name} left room ${this.roomId} (${this.state.players.size} players)`);
+    logger.info(`${player.name} left room ${this.roomId} (${this.state.players.size} players)`);
   }
 
   onDispose(): void {

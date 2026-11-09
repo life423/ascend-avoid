@@ -5,7 +5,7 @@ import { GameEvents } from '../constants/client-constants';
 import { GAME } from '../../server/constants/gameConstants';
 import { NAME_EVENT, playerName } from '../core/PlayerName';
 
-export type OnlineSession = { kind: 'play' } | { kind: 'practice'; lesson: PracticeLesson; token: string; sequence?: boolean };
+export type OnlineSession = { kind: 'play'; spectator?: boolean } | { kind: 'practice'; lesson: PracticeLesson; token: string; sequence?: boolean };
 
 export class MultiplayerManager {
     private generation = 0;
@@ -14,7 +14,7 @@ export class MultiplayerManager {
     private client: Client | null = null;
     private room: Room | null = null;
     private eventBus: EventBus;
-    private isConnecting: boolean = false;
+    private connecting: Promise<boolean> | null = null;
     /** Round trip to the server in ms, measured every couple of seconds (0 until the first reply) */
     roundTripMs: number = 0;
     private pingTimer: ReturnType<typeof setInterval> | null = null;
@@ -45,11 +45,15 @@ export class MultiplayerManager {
         }
     }
 
+    connect(): Promise<boolean> {
+        if (this.connecting) return this.connecting;
+        if (this.disposed || this.room) return Promise.resolve(this.isConnected());
+        this.connecting = this.openRoom().finally(() => { this.connecting = null; });
+        return this.connecting;
+    }
+
     /** A late connection is left immediately, even after an exit or a timeout. */
-    async connect(): Promise<boolean> {
-        if (this.disposed || this.isConnecting) return false;
-        if (this.room) return this.isConnected();
-        this.isConnecting = true;
+    private async openRoom(): Promise<boolean> {
         const generation = ++this.generation;
         let timeout: ReturnType<typeof setTimeout> | undefined;
         try {
@@ -57,7 +61,7 @@ export class MultiplayerManager {
             this.client = client;
             const join = this.session.kind === 'practice'
                 ? (this.reconnectionToken ? client.reconnect(this.reconnectionToken) : client.create('tutorial_room', { name: this.getPlayerName(), token: this.session.token, lesson: this.session.lesson, sequence: this.session.sequence }))
-                : client.joinOrCreate(GAME.ROOM_NAME, { name: this.getPlayerName() });
+                : client.joinOrCreate(GAME.ROOM_NAME, this.session.spectator ? { spectator: true } : { name: this.getPlayerName() });
             const accepted = join.then(room => {
                 if (generation !== this.generation || this.disposed) { void room.leave(); throw new Error('Obsolete connection'); }
                 return room;
@@ -80,8 +84,36 @@ export class MultiplayerManager {
             return false;
         } finally {
             if (timeout) clearTimeout(timeout);
-            if (!this.disposed && (generation === this.generation || generation + 1 === this.generation)) this.isConnecting = false;
         }
+    }
+
+    /** Spawn in the room already being watched, and wait for the server's player record. */
+    async joinArena(name: string): Promise<boolean> {
+        if (this.session.kind !== 'play' || !await this.connect()) return false;
+        const room = this.room;
+        if (!room || this.disposed) return false;
+        if (this.getLocalPlayer()) {
+            this.session.spectator = false;
+            return true;
+        }
+        const joined = await new Promise<boolean>(resolve => {
+            const finish = (ok: boolean) => {
+                clearTimeout(timer);
+                room.onStateChange.remove(check);
+                room.onLeave.remove(left);
+                removeResult();
+                resolve(ok);
+            };
+            const check = () => { if (room.state?.players?.has(room.sessionId)) finish(true); };
+            const left = () => finish(false);
+            const timer = setTimeout(left, 8000);
+            const removeResult = room.onMessage('joinArenaResult', (result: { ok: boolean }) => { if (!result.ok) left(); });
+            room.onStateChange(check);
+            room.onLeave(left);
+            try { room.send('joinArena', { name }); } catch { left(); }
+        });
+        if (joined && !this.disposed) this.session.spectator = false;
+        return joined && !this.disposed;
     }
 
     /**
@@ -225,7 +257,6 @@ export class MultiplayerManager {
             this.client = null;
         }
         
-        this.isConnecting = false;
         this.reconnectionToken = '';
     }
 
@@ -261,6 +292,6 @@ export class MultiplayerManager {
     /** You picked a new name (in the drawer, say): everyone sees it right away */
     private onNameChange = (event: Event): void => {
         const name = (event as CustomEvent<string>).detail;
-        if (this.room && name) this.room.send('updateName', { name });
+        if (this.room && name && this.getLocalPlayer()) this.room.send('updateName', { name });
     };
 }

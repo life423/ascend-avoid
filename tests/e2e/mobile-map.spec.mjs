@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { enterGame } from './helpers/enter-game.mjs';
 
 test.skip(process.env.E2E_TEST_HOOKS !== '1', 'requires an isolated local test server');
 test('mobile map fills the viewport during an edge knockout and after rotation', async ({ page, hasTouch }) => {
@@ -7,7 +8,7 @@ test('mobile map fills the viewport during an edge knockout and after rotation',
     url: route.request().url().replace('/joinOrCreate/', '/create/'),
     postData: JSON.stringify({ ...route.request().postDataJSON(), testBots: 0, testFieldGems: 0 }),
   }));
-  await page.goto('/');
+  await enterGame(page);
   await page.waitForFunction(() => window.game?.currentGameMode?.multiplayerManager?.room?.state?.players?.size === 1);
   await expect.poll(() => page.evaluate(() => document.body.classList.contains('intro-playing'))).toBe(false);
   const outside = () => page.evaluate(() => {

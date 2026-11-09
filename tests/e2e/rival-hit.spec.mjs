@@ -1,4 +1,5 @@
 import { test,expect } from '@playwright/test';
+import { enterGame } from './helpers/enter-game.mjs';
 import { Client } from 'colyseus.js';
 test.skip(process.env.E2E_TEST_HOOKS!=='1','isolated local game fixture');
 
@@ -7,7 +8,7 @@ for(const [width,gems]of[[200,414],[500,3125]])test(`equal-width ${width} shot v
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.addInitScript(()=>{localStorage.setItem('ascend.mouseFollow','off');localStorage.setItem('ascend.guideSeen','true');});
   await page.route('**/matchmake/joinOrCreate/game_room',route=>route.continue({url:route.request().url().replace('/joinOrCreate/','/create/'),postData:JSON.stringify({...route.request().postDataJSON(),testBots:0,testFieldGems:0,testCalm:true})}));
-  await page.goto('/');await page.waitForFunction(()=>window.game?.currentGameMode?.lastView&&!document.body.classList.contains('intro-playing'));
+  await enterGame(page);await page.waitForFunction(()=>window.game?.currentGameMode?.lastView&&!document.body.classList.contains('intro-playing'));
   const meta=await page.evaluate(()=>{const r=window.game.currentGameMode.multiplayerManager.getRoom();return{id:r.id,me:r.sessionId};});
   const client=new Client(process.env.E2E_URL.replace(/^http/,'ws')),shooter=await client.joinById(meta.id,{name:'Rival'}),ammo=await client.joinById(meta.id,{name:'Ammo'});
   shooter.onMessage('*',()=>{});ammo.onMessage('*',()=>{});

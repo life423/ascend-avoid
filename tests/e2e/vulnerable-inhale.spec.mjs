@@ -1,9 +1,10 @@
 import {test,expect} from '@playwright/test';
+import { enterGame } from './helpers/enter-game.mjs';
 test.skip(process.env.E2E_TEST_HOOKS!=='1','isolated local server only');
 async function start(page){
  await page.addInitScript(()=>{localStorage.setItem('ascend.guideSeen','true');localStorage.setItem('ascend.mouseFollow','off');});
  await page.route('**/matchmake/joinOrCreate/game_room',route=>route.continue({url:route.request().url().replace('/joinOrCreate/','/create/'),postData:JSON.stringify({...route.request().postDataJSON(),testBots:0,testFieldGems:0,testCalm:true})}));
- await page.goto('/');await page.waitForFunction(()=>window.game?.currentGameMode?.lastView&&!document.body.classList.contains('intro-playing'));
+ await enterGame(page);await page.waitForFunction(()=>window.game?.currentGameMode?.lastView&&!document.body.classList.contains('intro-playing'));
 }
 const send=(page,type,data)=>page.evaluate(({type,data})=>window.game.currentGameMode.multiplayerManager.room.send(type,data),{type,data});
 for(const reduced of [false,true])test(`injured breathing stops, movement survives, shell heals (${reduced?'reduced':'normal'} motion)`,async({page,hasTouch})=>{

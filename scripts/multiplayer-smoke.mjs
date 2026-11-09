@@ -59,6 +59,51 @@ async function capture(captor, join) {
   return kid;
 }
 
+test('passive clients watch the same bot-filled room and enter only once', { timeout: 15000 }, async t => {
+  const first = await new Client(url).create('game_room', {
+    spectator: true, name: 'Ignored', testBots: 2, testFieldGems: 0, testCalm: true,
+  });
+  const second = await new Client(url).joinById(first.roomId, { spectator: true });
+  t.after(async () => { await Promise.allSettled([first, second].filter(room => room.connection.isOpen).map(room => room.leave())); });
+  const joined = [], left = [], results = [];
+  second.onMessage('playerJoined', data => joined.push(data));
+  second.onMessage('playerLeft', data => left.push(data));
+  first.onMessage('joinArenaResult', data => results.push(data));
+  first.onMessage('playerJoined', () => {});
+  const bots = room => [...(room.state.players?.values() ?? [])].filter(p => p.isBot);
+  await until(() => bots(first).length === 2 && bots(second).length === 2, 'bot preview arrives for both spectators');
+  const initialBotIds = bots(second).map(bot => bot.sessionId);
+  assert.equal(first.state.players.size, 2);
+  assert.equal(second.state.players.size, 2);
+  assert.equal(me(first), undefined);
+  assert.equal(me(second), undefined);
+
+  first.send('steer', { x: 1, y: 0 });
+  first.send('inhale');
+  first.send('tap');
+  first.send('joinArena', { name: '<>' });
+  await until(() => results.length === 1, 'invalid name is rejected after passive inputs');
+  assert.deepEqual(results[0], { ok: false, reason: 'invalid-name' });
+  assert.equal(me(first), undefined);
+  assert.equal(joined.length, 0);
+  assert.deepEqual(bots(second).map(bot => bot.sessionId), initialBotIds);
+
+  first.send('joinArena', { name: ' <Pilot> ' });
+  first.send('joinArena', { name: 'Duplicate' });
+  await until(() => me(first)?.name === 'Pilot' && second.state.players.get(first.sessionId)?.name === 'Pilot',
+    'both clients see the same admitted player');
+  assert.equal(first.state.players.size, 2);
+  assert.equal(bots(first).length, 1);
+  assert.equal(me(first).state, 'alive');
+  assert(me(first).spawnProtected);
+  assert.equal(me(first).inhaling, false);
+  assert.deepEqual(joined, [{ id: first.sessionId, name: 'Pilot' }]);
+
+  await first.leave();
+  await until(() => bots(second).length === 2 && !second.state.players.has(first.sessionId), 'spectator preview survives the last active player leaving');
+  assert.deepEqual(left, [{ id: first.sessionId }]);
+});
+
 scenario('instant join, safe spawn, shared names, whole arena and dormant hazards', async (a, join) => {
   assert.equal(me(a).state, 'alive');
   assert.equal(me(a).width, 20);

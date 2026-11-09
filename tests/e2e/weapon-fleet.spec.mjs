@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { enterGame } from './helpers/enter-game.mjs';
 
 test.skip(process.env.E2E_TEST_HOOKS !== '1', 'isolated local test server only');
 test('six recipes synchronize, reserved siblings show radar, and satellites deploy and travel', async ({ page }) => {
@@ -9,7 +10,7 @@ test('six recipes synchronize, reserved siblings show radar, and satellites depl
     url: route.request().url().replace('/joinOrCreate/', '/create/'),
     postData: JSON.stringify({ ...route.request().postDataJSON(), testBots: 0, testFieldGems: 0, testWeaponSets: 9, testTurbines: 'manual' }),
   }));
-  await page.goto('/');
+  await enterGame(page);
   await page.waitForFunction(() => window.game?.currentGameMode?.lastView && !document.body.classList.contains('intro-playing'));
   await page.evaluate(() => {
     window.weaponTexts = []; window.weaponGuidanceDots = 0;

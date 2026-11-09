@@ -1,8 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { enterGame } from './helpers/enter-game.mjs';
 
 // Runs against a local production server: no test commands, state injection or fake success.
 test.skip(!process.env.PRACTICE_E2E, 'explicit local practice release checks');
 const pageErrors = new WeakMap();
+const joinScreen = page => page.getByRole('dialog', { name: 'Ascend Avoid', exact: true });
 test.beforeEach(({ page }) => { const errors = []; pageErrors.set(page, errors); page.on('pageerror', error => errors.push(error.message)); });
 test.afterEach(({ page }) => { expect(pageErrors.get(page)).toEqual([]); });
 const read = page => page.evaluate(() => {
@@ -12,8 +14,7 @@ const read = page => page.evaluate(() => {
 });
 async function start(page, lesson, sequence = false) {
   await page.addInitScript(() => { localStorage.setItem('ascend.mouseFollow', 'off'); });
-  await page.goto('/');
-  await page.waitForFunction(() => !!window.game?.currentGameMode?.multiplayerManager?.getLocalPlayer());
+  await enterGame(page);
   await page.evaluate(() => window.drawerUI.open());
   await page.getByRole('button', { name: 'Practice / Tutorials', exact: true }).click();
   const names = { basics: 'Move, grow & capture', combat: 'Aim, hit & finish', defense: 'Escape & recover', blackhole: 'Black-hole shot', weapon: 'Build a weapon' };
@@ -128,8 +129,9 @@ test('skip leaves unfinished, every lesson is unlocked, replay and exit start a 
     const s = window.game.currentGameMode.multiplayerManager.getState();
     return s.worldWidth === 4200 && !s.practice.enabled && [...s.players.keys()].every(id => !id.startsWith('practice-'));
   })).toBe(true);
-  await page.reload(); await page.waitForFunction(() => !!window.game?.currentGameMode?.multiplayerManager?.getLocalPlayer());
-  await expect(page.locator('.practice-offer')).toBeHidden();
+  await page.reload();
+  await expect(joinScreen(page).getByRole('button', { name: 'Play', exact: true })).toBeVisible();
+  await expect(joinScreen(page).getByRole('button', { name: 'Tutorial', exact: true })).toHaveCount(0);
 });
 
 test('picker and instructions fit viewport, keep focus and cancel held input on blur', async ({ page }) => {
@@ -154,8 +156,7 @@ test('blocked storage still permits lessons and an old guide flag never complete
     Storage.prototype.getItem = () => { throw Error('blocked storage'); };
     Storage.prototype.setItem = () => { throw Error('blocked storage'); };
   });
-  await page.goto('/');
-  await page.waitForFunction(() => !!window.game?.currentGameMode?.multiplayerManager?.getLocalPlayer());
+  await enterGame(page);
   await page.evaluate(() => window.drawerUI.open());
   await page.getByRole('button', { name: 'Practice / Tutorials', exact: true }).click();
   await expect(page.locator('[data-lesson="weapon"]')).toContainText('Ready to try');
@@ -164,22 +165,28 @@ test('blocked storage still permits lessons and an old guide flag never complete
   await expect(page.locator('.practice-panel')).toBeVisible();
 });
 
-test('first visit offers Play tutorial directly and Not now dismisses without starting it', async ({ page }) => {
+test('first visit can play immediately and the tutorial stays reachable from the menu', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('button', { name: 'Play tutorial', exact: true })).toBeVisible();
-  expect(await page.evaluate(() => window.game.currentGameMode.multiplayerManager.getState().practice.enabled)).toBe(false);
-  await page.getByRole('button', { name: 'Not now', exact: true }).click();
-  await expect(page.locator('.practice-offer')).toBeHidden();
+  const join = joinScreen(page);
+  await expect(join.getByRole('button', { name: 'Tutorial', exact: true })).toBeVisible();
+  await join.getByRole('button', { name: 'Play now', exact: true }).click();
+  await expect(join).toBeHidden();
+  await page.waitForFunction(() => {
+    const manager = window.game?.currentGameMode?.multiplayerManager;
+    return manager?.getLocalPlayer() && manager.getState()?.practice?.enabled === false;
+  });
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('ascend.practice.v2')).status)).toBe('skipped');
-  await page.reload(); await page.waitForFunction(() => !!window.game?.currentGameMode?.multiplayerManager?.getLocalPlayer());
-  await expect(page.locator('.practice-offer')).toBeHidden();
+  await page.reload();
+  await expect(join.getByRole('button', { name: 'Tutorial', exact: true })).toHaveCount(0);
+  await join.getByRole('button', { name: 'Play', exact: true }).click();
+  await page.waitForFunction(() => !!window.game?.currentGameMode?.multiplayerManager?.getLocalPlayer());
   await page.evaluate(() => window.drawerUI.open()); await page.getByRole('button', { name: 'Practice / Tutorials', exact: true }).click();
   await page.getByRole('button', { name: 'Start full tutorial', exact: true }).click();
   await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager?.getState()?.practice?.sequence === true);
 });
 
-test('first-visit Play tutorial starts the full sequence without another picker', async ({ page }) => {
-  await page.goto('/'); await page.getByRole('button', { name: 'Play tutorial', exact: true }).click();
+test('first-visit Tutorial starts the full sequence without another picker', async ({ page }) => {
+  await page.goto('/'); await joinScreen(page).getByRole('button', { name: 'Tutorial', exact: true }).click();
   await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager?.getState()?.practice?.sequence === true);
   await expect(page.getByRole('dialog', { name: 'Practice / Tutorials' })).toBeHidden();
   expect((await read(page)).lesson).toBe('basics');
@@ -192,7 +199,7 @@ test('exiting during a delayed private connection leaves its late room and stays
     await new Promise(resolve => setTimeout(resolve, 700));
     await route.fulfill({ response });
   });
-  await page.goto('/'); await page.waitForFunction(() => !!window.game?.currentGameMode?.multiplayerManager?.getLocalPlayer());
+  await enterGame(page);
   await page.evaluate(() => window.drawerUI.open()); await page.getByRole('button', { name: 'Practice / Tutorials', exact: true }).click();
   await page.locator('[data-lesson="weapon"]').click();
   await page.getByRole('button', { name: 'Exit tutorial', exact: true }).click();

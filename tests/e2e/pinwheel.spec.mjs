@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { enterGame } from './helpers/enter-game.mjs';
 
 test.skip(process.env.E2E_TEST_HOOKS !== '1', 'requires an isolated local test server');
 
@@ -8,7 +9,7 @@ test('gliding over a weapon part collects it without inhaling', async ({ page })
     postData: JSON.stringify({ ...route.request().postDataJSON(), testBots: 0, testFieldGems: 0 }),
   }));
   await page.addInitScript(()=>{localStorage.setItem('ascend.mouseFollow','off');localStorage.setItem('ascend.guideSeen','true');});
-  await page.goto('/');
+  await enterGame(page);
   await page.waitForFunction(() => window.game?.currentGameMode?.multiplayerManager?.room?.state?.players?.size === 1);
   await page.waitForFunction(()=>window.game?.currentGameMode?.lastView&&!document.body.classList.contains('intro-playing'));
   await page.evaluate(() => {
@@ -39,7 +40,7 @@ test('collect, carry and deliberately place a pinwheel with a button or E', asyn
     postData: JSON.stringify({ ...route.request().postDataJSON(), testBots: 0, testFieldGems: 0, testCores: 0 }),
   }));
   await page.addInitScript(()=>{localStorage.setItem('ascend.mouseFollow','off');localStorage.setItem('ascend.guideSeen','true');});
-  await page.goto('/');
+  await enterGame(page);
   await page.waitForFunction(() => window.game?.currentGameMode?.multiplayerManager?.room?.state?.players?.size === 1);
   await page.waitForFunction(()=>window.game?.currentGameMode?.lastView&&!document.body.classList.contains('intro-playing'));
   await page.evaluate(() => {
@@ -112,7 +113,7 @@ test('a collected part stays carried after release, movement and turning; gust s
     postData: JSON.stringify({ ...route.request().postDataJSON(), testBots: 0, testFieldGems: 0, testCores: 0 }),
   }));
   await page.addInitScript(()=>{localStorage.setItem('ascend.mouseFollow','off');localStorage.setItem('ascend.guideSeen','true');});
-  await page.goto('/');
+  await enterGame(page);
   await page.waitForFunction(() => window.game?.currentGameMode?.multiplayerManager?.room?.state?.players?.size === 1);
   await page.waitForFunction(()=>window.game?.currentGameMode?.lastView&&!document.body.classList.contains('intro-playing'));
   await page.evaluate(() => window.game.currentGameMode.multiplayerManager.room.send('test:setGems', { count: 100 }));

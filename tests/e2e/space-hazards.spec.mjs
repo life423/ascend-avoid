@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { enterGame } from './helpers/enter-game.mjs';
 import { Client } from 'colyseus.js';
 
 test.skip(process.env.E2E_TEST_HOOKS !== '1', 'requires an isolated local test server');
@@ -8,7 +9,7 @@ async function start(page, options = {}) {
     url: route.request().url().replace('/joinOrCreate/', '/create/'),
     postData: JSON.stringify({ ...route.request().postDataJSON(), testBots: 0, testFieldGems: 0, testTurbines: 'manual', ...options }),
   }));
-  await page.goto('/');
+  await enterGame(page);
   await page.waitForFunction(() => !!window.game?.currentGameMode?.multiplayerManager?.getLocalPlayer());
   await expect.poll(() => page.evaluate(() => document.body.classList.contains('intro-playing'))).toBe(false);
 }

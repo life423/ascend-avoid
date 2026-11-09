@@ -1,4 +1,5 @@
 import {test,expect} from '@playwright/test';
+import { enterGame } from './helpers/enter-game.mjs';
 import {Client} from 'colyseus.js';
 import {practiceInput} from './helpers/practice.mjs';
 
@@ -35,7 +36,7 @@ async function scene(page,baseURL,stock=0){
   });
   await page.route('**/matchmake/joinOrCreate/game_room',route=>route.continue({url:route.request().url().replace('/joinOrCreate/','/create/'),
     postData:JSON.stringify({...route.request().postDataJSON(),testBots:0,testFieldGems:0,testCores:0,testCalm:true})}));
-  await page.goto('/');await page.waitForFunction(()=>{const m=window.game?.currentGameMode;return m?.lastView&&m.multiplayerManager?.getLocalPlayer()&&!m.introPlaying&&!document.body.classList.contains('intro-playing');});
+  await enterGame(page);await page.waitForFunction(()=>{const m=window.game?.currentGameMode;return m?.lastView&&m.multiplayerManager?.getLocalPlayer()&&!m.introPlaying&&!document.body.classList.contains('intro-playing');});
   await page.evaluate(stock=>window.game.currentGameMode.multiplayerManager.room.send('test:setGems',{count:stock}),stock);
   await expect.poll(()=>page.evaluate(()=>window.game.currentGameMode.multiplayerManager.getLocalPlayer().gems)).toBe(stock);
   await page.evaluate(()=>{const m=window.game.currentGameMode,p=m.multiplayerManager.getLocalPlayer(),r=m.multiplayerManager.room;r.send('test:protect',{ms:0});r.send('test:moveTo',{x:2100-p.width/2,y:2100-p.height/2});});

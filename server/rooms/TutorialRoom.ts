@@ -51,7 +51,7 @@ export class TutorialRoom extends GameRoom {
     return true;
   }
   onJoin(client: Client, options: { name?: unknown } = {}): void {
-    super.onJoin(client, options);
+    super.onJoin(client, { ...options, spectator: false });
     this.controller.attach(client.sessionId, this.initialLesson, Date.now());
     if (this.sequence) {
       if (this.initialLesson === 'basics') this.controller.startSequence(Date.now());

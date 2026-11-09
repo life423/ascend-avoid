@@ -57,14 +57,19 @@ records the merged revision and rollout result for this batch.
   <http://localhost:3001/growth-account.html> and in ordinary matches. Existing
   upkeep now physically shrinks capped players at its unchanged rate (about
   1470→1426.5 width after one minute from 10m gems without gains).
-- [ ] Review the remaining assembled-weapon injury credit dependence on banked
-  gems at extreme totals. Its nominal lost-gem mass proxy is unchanged by the
-  growth account; player/fan projectile qualification already ignores the bank.
+- [x] Normalize assembled-weapon injury credit by pre-hit body width in the
+  local candidate. Exact gem losses and builder rewards still use the gem bank.
+  See [EARNED_WEAPON_INJURY.md](EARNED_WEAPON_INJURY.md).
+- [x] Give smaller bots room to forage around a giant's flank and rear, react
+  to visible turns, and use their speed for outer-cone retreat. See the paired
+  local results in [BOT_GIANT_AVOIDANCE.md](BOT_GIANT_AVOIDANCE.md).
+- [ ] Solo review with 11 real bots at <http://localhost:3001/bot-giant.html>.
+  Compare close front, close flank, and a pursuit after turning toward the bot.
 - [ ] Consider fan-opening revalidation for late growth/forced-entry overlaps.
   Existing selection already reserves players; the controlled 795-unit opening
   correction is an edge case, not proof of ordinary fans spawning under giants.
-- [ ] Continue human matches and newcomer/device checks after choosing fixes.
-  Current simulations and scripted controls do not validate human fun or final balance.
+- [ ] Continue newcomer and device checks. Human-versus-human matches are
+  deferred until another player is available.
 
 ## Released November 4 — PR #84
 
@@ -152,6 +157,10 @@ records the final published revision and deployment result.
 
 ## Newly discussed design follow-ups
 
+- [x] Implement the join modal locally over the live arena. Let players enter a name and choose
+  controls before they spawn. Prefill saved choices on return. Show **Tutorial**
+  and **Play now** on the first visit, then use a single **Play** action on
+  later visits. Keep practice accessible from the menu.
 - [ ] Human/device review of the implemented [inhale framing](INHALE_CAMERA.md):
   reading targets/shots, turning, mouth visibility, corners, crowded HUD overlap
   and motion comfort. Preserve the user's explicit **no inhale zoom** preference.

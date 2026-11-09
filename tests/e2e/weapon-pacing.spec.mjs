@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { enterGame } from './helpers/enter-game.mjs';
 
 test.skip(process.env.E2E_TEST_HOOKS !== '1','isolated component-release clock');
 test('normal component availability stays staggered in the synced room',async({page})=>{
@@ -8,7 +9,7 @@ test('normal component availability stays staggered in the synced room',async({p
     url:route.request().url().replace('/joinOrCreate/','/create/'),
     postData:JSON.stringify({...route.request().postDataJSON(),testBots:0,testFieldGems:0,testWeaponSets:9,testWeapons:true,testCores:0,testCalm:true}),
   }));
-  await page.goto('/');
+  await enterGame(page);
   await page.waitForFunction(()=>window.game?.currentGameMode?.multiplayerManager?.room?.state?.players?.size);
   const read=()=>page.evaluate(()=>{
     const s=window.game.currentGameMode.multiplayerManager.room.state;

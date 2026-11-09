@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { enterGame } from './helpers/enter-game.mjs';
 import { practiceInput } from './helpers/practice.mjs';
 
 test.skip(process.env.E2E_TEST_HOOKS !== '1', 'local placement regression only');
@@ -11,7 +12,7 @@ async function open(page, automatic = false) {
     postData: JSON.stringify({ ...route.request().postDataJSON(), testBots: 0, testFieldGems: 0, testCores: 0,
       testWeapons: automatic, testWeaponSets: automatic ? 9 : 1, testCalm: true, testTurbines: automatic ? true : 'manual' }),
   }));
-  await page.goto('/');
+  await enterGame(page);
   await page.waitForFunction(() => window.game?.currentGameMode?.lastView && !document.body.classList.contains('intro-playing'));
   const send = (type, data) => page.evaluate(({ type, data }) => window.game.currentGameMode.multiplayerManager.room.send(type, data), { type, data });
   return { errors, send };

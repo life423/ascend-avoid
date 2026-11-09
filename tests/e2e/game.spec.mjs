@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { enterGame } from './helpers/enter-game.mjs';
 
 /** Your own creature, as the server last told this page */
 function me(page) {
@@ -74,7 +75,7 @@ test('the game loads, connects, draws, fits the screen, moves and inhales', asyn
     if (message.type() === 'error') report(`console error: ${message.text()}`);
   });
 
-  await page.goto('/');
+  await enterGame(page);
   // It connects, and your creature is in the world
   await page.waitForFunction(() => {
     const room = window.game?.currentGameMode?.multiplayerManager?.room;

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { enterGame, playFromEntry } from './helpers/enter-game.mjs';
 import { Client } from 'colyseus.js';
 
 test.skip(process.env.E2E_TEST_HOOKS !== '1', 'requires an isolated local test server');
@@ -7,7 +8,7 @@ async function start(page) {
     url: route.request().url().replace('/joinOrCreate/', '/create/'),
     postData: JSON.stringify({ ...route.request().postDataJSON(), testBots: 0, testFieldGems: 0 }),
   }));
-  await page.goto('/');
+  await enterGame(page);
   await waitForArena(page);
 }
 async function waitForArena(page) {
@@ -141,6 +142,7 @@ test('desktop Mouse steering is exclusive and remembers both choices across relo
   await page.getByRole('dialog', { name: 'Game Menu' }).getByRole('button', { name: 'Close', exact: true }).click();
   await control.hover();
   await page.reload();
+  await playFromEntry(page);
   await waitForArena(page);
   await expect(control).toHaveAttribute('aria-checked', 'true');
   await centerPlayer(page);
@@ -154,6 +156,7 @@ test('desktop Mouse steering is exclusive and remembers both choices across relo
   expect((await position(page)).inhaling, 'keyboard activation of the switch must not also inhale').toBe(false);
   await control.hover();
   await page.reload();
+  await playFromEntry(page);
   await waitForArena(page);
   await expect(control).toHaveAttribute('aria-checked', 'false');
   await centerPlayer(page);

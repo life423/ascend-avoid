@@ -1,4 +1,5 @@
 import { expect } from '@playwright/test';
+import { enterGame } from './enter-game.mjs';
 
 export const LESSONS = ['basics', 'combat', 'defense', 'blackhole', 'weapon'];
 export const readPractice = page => page.evaluate(() => {
@@ -11,7 +12,7 @@ export const readPractice = page => page.evaluate(() => {
 });
 export async function openLesson(page, lesson = 'basics', sequence = false) {
   await page.addInitScript(() => localStorage.setItem('ascend.mouseFollow', 'off'));
-  await page.goto('/');
+  await enterGame(page);
   await page.waitForFunction(() => !!window.game?.currentGameMode?.multiplayerManager?.getLocalPlayer());
   await page.evaluate(() => window.drawerUI.open());
   await page.getByRole('button', { name: 'Practice / Tutorials', exact: true }).click();

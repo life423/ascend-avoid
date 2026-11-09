@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { enterGame } from './helpers/enter-game.mjs';
 import { writeFile } from 'node:fs/promises';
 import { practiceInput } from './helpers/practice.mjs';
 
@@ -8,7 +9,7 @@ test('exhausted held inhale needs a fresh press after refilling', async ({ page,
   await page.addInitScript(()=>{localStorage.setItem('ascend.mouseFollow','off');localStorage.setItem('ascend.practice.v2',JSON.stringify({version:2,offered:true,status:'not-started',lessons:{}}));});
   await page.route('**/matchmake/joinOrCreate/game_room',route=>route.continue({url:route.request().url().replace('/joinOrCreate/','/create/'),
     postData:JSON.stringify({...route.request().postDataJSON(),testBots:0,testFieldGems:0,testWeapons:false,testCalm:true})}));
-  await page.goto('/');await page.waitForFunction(()=>window.game?.currentGameMode?.lastView&&!document.body.classList.contains('intro-playing'));
+  await enterGame(page);await page.waitForFunction(()=>window.game?.currentGameMode?.lastView&&!document.body.classList.contains('intro-playing'));
   const input=await practiceInput(page,browserName,hasTouch);
   const status=()=>page.evaluate(()=>{const m=window.game.currentGameMode,p=m.multiplayerManager.getLocalPlayer();return{inhaling:p.inhaling,stamina:m.stamina,breath:m.breath.phase,holding:!!m.controls?.press?.held,release:m.controls?.releaseToInhale,waves:m.multiplayerManager.getState().gustWaves.size};});
   try{

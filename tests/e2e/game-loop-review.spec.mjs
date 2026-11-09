@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { enterGame } from './helpers/enter-game.mjs';
 import { practiceInput } from './helpers/practice.mjs';
 import { writeFile } from 'node:fs/promises';
 
@@ -14,7 +15,7 @@ test(`observe ordinary opening play with visible-world decisions and real contro
   const errors = []; page.on('pageerror', e => errors.push(e.message));
   await page.addInitScript(() => localStorage.setItem('ascend.mouseFollow', 'off'));
   await page.route('**/matchmake/joinOrCreate/game_room', route => route.continue({ url: route.request().url().replace('/joinOrCreate/', '/create/') }));
-  await page.goto('/');
+  await enterGame(page);
   await page.waitForFunction(() => window.game?.currentGameMode?.lastView && !document.body.classList.contains('intro-playing'));
   await page.screenshot({ path: info.outputPath('first-visit.png'), scale: 'css' });
   const offer = page.getByRole('button', { name: 'Not now', exact: true });

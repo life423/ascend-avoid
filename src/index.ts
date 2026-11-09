@@ -61,7 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ;(window as any).game = game
     ;(window as any).drawerUI = drawerUI
 
-    // Everyone starts in the online game (Game.init joins it)
+    // Everyone starts with a view of the online arena.
     setupModeSwitch()
 
     // Keep arena gestures from scrolling the page; menu/tutorial content remains scrollable.
@@ -91,7 +91,6 @@ function setupModeSwitch(): void {
     document.querySelectorAll<HTMLButtonElement>('.mode-option').forEach((button) => {
         button.addEventListener('click', () => setGameMode(button.dataset.mode as GameModeName))
     })
-    // Game.init joins the online game
     showMode('multiplayer')
 }
 
@@ -121,7 +120,7 @@ function showMode(mode: GameModeName): void {
 /** Keep the arena fixed while preserving scrolling in the menu and tutorial dialogs. */
 function initializeTouchScrollGuard(): void {
     document.addEventListener('touchmove', event => {
-        if ((event.target as HTMLElement | null)?.closest('.drawer, .practice-ui')) return
+        if ((event.target as HTMLElement | null)?.closest('.drawer, .practice-ui, .join-dialog')) return
         event.preventDefault()
     }, { passive: false })
 }

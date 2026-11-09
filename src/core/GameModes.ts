@@ -16,6 +16,7 @@ import { WeaponPlacement } from '../ui/WeaponPlacement'
 import { drawSurge } from '../render/surge'
 import { breathRate } from '../../server/game/airflow'
 import { CameraRig, InhaleFraming, constrainArenaView, type CameraSubject } from '../../server/game/camera'
+import { ArenaPreview, PREVIEW_SHORT_SIDE } from './ArenaPreview'
 import { turnStep, walk } from '../../server/game/movement'
 import { puffDrift } from '../../server/game/puffImpulse'
 import { constrainArena } from '../../server/game/arenaBoundary'
@@ -50,6 +51,7 @@ import { weaponRecipe } from '../render/weaponStyle'
 // Forward reference for the Game type to avoid circular dependencies
 interface Game {
     practiceUI?: import('../practice/PracticeUI').PracticeUI | null
+    joinUI?: { readonly isOpen: boolean; previewBounds(): DOMRect | undefined } | null
     inputManager?: { reset(): void } | null
     responsiveManager: { safeArea: { top: number; right: number; bottom: number; left: number } }
     gameState: string
@@ -499,6 +501,7 @@ let introPlayed = false
 export class MultiplayerMode extends GameMode {
     constructor(game: Game, readonly session: OnlineSession = { kind: 'play' }) { super(game) }
     get isPractice(): boolean { return this.session.kind === 'practice' }
+    private get watchingArena(): boolean { return this.session.kind === 'play' && this.session.spectator === true }
     private practiceReset = -1
     cancelInput(preserveMovement = false): void {
         if (!preserveMovement) this.game.inputManager?.reset()
@@ -544,6 +547,7 @@ export class MultiplayerMode extends GameMode {
     emerges = new Map<string, number>()
     /** The camera rig, and the creature's last middle and smoothed velocity it follows */
     private cameraRig = new CameraRig()
+    private arenaPreview = new ArenaPreview()
     private inhaleFraming = new InhaleFraming()
     private cameraFrom: { x: number; y: number } | null = null
     private cameraVelocity = { x: 0, y: 0 }
@@ -635,6 +639,7 @@ export class MultiplayerMode extends GameMode {
         await super.initialize()
         if (this.disposed) return
         this.game.isMultiplayerMode = true
+        if (this.watchingArena) introPlayed = true // The join dialog is the opening.
         if (this.isPractice) document.body.classList.remove('intro-playing')
         // Coming from solo: put its game-over screen away; the online world never pauses
         this.game.uiManager?.hideGameOver()
@@ -659,6 +664,15 @@ export class MultiplayerMode extends GameMode {
         if (this.disposed) return
         const eventBus = new EventBus()
         this.multiplayerManager = new MultiplayerManager(eventBus, this.session)
+        eventBus.on(GameEvents.MULTIPLAYER_CONNECTED, () => {
+            this.status = 'connected'
+            this.clockGap = Infinity // a new world has its own clock
+            this.predicted = null
+            this.camera = null
+            if (this.watchingArena) this.arenaPreview = new ArenaPreview()
+            this.resetMotion()
+            this.sentSteer = { x: 2, y: 2 } // force fresh input into the new session
+        })
         eventBus.on(GameEvents.PLAYER_JOINED, (data: any) => {
             if (data?.id && data.id !== this.multiplayerManager?.localSessionId) {
                 this.addNotice(`${String(data.name ?? 'Someone')} joined`)
@@ -698,7 +712,7 @@ export class MultiplayerMode extends GameMode {
             if (data?.id === this.multiplayerManager?.localSessionId) { sound.play('parry'); this.addNotice('Suction broken! Move clear.') }
         })
         eventBus.on('multiplayer:surge', (data: { phase?: string }) => {
-            sound.play('surge')
+            if (!this.watchingArena) sound.play('surge')
             this.publishActivity(data?.phase === 'warning' ? 'Gem surge incoming — follow the gold marker!' : 'Gem surge! Jackpot in the final seconds.')
         })
         eventBus.on('multiplayer:blast', (data: any) => this.blasts.push({ x: Number(data?.x) || 0, y: Number(data?.y) || 0, radius: Number(data?.radius) || BOMBS.BLAST_RADIUS, at: performance.now() }))
@@ -725,14 +739,7 @@ export class MultiplayerMode extends GameMode {
         if (!this.multiplayerManager || this.disposed) return
         const connected = await this.multiplayerManager.connect()
         if (this.disposed) return
-        if (connected) {
-            this.status = 'connected'
-            this.clockGap = Infinity // a new world has its own clock
-            this.predicted = null
-            this.camera = null
-            this.resetMotion()
-            this.sentSteer = { x: 2, y: 2 } // force fresh input into the new session
-        } else if (!this.multiplayerManager.isConnected()) {
+        if (!connected && !this.multiplayerManager.isConnected()) {
             this.reconnectSoon()
         }
     }
@@ -827,7 +834,7 @@ export class MultiplayerMode extends GameMode {
         const now = performance.now()
         // The button: hold to inhale (taken every frame, so nothing waits for later)
         const events = this.controls?.takeEvents() ?? []
-        const editing = !!document.activeElement?.matches('input, textarea, [contenteditable="true"]') || !!document.querySelector('.drawer.active') || !!this.game.practiceUI?.modalOpen
+        const editing = !!document.activeElement?.matches('input, textarea, [contenteditable="true"]') || !!document.querySelector('.drawer.active') || !!this.game.practiceUI?.modalOpen || !!this.game.joinUI?.isOpen
         if (editing) events.length = 0
         if (this.introPlaying) events.length = 0
         const deltaTime = this.lastMoveAt ? Math.min(0.1, (now - this.lastMoveAt) / 1000) : 0
@@ -1053,7 +1060,7 @@ export class MultiplayerMode extends GameMode {
             this.weaponPlacement?.update(state, localId, false)
             this.game.practiceUI?.layout(canvasBox, safe, this.controls?.touchBounds() ?? [])
         }
-        let view = this.updateCamera(canvas, state, me, timestamp)
+        let view = this.updateCamera(canvas, canvasBox, state, me, timestamp)
         if (!CAMERA.LOCKED && timestamp < this.shakeUntil) {
             const strength = ((this.shakeUntil - timestamp) / SHAKE_MS) * 8
             view.x += (Math.random() - 0.5) * 2 * strength
@@ -1176,7 +1183,7 @@ export class MultiplayerMode extends GameMode {
         const chrome = document.querySelector<HTMLElement>(document.body.classList.contains('bar-hidden') ? '.bar-tab' : '.app-header')?.getBoundingClientRect()
         this.chromeBottom = chrome && chrome.width > 0 ? Math.max(this.hudInsets.top, (chrome.bottom - canvasBox.top) * this.cssScale) : this.hudInsets.top
         this.chromeLeft = chrome && chrome.width > 0 ? (chrome.left - canvasBox.left) * this.cssScale : canvas.width
-        const hud = this.isPractice ? 1 : this.runIntro(ctx, canvas, timestamp)
+        const hud = this.watchingArena ? 0 : this.isPractice ? 1 : this.runIntro(ctx, canvas, timestamp)
         this.weaponPlacement?.update(state, localId, hud <= 0)
         this.trackWeapon(state, localId)
         if (hud > 0) {
@@ -1203,7 +1210,6 @@ export class MultiplayerMode extends GameMode {
                 this.controls.puffNeedsBreath = this.stamina < EXHALE.BREATH_COST
                 this.controls.observeInhale(!!me?.inhaling, !!me && me.state === 'alive' && !me.stunned && !me.flying && !me.capturedBy && !me.breathingBlocked && !this.introPlaying && !(this.isPractice && ['ready'].includes(state.practice?.phase ?? '')))
             }
-            if (!this.isPractice && !this.introPlaying) this.game.practiceUI?.offerIfReady()
             ctx.save()
             if (this.isPractice && ['ready'].includes(state.practice?.phase ?? '')) ctx.globalAlpha *= .4
             this.controls?.draw(ctx, timestamp, this.breath)
@@ -1219,11 +1225,18 @@ export class MultiplayerMode extends GameMode {
      * Follow your player. Every screen sees the same amount of world (WORLD.VIEW_AREA), shaped
      * to the screen within the aspect limits; a screen outside them sees less, never more.
      */
-    private updateCamera(canvas: HTMLCanvasElement, state: SyncedGameState, me: SyncedPlayer, timestamp: number): View {
+    private updateCamera(canvas: HTMLCanvasElement, canvasBox: DOMRect, state: SyncedGameState, me: SyncedPlayer, timestamp: number): View {
         const aspect = Math.min(WORLD.MAX_VIEW_ASPECT, Math.max(WORLD.MIN_VIEW_ASPECT, canvas.width / canvas.height))
         // The soft-follow rig (game/camera): it leads your movement a little (and your facing, more while
         // inhaling), follows on a spring, and zooms by how big you should look and the threat horizon
         const dt = this.lastRenderAt ? (timestamp - this.lastRenderAt) / 1000 : 0
+        if (this.watchingArena) {
+            const short = Math.min(PREVIEW_SHORT_SIDE, Math.min(state.worldWidth, state.worldHeight))
+            const scale = Math.max(canvas.width / (short * Math.max(1, aspect)), canvas.height / (short / Math.min(1, aspect)))
+            this.lastRenderAt = timestamp
+            return this.arenaPreview.update(state, { width: canvas.width / scale, height: canvas.height / scale, scale },
+                canvasBox, () => this.game.joinUI?.previewBounds(), timestamp, dt)
+        }
         let subject: CameraSubject | null = null
         if (me && me.state === 'alive') {
             const position = this.predicted ?? me

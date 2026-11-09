@@ -1,5 +1,6 @@
 /** The name you play under: kept on this device, so it's there next time (a random one until you pick your own) */
 const KEY = 'playerName'
+let currentName = ''
 
 /** Announced on window when you pick a new name, so the game can tell the server */
 export const NAME_EVENT = 'ascend:name'
@@ -11,6 +12,7 @@ export function playerName(): string {
     } catch {
         // Storage is blocked: a fresh name each visit
     }
+    if (currentName) return currentName
     const name = `Player${Math.floor(Math.random() * 10000)}`
     remember(name)
     return name
@@ -27,6 +29,7 @@ export function setPlayerName(raw: string): string | null {
 }
 
 function remember(name: string): void {
+    currentName = name
     try {
         localStorage.setItem(KEY, name)
     } catch {

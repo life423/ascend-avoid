@@ -1,9 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { enterGame } from './helpers/enter-game.mjs';
 import { writeFile } from 'node:fs/promises';
 
 test('animated starfield has bounded drawing work without per-frame blur or cache allocation', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ascend.guideSeen', 'true'));
-  await page.goto('/');
+  await enterGame(page);
   await page.waitForFunction(() => window.game?.currentGameMode?.lastView && !document.body.classList.contains('intro-playing'));
   const sample = await page.evaluate(() => {
     const g = window.game, ctx = g.ctx, proto = CanvasRenderingContext2D.prototype;
