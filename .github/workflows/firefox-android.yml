@@ -33,13 +33,33 @@ jobs:
           npm ci --prefix server
           npm run build
 
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install Android command-line tools
+        shell: bash
+        run: |
+          sdk="$RUNNER_TEMP/android-sdk"
+          archive="$RUNNER_TEMP/android-command-line-tools.zip"
+          curl --fail --silent --show-error --location --retry 3 --max-time 180 \
+            'https://dl.google.com/android/repository/commandlinetools-linux-15859902_latest.zip' -o "$archive"
+          printf '%s  %s\n' '4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583' "$archive" | sha256sum --check
+          unzip -q "$archive" -d "$sdk"
+          mv "$sdk/cmdline-tools" "$sdk/cmdline-tools-unpacked"
+          mkdir -p "$sdk/cmdline-tools"
+          mv "$sdk/cmdline-tools-unpacked" "$sdk/cmdline-tools/latest"
+          printf 'ANDROID_HOME=%s\nANDROID_SDK_ROOT=%s\n' "$sdk" "$sdk" >> "$GITHUB_ENV"
+          printf '%s\n' "$sdk/cmdline-tools/latest/bin" "$sdk/platform-tools" >> "$GITHUB_PATH"
+
       - name: Install Android emulator and pinned Mozilla releases
         shell: bash
         run: |
           test -c /dev/kvm
           sudo chmod a+rw /dev/kvm
           sdkmanager --licenses < <(yes) >/dev/null
-          sdkmanager emulator 'system-images;android-36;google_apis;x86_64' 'build-tools;36.0.0'
+          sdkmanager platform-tools emulator 'system-images;android-36;google_apis;x86_64' 'build-tools;36.0.0'
           "$ANDROID_HOME/emulator/emulator" -accel-check
           avdmanager create avd --force --name ascend-firefox --package 'system-images;android-36;google_apis;x86_64' --device pixel_6 <<< no
 
