@@ -60,6 +60,7 @@ function available(state: GameState, x: number, y: number, unclaimedMs: number =
   relic.carrierId = '';
   relic.availableAt = 0;
   relic.expiresAt = state.time + unclaimedMs;
+  relic.towEndsAt = 0;
   relic.pausedUnclaimedMs = 0;
 }
 
@@ -71,6 +72,7 @@ export function placeRelicForTest(state: GameState, x: number, y: number, relayX
     !state.isFloorAt(x, y) || !state.isFloorAt(relayX, relayY)) return false;
   state.relic.relayX = relayX;
   state.relic.relayY = relayY;
+  state.relic.towTimeRemaining.clear();
   available(state, x, y);
   return true;
 }
@@ -81,12 +83,15 @@ function waitForRelic(state: GameState, delay: number): void {
   relic.phase = 'waiting';
   relic.availableAt = state.time + delay;
   relic.expiresAt = 0;
+  relic.towEndsAt = 0;
   relic.pausedUnclaimedMs = 0;
+  relic.towTimeRemaining.clear();
 }
 
 export function dropRelic(state: GameState, carrierId: string): void {
   const relic = state.relic;
   if (relic.phase !== 'towed' || relic.carrierId !== carrierId) return;
+  relic.towTimeRemaining.set(carrierId, Math.max(0, relic.towEndsAt - state.time));
   const drop = { x: relic.x, y: relic.y };
   if (!routeClear(state, drop.x, drop.y)) {
     // Towed cargo fits nearer the wall than the largest giant can stand. Try just inside its route inset.
@@ -155,17 +160,21 @@ function updateHaul(state: GameState, deltaTime: number): void {
     }
     let nearest = Infinity;
     for (const player of state.players.values()) {
-      if (!canHaul(state, player)) continue;
+      if (!canHaul(state, player) || relic.towTimeRemaining.get(player.sessionId) === 0) continue;
       const at = center(player), gap = Math.hypot(relic.x - at.x, relic.y - at.y) - player.width / 2;
       if (gap <= RELIC.RADIUS && gap < nearest) { nearest = gap; relic.carrierId = player.sessionId; }
     }
     if (!relic.carrierId) return;
     relic.pausedUnclaimedMs = relic.expiresAt - state.time;
     relic.expiresAt = 0;
+    relic.towEndsAt = state.time + (relic.towTimeRemaining.get(relic.carrierId) ?? RELIC.CARRIER_TOW_MS);
     relic.phase = 'towed';
   }
   const carrier = state.players.get(relic.carrierId);
-  if (!carrier || !canHaul(state, carrier)) { dropRelic(state, relic.carrierId); return; }
+  if (!carrier || !canHaul(state, carrier) || state.time >= relic.towEndsAt) {
+    dropRelic(state, relic.carrierId);
+    return;
+  }
   moveCargo(state, carrier, deltaTime);
   if (state.isFloorAt(relic.relayX, relic.relayY) &&
     Math.hypot(relic.x - relic.relayX, relic.y - relic.relayY) <= RELIC.RELAY_RADIUS - RELIC.RADIUS) {
@@ -219,7 +228,7 @@ function updateComet(state: GameState, now: number): void {
         : RELIC.GRAZE_DAMAGE_SHARE * (RELIC.INNER_RADIUS - distance) / (RELIC.INNER_RADIUS - RELIC.GRAZE_RADIUS);
       const lost = Math.min(target.gems - 1, Math.round(target.gems * share));
       if (lost > 0 && sprayRelicCometGems(state, target, x, y, lost, now, target.widthAfterLosingGems(lost))) {
-        target.injure(state.time);
+        if (share >= RELIC.INJURY_DAMAGE_SHARE) target.injure(state.time);
         target.setGems(target.gems - lost, state.worldWidth, state.worldHeight);
         state.credit(target, 'relicComet', now, comet.ownerId, { gems: lost, out: false, x, y, size: target.width });
       }

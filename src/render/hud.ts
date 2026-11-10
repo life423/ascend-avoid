@@ -86,6 +86,9 @@ export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
     ctx.fillStyle = '#07121e'
     ctx.fill()
     ctx.stroke()
+    // The camera can reach the wall; keep its viewport outline inside the rounded map.
+    ctx.save()
+    ctx.clip()
     if (state.floor) {
         // The (new) floor: the void is dark, or red while it's still coming
         const tile = width / SHIFT.GRID
@@ -96,9 +99,8 @@ export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
     }
     const maxPlayerWidth = Math.min(state.worldWidth, state.worldHeight) * GEMS.SIZE_MAX_SHARE
     const dotRadius = (player: SyncedPlayer) => 2 + 6 * Math.min(1, player.width / maxPlayerWidth) ** .6
-    // Keep the rounded arena path as a clip for physical footprints only, below the map symbols.
+    // Physical footprints sit below the map symbols.
     ctx.save()
-    ctx.clip()
     ctx.globalAlpha *= .55
     ctx.lineWidth = u
     state.players.forEach((player, sessionId) => {
@@ -119,6 +121,7 @@ export function drawMinimap(mode: MultiplayerMode, ctx: CanvasRenderingContext2D
         view.width * scale,
         view.height * scale
     )
+    ctx.restore()
     // Landmark rings sit below player dots so an approaching player never disappears beneath one.
     const worldTime = mode.worldNow(state, performance.now())
     state.blackHoles?.forEach(hole => {

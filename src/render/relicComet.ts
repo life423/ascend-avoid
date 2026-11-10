@@ -289,7 +289,10 @@ export function drawRelicComet(mode: MultiplayerMode, ctx: CanvasRenderingContex
             drawRelic(ctx, x, y, pixel)
             if (towing) {
                 drawRelayArrow(ctx, x, y, Math.atan2(relayY - y, relayX - x), pixel)
-                if (ownTow) label(ctx, 'Tow relic', x, y - Math.max(RELIC.RADIUS, 8 * pixel) - 10 * pixel, RELIC_STYLE.relic, pixel)
+                if (ownTow) {
+                    const seconds = Math.max(0, Math.ceil((relic.towEndsAt - now) / 1000))
+                    label(ctx, `Tow relic · ${seconds}s`, x, y - Math.max(RELIC.RADIUS, 8 * pixel) - 10 * pixel, RELIC_STYLE.relic, pixel)
+                }
             } else label(ctx, 'RELIC', x, y - Math.max(RELIC.RADIUS, 8 * pixel) - 10 * pixel, RELIC_STYLE.relic, pixel)
         }
     }

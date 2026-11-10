@@ -41,8 +41,11 @@ import { fanClearOfHole, partClearOfFan, clearGemPoint } from '../game/arenaPlac
 import { allWeapons } from '../game/weaponKit.js';
 import { arenaClearance, constrainArenaPoint } from '../game/arenaBoundary.js';
 import { dropRelic, relicReservesHazard, updateRelic } from '../systems/relic.js';
+import { preservesGiantRoutes } from '../game/giantRoutes.js';
 
 const { WORLD, GEMS, PLAYER_STATE, PUSH, BOTS, SHIFT, TRAFFIC, BALLS, COMETS, BOMBS, TURBINE, SURGE } = GAME_CONSTANTS;
+// The established-room boundary used in the newcomer pacing playtest.
+const ESTABLISHED_ARENA_MS = 5 * 60_000;
 /** Which way each of a bot's decisions steers it */
 const STEER: Record<Direction, { x: number; y: number }> = {
   up: { x: 0, y: -1 },
@@ -127,6 +130,7 @@ class GameState extends Schema {
   botPreview = false;
   brains = new Map<string, BotBrain>();
   private spawnRetries = new Map<string, number>();
+  private readonly openingSpawns = new Set<string>();
   nextBotId = 1;
   private startedAt = 0;
   /** Server-only: each traffic lane's direction (1 or -1) and speed; across lanes first, then down */
@@ -214,6 +218,9 @@ class GameState extends Schema {
   addPlayer(sessionId: string, name: string | null, now: number = Date.now()): PlayerSchema {
     const player = new PlayerSchema(sessionId, this.nextPlayerIndex++);
     if (name) player.name = name;
+    if (this.time >= ESTABLISHED_ARENA_MS && [...this.players.values()].some(other =>
+      other.state === PLAYER_STATE.ALIVE && !other.flying && !other.capturedBy
+    )) this.openingSpawns.add(sessionId);
     this.players.set(sessionId, player);
     this.spawn(player, now);
     balanceBots(this, now);
@@ -225,6 +232,7 @@ class GameState extends Schema {
     dropRelic(this, sessionId);
     if (this.gustWaves.has(sessionId)) this.gustWaves.delete(sessionId);
     this.spawnRetries.delete(sessionId);
+    this.openingSpawns.delete(sessionId);
     clearCapture(this, sessionId, this.now);
     this.clearTheftFor(sessionId);
     this.players.delete(sessionId);
@@ -638,7 +646,8 @@ class GameState extends Schema {
       });
       if (!open || !this.turbineFits(x, y) || relicReservesHazard(this, x, y, TURBINE.BODY_RADIUS)) continue;
       const spot = { x, y, intake: Math.round(Math.random() * Math.PI * 2 * 1000) / 1000 };
-      if (this.blackHoles.every(hole => fanClearOfHole(spot, hole)) && parts.every(part => partClearOfFan(part, spot))) return spot;
+      if (this.blackHoles.every(hole => fanClearOfHole(spot, hole)) && parts.every(part => partClearOfFan(part, spot))
+        && preservesGiantRoutes(this, { x, y, radius: TURBINE.BODY_RADIUS })) return spot;
     }
     return null;
   }
@@ -681,7 +690,7 @@ class GameState extends Schema {
     const pending = player.pendingWeaponGems + player.pendingCombatGems;
     player.pendingWeaponGems = player.pendingCombatGems = 0;
     if (pending > 0) player.setGems(player.gems + pending, this.worldWidth, this.worldHeight);
-    const spot = chooseSpawn(this, player);
+    const spot = chooseSpawn(this, player, this.openingSpawns.has(player.sessionId));
     if (!spot) {
       if (player.state === PLAYER_STATE.ALIVE) {
         player.state = PLAYER_STATE.SPAWNING;
@@ -691,6 +700,7 @@ class GameState extends Schema {
       return false;
     }
     this.spawnRetries.delete(player.sessionId);
+    this.openingSpawns.delete(player.sessionId);
     player.spawnAt(spot.x, spot.y, now);
     return true;
   }

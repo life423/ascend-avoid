@@ -263,6 +263,7 @@ export interface SyncedRelic {
     carrierId: string
     availableAt: number
     expiresAt: number
+    towEndsAt: number
 }
 
 /** RelicCometSchema, as synced to the browser */

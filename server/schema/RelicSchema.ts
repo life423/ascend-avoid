@@ -10,6 +10,9 @@ export class RelicSchema extends Schema {
   carrierId = '';
   availableAt = 0;
   expiresAt = 0;
+  towEndsAt = 0;
+  /** A drop preserves each carrier’s remaining tow time for this relic. */
+  readonly towTimeRemaining = new Map<string, number>();
   /** The unclaimed countdown pauses while a giant is hauling the relic. */
   pausedUnclaimedMs = 0;
   /** The original clear haul corridor stays reserved while the relic is carried. */
@@ -24,6 +27,7 @@ type("number")(RelicSchema.prototype, "relayY");
 type("string")(RelicSchema.prototype, "carrierId");
 type("number")(RelicSchema.prototype, "availableAt");
 type("number")(RelicSchema.prototype, "expiresAt");
+type("number")(RelicSchema.prototype, "towEndsAt");
 
 export class RelicCometSchema extends Schema {
   phase: 'idle' | 'inbound' | 'impact' = 'idle';

@@ -1,14 +1,31 @@
 # Ascend Avoid — current work and next-session handoff
 
-Updated November 5, 2026. Verified live baseline before this release was `9344b16` (safe black-hole
-relocation, circular hole art and HUD readability, PR #84), deployed successfully
-with matching live assets and three browser smokes on Azure revision
-`ascend-avoid--0000124`, healthy with 100% traffic.
-Rounded camera/corners, 75% defense, ownership visuals and the single-outline
-minimap are shipped. The original top-right Menu box is retained. This is the active list.
-The complete earlier request inventory is preserved in [TODO_HISTORY.md](TODO_HISTORY.md).
-Historical studies and checklists can describe removed mechanics; do not treat
-those descriptions as unfinished implementation work.
+Updated November 9, 2026. The prior production release was `eea3b81` (PR #93).
+It includes the relic comet, true-scale minimap body outlines, and the
+90-second black-hole lifetime with safe relocation retries. The complete earlier
+request inventory is preserved in [TODO_HISTORY.md](TODO_HISTORY.md).
+Historical sections below record earlier checkpoints.
+
+## November 9 gameplay follow-up — release approved
+
+- Rounded camera framing keeps nearby small players visible beside a giant
+  at the wall. The arena mask still covers the outside of the rounded floor.
+- First spawns in established arenas favor reachable gems and similarly sized
+  rivals when the existing clearance and escape checks allow it. Across 12
+  paired late-join replays, first-minute captures fell from nine to four.
+  Three of twelve runs assembled a weapon within three minutes in each build.
+- Bots use the public comet countdown to look for an escape route. Loaded bots
+  briefly favor a visible leader when their current shot could earn an injury,
+  using their existing aim delay and accuracy. Four paired bot matches showed
+  more qualifying target selections, with mixed injury and lead-change results.
+- A comet strike opens the existing seven-second injury window only at 10%
+  nominal damage or more. A graze can still cost gems and shove. The direct hit
+  remains 75%. Each carrier has 60 cumulative seconds to tow a given relic.
+- Fan and black-hole placement reject combinations that split previously
+  connected routes for the largest bodies.
+- Matched rear-puff trials found about 31 extra units of separation after half
+  a second in open space and 45 near a rounded corner when a hit connected.
+  The rear burst, 75% breath cost and inhale pressure rules retain their tuning.
 
 ## November 5 release — approved
 
@@ -267,25 +284,17 @@ strength, speed and unrelated tuning.
   itch.io embedding headers and the share QR are complete. No unfinished release
   steps remain for that earlier release.
 
-## Suggested next session
+## Next playtests
 
-1. Choose the weak body/fan impact injury follow-up from the current balance review.
-   No formula or new tuning value has been agreed yet.
-2. Address full-layout giant routes through fans and holes before considering a
-   walking-speed change or another size-cap increase.
-3. Review the late-stock physical-size/damage coupling separately; retain the
-   current arena and bot count while deciding the next experiment.
-4. Finish physical-device checks documented below; Android Firefox is still
-   pending because the user selected Chrome-only testing this session.
-5. Continue ordinary-match [bot giant-awareness](BOT_GIANT_AVOIDANCE.md) and
-   human-match playtests of giant/small-player escape and the released rear-hit
-   wall slip. Keep 75% breath, shove strength and other balance unchanged.
-6. Review ordinary-match pacing, weapon assembly and long-run growth together.
-   Use recordings and measurements; do not require the user to replay as a
-   prerequisite to reproducible technical investigations.
-7. Select a later gameplay experiment from [NEXT_GAMEPLAY_DESIGNS.md](NEXT_GAMEPLAY_DESIGNS.md).
-   Hole-size variation, tiered weapons and fan aim still require their specific
-   tuning/interaction decisions; arena enlargement and extra bots remain deferred.
+1. Compare first-spawn pacing, lead turnover, giant routes and relic contesting
+   with people in ordinary matches.
+2. Compare longer physical Pixel sessions in Firefox and Chrome, including
+   landscape and touch input under load. The Firefox CI and prior short physical
+   results are documented in [device validation](DEVICE_VALIDATION_2026-11-04.md).
+3. Review rear-puff reliability against a tracking player and decide whether its
+   hit timing or strength needs a separate change.
+4. Revisit [later gameplay designs](NEXT_GAMEPLAY_DESIGNS.md) when ready. Fan
+   self-aim, tiered weapons and variable hole sizes are separate design work.
 
 ## Remaining work
 

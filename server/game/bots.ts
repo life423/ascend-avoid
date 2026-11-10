@@ -5,6 +5,7 @@ import { BotGustDefense } from './botDefense.js';
 import { BotWeaponPlan } from './botWeapons.js';
 import { BotProjectileDodge } from './botProjectiles.js';
 import { BotPulsarDodge } from './botPulsar.js';
+import { BotRelicDodge } from './botRelic.js';
 import { botPreyAvailable, botSuctionThreat, botCaptureThreat } from './botTargets.js';
 import { injuryVulnerable } from '../systems/inhale.js';
 import type { Box, Direction } from "./movement.js";
@@ -80,6 +81,7 @@ export class BotBrain {
   readonly weaponPlan = new BotWeaponPlan();
   readonly projectileDodge = new BotProjectileDodge();
   readonly pulsarDodge = new BotPulsarDodge();
+  readonly relicDodge = new BotRelicDodge();
   /** When the bot next decides (it keeps steering the same way until then) */
   nextThinkAt = 0;
   /** Who the bot is hunting, if anyone (it runs into them to shove them) */

@@ -7,6 +7,7 @@ import { blackHoleReservesSpace } from './blackHole.js';
 import { distanceToSegment } from './geometry.js';
 import { allWeapons } from './weaponKit.js';
 import { relicReservesHazard } from '../systems/relic.js';
+import { preservesGiantRoutes } from './giantRoutes.js';
 
 interface Point { x: number; y: number }
 interface Core extends Point { radius: number }
@@ -97,7 +98,8 @@ export function blackHoleSpotClear(state: GameState, hole: BlackHoleSchema, x: n
   const bodyWidth = maximumWidth(state);
   if (others.some(other => Math.hypot(x - other.x, y - other.y)
     < bodyWidth + hole.radius + other.radius + BLACK_HOLE.RIM_CLEARANCE * 2 + CORRIDOR_GAP)) return false;
-  return giantRoutesClear(state, [...others, candidate]);
+  return preservesGiantRoutes(state, { x, y, radius: hole.radius + BLACK_HOLE.RIM_CLEARANCE }, hole)
+    && giantRoutesClear(state, [...others, candidate]);
 }
 
 /** Shuffle a fixed normalized grid; exhaustion leaves the slot dormant for retry.

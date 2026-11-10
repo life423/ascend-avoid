@@ -1,5 +1,12 @@
 import { BOTS, CANNON } from '../constants/gameConstants.js';
+import type { GameState } from '../schema/GameState.js';
+import type { PlayerSchema } from '../schema/PlayerSchema.js';
 import { impactGems, shooterMassContribution, lethalPlayerImpact } from './cannon.js';
+import { blackHoleIsLethal, circleEntry } from './blackHole.js';
+import { viewShort } from './camera.js';
+import { cannonInjuryOpportunity } from './projectileInjury.js';
+
+const LEADER_SHOT_WINDOW_MS = 3500;
 
 /** Opportunity selection changes the target, never the bot's observation delay, aim error or firing rules. */
 export function cannonTargetAppeal(gems: number, width: number, ammoWidth: number, speed: number, distance: number, shooterWidth?: number): number {
@@ -13,6 +20,31 @@ export function cannonTargetAppeal(gems: number, width: number, ammoWidth: numbe
 }
 
 export interface BotShotTarget { id: string; angle: number }
+
+/** Briefly favor a visible leader if a straight shot at their current position could open an injury. */
+export function leaderShotOpportunity(state: GameState, shooter: PlayerSchema, now: number): BotShotTarget | null {
+  if (!shooter.gulping || now >= shooter.captureStartedAt + LEADER_SHOT_WINDOW_MS) return null;
+  const leader = state.leader();
+  if (!leader || leader === shooter || leader.sessionId === shooter.gulping || leader.spawnProtected ||
+    leader.capturedBy || leader.flying || now < leader.impactImmuneUntil || state.time < leader.injuredUntil) return null;
+
+  const x = shooter.x + shooter.width / 2, y = shooter.y + shooter.height / 2;
+  const radius = leader.width / 2;
+  const dx = leader.x + radius - x, dy = leader.y + radius - y;
+  const sight = viewShort(shooter.width) / 2;
+  if (Math.hypot(Math.max(0, Math.abs(dx) - sight), Math.max(0, Math.abs(dy) - sight)) > radius) return null;
+  const distance = Math.hypot(dx, dy);
+  if (distance - shooter.width / 2 - radius > BOTS.FIRE_RANGE) return null;
+  const opportunity = cannonInjuryOpportunity(shooter.width, leader.width, leader.gems, distance);
+  if (!opportunity) return null;
+  const { muzzle, travel } = opportunity;
+
+  const startX = x + dx * muzzle / distance, startY = y + dy * muzzle / distance;
+  const endX = startX + dx * travel / distance, endY = startY + dy * travel / distance;
+  if (state.shiftPhase !== 'grace' && state.blackHoles.some(hole => blackHoleIsLethal(hole, state.time) &&
+    state.isFloorAt(hole.x, hole.y) && circleEntry(startX, startY, endX, endY, hole.x, hole.y, hole.radius) !== null)) return null;
+  return { id: leader.sessionId, angle: Math.atan2(dy, dx) };
+}
 
 /** A fallible firing decision: observe, turn normally, settle, then shoot a real target. */
 export class BotCannonAim {

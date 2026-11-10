@@ -5,6 +5,7 @@ import { createPracticeArena } from '../practice/arena.js';
 import { BlackHoleSchema } from '../schema/BlackHoleSchema.js';
 import { GameState } from '../schema/GameState.js';
 import { TurbineSchema } from '../schema/TurbineSchema.js';
+import { syncInjuryState } from '../systems/inhale.js';
 import { enableRelic, fireRelicComet, placeRelicForTest, relicReservesHazard, updateRelic } from '../systems/relic.js';
 import type { PlayerSchema } from '../schema/PlayerSchema.js';
 
@@ -144,6 +145,53 @@ function pickup(state: GameState, player: PlayerSchema): void {
   updateRelic(state, NOW + state.time, STEP);
   assert.equal(state.relic.phase, 'available');
   assert.equal(state.relic.expiresAt, state.time + 500, 'a drop resumes the same unclaimed budget');
+}
+
+{
+  const state = arena(), carrier = add(state, 'carrier', GIANT_GEMS);
+  pickup(state, carrier);
+  assert.equal(state.relic.towEndsAt, RELIC.CARRIER_TOW_MS);
+  state.time = 20_000;
+  carrier.injure(state.time);
+  updateRelic(state, NOW + state.time, STEP);
+  assert.equal(state.relic.phase, 'available');
+  assert.equal(state.relic.towEndsAt, 0);
+
+  state.time = carrier.injuredUntil;
+  syncInjuryState(state);
+  place(carrier, state.relic.x, state.relic.y);
+  updateRelic(state, NOW + state.time, STEP);
+  const deadline = state.time + RELIC.CARRIER_TOW_MS - 20_000;
+  assert.equal(state.relic.towEndsAt, deadline, 'a second tow resumes the same carrier’s remaining time');
+
+  state.time = deadline - 1;
+  updateRelic(state, NOW + state.time, STEP);
+  assert.equal(state.relic.phase, 'towed');
+  state.time++;
+  updateRelic(state, NOW + state.time, STEP);
+  assert.equal(state.relic.phase, 'available');
+  assert.equal(state.relic.expiresAt, state.time + RELIC.UNCLAIMED_MS - INHALE.INJURY_MS,
+    'a tow timeout resumes the remaining unclaimed time');
+  assert.equal(carrier.relicCometReady, false);
+  place(carrier, state.relic.x, state.relic.y);
+  updateRelic(state, NOW + state.time, STEP);
+  assert.equal(state.relic.phase, 'available', 'a timed-out carrier cannot immediately pick up this relic again');
+
+  const rival = add(state, 'rival', GIANT_GEMS, state.relic.x, state.relic.y);
+  updateRelic(state, NOW + state.time, STEP);
+  assert.equal(state.relic.carrierId, rival.sessionId);
+  assert.equal(state.relic.towEndsAt, state.time + RELIC.CARRIER_TOW_MS);
+  rival.injure(state.time);
+  updateRelic(state, NOW + state.time, STEP);
+  state.time = state.relic.expiresAt;
+  updateRelic(state, NOW + state.time, STEP);
+  state.time = state.relic.availableAt;
+  updateRelic(state, NOW + state.time, STEP);
+  assert.equal(state.relic.phase, 'available');
+  place(carrier, state.relic.x, state.relic.y);
+  updateRelic(state, NOW + state.time, STEP);
+  assert.equal(state.relic.carrierId, carrier.sessionId, 'a fresh relic clears the old tow limit');
+  assert.equal(state.relic.towEndsAt, state.time + RELIC.CARRIER_TOW_MS);
 }
 
 for (const reason of ['injury', 'breathing-block', 'shrink', 'knockout', 'capture', 'disconnect'] as const) {
@@ -298,7 +346,9 @@ for (const reason of ['injury', 'breathing-block', 'shrink', 'knockout', 'captur
   assert.equal(halfway.gems, 500);
   assert.equal(graze.gems, 950);
   assert.equal(inner.injuredUntil, state.time + INHALE.INJURY_MS);
-  assert.equal(graze.injuredUntil, inner.injuredUntil);
+  assert.equal(halfway.injuredUntil, inner.injuredUntil);
+  assert.equal(graze.injuredUntil, 0, 'a weak graze costs gems and shoves without opening an injury');
+  assert.equal(graze.puffVx, -RELIC.SHOVE_SPEED);
   assert.equal([...state.gems.values()].reduce((sum, gem) => sum + gem.value, 0), 1300);
   assert.equal(edge.gems, 1000);
   assert.equal(edge.injuredUntil, 0);
@@ -319,6 +369,25 @@ for (const reason of ['injury', 'breathing-block', 'shrink', 'knockout', 'captur
   updateRelic(state, NOW + state.time, STEP);
   assert.equal(state.relicComet.phase, 'idle');
   assert.equal(inner.gems, 250, 'impact damage applies exactly once');
+}
+
+{
+  const state = arena(), owner = add(state, 'owner', 1000, RELAY.x, RELAY.y);
+  const injuryRadius = RELIC.INNER_RADIUS -
+    RELIC.INJURY_DAMAGE_SHARE / RELIC.GRAZE_DAMAGE_SHARE * (RELIC.INNER_RADIUS - RELIC.GRAZE_RADIUS);
+  const threshold = add(state, 'threshold', 1000, RELAY.x + injuryRadius, RELAY.y);
+  const justOutside = add(state, 'just-outside', 1000, RELAY.x - injuryRadius - 0.05, RELAY.y);
+  const oneGemHit = add(state, 'one-gem-hit', 2, RELAY.x, RELAY.y + RELIC.DIRECT_RADIUS);
+  owner.relicCometReady = true;
+  assert.deepEqual(fireRelicComet(state, owner, RELAY.x, RELAY.y), { ok: true });
+  state.time = RELIC.WARNING_MS;
+  updateRelic(state, NOW + state.time, STEP);
+  assert.equal(threshold.gems, 900);
+  assert.equal(justOutside.gems, 900, 'rounded damage can match on either side of the injury threshold');
+  assert.equal(threshold.injuredUntil, state.time + INHALE.INJURY_MS);
+  assert.equal(justOutside.injuredUntil, 0);
+  assert.equal(oneGemHit.gems, 1);
+  assert.equal(oneGemHit.injuredUntil, state.time + INHALE.INJURY_MS, 'a direct hit qualifies even on a tiny gem stock');
 }
 
 for (const position of ['center', 'wall'] as const) {

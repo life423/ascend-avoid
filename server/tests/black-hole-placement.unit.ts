@@ -87,7 +87,8 @@ for (const phase of ['warning', 'active', 'ending']) {
   const s = empty(), h = first(s), fan = new TurbineSchema('fan', h.x + 400, h.y, Math.PI, 0);
   fan.phase = phase; s.turbines.push(fan);
   assert(!blackHoleSpotClear(s, h, h.x, h.y), 'fan housing/intake and visible hazard gap stay clear in every phase');
-  fan.x = h.x + 500; assert(blackHoleSpotClear(s, h, h.x, h.y));
+  // Away from the other live slots, so this checks spacing rather than a mixed barrier.
+  fan.x = h.x - 500; assert(blackHoleSpotClear(s, h, h.x, h.y));
 }
 {
   const s = empty(), h = first(s), part = new WeaponPartSchema();
