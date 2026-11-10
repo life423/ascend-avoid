@@ -1,5 +1,16 @@
 # Rounded-arena camera framing
 
+## November 9 follow-up
+
+Keeping every viewport corner inside the arena hid legal strips of floor along
+the wall. A 20-wide rival could disappear next to a 1,470-wide player, with
+about 19 units between their bodies. The camera keeps its size-based zoom and
+reserves space around the followed player near a wall. Where that space and a
+fully contained rectangle cannot coexist, the game masks the exterior beyond
+the visible wall. The minimap clips its viewport outline to the same curve.
+
+## Original release
+
 Implemented on `codex/rounded-arena-camera`, based on released main `d27fd45`.
 The user reviewed the local game and approved commit, merge and deployment.
 The production GitHub Actions workflow for main records the release status.

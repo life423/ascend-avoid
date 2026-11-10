@@ -3,7 +3,7 @@ import { PlayerSchema } from "../schema/PlayerSchema.js";
 import { BotBrain } from "../game/bots.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
 import { launchSpeed } from "../game/cannon.js";
-import { cannonTargetAppeal } from '../game/botAim.js';
+import { cannonTargetAppeal, leaderShotOpportunity } from '../game/botAim.js';
 import { exhale, fireCaptive, stealWeight, injuryVulnerable } from "./inhale.js";
 import { botPreyAvailable, botSuctionThreat } from '../game/botTargets.js';
 import { CANNON, EXHALE } from '../constants/gameConstants.js';
@@ -17,10 +17,19 @@ const { PLAYER_STATE, BOTS, INHALE, BOMBS } = GAME_CONSTANTS;
  * slow, or rooted while inhaling. A lit bomb in the mouth goes straight back out.
  */
 export function botMouth(state: GameState, bot: PlayerSchema, now: number) : void {
-  if (bot.state !== PLAYER_STATE.ALIVE || bot.flying) { state.brains.get(bot.sessionId)?.cannonAim.reset(); return; }
+  const brain = state.brains.get(bot.sessionId);
+  if (bot.state !== PLAYER_STATE.ALIVE || bot.flying) { brain?.cannonAim.reset(); return; }
   if (bot.capturedBy) {
-    state.brains.get(bot.sessionId)?.cannonAim.reset();
+    brain?.cannonAim.reset();
     bot.steer(0, 0);
+    return;
+  }
+  const cometEscape = brain?.relicDodge.move(bot, state, now);
+  if (cometEscape) {
+    bot.stopInhale(now);
+    bot.aimAt(0, 0);
+    brain?.cannonAim.reset();
+    bot.steer(cometEscape.x, cometEscape.y);
     return;
   }
   const cx = bot.x + bot.width / 2;
@@ -29,7 +38,7 @@ export function botMouth(state: GameState, bot: PlayerSchema, now: number) : voi
     if (!bot.stunned) botFire(state, bot, cx, cy, now);
     return;
   }
-  if (bot.sliding || bot.recovering || bot.stunned) { state.brains.get(bot.sessionId)?.cannonAim.reset(); return; }
+  if (bot.sliding || bot.recovering || bot.stunned) { brain?.cannonAim.reset(); return; }
   if (bot.breathingBlocked) { bot.stopInhale(now); return; }
   if (bot.mouth) {
     let target: PlayerSchema | null = null;
@@ -52,7 +61,6 @@ export function botMouth(state: GameState, bot: PlayerSchema, now: number) : voi
     }
     return;
   }
-  const brain = state.brains.get(bot.sessionId);
   const robber = botSuctionThreat(state, bot, now);
   if (brain?.gustDefense.ready(robber?.sessionId ?? '', now) && robber && now >= bot.exhaleReadyAt && bot.stamina + 1e-9 >= EXHALE.BREATH_COST) {
     const dx = robber.x + robber.width / 2 - cx, dy = robber.y + robber.height / 2 - cy;
@@ -204,6 +212,8 @@ function botFire(state: GameState, bot: PlayerSchema, cx: number, cy: number, no
       && Math.hypot(other.x + other.width / 2 - cx, other.y + other.height / 2 - cy) - (bot.width + other.width) / 2 <= BOTS.FIRE_RANGE;
   };
   const shot = brain.cannonAim.update(`${bot.gulping}:${bot.captureStartedAt}`, bot.captureStartedAt, now, bot.facing, () => {
+    const leaderShot = leaderShotOpportunity(state, bot, now);
+    if (leaderShot) return leaderShot;
     let target: { id: string; angle: number } | null = null;
     let best = -Infinity;
     state.players.forEach((other, id) => {

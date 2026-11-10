@@ -28,9 +28,11 @@ async function join(page, roomId) {
     localStorage.setItem('ascend.mouseFollow', 'off');
     window.cometNotices = [];
     window.relicUnlockFrames = 0;
+    window.relicTowCueVisible = false;
     const fillText = CanvasRenderingContext2D.prototype.fillText;
     CanvasRenderingContext2D.prototype.fillText = function (text, ...args) {
       if (text === 'Relic unlocked') window.relicUnlockFrames++;
+      if (/^Tow relic · \d+s$/.test(text)) window.relicTowCueVisible = true;
       if (/comet inbound/i.test(text)) {
         const messages = window.cometNotices;
         if (messages.at(-1) !== text) messages.push(text);
@@ -141,7 +143,10 @@ test('tow a relic, aim on the arena map, and warn another player before impact',
   try {
     await input.move(Math.SQRT1_2, Math.SQRT1_2);
     await expect.poll(async () => (await read(page)).relic.phase).toBe('towed');
-    const pickup = (await read(page)).center;
+    const towing = await read(page);
+    expect(towing.relic.towEndsAt - towing.time).toBeGreaterThan(50_000);
+    await expect.poll(() => page.evaluate(() => window.relicTowCueVisible)).toBe(true);
+    const pickup = towing.center;
     await expect.poll(async () => (await read(page)).ready, { timeout: 35_000 }).toBe(true);
     await input.stop();
     const delivery = (await read(page)).center;

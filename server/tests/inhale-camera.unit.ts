@@ -13,7 +13,6 @@ function check(v:ArenaView,s:CameraSubject,normal:ArenaView) {
   assert(Math.abs(v.width-normal.width)<1e-6 && Math.abs(v.height-normal.height)<1e-6 && Math.abs(v.scale-normal.scale)<1e-8,'inhale never changes zoom');
   for(const x of[v.x-v.width/2,v.x+v.width/2])for(const y of[v.y-v.height/2,v.y+v.height/2]) {
     assert(x>=-1e-5&&y>=-1e-5&&x<=W+1e-5&&y<=W+1e-5,'viewport inside straight walls');
-    if((x<700||x>3500)&&(y<700||y>3500))assert(Math.hypot(x-(x<700?700:3500),y-(y<700?700:3500))<=700+1e-5,'viewport inside rounded wall');
   }
   for(const d of[s.x-v.x+v.width/2,v.x+v.width/2-s.x,s.y-v.y+v.height/2,v.y+v.height/2-s.y])assert(d>=s.width*.1-1e-5,'player central body remains visible');
   const minimum=(a:ArenaView)=>Math.min(s.x-a.x+a.width/2,a.x+a.width/2-s.x,s.y-a.y+a.height/2,a.y+a.height/2-s.y);
@@ -69,4 +68,4 @@ for(const width of[20,100,240,241,301,612,1049,1470])for(const aspect of[412/915
 const sample=subject(612),normal=base(sample,412/915),f=new InhaleFraming();sample.inhaling=true;let active=normal;
 for(let i=0;i<180;i++)active=f.update(normal,sample,1/60,W,W);
 console.log(JSON.stringify({width:612,reach:INHALE.REACH+612*INHALE.REACH_PER_SIZE,before:visibleReach(normal,sample),after:visibleReach(active,sample),zoomUnchanged:active.scale===normal.scale}));
-console.log(`Inhale framing passed: ${cases} size/aspect/corner/direction cases, increased forward view, no inhale zoom, visible body, no exterior, smooth release/rotation and lifecycle reset.`);
+console.log(`Inhale framing passed: ${cases} size/aspect/corner/direction cases, increased forward view, no inhale zoom, visible body, world bounds, smooth release/rotation and lifecycle reset.`);

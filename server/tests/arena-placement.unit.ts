@@ -6,6 +6,7 @@ import { allWeapons, weaponKinds } from '../game/weaponKit.js';
 import { findPartLayout, partClearOfFan, fanClearOfHole, PLACEMENT } from '../game/arenaPlacement.js';
 import { TURBINE, WEAPON_FLEET } from '../constants/gameConstants.js';
 import { BotBrain } from '../game/bots.js';
+import { blackHoleSpotClear } from '../game/blackHolePlacement.js';
 
 const NOW = 100000;
 function required<T>(value: T | undefined): T { assert(value !== undefined); return value; }
@@ -78,6 +79,21 @@ for (const edge of [[0, 0], [4200, 4200], [0, 4200], [4200, 0]]) {
   const spot = randomSequence([(h.x - 600) / 3000, (h.y - 600) / 3000, 0, .05, .9, 0], () => s.turbineSpot());
   assert(spot && spot.x === 750 && spot.y === 3300, 'fans reject the pre-existing black-hole landmarks');
   assert.equal(randomSequence([(h.x - 600) / 3000, (h.y - 600) / 3000, 0], () => s.turbineSpot()), null);
+}
+{
+  // Seed 73's documented north-to-south chain of expanded fan housings and a hole rim.
+  const s = empty(), north = required(s.blackHoles[0]), east = required(s.blackHoles[1]), south = required(s.blackHoles[2]);
+  north.x = 1680; north.y = 420;
+  east.phase = south.phase = 'active';
+  s.placeTurbine(1754, 2540, 3.171, false);
+  const northFan = () => randomSequence([(1582 - 600) / 3000, (1324 - 600) / 3000, 1.476 / (Math.PI * 2)], () => s.turbineSpot());
+  assert.equal(northFan(), null, 'a fan cannot close the documented mixed-hazard barrier');
+  east.phase = south.phase = 'dormant';
+  assert.deepEqual(northFan(), { x: 1582, y: 1324, intake: 1.476 }, 'the otherwise eligible fan can open without the barrier');
+  s.placeTurbine(1582, 1324, 1.476, false);
+  assert(!blackHoleSpotClear(s, south, south.x, south.y), 'a replacement hole cannot complete the same barrier from the other side');
+  required(s.turbines[0]).phase = 'ending';
+  assert(blackHoleSpotClear(s, south, south.x, south.y), 'a powered-down fan no longer closes the walking route');
 }
 {
   const s = empty(); s.blackHoles.clear(); s.worldWidth = s.worldHeight = 300;

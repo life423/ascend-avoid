@@ -33,9 +33,10 @@ export function viewShort(width: number): number {
 export interface ArenaView { x: number; y: number; width: number; height: number; scale: number }
 export interface CameraFocus { x: number; y: number; width: number }
 
-/** Fit the entire rectangular viewport inside the curved arena, keeping the followed body visible.
- * Position is projected onto the intersection of the four corner constraints. Zoom changes only
- * when that rectangle cannot otherwise fit while retaining the subject. Physics never changes.
+const WALL_VIEW_MARGIN = 100;
+
+/** Fit the zoom inside the rounded arena. At that zoom, keep nearby floor along
+ * the wall in frame, using the smallest masked corner overlap the view needs.
  */
 export function constrainArenaView(view: ArenaView, worldWidth: number, worldHeight: number, focus?: CameraFocus): ArenaView {
   const radius = arenaCornerRadius(worldWidth, worldHeight);
@@ -45,10 +46,10 @@ export function constrainArenaView(view: ArenaView, worldWidth: number, worldHei
   if (subject) constrainArenaPoint(subject, worldWidth, worldHeight, 1);
   // A same-aspect rectangle inscribed in the body's wall-clearance circle is always feasible.
   // Preserve the entire body in open space; at a tight curved wall retain its visible core.
-  const clearance = subject ? arenaClearance(subject.x, subject.y, worldWidth, worldHeight) * .95 : 0;
+  const clearance = subject ? arenaClearance(subject.x, subject.y, worldWidth, worldHeight) : 0;
   const diagonal = Math.hypot(view.width, view.height);
-  const padX = focus ? Math.min(focus.width / 2, clearance * view.width / diagonal) : 0;
-  const padY = focus ? Math.min(focus.width / 2, clearance * view.height / diagonal) : 0;
+  const padX = focus ? Math.min(focus.width / 2, clearance * .95 * view.width / diagonal) : 0;
+  const padY = focus ? Math.min(focus.width / 2, clearance * .95 * view.height / diagonal) : 0;
   const baseZoom = Math.max(1, view.width / worldWidth, view.height / worldHeight);
   const bounds = (zoom: number) => {
     const hx = view.width / zoom / 2, hy = view.height / zoom / 2;
@@ -75,16 +76,33 @@ export function constrainArenaView(view: ArenaView, worldWidth: number, worldHei
     zoom = hi;
   }
   const b = bounds(zoom);
+  if (subject && focus) {
+    // Rounded corners elsewhere in the view can also cut off a straight wall
+    // beside the player. Ease in a margin using the body's distance to any wall.
+    const guard = focus.width / 2 + WALL_VIEW_MARGIN;
+    const wallBlend = clamp((guard + WALL_VIEW_MARGIN - clearance) / WALL_VIEW_MARGIN, 0, 1);
+    if (wallBlend > 0) {
+      const keepX = Math.min(b.hx, padX + (guard - padX) * wallBlend);
+      const keepY = Math.min(b.hy, padY + (guard - padY) * wallBlend);
+      b.minX = Math.max(b.hx, Math.min(worldWidth, subject.x + keepX) - b.hx);
+      b.maxX = Math.min(worldWidth - b.hx, Math.max(0, subject.x - keepX) + b.hx);
+      b.minY = Math.max(b.hy, Math.min(worldHeight, subject.y + keepY) - b.hy);
+      b.maxY = Math.min(worldHeight - b.hy, Math.max(0, subject.y - keepY) + b.hy);
+      b.nearX = clamp(worldWidth / 2, b.minX, b.maxX);
+      b.nearY = clamp(worldHeight / 2, b.minY, b.maxY);
+    }
+  }
+  const minQx = Math.max(0, Math.abs(b.nearX - worldWidth / 2) + b.hx - coreX);
+  const minQy = Math.max(0, Math.abs(b.nearY - worldHeight / 2) + b.hy - coreY);
+  const limit = Math.max(radius, Math.hypot(minQx, minQy));
   let x = clamp(view.x, b.minX, b.maxX), y = clamp(view.y, b.minY, b.maxY);
   const qx = Math.max(0, Math.abs(x - worldWidth / 2) + b.hx - coreX);
   const qy = Math.max(0, Math.abs(y - worldHeight / 2) + b.hy - coreY);
   const distance = Math.hypot(qx, qy);
-  if (distance > radius) {
-    const minQx = Math.max(0, Math.abs(b.nearX - worldWidth / 2) + b.hx - coreX);
-    const minQy = Math.max(0, Math.abs(b.nearY - worldHeight / 2) + b.hy - coreY);
-    let px = qx * radius / distance, py = qy * radius / distance;
-    if (px < minQx) { px = minQx; py = Math.sqrt(Math.max(0, radius * radius - px * px)); }
-    if (py < minQy) { py = minQy; px = Math.sqrt(Math.max(0, radius * radius - py * py)); }
+  if (distance > limit) {
+    let px = qx * limit / distance, py = qy * limit / distance;
+    if (px < minQx) { px = minQx; py = Math.sqrt(Math.max(0, limit * limit - px * px)); }
+    if (py < minQy) { py = minQy; px = Math.sqrt(Math.max(0, limit * limit - py * py)); }
     x -= Math.sign(x - worldWidth / 2) * (qx - px);
     y -= Math.sign(y - worldHeight / 2) * (qy - py);
   }
