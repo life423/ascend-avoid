@@ -6,6 +6,19 @@ It includes the relic comet, true-scale minimap body outlines, and the
 request inventory is preserved in [TODO_HISTORY.md](TODO_HISTORY.md).
 Historical sections below record earlier checkpoints.
 
+## November 21 domain migration — prepared, release pending
+
+- Prepare `ascendavoid.com` as the canonical web address; refresh menu/QR/privacy
+  links and allow apex/www/old origins. Exact old/www document visits redirect
+  permanently; health, assets, association files, matchmaking and sockets stay
+  direct. No gameplay or Android launcher changes.
+- The user accepted possible browser chrome in existing Android installations
+  after redirecting. Origin-local names/preferences/tutorial progress remain
+  separate. See [DOMAIN_MIGRATION.md](DOMAIN_MIGRATION.md) for scope and rollback.
+- DNS is being entered manually in Squarespace. Verify new DNS, HTTPS and real
+  online play before merge/deploy and before updating portfolio links. Hosted
+  migration and device validation are not yet complete.
+
 ## November 9 gameplay follow-up — release approved
 
 - Rounded camera framing keeps nearby small players visible beside a giant

@@ -1,6 +1,6 @@
 # Ascend Avoid
 
-[Play Ascend Avoid](https://ascend.drewclark.io/) — a real-time multiplayer creature arena built with TypeScript, Canvas 2D, and Colyseus. Collect gems, grow, steal from injured rivals, assemble weapons, and fire captured players as living cannonballs.
+[Play Ascend Avoid](https://ascendavoid.com/) — a real-time multiplayer creature arena built with TypeScript, Canvas 2D, and Colyseus. Collect gems, grow, steal from injured rivals, assemble weapons, and fire captured players as living cannonballs.
 
 ![Actual Ascend Avoid arena gameplay with gems, bot rivals, inhale effects, leaderboard, and minimap](docs/images/gameplay.png)
 
@@ -123,12 +123,14 @@ Pull requests run the checks in [ci.yml](.github/workflows/ci.yml). A push to `m
 | `PORT` | `3000`; HTTP and WebSocket port |
 | `NODE_ENV` | Set to `production` for the deployed server; production disables test hooks and the Colyseus monitor |
 | `APP_ENV` | Set to `staging` to serve the Test app's website association file |
-| `CORS_ORIGINS` | Comma-separated HTTP origins; defaults to the production site and the two port-5173 localhost origins |
+| `CORS_ORIGINS` | Comma-separated HTTP origins; defaults to the apex, www and previous production origins plus the two port-5173 localhost origins; an explicit override replaces the defaults |
 | `LOG_LEVEL` | `info`; also accepts `error`, `warn`, or `debug` |
 | `PING_INTERVAL`, `PING_MAX_RETRIES` | WebSocket heartbeat settings; defaults are `5000` milliseconds and `3` retries |
 | `MONITOR_PATH` | `/colyseus`; available only outside production |
 
 The built client uses the page's origin for HTTP/WebSocket play. The Vite development client connects to the local server on port 3000. No credentials belong in browser configuration or source control.
+
+See [Domain migration](docs/DOMAIN_MIGRATION.md) for DNS/HTTPS release prerequisites, legacy-address compatibility, Android behavior and rollback.
 
 ## Web icons and Android apps
 

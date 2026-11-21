@@ -11,7 +11,7 @@ export default defineConfig({
   workers: process.env.CI ? 2 : 4,
   reporter: [['list']],
   use: {
-    baseURL: process.env.E2E_URL || 'https://ascend.drewclark.io',
+    baseURL: process.env.E2E_URL || 'https://ascendavoid.com',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
