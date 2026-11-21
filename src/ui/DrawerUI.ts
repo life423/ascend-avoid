@@ -111,6 +111,7 @@ export class DrawerUI {
                     <div class="instructions">
                         ${GAME_RULES}
                     </div>
+                    <button type="button" class="relic-tutorial-open">Show asteroid tutorial</button>
                 </div>
                 <div class="menu-section">
                     <h3>Weapon record</h3>
@@ -136,6 +137,10 @@ export class DrawerUI {
         this.drawer.querySelector('.practice-open')?.addEventListener('click', () => {
             this.close();
             window.dispatchEvent(new Event('ascend:practice-open'));
+        });
+        this.drawer.querySelector('.relic-tutorial-open')?.addEventListener('click', () => {
+            this.close();
+            window.dispatchEvent(new Event('ascend:relic-tutorial'));
         });
         // Toggle drawer on hamburger click
         this.hamburgerBtn.addEventListener('click', () => this.toggle());

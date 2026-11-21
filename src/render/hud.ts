@@ -59,7 +59,7 @@ function weaponMarker(ctx: CanvasRenderingContext2D, x: number, y: number, kind:
     ctx.restore();
 }
 
-function minimapLayout(mode: MultiplayerMode, canvas: HTMLCanvasElement, state: SyncedGameState) {
+export function minimapLayout(mode: MultiplayerMode, canvas: HTMLCanvasElement, state: SyncedGameState) {
     const compact = COMPACT.matches, u = compact ? mode.cssScale : 1
     const size = compact ? (canvas.clientHeight < 500 ? 84 : Math.min(128, Math.max(96, canvas.clientWidth * .27))) * u
         : Math.round(Math.min(150, Math.max(84, Math.min(canvas.width, canvas.height) * .24)))

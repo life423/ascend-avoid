@@ -1,3 +1,49 @@
+.relic-tutorial {
+    position: fixed;
+    z-index: 29;
+    box-sizing: border-box;
+    width: 360px;
+    max-width: calc(100vw - 24px);
+    padding: 12px;
+    border: 1px solid #a57e43;
+    border-radius: 12px;
+    background: #172331;
+    color: #edf4fa;
+    font: 500 14px/1.45 system-ui, sans-serif;
+    pointer-events: none;
+}
+.relic-tutorial[tabindex] { pointer-events: auto; overscroll-behavior: contain; touch-action: pan-y; }
+.relic-tutorial:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.relic-tutorial[hidden] { display: none; }
+.relic-tutorial strong { display: block; color: #ffdb94; font-size: 14px; }
+.relic-tutorial p { margin: 4px 0 8px; }
+.relic-tutorial button, .relic-tutorial-open {
+    min-height: 44px;
+    padding: 6px 12px;
+    border: 1px solid #718497;
+    border-radius: 8px;
+    background: #192e40;
+    color: #f2f8fc;
+    font: 650 14px system-ui, sans-serif;
+    cursor: pointer;
+    touch-action: manipulation;
+    pointer-events: auto;
+}
+.relic-tutorial button:hover, .relic-tutorial-open:hover { background: #294359; }
+.relic-tutorial button:active, .relic-tutorial-open:active { background: #0c1c2b; }
+.relic-tutorial button:focus-visible, .relic-tutorial-open:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.relic-tutorial-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.relic-tutorial .relic-tutorial-aim { border-color: #fff0c7; background: #ffdb94; color: #201409; }
+.relic-tutorial .relic-tutorial-aim:hover { background: #ffe7b8; }
+.relic-tutorial .relic-tutorial-aim:active { background: #eec578; }
+.relic-tutorial-aim[hidden] { display: none; }
+.practice-mode .relic-tutorial-open { display: none; }
+
+@media (max-width: 500px) and (max-height: 740px) {
+    .relic-tutorial { padding: 8px; font-size: 13px; line-height: 1.4; }
+    .relic-tutorial p { margin-bottom: 4px; }
+}
+
 .relic-comet-ready {
     position: fixed;
     z-index: 29;
@@ -116,6 +162,11 @@ body.online-mode.relic-comet-aiming .hamburger-button { display: none; }
 }
 
 @media (max-height: 500px) and (pointer: coarse) {
+    .relic-tutorial { display: flex; align-items: flex-start; gap: 10px; padding: 10px; font-size: 13px; }
+    .relic-tutorial > div { flex: 1; min-width: 0; }
+    .relic-tutorial > .relic-tutorial-actions { flex: 0 0 auto; flex-direction: column; }
+    .relic-tutorial p { margin-bottom: 0; }
+    .relic-tutorial button { flex-shrink: 0; }
     .relic-comet-ready { bottom: calc(var(--arena-bottom, 0px) + var(--arena-safe-bottom, 0px) + 68px); }
     .relic-comet-touch { --relic-control-lane: 104px; }
     .relic-comet-touch[open] { grid-template-columns: minmax(0, 1fr) minmax(156px, 28%); grid-template-rows: auto minmax(0, 1fr); }
