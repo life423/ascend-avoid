@@ -57,6 +57,7 @@ export class JoinUI {
                 </div>
             </form>
             <p class="join-status" role="status"></p>
+            <a class="join-privacy" href="/privacy-policy.html">Privacy Policy</a>
         `;
         const element = <T extends HTMLElement>(selector: string): T => {
             const found = this.dialog.querySelector<T>(selector);

@@ -154,7 +154,9 @@ body:has(.join-dialog[open]) .hamburger-button {
 .join-actions .join-tutorial:hover:not([aria-disabled="true"]) { background: #11263a; color: var(--join-text); }
 .join-actions .join-play:hover:not([aria-disabled="true"]) { background: #b5ffe8; }
 
-.join-dialog :is(button, input):focus-visible {
+.join-privacy { display: block; width: fit-content; margin: 0 auto; padding: 4px 0; color: var(--join-muted); font-size: 12px; }
+
+.join-dialog :is(a, button, input):focus-visible {
     outline: 2px solid var(--join-accent);
     outline-offset: 2px;
 }
