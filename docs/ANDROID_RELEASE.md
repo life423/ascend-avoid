@@ -1,5 +1,10 @@
 # Android build and release
 
+The November 21 [web domain migration](DOMAIN_MIGRATION.md) prepares
+`ascendavoid.com`, while the Android launch origin below remains unchanged.
+The user accepted possible browser chrome when an existing installation follows
+the new-domain redirect. No new APK or launcher/trust migration is included.
+
 ## Current preparation
 
 October 31, 2026: prepared on `codex/android-store-build`, based on deployed main

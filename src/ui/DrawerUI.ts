@@ -8,7 +8,7 @@ const DESKTOP = '(min-width: 1200px)';
 const COLUMN_WIDTH = 320;
 const COLUMN_GAP = 32;
 const CONTENT_PADDING = 25;
-const PLAY_URL = 'https://ascend.drewclark.io/';
+const PLAY_URL = 'https://ascendavoid.com/';
 // Static QR: qrcode@1.5.4, error correction M, four-module quiet zone; encodes PLAY_URL.
 const PLAY_QR = new URL('../assets/play-qr.svg', import.meta.url).href;
 export class DrawerUI {
@@ -102,8 +102,8 @@ export class DrawerUI {
                     <div class="invite-card">
                         <h3 id="invite-title">Play with friends</h3>
                         <p>Scan with your phone to join.</p>
-                        <img class="invite-qr" src="${PLAY_QR}" width="148" height="148" alt="QR code to play Ascend Avoid at ascend.drewclark.io" draggable="false">
-                        <a class="invite-link" href="${PLAY_URL}" target="_blank" rel="noopener noreferrer" aria-label="Open Ascend Avoid in a new tab">ascend.drewclark.io <span aria-hidden="true">↗</span></a>
+                        <img class="invite-qr" src="${PLAY_QR}" width="148" height="148" alt="QR code to play Ascend Avoid at ascendavoid.com" draggable="false">
+                        <a class="invite-link" href="${PLAY_URL}" target="_blank" rel="noopener noreferrer" aria-label="Open Ascend Avoid in a new tab">ascendavoid.com <span aria-hidden="true">↗</span></a>
                     </div>
                 </section>
                 <div class="menu-section">
