@@ -15,9 +15,19 @@ const KEY_DIRECTIONS: Record<string, Point | undefined> = {
     ArrowRight: { x: 1, y: 0 }, KeyD: { x: 1, y: 0 },
 };
 const FIRE_REPLY_TIMEOUT_MS = 3000;
+const COMET_TIP_KEY = 'ascend.relicCometTip.v1';
+const COMET_TIP_MS = 8000;
+
+function hasSeenCometTip(): boolean {
+    try { return localStorage.getItem(COMET_TIP_KEY) === '1'; } catch { return false; }
+}
 
 export class RelicCometAim {
+    private readonly launch = document.createElement('div');
     private readonly ready = document.createElement('button');
+    private readonly tip = document.createElement('p');
+    private tipSeen = hasSeenCometTip();
+    private tipVisibleSince: number | null = null;
     private readonly dialog = document.createElement('dialog');
     private readonly map: HTMLCanvasElement;
     private readonly instructions: HTMLElement;
@@ -101,7 +111,14 @@ export class RelicCometAim {
         document.addEventListener('keydown', this.captureSpace, true);
         document.addEventListener('keyup', this.captureSpace, true);
         window.addEventListener('blur', this.resetSpacePress);
-        document.body.append(this.ready, this.dialog);
+        this.launch.className = 'relic-comet-launch';
+        this.launch.hidden = true;
+        this.tip.className = 'relic-comet-tip';
+        this.tip.id = 'relic-comet-tip';
+        this.tip.setAttribute('role', 'status');
+        this.tip.hidden = true;
+        this.launch.append(this.tip, this.ready);
+        document.body.append(this.launch, this.dialog);
     }
 
     get isOpen(): boolean { return this.dialog.open; }
@@ -114,14 +131,42 @@ export class RelicCometAim {
         if (!canAim) this.awaitingConsumption = false;
         this.canAim = Boolean(canAim && !this.awaitingConsumption && me && state && state.worldWidth > 0 && state.worldHeight > 0);
         if (this.isOpen && (!me || (!this.canAim && !this.pending))) this.close();
-        this.ready.hidden = !this.canAim || this.isOpen;
+        this.launch.hidden = this.ready.hidden = !this.canAim || this.isOpen;
+        this.updateTip(!this.launch.hidden && !me?.inhaling && !me?.gulping && state?.relicComet?.phase !== 'inbound');
         if (this.isOpen && performance.now() - this.paintedAt >= 66) this.paint();
+    }
+
+    private updateTip(eligible: boolean): void {
+        const now = performance.now();
+        if (this.tipVisibleSince !== null && now - this.tipVisibleSince >= COMET_TIP_MS) this.finishTip();
+        if (this.tipSeen || !eligible) {
+            this.tipVisibleSince = null;
+            this.tip.hidden = true;
+            this.ready.removeAttribute('aria-describedby');
+            return;
+        }
+        if (this.tipVisibleSince !== null) return;
+        this.tipVisibleSince = now;
+        this.tip.hidden = false;
+        this.tip.textContent = this.finePointer.matches
+            ? 'Comet ready. Open the map, aim with WASD or arrows, then press Space or Enter to fire.'
+            : 'Comet ready. Tap below, choose a spot on the map, then tap Fire comet.';
+        this.ready.setAttribute('aria-describedby', this.tip.id);
+    }
+
+    private finishTip(): void {
+        if (this.tipSeen) return;
+        this.tipSeen = true;
+        try { localStorage.setItem(COMET_TIP_KEY, '1'); } catch { /* Keep it seen until this game ends. */ }
     }
 
     private open = (): void => {
         const state = this.state;
         const me = this.localId ? state?.players.get(this.localId) : undefined;
         if (!this.canAim || this.isOpen || !state || !me) return;
+        this.finishTip();
+        this.updateTip(false);
+        this.launch.hidden = true;
         const desktop = this.finePointer.matches;
         this.target = this.startingTarget(me, state);
         this.status.textContent = '';
@@ -149,7 +194,7 @@ export class RelicCometAim {
         this.dialog.close();
         this.updateWarning(undefined);
         document.body.classList.remove('relic-comet-aiming');
-        this.ready.hidden = !this.canAim;
+        this.launch.hidden = this.ready.hidden = !this.canAim;
         this.callbacks.onClose?.();
     }
 
@@ -173,7 +218,7 @@ export class RelicCometAim {
         document.removeEventListener('keyup', this.captureSpace, true);
         window.removeEventListener('blur', this.resetSpacePress);
         this.dialog.remove();
-        this.ready.remove();
+        this.launch.remove();
     }
 
     private fire(): void {

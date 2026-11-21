@@ -28,10 +28,12 @@ async function join(page, roomId) {
     localStorage.setItem('ascend.mouseFollow', 'off');
     window.cometNotices = [];
     window.relicUnlockFrames = 0;
+    window.relicRelayFrames = 0;
     window.relicTowCueVisible = false;
     const fillText = CanvasRenderingContext2D.prototype.fillText;
     CanvasRenderingContext2D.prototype.fillText = function (text, ...args) {
       if (text === 'Relic unlocked') window.relicUnlockFrames++;
+      if (text === 'Tow the relic to the relay') window.relicRelayFrames++;
       if (/^Tow relic · \d+s$/.test(text)) window.relicTowCueVisible = true;
       if (/comet inbound/i.test(text)) {
         const messages = window.cometNotices;
@@ -139,6 +141,8 @@ test('tow a relic, aim on the arena map, and warn another player before impact',
   await expect.poll(async () => (await read(page)).relic.phase).toBe('available');
   const aimButton = page.getByRole('button', { name: 'Aim relic comet' });
   await expect(aimButton).toBeHidden();
+  const launchTip = page.locator('.relic-comet-tip');
+  await expect(launchTip).toBeHidden();
   const input = await practiceInput(page, browserName, hasTouch);
   try {
     await input.move(Math.SQRT1_2, Math.SQRT1_2);
@@ -151,6 +155,14 @@ test('tow a relic, aim on the arena map, and warn another player before impact',
     await input.stop();
     const delivery = (await read(page)).center;
     expect(Math.hypot(delivery.x - pickup.x, delivery.y - pickup.y)).toBeGreaterThan(2700);
+
+    await expect(launchTip).toBeVisible();
+    await expect(launchTip).toContainText(hasTouch ? 'Tap below' : 'WASD or arrows');
+    await expect(aimButton).toHaveAccessibleDescription(/Comet ready/);
+    const tipBox = await launchTip.boundingBox();
+    const promptBox = await aimButton.boundingBox();
+    expect(tipBox.y + tipBox.height).toBeLessThanOrEqual(promptBox.y);
+    expect(await launchTip.evaluate(node => getComputedStyle(node).pointerEvents)).toBe('none');
 
     const menu = page.locator('.hamburger-button');
     const menuVisible = await menu.isVisible();
@@ -171,6 +183,9 @@ test('tow a relic, aim on the arena map, and warn another player before impact',
     }
     await expect(dialog).toBeHidden();
     if (menuVisible) await expect(menu).toBeVisible();
+    await expect(aimButton).toBeVisible();
+    await expect(launchTip).toBeHidden();
+    expect(await page.evaluate(() => localStorage.getItem('ascend.relicCometTip.v1'))).toBe('1');
     expect((await read(page)).ready).toBe(true);
     expect((await read(page)).strike.phase).toBe('idle');
 
@@ -218,6 +233,7 @@ test('tow a relic, aim on the arena map, and warn another player before impact',
     await expect.poll(async () => (await read(observer)).injury, { timeout: 8_000 }).toBeGreaterThan(warning.time);
     expect((await read(observer)).gems / warning.gems).toBeCloseTo(.25, 2);
     await expect(aimButton).toBeHidden();
+    await expect(launchTip).toBeHidden();
     expect(errors).toEqual([]);
   } finally {
     await input.close();
@@ -284,6 +300,7 @@ test('shows the gold relic cue once per run and rearms it on respawn', async ({ 
   await expect.poll(cueFrames).toBe(0);
   await send(page, 'test:setGems', { count: 33_000 });
   await expect.poll(cueFrames).toBeGreaterThan(5);
+  await expect.poll(() => page.evaluate(() => window.relicRelayFrames)).toBeGreaterThan(0);
   await page.screenshot({ path: test.info().outputPath('relic-unlocked.png') });
 
   await send(page, 'test:setGems', { count: 0 });

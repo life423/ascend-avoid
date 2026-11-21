@@ -1,9 +1,20 @@
-.relic-comet-ready {
+.relic-comet-launch {
     position: fixed;
     z-index: 29;
     left: calc(var(--arena-left, 0px) + var(--arena-width, 100vw) / 2);
     bottom: calc(var(--arena-bottom, 0px) + var(--arena-safe-bottom, 0px) + 94px);
     transform: translateX(-50%);
+    width: max-content;
+    max-width: calc(var(--arena-width, 100vw) - var(--arena-safe-left, 0px) - var(--arena-safe-right, 0px) - 24px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    pointer-events: none;
+}
+
+.relic-comet-ready {
+    pointer-events: auto;
     min-height: 48px;
     padding: 8px 18px;
     border: 1px solid #fff0c7;
@@ -15,7 +26,19 @@
     touch-action: manipulation;
 }
 
-.relic-comet-ready[hidden] { display: none; }
+.relic-comet-launch[hidden], .relic-comet-ready[hidden], .relic-comet-tip[hidden] { display: none; }
+.relic-comet-tip {
+    box-sizing: border-box;
+    max-width: min(100%, 260px);
+    margin: 0;
+    padding: 6px 10px;
+    border: 1px solid #ffdb94;
+    border-radius: 8px;
+    background: #261c19;
+    color: #fff0c7;
+    font: 600 13px/1.3 system-ui, sans-serif;
+    text-align: center;
+}
 body.online-mode.relic-comet-aiming .hamburger-button { display: none; }
 
 .relic-comet-aim {
@@ -112,11 +135,11 @@ body.online-mode.relic-comet-aiming .hamburger-button { display: none; }
 .relic-comet-touch .relic-comet-map, .relic-comet-touch button { pointer-events: auto; }
 
 @media (max-width: 1199px), (pointer: coarse) {
-    .relic-comet-ready { bottom: calc(var(--arena-bottom, 0px) + var(--arena-safe-bottom, 0px) + 246px); }
+    .relic-comet-launch { bottom: calc(var(--arena-bottom, 0px) + var(--arena-safe-bottom, 0px) + 246px); }
 }
 
 @media (max-height: 500px) and (pointer: coarse) {
-    .relic-comet-ready { bottom: calc(var(--arena-bottom, 0px) + var(--arena-safe-bottom, 0px) + 68px); }
+    .relic-comet-launch { bottom: calc(var(--arena-bottom, 0px) + var(--arena-safe-bottom, 0px) + 68px); }
     .relic-comet-touch { --relic-control-lane: 104px; }
     .relic-comet-touch[open] { grid-template-columns: minmax(0, 1fr) minmax(156px, 28%); grid-template-rows: auto minmax(0, 1fr); }
     .relic-comet-heading { grid-column: 1 / -1; }
