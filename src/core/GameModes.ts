@@ -667,13 +667,13 @@ export class MultiplayerMode extends GameMode {
         this.weaponPlacement = new WeaponPlacement(() => this.multiplayerManager?.sendMessage('placeWeapon', {}))
         if (!this.isPractice) {
             this.relicTutorial = new RelicTutorial(() => this.relicCometAim?.openTutorialAim())
-            this.relicCometAim = new RelicCometAim({
-                onOpen: () => this.cancelInput(),
-                onFire: point => this.multiplayerManager?.sendMessage('fireRelicComet', {
-                    ...point, requestId: ++this.relicCometRequestId,
-                }),
-            })
         }
+        this.relicCometAim = new RelicCometAim({
+            onOpen: () => this.cancelInput(),
+            onFire: point => this.multiplayerManager?.sendMessage('fireRelicComet', {
+                ...point, requestId: ++this.relicCometRequestId,
+            }),
+        })
         window.addEventListener('blur', this.releaseControls)
         document.addEventListener('visibilitychange', this.visibilityChanged)
         document.addEventListener('focusin', this.textFocused)
@@ -1229,7 +1229,7 @@ export class MultiplayerMode extends GameMode {
             if (captorOf(state, player, sessionId)) return // held in a mouth: its captor draws it there (see drawPlayer)
             drawPlayer(this, ctx, player, sessionId, sessionId === localId, sessionId === leaderId, timestamp)
         })
-        if (!this.isPractice) drawRelicComet(this, ctx, state, timestamp)
+        if (!this.isPractice || state.practice?.lesson === 'asteroid') drawRelicComet(this, ctx, state, timestamp)
         for (const id of this.drawnPositions.keys()) {
             if (!present.has(id)) this.drawnPositions.delete(id)
         }
@@ -1269,12 +1269,13 @@ export class MultiplayerMode extends GameMode {
         const hud = this.watchingArena ? 0 : this.isPractice ? 1 : this.runIntro(ctx, canvas, timestamp)
         this.weaponPlacement?.update(state, localId, hud <= 0 || !!this.relicCometAim?.isOpen)
         this.relicCometAim?.update(state, localId, Boolean(hud > 0 && me?.relicCometReady &&
+            (!this.isPractice || state.practice.lesson === 'asteroid' && ['waiting', 'resolving'].includes(state.practice.phase)) &&
             me.state === 'alive' && !me.capturedBy && !me.flying && !me.stunned && !me.recovering &&
             !me.sliding && !me.spawnProtected && state.shiftPhase !== 'grace' &&
             !this.game.joinUI?.isOpen && !document.querySelector('.drawer.active')), this.worldNow(state, timestamp))
         this.relicTutorial?.update(state, localId, Boolean(hud > 0 && !this.relicCometAim?.isOpen &&
             !this.game.joinUI?.isOpen && !this.game.practiceUI?.modalOpen && !document.querySelector('.drawer.active')), timestamp, !!this.relicCometAim?.canLaunch)
-        this.relicCometAim?.showLauncher(!this.relicTutorial?.teachesLaunch)
+        this.relicCometAim?.showLauncher(!this.isPractice && !this.relicTutorial?.teachesLaunch)
         if (this.relicTutorial?.needsLayout) {
             const map = minimapLayout(this, canvas, state), u = this.cssScale
             const obstacles = this.controls?.touchBounds() ?? []
@@ -1302,7 +1303,7 @@ export class MultiplayerMode extends GameMode {
             }
             this.relicTutorial.layout({ left: canvasBox.left + safe.left + 12, right: canvasBox.right - safe.right - 12,
                 top: canvasBox.top + safe.top + 64, bottom: canvasBox.bottom - safe.bottom - 12 }, obstacles)
-            if (!this.relicTutorial.visible) this.relicCometAim?.showLauncher(true)
+            if (!this.relicTutorial.visible && !this.isPractice) this.relicCometAim?.showLauncher(true)
         }
         this.trackWeapon(state, localId)
         if (hud > 0) {
@@ -1383,7 +1384,7 @@ export class MultiplayerMode extends GameMode {
             const x = target ? target.x + target.width / 2 : objective.objectiveX
             const y = target ? target.y + target.height / 2 : objective.objectiveY
             const radius = target ? target.width / 2 + 30 : objective.objectiveKind === 'hole' ? 96 : 44
-            if (objective.objectiveKind === 'hole' || objective.lesson === 'combat' || objective.lesson === 'defense' || objective.lesson === 'basics' && objective.stage === 'capture') {
+            if (objective.objectiveKind === 'hole' || objective.lesson === 'combat' || objective.lesson === 'asteroid' || objective.lesson === 'defense' || objective.lesson === 'basics' && objective.stage === 'capture') {
                 // Fit both subjects in the visible arena below the lesson, not behind its panel.
                 const playerX = me.x + me.width / 2, playerY = me.y + me.height / 2, playerRadius = me.width / 2 + 24
                 const left = Math.min(playerX - playerRadius, x - radius), right = Math.max(playerX + playerRadius, x + radius)

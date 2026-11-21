@@ -1,5 +1,18 @@
 # Optional practice tutorial
 
+## November 21: sixth lesson, launch an asteroid
+
+The latest user instruction adds **Launch an asteroid** to the same unlocked
+Practice / Tutorials list and to the end of the full sequence. The private arena
+starts with the required giant size, a charged asteroid and a marked rival.
+Ready → Aim asteroid uses the shared map/normal server strike. Real damage
+completes the lesson; misses restore the prepared checkpoint. No growth, pickup
+or towing is required in practice. Saved progress preserves all earlier lessons
+and leaves the sixth unfinished. The separate Help replay button is removed.
+See [ASTEROID_TUTORIAL.md](ASTEROID_TUTORIAL.md) for release verification.
+The five-lesson counts below are historical validation of earlier revisions.
+
+
 ## Steerable escape gust — November 1 local follow-up
 
 The user approved preserving the front-to-back gust animation while removing

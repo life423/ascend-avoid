@@ -32,7 +32,7 @@ test('old completions are retained while new combat and rear-cover mastery remai
   for(const id of ['basics','weapon','blackhole'])await expect(picker.locator(`[data-lesson="${id}"]`)).toContainText('Completed');
   await expect(picker.locator('[data-lesson="combat"]')).toContainText('Ready to try');
   await expect(picker.locator('[data-lesson="defense"]')).toContainText('Updated — try the escape gust');
-  expect(await picker.locator('[data-lesson]').count()).toBe(5);
+  expect(await picker.locator('[data-lesson]').count()).toBe(6);
   await page.screenshot({path:test.info().outputPath('five-lesson-picker.png'),scale:'css'});
 });
 
@@ -93,7 +93,8 @@ test('a missed shatter shot restores ammunition and the proven aim without repea
     await page.waitForFunction(a=>window.game.currentGameMode.multiplayerManager.getState().practice.attempt>a,aimed.attempt);
     await input.stop();await settled(page);const restored=await readPractice(page);
     expect(restored.stage).toBe('shatter');expect(restored.passed).toBe(1);expect(restored.me.gulping).toBeTruthy();
-    expect(Math.abs(restored.me.facing+Math.PI/4)).toBeLessThan(.1);
+    const targetAngle = Math.atan2(restored.target.y - restored.me.y, restored.target.x - restored.me.x);
+    expect(Math.abs(Math.atan2(Math.sin(restored.me.facing - targetAngle), Math.cos(restored.me.facing - targetAngle)))).toBeLessThan(.1);
     await expect(page.locator('.practice-feedback')).toContainText('restored');
     const result=await playPractice(page,input);expect(result.completed).toContain('combat');
   }finally{await input.close();}

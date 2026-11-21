@@ -68,7 +68,13 @@ function sampleArena() {
         play: play?.getBoundingClientRect().toJSON() ?? null,
         controls: mode?.controls?.touchBounds() ?? [],
         width: state?.worldWidth ?? 0,
-        player: player ? { x: player.x, alive: player.state === 'alive', inhaling: player.inhaling } : null,
+        player: player ? {
+            x: player.x, alive: player.state === 'alive', inhaling: player.inhaling,
+            capturedBy: player.capturedBy, gulping: player.gulping,
+            injured: player.breathingBlocked, flying: player.flying,
+            stunned: player.stunned, sliding: player.sliding, recovering: player.recovering,
+            breath: mode.stamina,
+        } : null,
     };
 }
 
@@ -90,6 +96,9 @@ const middle = (bounds) => ({ x: Math.round((bounds.left + bounds.right) / 2), y
 const move = (point, duration = 0) => ({ type: 'pointerMove', origin: 'viewport', duration, ...point });
 const down = { type: 'pointerDown', button: 0 };
 const up = { type: 'pointerUp', button: 0 };
+const canInhale = value => value.player?.alive && !value.player.injured && !value.player.capturedBy &&
+    !value.player.gulping && !value.player.flying && !value.player.stunned && !value.player.sliding &&
+    !value.player.recovering && value.player.breath > .3;
 
 try {
     await command(`${sessionPath}/url`, 'POST', { url: arena }, 30000);
@@ -112,10 +121,25 @@ try {
     const moved = await observe('the joystick moves the server player', value => value.player?.alive && (value.player.x - playing.player.x) * direction > 10);
     await touch([up]);
 
-    const action = middle(moved.controls[1]);
-    await touch([move(action), down]);
-    await observe('holding the touch action starts inhale on the server', value => value.player?.inhaling);
-    await touch([up]);
+    let pressed = false;
+    for (let attempt = 0; attempt < 3 && !pressed; attempt++) {
+        const ready = await observe('a healthy, free player can try the touch action', canInhale);
+        await touch([move(middle(ready.controls[1])), down]);
+        let latest = ready;
+        const deadline = Date.now() + 2000;
+        try {
+            do {
+                latest = await execute(sampleArena);
+                if (latest.player?.inhaling) { pressed = true; break; }
+                if (!canInhale(latest)) break;
+                await delay(100);
+            } while (Date.now() < deadline);
+        } finally { await touch([up]); }
+        // Only a real gameplay interruption permits another press. A healthy
+        // player's unresponsive control must still fail, without a blind retry.
+        assert(pressed || !canInhale(latest), `healthy touch hold did not start server inhale: ${JSON.stringify(latest)}`);
+    }
+    assert(pressed, 'holding the touch action starts inhale on the server after ordinary recovery');
     const released = await observe('releasing the touch action stops inhale on the server', value => value.player?.alive && !value.player.inhaling);
 
     const report = {

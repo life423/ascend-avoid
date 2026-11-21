@@ -39,6 +39,7 @@ export class RelicCometAim {
     private paintedAt = -Infinity;
     private paintFrame = 0;
     private ownsSpacePress = false;
+    private returnFocus: HTMLElement | null = null;
     private pointer: { id: number; startX: number; startY: number; mouse: boolean } | null = null;
 
     constructor(private readonly callbacks: AimCallbacks) {
@@ -89,6 +90,7 @@ export class RelicCometAim {
         this.fireButton = fireButton;
         this.status = status;
         this.ready.addEventListener('click', this.open);
+        window.addEventListener('ascend:asteroid-aim', this.open);
         this.fireButton.addEventListener('click', () => this.fire());
         cancelButton.addEventListener('click', () => this.close());
         this.dialog.addEventListener('cancel', event => { event.preventDefault(); this.close(); });
@@ -121,18 +123,24 @@ export class RelicCometAim {
         if (this.isOpen && performance.now() - this.paintedAt >= 66) this.paint();
     }
 
-    private open = (): void => {
+    private open = (event?: Event): void => {
         const state = this.state;
         const me = this.localId ? state?.players.get(this.localId) : undefined;
         if (!this.canAim || this.isOpen || !state || !me) return;
+        const opener: unknown = event instanceof CustomEvent ? event.detail?.opener : event?.currentTarget;
+        this.returnFocus = opener instanceof HTMLElement ? opener : document.activeElement instanceof HTMLElement ? document.activeElement : null;
         const desktop = this.finePointer.matches;
+        const practice = state.practice?.enabled && state.practice.lesson === 'asteroid';
+        const title = this.dialog.querySelector('h2');
+        if (title) title.textContent = practice ? 'Launch an asteroid' : 'Relic comet';
+        this.fireButton.textContent = practice ? 'Launch asteroid' : 'Fire comet';
         this.target = this.startingTarget(me, state);
         this.status.textContent = '';
         this.fireButton.disabled = !this.target;
         this.dialog.classList.toggle('relic-comet-touch', !desktop);
         this.instructions.textContent = desktop
             ? 'Aim with WASD or arrows. Press Space or Enter to fire, or click the map.'
-            : 'Tap or drag the reticle, then tap Fire comet.';
+            : practice ? 'Tap or drag the reticle onto TARGET, then tap Launch asteroid.' : 'Tap or drag the reticle, then tap Fire comet.';
         if (desktop) this.dialog.showModal();
         else this.dialog.show(); // Leave the arena’s thumb controls available below the map.
         document.body.classList.add('relic-comet-aiming');
@@ -154,6 +162,8 @@ export class RelicCometAim {
         document.body.classList.remove('relic-comet-aiming');
         this.ready.hidden = !this.canAim;
         this.callbacks.onClose?.();
+        if (this.returnFocus?.isConnected && this.canAim) this.returnFocus.focus({ preventScroll: true });
+        this.returnFocus = null;
     }
 
     resolve(status: 'accepted' | 'rejected', message?: string): void {
@@ -175,6 +185,7 @@ export class RelicCometAim {
         document.removeEventListener('keydown', this.captureSpace, true);
         document.removeEventListener('keyup', this.captureSpace, true);
         window.removeEventListener('blur', this.resetSpacePress);
+        window.removeEventListener('ascend:asteroid-aim', this.open);
         this.dialog.remove();
         this.ready.remove();
     }
@@ -347,7 +358,7 @@ export class RelicCometAim {
         ctx.clip();
         this.paintLandmarks(ctx, state, scale, arenaWidth, arenaHeight);
         state.players.forEach((player, id) => {
-            if (id !== this.localId && player.state === 'alive' && !player.capturedBy) this.paintPlayer(ctx, player, scale, false);
+            if (id !== this.localId && player.state === 'alive' && !player.capturedBy) this.paintPlayer(ctx, player, scale, false, state.practice?.enabled && state.practice.lesson === 'asteroid' && state.practice.targetId === id);
         });
         const me = this.localId ? state.players.get(this.localId) : undefined;
         if (me) this.paintPlayer(ctx, me, scale, true);
@@ -373,7 +384,7 @@ export class RelicCometAim {
         }
     }
 
-    private paintPlayer(ctx: CanvasRenderingContext2D, player: SyncedPlayer, scale: number, local: boolean): void {
+    private paintPlayer(ctx: CanvasRenderingContext2D, player: SyncedPlayer, scale: number, local: boolean, practiceTarget = false): void {
         const x = (player.x + player.width / 2) * scale, y = (player.y + player.height / 2) * scale;
         const radius = player.width / 2 * scale;
         if (radius >= 6) {
@@ -385,12 +396,12 @@ export class RelicCometAim {
         if (local) {
             ctx.moveTo(x, y - 5); ctx.lineTo(x + 5, y); ctx.lineTo(x, y + 5); ctx.lineTo(x - 5, y); ctx.closePath();
         } else ctx.arc(x, y, 3, 0, Math.PI * 2);
-        ctx.fillStyle = local ? '#a4f0d9' : '#c8d7e5'; ctx.fill();
+        ctx.fillStyle = local ? '#a4f0d9' : practiceTarget ? '#ffdb94' : '#c8d7e5'; ctx.fill();
         ctx.strokeStyle = '#0a1521'; ctx.lineWidth = 1; ctx.stroke();
-        if (local) {
+        if (local || practiceTarget) {
             ctx.font = '750 10px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
             const labelY = y < 24 ? y + 13 : y - 13;
-            ctx.lineWidth = 3; ctx.strokeText('YOU', x, labelY); ctx.fillText('YOU', x, labelY);
+            ctx.lineWidth = 3; ctx.strokeText(practiceTarget ? 'TARGET' : 'YOU', x, labelY); ctx.fillText(practiceTarget ? 'TARGET' : 'YOU', x, labelY);
         }
     }
 

@@ -1,10 +1,63 @@
-# Contextual asteroid launch tutorial
+# Asteroid practice and live guidance
 
 November 21, 2026. The user reports that becoming large enough still does not
 teach asteroid launching. The old brief “Relic unlocked” badge omits how to claim
 and deliver the relic. A tip shown only after delivery misses that discovery gap.
 
-## Implementation
+## Latest user correction: private launch practice
+
+The user explicitly requested **Practice / Tutorials**, like every other lesson,
+and clarified that the player must **already be large enough and just practice
+launching an asteroid**. A link that restarts live growth/towing coaching does
+not satisfy this request.
+
+The sixth selectable lesson is **Launch an asteroid**, also the final step of
+the full sequence. Its private 4200 × 4200 arena starts with 33,000 gems, physical
+width above `RELIC.MIN_WIDTH`, an already charged asteroid and a marked practice
+rival. Reading time preserves the prepared sizes. **Ready → Aim asteroid** opens
+the normal launch map with a gold **TARGET** label. Mouse, keyboard and touch
+use the ordinary `fireRelicComet` message and shared strike/damage physics.
+Only actual server-observed damage to the designated rival certifies completion.
+A miss restores the same large, charged checkpoint. There is no gathering,
+relic pickup or towing prerequisite in this lesson. Switching lessons clears the
+charge/strike; exiting returns to a fresh live session as other lessons do.
+
+Existing five-lesson achievements survive; the new lesson starts unfinished.
+The separate Game Menu/How to Play replay button is removed. The automatic
+size-threshold live cues remain, independently of private practice completion.
+Practice setup is not evidence of naturally earned growth in the live arena.
+
+Correction validation: production client/server builds and package verification,
+both TypeScript checks, synced-schema check, practice scenario units (including
+prepared-size preservation and actual miss recovery), and progress migration
+units pass. The expanded five-profile matrix plus final corrective rechecks pass
+all **137 applicable browser scenarios**; eight device-inapplicable cases are
+skipped. The 15 final rechecks overlap that total. Profiles: desktop Chrome,
+Android Chrome emulation, iPhone WebKit portrait/landscape and iPad WebKit.
+All six lessons individually and the full sequence complete; the 320px Android
+sequence also passes with reduced motion. New lesson checks prove the prepared
+giant/charge, successful impact, missed-strike reset, keyboard aiming, and cancel
+focus. Picker, prepared giant and aiming-map screenshots were inspected.
+
+Review corrected an iPhone cancel-focus issue by preserving the actual opening
+button, an old shatter-retry assertion by checking the real target angle, and
+fractional enlarged-text focus clipping with an inset scroll clearance. Logs:
+`.tmp/asteroid-practice-regression.log` and `.tmp/asteroid-practice-rechecks.log`.
+The current PR description/checks record required CI and production rollout.
+This correction follows the user's authorization to commit, merge and deploy.
+
+Internal design-review heuristics for the private lesson: usability 9/10,
+hierarchy 9/10, consistency 9/10, responsiveness 9/10, feedback 9/10,
+accessibility 8/10 and performance 8/10. Follow-ups: verify an attached keyboard
+and assistive technology on an actual phone, and measure on-device input/frame
+costs. Automated browser completion is not uncoached human learnability evidence.
+
+The separate requested live test uses normal inputs from a zero-gem spawn and
+an independent spectator to confirm authoritative growth. It reached width 943
+before a knockout; it has not yet verified the 1100 automatic unlock. Private
+practice setup and guarded threshold fixtures do not count as that result.
+
+## Automatic live guidance
 
 The live arena now teaches three steps from authoritative player/relic state:
 
@@ -22,10 +75,9 @@ Each cue closes after 12 seconds of visible reading time. Hidden tabs, menus,
 injury, capture, flight, active inhaling/held ammunition and inbound-comet warnings
 defer coaching. Keyboard focus and scrolling allow more reading time. **Dismiss**
 stops the tutorial, with per-device saved progress; blocked storage falls back to
-the current session. **How to Play → Show asteroid tutorial** replays the current
-step without leaving the room, changing player identity or resetting growth.
-Replaying below the threshold explains growing first. This is contextual live
-coaching, not an additional private practice lesson or proof of skill mastery.
+the current session. These cues coach the current live run; the separate sixth
+private practice lesson provides repeatable launch practice. The automatic cues
+do not certify private skill mastery.
 
 The rendered panel avoids full joystick/aim footprints, score/leaderboard space,
 radar, visible placement/launch actions, desktop chrome and the local creature's
@@ -36,7 +88,7 @@ play. There is no automatic dialog, focus steal, world pause or balance change.
 The existing compact unlock badge remains for repeat runs without duplicate
 coaching. Help's existing instructions are not lengthened.
 
-## Validation and limitations
+## Historical live-guide validation and limitations
 
 The full production build/package verification, final client rebuild and both
 TypeScript checks pass. Targeted lint reports zero errors and 23 existing

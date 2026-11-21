@@ -11,6 +11,11 @@ store.mark('basics', 'skipped'); assert.equal(new PracticeStore(storage).value.l
 store.mark('weapon', 'completed'); store.mark('weapon', 'skipped'); assert.equal(store.value.lessons.weapon, 'completed');
 for (const id of PRACTICE_LESSONS) store.mark(id, 'completed');
 assert.equal(new PracticeStore(storage).value.status, 'completed');
+values.clear(); values.set(PRACTICE_KEY, JSON.stringify({ version: 2, offered: true, status: 'completed', lessons: { basics: 'completed', combat: 'completed', defense: 'completed', blackhole: 'completed', weapon: 'completed' } }));
+store = new PracticeStore(storage);
+assert.equal(store.value.lessons.asteroid, 'not-started');
+assert.equal(store.value.status, 'in-progress');
+for (const id of PRACTICE_LESSONS.filter(id => id !== 'asteroid')) assert.equal(store.value.lessons[id], 'completed', 'existing lesson achievements survive the sixth lesson');
 values.clear(); values.set('ascend.practice.v1', JSON.stringify({ version: 1, offered: true, status: 'completed', lessons: { basics: 'completed', weapon: 'completed', blackhole: 'completed', defense: 'completed' } }));
 store = new PracticeStore(storage);
 assert.equal(store.value.version, 2); assert.equal(store.value.lessons.basics, 'completed');
@@ -28,4 +33,4 @@ values.set(PRACTICE_KEY, JSON.stringify({version:2,lessons:{basics:'cheated'},of
 assert.equal(new PracticeStore(storage).value.lessons.basics,'not-started');
 store = new PracticeStore({getItem(){throw Error('blocked')},setItem(){throw Error('blocked')}});
 store.mark('defense','completed'); assert.equal(store.value.lessons.defense,'completed'); assert(!store.shouldOffer);
-console.log('Practice progress v2: five lessons, honest mastery migration with historical defense retained, skipped/complete replay, blocked storage and first-visit behavior pass.');
+console.log('Practice progress v2: six lessons, honest mastery migration with historical defense retained, skipped/complete replay, blocked storage and first-visit behavior pass.');

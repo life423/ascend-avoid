@@ -1,15 +1,21 @@
 # Ascend Avoid
 
-## November 21 contextual asteroid tutorial
+## November 21 asteroid tutorial: private launch practice
 
-The user reports that the size unlock still does not teach launching an asteroid.
-The [contextual walkthrough](ASTEROID_TUTORIAL.md) now teaches actual relic pickup,
-trailing-cargo delivery to the cyan relay, then the existing comet aiming map.
-It starts at the physical-size threshold, expires rather than becoming pinned
-UI, and can be replayed from Help while preserving the same live player/run.
-The user approved commit, merge and deployment on November 21. The pull request
-and production workflow record publication and rollout. Gameplay parameters and
-the five private practice lessons are unchanged.
+The latest user correction requires **Practice / Tutorials → Launch an asteroid**
+as a regular private lesson. It starts with a giant player and a charged asteroid,
+so the exercise is only aiming and launching at a marked practice rival. There
+is no growth, relic pickup or towing prerequisite. A missed strike restores the
+prepared checkpoint; ordinary server-confirmed strike damage completes it.
+It is the sixth selectable lesson and the final lesson in the full sequence.
+Existing achievements remain saved and the new lesson starts unfinished.
+
+The separate Game Menu/Help asteroid replay button is removed. Brief automatic
+live cues still teach relic pickup, towing and launch at the actual size unlock,
+with combat/UI deferral and automatic expiry. The user authorized commit, merge
+and deployment; verify final workflow/revision before reporting the correction
+live. See [ASTEROID_TUTORIAL.md](ASTEROID_TUTORIAL.md) for behavior and evidence.
+Gameplay tuning is unchanged.
 
 ## Rounded arena corners — approved November 3, 2026
 

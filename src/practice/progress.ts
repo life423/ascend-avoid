@@ -13,7 +13,7 @@ export interface PracticeProgress {
 const statuses: readonly string[] = ['not-started', 'in-progress', 'skipped', 'completed'];
 const validStatus = (value: unknown): value is LessonStatus => typeof value === 'string' && statuses.includes(value);
 const empty = (): PracticeProgress => ({ version: 2, offered: false, status: 'not-started',
-  lessons: { basics: 'not-started', combat: 'not-started', defense: 'not-started', blackhole: 'not-started', weapon: 'not-started' }, legacyCompleted: {} });
+  lessons: { basics: 'not-started', combat: 'not-started', defense: 'not-started', blackhole: 'not-started', weapon: 'not-started', asteroid: 'not-started' }, legacyCompleted: {} });
 
 /** Local mastery is versioned. Old achievements survive without certifying a new rear-wave skill. */
 export class PracticeStore {

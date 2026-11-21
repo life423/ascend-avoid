@@ -105,6 +105,6 @@ test('defense stages are distinct and lesson actions fit beside mobile play cont
     await page.getByRole('button', { name: 'Choose any lesson', exact: true }).click();
     await expect(page.locator('[data-lesson="defense"]')).toContainText('Two exercises: Puff & flee, then Escape while injured');
     expect(await page.locator('[data-lesson="defense"]').count()).toBe(1);
-    expect(await page.locator('[data-lesson]').count()).toBe(5);
+    expect(await page.locator('[data-lesson]').count()).toBe(6);
   } finally { await input.close(); }
 });

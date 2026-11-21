@@ -98,7 +98,7 @@ async function expectClearTutorial(page) {
   })).toBe(true);
 }
 
-test('teaches at the size threshold, expires, and can be replayed or dismissed without losing the run', async ({ page, hasTouch }) => {
+test('teaches automatically at the size threshold, expires, and stays dismissed', async ({ page, hasTouch }) => {
   await page.addInitScript(() => {
     window.relicTutorialWrites = 0;
     const set = Storage.prototype.setItem;
@@ -128,42 +128,6 @@ test('teaches at the size threshold, expires, and can be replayed or dismissed w
   await expect(tutorial).toBeHidden({ timeout: 15_000 });
   expect(await page.evaluate(() => window.relicTutorialTextUpdates)).toBeLessThan(4);
   expect(await page.evaluate(() => window.relicTutorialWrites)).toBeLessThan(5);
-  const before = await page.evaluate(() => {
-    const manager = window.game.currentGameMode.multiplayerManager;
-    return { room: manager.room.id, player: manager.localSessionId, width: manager.getLocalPlayer().width };
-  });
-  // Open the real Help surface; replay keeps the same live player and arena.
-  await page.evaluate(() => window.drawerUI.open());
-  const menu = page.getByRole('dialog', { name: 'Game Menu' });
-  await menu.getByRole('button', { name: 'Show asteroid tutorial' }).click();
-  await expect(menu).toBeHidden();
-  await expect(tutorial).toBeVisible();
-  const dismiss = tutorial.getByRole('button', { name: 'Dismiss asteroid tutorial' });
-  const dismissBox = await dismiss.boundingBox();
-  expect(dismissBox.height).toBeGreaterThanOrEqual(44);
-  if (hasTouch) {
-    const original = page.viewportSize();
-    await page.setViewportSize({ width: original.height, height: original.width });
-    await expectClearTutorial(page);
-    await page.screenshot({ path: test.info().outputPath('tutorial-rotated.png') });
-    await page.setViewportSize(original);
-    await expectClearTutorial(page);
-    await dismiss.tap();
-  } else {
-    const puff = (await read(page)).puffReadyAt;
-    await dismiss.focus();
-    await page.keyboard.press('Space');
-    expect((await read(page)).puffReadyAt).toBe(puff);
-  }
-  await expect(tutorial).toBeHidden();
-  const after = await page.evaluate(() => {
-    const manager = window.game.currentGameMode.multiplayerManager;
-    return { room: manager.room.id, player: manager.localSessionId, width: manager.getLocalPlayer().width };
-  });
-  expect(after.room).toBe(before.room);
-  expect(after.player).toBe(before.player);
-  // Ordinary upkeep continues while Help is open; tutorial replay must not respawn/reset growth.
-  expect(after.width).toBeGreaterThan(before.width - 2);
   await send(page, 'test:setGems', { count: 0 });
   await expect.poll(async () => (await read(page)).gems).toBe(0);
   await send(page, 'test:setGems', { count: 33_000 });

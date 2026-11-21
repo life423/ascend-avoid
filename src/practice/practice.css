@@ -49,3 +49,6 @@ body.practice-mode .app-header,body.practice-mode .bar-tab,body.practice-mode .h
 .practice-ui[data-touch="true"] .practice-actions { position:fixed; bottom:auto; transform:none; width:max-content; box-sizing:border-box; justify-content:center; gap:4px 8px; padding:8px; border:1px solid var(--practice-line); border-radius:12px; background:var(--practice-bg); }
 .practice-ui[data-touch="true"] .practice-actions button { white-space:nowrap; flex-shrink:0; }
 .practice-ui[data-touch="true"] .practice-actions[data-scroll="true"] { flex-wrap:nowrap; overflow:auto; justify-content:flex-start; }
+
+/* The asteroid map has its own instructions and controls. */
+body.relic-comet-aiming .practice-panel { visibility:hidden; pointer-events:none; }
