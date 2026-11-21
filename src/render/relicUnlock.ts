@@ -6,6 +6,7 @@ import { COMPACT, FONT, roundedRect } from './style'
 
 const CUE_MS = 2600
 const CUE_TEXT = 'Relic unlocked'
+const CUE_NEXT_STEP = 'Tow the relic to the relay'
 const reducedMotion = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null
 
 /** Track physical qualification independently of the relic's spawn and claim state. */
@@ -43,8 +44,8 @@ export class RelicUnlockCue {
 
         const u = mode.cssScale
         const availableWidth = canvas.width - mode.hudInsets.left - mode.hudInsets.right
-        const width = Math.min(156 * u, availableWidth - 20 * u)
-        const height = 30 * u
+        const width = Math.min(214 * u, availableWidth - 20 * u)
+        const height = 46 * u
         const x = mode.hudInsets.left + (availableWidth - width) / 2
         const y = COMPACT.matches
             ? Math.max(mode.hudInsets.top + 153 * u, mode.minimapBottom) + 10 * u
@@ -64,7 +65,7 @@ export class RelicUnlockCue {
         ctx.font = `800 ${12 * u}px ${FONT}`
         const textWidth = Math.min(ctx.measureText(CUE_TEXT).width, width - 36 * u)
         const groupX = x + (width - textWidth - 20 * u) / 2
-        const ix = groupX + 6 * u, iy = y + height / 2
+        const ix = groupX + 6 * u, iy = y + 15 * u
         ctx.beginPath()
         ctx.moveTo(ix - 3 * u, iy - 5 * u)
         ctx.lineTo(ix + 3 * u, iy - 5 * u)
@@ -78,6 +79,9 @@ export class RelicUnlockCue {
         ctx.textAlign = 'left'
         ctx.textBaseline = 'middle'
         ctx.fillText(CUE_TEXT, groupX + 20 * u, iy, textWidth)
+        ctx.font = "600 " + 12 * u + "px " + FONT
+        ctx.textAlign = 'center'
+        ctx.fillText(CUE_NEXT_STEP, x + width / 2, y + 32 * u, width - 16 * u)
         ctx.restore()
     }
 }
