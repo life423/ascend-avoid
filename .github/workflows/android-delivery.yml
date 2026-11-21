@@ -1,0 +1,169 @@
+name: Android delivery
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        type: choice
+        options: [plan, stage-draft]
+        default: plan
+      commit:
+        description: Exact full commit currently on main
+        type: string
+        required: true
+      ci_run:
+        description: Successful CI run ID for that exact main commit
+        type: string
+        required: true
+      version_code:
+        description: Expected version code embedded in that CI artifact
+        type: string
+        required: true
+      confirm:
+        description: 'Only for staging: DRAFT <verified closed API track ID> <version code> <full commit>'
+        type: string
+        default: ''
+
+permissions: {}
+
+jobs:
+  plan:
+    name: Verify immutable Android artifact
+    if: github.ref == 'refs/heads/main' && github.repository == 'life423/ascend-avoid'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      attempt: ${{ steps.verify.outputs.attempt }}
+      artifact_id: ${{ steps.verify.outputs.artifact_id }}
+      digest: ${{ steps.verify.outputs.digest }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22.22.0'
+      - name: Plan without Play credentials
+        id: verify
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_COMMIT: ${{ inputs.commit }}
+          CI_RUN: ${{ inputs.ci_run }}
+          VERSION_CODE: ${{ inputs.version_code }}
+        run: |
+          set -euo pipefail
+          source_dir="$RUNNER_TEMP/android-plan"
+          bash scripts/android-ci-artifact.sh "$CI_RUN" "$SOURCE_COMMIT" "$source_dir"
+          attempt=$(jq -er .attempt "$source_dir/github-artifact.json")
+          node scripts/android-release.mjs plan "$source_dir" "$SOURCE_COMMIT" "$CI_RUN" "$attempt" "$VERSION_CODE" | tee "$RUNNER_TEMP/android-plan.json"
+          printf 'attempt=%s\nartifact_id=%s\ndigest=%s\n' "$attempt" \
+            "$(jq -er .artifactId "$source_dir/github-artifact.json")" \
+            "$(jq -er .archiveDigest "$source_dir/github-artifact.json")" >> "$GITHUB_OUTPUT"
+          {
+            echo '### Verified unsigned Android artifact (no Play request)'
+            echo '~~~json'
+            cat "$RUNNER_TEMP/android-plan.json" "$source_dir/github-artifact.json"
+            echo '~~~'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  draft:
+    name: Stage closed testing draft (never roll out)
+    needs: plan
+    if: inputs.mode == 'stage-draft' && github.ref == 'refs/heads/main' && github.repository == 'life423/ascend-avoid'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: android-play-draft
+    concurrency:
+      group: android-play-draft-ascend-avoid
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    env:
+      SOURCE_COMMIT: ${{ inputs.commit }}
+      CI_RUN: ${{ inputs.ci_run }}
+      VERSION_CODE: ${{ inputs.version_code }}
+      CI_ATTEMPT: ${{ needs.plan.outputs.attempt }}
+      PLAY_CLOSED_TRACK_ID: ${{ vars.PLAY_CLOSED_TRACK_ID }}
+      PLAY_DRAFT_CONFIRMATION: ${{ inputs.confirm }}
+      PLAY_APP_SIGNING_SHA256: ${{ vars.PLAY_APP_SIGNING_SHA256 }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22.22.0'
+      - uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4.8.0
+        with:
+          distribution: temurin
+          java-version: '17.0.17+10'
+      - name: Re-fetch exact CI artifact and verify Play App Signing association
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ needs.plan.outputs.artifact_id }}
+          ARCHIVE_DIGEST: ${{ needs.plan.outputs.digest }}
+        run: |
+          set -euo pipefail
+          source_dir="$RUNNER_TEMP/android-ready"
+          bash scripts/android-ci-artifact.sh "$CI_RUN" "$SOURCE_COMMIT" "$source_dir"
+          jq -e --arg id "$ARTIFACT_ID" --arg digest "$ARCHIVE_DIGEST" \
+            '.artifactId == $id and .archiveDigest == $digest' "$source_dir/github-artifact.json" > /dev/null
+          node scripts/android-release.mjs check-draft "$source_dir" "$SOURCE_COMMIT" "$CI_RUN" "$CI_ATTEMPT" "$VERSION_CODE"
+      - name: Sign only the verified bundle with the existing upload key
+        env:
+          UPLOAD_JKS_B64: ${{ secrets.ANDROID_UPLOAD_JKS_BASE64 }}
+          UPLOAD_PASSWORD: ${{ secrets.ANDROID_UPLOAD_STORE_PASSWORD }}
+          UPLOAD_SHA256: ${{ vars.ANDROID_UPLOAD_CERT_SHA256 }}
+        run: |
+          set -euo pipefail
+          umask 077
+          [[ -n "$UPLOAD_JKS_B64" && -n "$UPLOAD_PASSWORD" ]]
+          expected=$(printf %s "$UPLOAD_SHA256" | tr -d ':' | tr '[:lower:]' '[:upper:]')
+          [[ "$expected" =~ ^[A-F0-9]{64}$ ]]
+          work=$(mktemp -d)
+          trap 'rm -f -- "$work/upload.jks"; rmdir -- "$work"' EXIT
+          printf %s "$UPLOAD_JKS_B64" | base64 --decode > "$work/upload.jks"
+          aab="$RUNNER_TEMP/android-ready/Ascend-Avoid-unsigned.aab"
+          signed="$RUNNER_TEMP/Ascend-Avoid-signed.aab"
+          jarsigner -keystore "$work/upload.jks" -storepass:env UPLOAD_PASSWORD -keypass:env UPLOAD_PASSWORD \
+            -sigalg SHA256withRSA -digestalg SHA-256 -signedjar "$signed" "$aab" ascend-avoid-upload
+          # Self-signed upload certificates are expected; verify cryptographic signatures and exact signer.
+          jarsigner -verify "$signed" | tee "$RUNNER_TEMP/jarsigner-check.txt"
+          grep -Fxq 'jar verified.' "$RUNNER_TEMP/jarsigner-check.txt"
+          signer=$(keytool -J-Duser.language=en -printcert -jarfile "$signed" |
+            awk '/SHA256:/{print $2}' | tr -d ':' | tr '[:lower:]' '[:upper:]')
+          [[ "$signer" == "$expected" ]]
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        id: play_auth
+        with:
+          workload_identity_provider: ${{ vars.PLAY_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.PLAY_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+          access_token_lifetime: 600s
+          create_credentials_file: false
+          export_environment_variables: false
+      - name: Stage and verify draft, never promote
+        env:
+          ANDROID_PUBLISHER_ACCESS_TOKEN: ${{ steps.play_auth.outputs.access_token }}
+        run: |
+          set -euo pipefail
+          node scripts/android-release.mjs stage-draft "$RUNNER_TEMP/android-ready" \
+            "$SOURCE_COMMIT" "$CI_RUN" "$CI_ATTEMPT" "$VERSION_CODE" "$RUNNER_TEMP/Ascend-Avoid-signed.aab" "$RUNNER_TEMP/play-draft-receipt.json"
+          {
+            echo '### Google Play draft confirmed (not released to testers)'
+            echo '~~~json'
+            cat "$RUNNER_TEMP/play-draft-receipt.json"
+            echo '~~~'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: play-draft-receipt-${{ github.sha }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/play-draft-receipt.json
+          if-no-files-found: error
+          retention-days: 14

@@ -1,8 +1,10 @@
 name: CI
 
-# Every pull request: build, gameplay regressions, and desktop and Android Firefox checks.
+# Pull requests and main: gameplay/browser checks, then Android wrapper validation when needed.
 on:
   pull_request:
+  push:
+    branches: [main]
 
 permissions:
   contents: read
@@ -28,6 +30,9 @@ jobs:
       run: |
         npm ci
         cd server && npm ci
+
+    - name: Android release safety checks
+      run: node --test tests/android-release.test.mjs
 
     - name: Run type checking
       run: |
@@ -115,3 +120,55 @@ jobs:
           echo 'Gameplay, desktop Firefox, or Android Firefox checks failed.'
           exit 1
         fi
+
+  android-wrapper:
+    name: Android wrapper validation
+    needs: required-checks
+    if: github.repository == 'life423/ascend-avoid'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - name: Detect Android changes on pull requests
+        id: scope
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          paths=$(git diff --name-only "$GITHUB_SHA^1" "$GITHUB_SHA" -- android/ 'scripts/android-*' tests/android-release.test.mjs .github/workflows/)
+          if [[ -n "$paths" ]]; then
+            echo "android=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4.8.0
+        if: github.event_name == 'push' || steps.scope.outputs.android == 'true'
+        with:
+          distribution: temurin
+          java-version: '17.0.17+10'
+      - name: Prepare pinned Android package versions and validate unsigned bundle
+        if: github.event_name == 'push' || steps.scope.outputs.android == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Use the same checked Android command-line tools archive as the existing Firefox CI.
+          tools_url='https://dl.google.com/android/repository/commandlinetools-linux-15859902_latest.zip'
+          curl --fail --silent --show-error --location "$tools_url" --output "$RUNNER_TEMP/android-commandline-tools.zip"
+          tools_sha=4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583
+          printf '%s  %s\n' "$tools_sha" "$RUNNER_TEMP/android-commandline-tools.zip" | sha256sum --check --status
+          unzip -q "$RUNNER_TEMP/android-commandline-tools.zip" -d "$RUNNER_TEMP/android-commandline-tools"
+          sdkmanager="$RUNNER_TEMP/android-commandline-tools/cmdline-tools/bin/sdkmanager"
+          "$sdkmanager" --sdk_root="$ANDROID_HOME" 'platforms;android-36' 'build-tools;36.1.0'
+          curl --fail --silent --show-error --location \
+            'https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar' \
+            --output "$RUNNER_TEMP/bundletool-all-1.18.3.jar"
+          pwsh -NoProfile -File scripts/android-build.ps1 -Configuration Release -CiAab \
+            -Bundletool "$RUNNER_TEMP/bundletool-all-1.18.3.jar" -OutputDirectory "$RUNNER_TEMP/android-unsigned"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          name: android-unsigned-${{ github.sha }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/android-unsigned/
+          if-no-files-found: error
+          retention-days: 14
