@@ -121,7 +121,7 @@ test('skip leaves unfinished, every lesson is unlocked, replay and exit start a 
   const picker = page.getByRole('dialog', { name: 'Practice / Tutorials' });
   await expect(picker).toBeVisible();
   await expect(picker.locator('[data-lesson="basics"]')).toContainText('Unfinished · skipped');
-  for (const id of ['basics', 'combat', 'defense', 'blackhole', 'weapon']) await expect(picker.locator(`[data-lesson="${id}"]`)).toBeEnabled();
+  for (const id of ['basics', 'combat', 'defense', 'blackhole', 'weapon', 'asteroid']) await expect(picker.locator(`[data-lesson="${id}"]`)).toBeEnabled();
   await picker.locator('[data-lesson="blackhole"]').click();
   await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getState().practice.lesson === 'blackhole');
   await page.getByRole('button', { name: 'Exit tutorial', exact: true }).click();

@@ -7,28 +7,23 @@ the relic comet, true-scale minimap body outlines, and the
 request inventory is preserved in [TODO_HISTORY.md](TODO_HISTORY.md).
 Historical sections below record earlier checkpoints.
 
-## November 21 asteroid tutorial — release approved
+## November 21 asteroid practice correction — release authorized
 
-The user's missing-tutorial report is implemented as a contextual three-step
-walkthrough: physical-size unlock → walk into the gold relic → tow trailing cargo
-through the cyan relay → aim and launch the earned asteroid. Each cue expires,
-can be dismissed and defers during combat/other UI. Help replays the current step
-without abandoning the player's run. Read [ASTEROID_TUTORIAL.md](ASTEROID_TUTORIAL.md)
-for exact behavior, review findings and limitations. Existing private lessons,
-launching controls and gameplay tuning remain unchanged. The user approved
-commit, merge to main and deployment on November 21. Use the required PR checks
-and production workflow, and verify the deployed revision before reporting it live.
+The user requires a real **Practice / Tutorials → Launch an asteroid** lesson,
+starting already large with a ready asteroid. The sixth private lesson is now
+implemented: Ready → Aim asteroid → target the rival on the ordinary map →
+launch. Actual shared strike damage certifies completion; a miss restores the
+prepared checkpoint. It is also last in the full tutorial sequence. Existing
+achievements survive and the sixth lesson starts unfinished. The separate
+Game Menu/Help replay button is removed. Live size-threshold coaching remains.
+Read [ASTEROID_TUTORIAL.md](ASTEROID_TUTORIAL.md) for current checks and limits.
 
-Verification: full production build/package check, final client rebuild and
-client/server TypeScript checks pass. Targeted lint has zero errors (23 existing
-GameModes warnings); `git diff --check` passes. All 30 browser cases pass across
-desktop Chrome, Android Chrome emulation, iPhone WebKit portrait/landscape and
-iPad WebKit. After the final scroll-focus/keyboard and reconnect cleanup, the
-five enlarged-text cases pass again with full action visibility and no arena
-movement from scrolling keys. These overlap the 30 scenarios, not 35 distinct
-scenarios. Screenshots were reviewed for phone, landscape, tablet, desktop and
-enlarged-text states. Physical-device, screen-reader and uncoached-newcomer
-checks remain open. Local preview: <http://127.0.0.1:3197/>.
+The earlier live guide shipped in PR #99, main `e646a51`, Azure deployment
+`44947176963`. The correction follows the user's authorization to commit, merge
+and deploy. The current PR and production workflow record final release verification. The user separately
+requested a live automatic-unlock test through actual earned gameplay, without
+size overrides; that test has not yet passed. Do not substitute private lesson
+setup or guarded threshold fixtures for that evidence.
 
 ## November 21 domain configuration and release record
 

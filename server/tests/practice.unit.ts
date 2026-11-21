@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { createPracticeArena } from '../practice/arena.js';
 import { PracticeController } from '../practice/PracticeController.js';
 import { fireCaptive, exhale } from '../systems/inhale.js';
+import { fireRelicComet } from '../systems/relic.js';
 import { deployWeapon } from '../systems/weapons.js';
 import { PRACTICE_LESSONS, type PracticeLesson } from '../practice/definitions.js';
 
@@ -42,6 +43,8 @@ function setup(lesson: PracticeLesson) {
     } else if (v.lesson === 'blackhole') {
       if (v.stage === 'capture') { if (!p.inhaling) p.startInhale(now); }
       else if (p.gulping) { p.stopInhale(now); p.captureNeedsRelease = false; p.aimAt(1, 0); fireCaptive(s, p, now); }
+    } else if (v.lesson === 'asteroid' && p.relicCometReady && t) {
+      fireRelicComet(s, p, t.x + t.width / 2, t.y + t.height / 2);
     } else if (v.lesson === 'weapon') {
       if (v.stage === 'collect') {
         const part = s.pinwheel.parts.find(part => part.carriedBy !== p.sessionId);
@@ -59,6 +62,21 @@ function setup(lesson: PracticeLesson) {
   return { s, p, c, events, step, until, drive, play, now: () => now };
 }
 
+{
+  const { s, p, c, step, until, now } = setup('asteroid');
+  const gems = p.gems, width = p.width, attempt = s.practice.attempt;
+  assert(width >= 1100 && p.relicCometReady, 'private launch practice starts large with a charged asteroid');
+  for (let i = 0; i < 700; i++) step();
+  assert.equal(s.practice.phase, 'ready'); assert.equal(p.gems, gems); assert(p.relicCometReady);
+  c.ready(attempt, now());
+  assert(fireRelicComet(s, p, 900, 900));
+  until(() => s.practice.attempt > attempt);
+  assert.equal(s.practice.phase, 'waiting'); assert.equal(s.practice.passed, 0);
+  assert.equal(p.gems, gems); assert.equal(p.width, width); assert(p.relicCometReady);
+  assert(s.practice.feedback.includes('missed'), 'a miss restores the launch checkpoint without growth or towing');
+  c.select('basics', false, now());
+  assert(!p.relicCometReady && s.relic.phase === 'disabled' && s.relicComet.phase === 'idle', 'switching lessons clears the prepared strike');
+}
 for (const lesson of PRACTICE_LESSONS) {
   const { s, p, c, play, events, now } = setup(lesson);
   if (lesson === 'defense') {
@@ -203,7 +221,7 @@ for (const holding of [false, true]) {
   }
   assert.equal(s.practice.lesson, 'combat'); assert(actualCaptive && p.gulping === actualCaptive, 'the full sequence carries the real captured opponent into aiming');
   assert.deepEqual(p.steering(), { x: 0, y: 0 }, 'reading clears the walking intent inherited from a moving capture');
-  play(() => s.practice.lesson === 'weapon' && s.practice.phase === 'complete');
+  play(() => s.practice.lesson === 'asteroid' && s.practice.phase === 'complete');
   assert.deepEqual(s.practice.completed.split(','), [...PRACTICE_LESSONS]);
   c.startSequence(now()); c.skip(s.practice.attempt, now());
   assert.equal(s.practice.lesson, 'combat'); assert.equal(s.practice.completed, '', 'skip remains unfinished');
@@ -230,4 +248,4 @@ for (const holding of [false, true]) {
   assert.equal(s.practice.completed, '', 'skipped lessons remain unfinished');
   c.select('defense', true, now()); assert.equal(s.practice.phase, 'ready', 'individual lessons retain manual preparation');
 }
-console.log('Five practice lessons, honest progress/retries, manual readiness without countdowns, preserved ammunition, stale commands and selectable readiness pass.');
+console.log('Six practice lessons, honest progress/retries, manual readiness without countdowns, preserved ammunition, stale commands and selectable readiness pass.');

@@ -6,8 +6,8 @@ import { mouseControlEnabled, setMouseControl } from '../core/MouseControl';
 import './practice.css';
 import { freeAreas, type Bounds } from './layout';
 
-const LESSON_NAMES: Record<PracticeLesson, string> = { basics: 'Move, grow & capture', combat: 'Aim, hit & finish', defense: 'Escape & recover', blackhole: 'Black-hole shot', weapon: 'Build a weapon' };
-const descriptions: Record<PracticeLesson, string> = { basics: 'Gather gems and capture a smaller healthy rival.', combat: 'Aim a shot, shatter a smaller rival, then learn an injured finish.', defense: 'Two exercises: Puff & flee, then Escape while injured.', blackhole: 'Capture a rival, then aim a long shot into the core.', weapon: 'Three matching parts. One automatic weapon.' };
+const LESSON_NAMES: Record<PracticeLesson, string> = { basics: 'Move, grow & capture', combat: 'Aim, hit & finish', defense: 'Escape & recover', blackhole: 'Black-hole shot', weapon: 'Build a weapon', asteroid: 'Launch an asteroid' };
+const descriptions: Record<PracticeLesson, string> = { basics: 'Gather gems and capture a smaller healthy rival.', combat: 'Aim a shot, shatter a smaller rival, then learn an injured finish.', defense: 'Two exercises: Puff & flee, then Escape while injured.', blackhole: 'Capture a rival, then aim a long shot into the core.', weapon: 'Three matching parts. One automatic weapon.', asteroid: 'Start large with an asteroid ready. Aim and launch it at a practice rival.' };
 const defenseStages: Record<string, string> = { 'rear-cover': 'Puff & flee', 'injured-escape': 'Escape while injured' };
 const DESKTOP_LOADED_AIM = 'Hold A/D or Left/Right to turn, or use the cursor in Mouse mode.';
 export class PracticeUI {
@@ -143,7 +143,7 @@ export class PracticeUI {
   }
   private soundButton(): string { return `<button type="button" data-do="sound" data-action="sound" aria-label="Mute sound" aria-pressed="${sound.muted}">Sound ${sound.muted ? 'off' : 'on'}</button>`; }
   private lessonActions(view: SyncedPractice, completed: boolean): string {
-    const primary = view.phase === 'ready' ? '<button type="button" data-do="ready" class="practice-primary">Ready</button>' : '';
+    const primary = view.phase === 'ready' ? '<button type="button" data-do="ready" class="practice-primary">Ready</button>' : view.lesson === 'asteroid' && view.phase === 'waiting' && view.cue !== 'inbound' ? '<button type="button" data-do="aim-asteroid" class="practice-primary">Aim asteroid</button>' : '';
     const rest = (completed ? '<button type="button" data-do="exit" class="practice-primary">Play now</button><button type="button" data-do="open">Other lessons</button>' : '<button type="button" data-do="skip">Skip lesson</button>') + `<button type="button" data-do="exit">Exit tutorial</button>${this.soundButton()}${this.mouseButton()}`;
     return `<div class="practice-actions" role="group" aria-label="Tutorial actions">${this.touch ? rest + primary : primary + rest}</div>`;
   }
@@ -152,6 +152,11 @@ export class PracticeUI {
   private instruction(v: SyncedPractice): string {
     const hold = this.touch ? 'Hold INHALE' : 'Hold Space';
     const fire = this.touch ? 'tap FIRE' : 'tap Space';
+    if (v.lesson === 'asteroid') return v.phase === 'ready'
+      ? 'You are already large enough, with an asteroid ready. Press Ready, then open Aim asteroid and target the marked rival.'
+      : v.cue === 'inbound' ? 'Asteroid launched. Watch the warning ring, then the impact on your practice rival.'
+      : this.touch ? 'Tap Aim asteroid. Choose TARGET on the map, then tap Launch asteroid.'
+      : 'Open Aim asteroid. Use WASD/arrows to aim at TARGET, then press Space or Enter. You can also click the target.';
     if (v.lesson === 'basics') return v.stage === 'grow' ? (this.touch ? 'Use the left stick to gather gems. Soft bodies squish; keep moving.' : 'Use WASD or arrows in Keyboard mode. In Mouse mode, follow the cursor. Gather gems and slide past the soft body.')
       : `${hold} toward the smaller healthy rival to capture it.`;
     if (v.lesson === 'combat') {
@@ -177,6 +182,7 @@ export class PracticeUI {
     return `Move right, away from the pursuer. ${this.touch ? 'Quick-tap INHALE' : 'Tap Space'} to send a brief gust behind you.`;
   }
   private hint(v: SyncedPractice): string {
+    if (v.lesson === 'asteroid') return 'Use the asteroid map, not inhale. A missed strike restores your ready asteroid for another try.';
     if (v.lesson === 'defense') return v.stage === 'injured-escape' ? 'Use movement only. Smaller bodies can outrun the larger pursuer; wait for the cracks to close.' : 'Use a quick tap, not a hold. The puff wraps behind you and shoves once. Both players can still move, so keep fleeing.';
     if (v.stage === 'finish') return 'Keep the cracked rival in front. Move closer while inhaling; theft makes the size gap work for you.';
     if (['aim', 'shatter', 'wound', 'shoot'].includes(v.stage)) return this.touch ? 'Drag on the right, lift, then tap FIRE. Aim through the center.' : `${DESKTOP_LOADED_AIM} Release Space before tapping it again.`;
@@ -184,7 +190,7 @@ export class PracticeUI {
   }
   open = (): void => {
     this.cancel(); this.store.offered(); this.returnFocus = document.activeElement as HTMLElement;
-    this.chooser.innerHTML = `<div class="practice-dialog"><div class="practice-dialog-heading"><h2 id="practice-title">Practice / Tutorials</h2><button type="button" data-do="close" aria-label="Close lesson picker">Close</button></div><p>Follow all five in order, or choose any lesson.</p><button type="button" data-do="sequence" class="practice-start practice-primary">Start full tutorial</button><div class="practice-lessons">${PRACTICE_LESSONS.map(id => `<button type="button" data-lesson="${id}"><strong>${LESSON_NAMES[id]}</strong><span>${descriptions[id]}</span><small>${this.store.value.lessons[id] === 'completed' ? 'Completed' : this.store.value.lessons[id] === 'skipped' ? 'Unfinished · skipped' : this.store.value.legacyCompleted[id] ? 'Updated — try the escape gust' : this.store.value.lessons[id] === 'in-progress' ? 'Unfinished · in progress' : 'Ready to try'}</small></button>`).join('')}</div><button type="button" data-do="${this.active ? 'exit' : 'close'}">${this.active ? 'Exit tutorial' : 'Keep playing'}</button></div>`;
+    this.chooser.innerHTML = `<div class="practice-dialog"><div class="practice-dialog-heading"><h2 id="practice-title">Practice / Tutorials</h2><button type="button" data-do="close" aria-label="Close lesson picker">Close</button></div><p>Follow all six in order, or choose any lesson.</p><button type="button" data-do="sequence" class="practice-start practice-primary">Start full tutorial</button><div class="practice-lessons">${PRACTICE_LESSONS.map(id => `<button type="button" data-lesson="${id}"><strong>${LESSON_NAMES[id]}</strong><span>${descriptions[id]}</span><small>${this.store.value.lessons[id] === 'completed' ? 'Completed' : this.store.value.lessons[id] === 'skipped' ? 'Unfinished · skipped' : this.store.value.legacyCompleted[id] ? 'Updated — try the escape gust' : this.store.value.lessons[id] === 'in-progress' ? 'Unfinished · in progress' : 'Ready to try'}</small></button>`).join('')}</div><button type="button" data-do="${this.active ? 'exit' : 'close'}">${this.active ? 'Exit tutorial' : 'Keep playing'}</button></div>`;
     this.chooser.hidden = false; this.chooser.querySelector<HTMLButtonElement>('.practice-start')?.focus();
   };
   private close(): void { this.chooser.hidden = true; this.returnFocus?.focus(); this.returnFocus = null; }
@@ -208,6 +214,7 @@ export class PracticeUI {
     switch (button.dataset.do) {
       case 'sequence': this.begin('basics'); this.choose('basics', true); (document.activeElement as HTMLElement | null)?.blur(); break;
       case 'open': this.open(); break;
+      case 'aim-asteroid': window.dispatchEvent(new CustomEvent('ascend:asteroid-aim', { detail: { opener: button } })); break;
       case 'sound': sound.toggle(); break;
       case 'mouse': this.cancel(); setMouseControl(!mouseControlEnabled()); break;
       case 'ready':

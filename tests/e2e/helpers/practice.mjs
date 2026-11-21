@@ -1,7 +1,7 @@
 import { expect } from '@playwright/test';
 import { enterGame } from './enter-game.mjs';
 
-export const LESSONS = ['basics', 'combat', 'defense', 'blackhole', 'weapon'];
+export const LESSONS = ['basics', 'combat', 'defense', 'blackhole', 'weapon', 'asteroid'];
 export const readPractice = page => page.evaluate(() => {
   const mode = window.game.currentGameMode, manager = mode.multiplayerManager, state = manager.getState(), p = manager.getLocalPlayer(), v = state.practice;
   const t = state.players.get(v.targetId);
@@ -168,6 +168,20 @@ export async function playPractice(page, input, { until = v => v.phase === 'comp
       await input.move();
       if (v.stage === 'capture') await input.hold();
       else if (v.me.gulping && fired !== key) { await input.releaseAction(); await page.waitForTimeout(60); await input.tap(); fired = key; }
+    } else if (v.lesson === 'asteroid') {
+      await input.stop();
+      if (v.cue !== 'inbound' && fired !== key) {
+        await page.getByRole('button', { name: 'Aim asteroid', exact: true }).click();
+        const dialog = page.getByRole('dialog', { name: 'Launch an asteroid' });
+        const map = dialog.getByRole('group', { name: 'Arena map' });
+        const box = await map.boundingBox();
+        const world = await page.evaluate(() => { const s = window.game.currentGameMode.multiplayerManager.getState(); return { width: s.worldWidth, height: s.worldHeight }; });
+        const scale = Math.min(box.width / world.width, box.height / world.height);
+        const position = { x: (box.width - world.width * scale) / 2 + v.target.x * scale, y: (box.height - world.height * scale) / 2 + v.target.y * scale };
+        if (input.touch) { await map.tap({ position }); await dialog.getByRole('button', { name: 'Launch asteroid', exact: true }).tap(); }
+        else await map.click({ position });
+        fired = key;
+      }
     } else if (v.lesson === 'weapon') {
       await input.releaseAction();
       if (v.stage === 'collect') {

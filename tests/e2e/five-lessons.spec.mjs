@@ -38,11 +38,11 @@ for (const lesson of LESSONS) {
   });
 }
 
-test('the full tutorial advances through all five lessons and preserves the captured opponent',async({page,browserName,hasTouch})=>{
-  test.setTimeout(160000);await openLesson(page,'basics',true);
+test('the full tutorial advances through all six lessons and preserves the captured opponent',async({page,browserName,hasTouch})=>{
+  test.setTimeout(190000);await openLesson(page,'basics',true);
   const input=await practiceInput(page,browserName,hasTouch),order=[];let captive='';
   try{
-    const result=await playPractice(page,input,{maxMs:140000,until:v=>v.lesson==='weapon'&&v.phase==='complete',onStage:async v=>{
+    const result=await playPractice(page,input,{maxMs:175000,until:v=>v.lesson==='asteroid'&&v.phase==='complete',onStage:async v=>{
       if(order.at(-1)!==v.lesson)order.push(v.lesson);
       if(!captive&&v.lesson==='combat'&&v.stage==='aim')captive=v.me.gulping;
     }});
@@ -56,11 +56,11 @@ test('the full tutorial advances through all five lessons and preserves the capt
 });
 
 test('a 320px phone completes the full sequence with reduced motion and reachable controls',async({page,browserName,hasTouch})=>{
-  test.skip(browserName!=='chromium'||!hasTouch,'one trusted small-phone sequence');test.setTimeout(160000);
+  test.skip(browserName!=='chromium'||!hasTouch,'one trusted small-phone sequence');test.setTimeout(190000);
   await page.setViewportSize({width:320,height:812});await page.emulateMedia({reducedMotion:'reduce'});
   await openLesson(page,'basics',true);const input=await practiceInput(page,browserName,hasTouch),seen=new Set();
   try{
-    const result=await playPractice(page,input,{maxMs:140000,until:v=>v.lesson==='weapon'&&v.phase==='complete',onStage:async v=>{
+    const result=await playPractice(page,input,{maxMs:175000,until:v=>v.lesson==='asteroid'&&v.phase==='complete',onStage:async v=>{
       const bounds=await page.locator('.practice-panel').boundingBox();expect(bounds.x).toBeGreaterThanOrEqual(0);expect(bounds.x+bounds.width).toBeLessThanOrEqual(321);expect(bounds.y+bounds.height).toBeLessThan(642);
       expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThan(2);
       if(!seen.has(v.lesson)){seen.add(v.lesson);await page.screenshot({path:test.info().outputPath(`320-${v.lesson}.png`),scale:'css'});}
