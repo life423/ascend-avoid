@@ -27,17 +27,24 @@ The separate Game Menu/How to Play replay button is removed. The automatic
 size-threshold live cues remain, independently of private practice completion.
 Practice setup is not evidence of naturally earned growth in the live arena.
 
-Initial correction checks: production client/server builds and package
-verification, both TypeScript checks, synced-schema check, practice scenario
-units (including prepared-size preservation and real miss recovery), and progress
-migration units pass. Ten launch/miss browser checks pass across desktop Chrome,
-Android Chrome emulation, iPhone WebKit portrait/landscape and iPad WebKit;
-rendered picker, prepared giant and aiming map were inspected in those sizes.
-The expanded regression exposed an iPhone cancel-focus issue, now corrected by
-preserving the actual opening button, and an old test's hardcoded shatter angle,
-now checked against the real target position. The current PR description/checks
-record subsequent regression results and production rollout. This correction
-follows the user's existing authorization to commit, merge and deploy.
+Correction validation: production client/server builds and package verification,
+both TypeScript checks, synced-schema check, practice scenario units (including
+prepared-size preservation and actual miss recovery), and progress migration
+units pass. The expanded five-profile matrix plus final corrective rechecks pass
+all **137 applicable browser scenarios**; eight device-inapplicable cases are
+skipped. The 15 final rechecks overlap that total. Profiles: desktop Chrome,
+Android Chrome emulation, iPhone WebKit portrait/landscape and iPad WebKit.
+All six lessons individually and the full sequence complete; the 320px Android
+sequence also passes with reduced motion. New lesson checks prove the prepared
+giant/charge, successful impact, missed-strike reset, keyboard aiming, and cancel
+focus. Picker, prepared giant and aiming-map screenshots were inspected.
+
+Review corrected an iPhone cancel-focus issue by preserving the actual opening
+button, an old shatter-retry assertion by checking the real target angle, and
+fractional enlarged-text focus clipping with an inset scroll clearance. Logs:
+`.tmp/asteroid-practice-regression.log` and `.tmp/asteroid-practice-rechecks.log`.
+The current PR description/checks record required CI and production rollout.
+This correction follows the user's authorization to commit, merge and deploy.
 
 Internal design-review heuristics for the private lesson: usability 9/10,
 hierarchy 9/10, consistency 9/10, responsiveness 9/10, feedback 9/10,

@@ -17,6 +17,9 @@ prepared checkpoint. It is also last in the full tutorial sequence. Existing
 achievements survive and the sixth lesson starts unfinished. The separate
 Game Menu/Help replay button is removed. Live size-threshold coaching remains.
 Read [ASTEROID_TUTORIAL.md](ASTEROID_TUTORIAL.md) for current checks and limits.
+Production builds/types/schema and practice/progress units pass. Across the
+expanded matrix and corrective rechecks, all 137 applicable browser scenarios
+pass on five desktop/phone/tablet profiles (eight device-specific skips).
 
 The earlier live guide shipped in PR #99, main `e646a51`, Azure deployment
 `44947176963`. The correction follows the user's authorization to commit, merge
