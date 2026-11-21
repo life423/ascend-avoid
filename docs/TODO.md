@@ -1,12 +1,13 @@
 # Ascend Avoid — current work and next-session handoff
 
-Updated November 9, 2026. The prior production release was `eea3b81` (PR #93).
-It includes the relic comet, true-scale minimap body outlines, and the
+Updated November 21, 2026. Domain configuration and release record is below. The prior
+November 9 gameplay checkpoint identified release `eea3b81` (PR #93), including
+the relic comet, true-scale minimap body outlines, and the
 90-second black-hole lifetime with safe relocation retries. The complete earlier
 request inventory is preserved in [TODO_HISTORY.md](TODO_HISTORY.md).
 Historical sections below record earlier checkpoints.
 
-## November 21 domain migration — prepared, release pending
+## November 21 domain configuration and release record
 
 - Prepare `ascendavoid.com` as the canonical web address; refresh menu/QR/privacy
   links and allow apex/www/old origins. Exact old/www document visits redirect
@@ -15,9 +16,21 @@ Historical sections below record earlier checkpoints.
 - The user accepted possible browser chrome in existing Android installations
   after redirecting. Origin-local names/preferences/tutorial progress remain
   separate. See [DOMAIN_MIGRATION.md](DOMAIN_MIGRATION.md) for scope and rollback.
-- DNS is being entered manually in Squarespace. Verify new DNS, HTTPS and real
-  online play before merge/deploy and before updating portfolio links. Hosted
-  migration and device validation are not yet complete.
+- The four website/verification records were saved through Squarespace with one-hour
+  TTLs; exact values are in DOMAIN_MIGRATION.md. Preserve existing Email Security
+  and Domain Connect records. Older recursive DNS answers can remain cached.
+- Apex and www managed certificates succeeded and use `SniEnabled` bindings;
+  exact names and expiries are in DOMAIN_MIGRATION.md. Before application cutover,
+  normal play passed 4/4 across both hosts on desktop Chromium/iPhone WebKit, and
+  the apex private combat tutorial passed 2/2 with normal TLS verification.
+- All-host Node TLS/health/HTML/assets/manifest/association checks passed. Old-host
+  and apex spectators joined the same advancing room and left cleanly. These
+  checks used the existing production game code without admin/test hooks.
+- At this pre-cutover checkpoint, final-head CI, merge/deploy, hosted
+  redirect/new-metadata checks and portfolio-link cutover were remaining gates.
+  [PR #98](https://github.com/life423/ascend-avoid/pull/98) records the final live
+  rollout and verification after this checkpoint. The initial prepared head's
+  required CI passed; physical-device review remains separate from emulation.
 
 ## November 9 gameplay follow-up — release approved
 

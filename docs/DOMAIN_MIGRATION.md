@@ -1,6 +1,6 @@
-# Ascend Avoid domain migration — November 21, 2026
+# Ascend Avoid: Domain configuration and release record
 
-## Prepared, not deployed
+## November 21, 2026 pre-cutover checkpoint
 
 The user approved making `https://ascendavoid.com/` the public game address,
 keeping the previous address usable, then redirecting document visits from
@@ -9,16 +9,69 @@ accepted that existing Android installations may show browser chrome after the
 cross-origin redirect. This does not authorize changing the Android launcher or
 publishing a new APK.
 
-This branch prepares the game changes from main `1f12bb8`. DNS, managed
-certificates, hostname bindings, hosted validation and deployment are still
-pending. The user is entering the exact Azure-provided records in Squarespace;
-do not substitute guessed addresses or change unrelated DNS records. Do not
-merge/deploy this code or update the portfolio play links until both new
-hostnames resolve to the existing game service and pass HTTPS and online-play
-checks. Record the final Azure bindings, verified revision and release results
-here when those steps finish.
+This dated checkpoint records configuration and checks for the game changes from
+main `1f12bb8` in [PR #98](https://github.com/life423/ascend-avoid/pull/98).
+At this checkpoint both new hostnames passed HTTPS and online play, while the
+application merge, deployment and post-deployment redirect/metadata checks were
+the remaining release gates. The migration code and redirects had not yet been
+deployed. PR #98 and its linked production workflow provide the final live
+rollout and verification record, including outcomes after this checkpoint.
 
-## Runtime behavior
+### Squarespace DNS
+
+These records were saved through Squarespace, with a configured TTL of **1 hour
+(3,600 seconds)** on each. The authoritative records were checked against Azure's
+production environment and domain verification value:
+
+| Type | Host | Value | TTL |
+| --- | --- | --- | --- |
+| A | `@` | `4.157.37.196` | 1 hour |
+| CNAME | `www` | `ascend-avoid.livelyisland-db4ad2db.eastus.azurecontainerapps.io` | 1 hour |
+| TXT | `asuid` | `E9C98AB3BDD3D8CBC403384E496A4EB44F4F7A56EF137778B74ACB5732201196` | 1 hour |
+| TXT | `asuid.www` | `E9C98AB3BDD3D8CBC403384E496A4EB44F4F7A56EF137778B74ACB5732201196` | 1 hour |
+
+Preserve Squarespace's existing **Email Security** TXT records (`@`, `_dmarc` and
+`_domainkey`) and **Domain Connect** `_domainconnect` record. The migration only
+replaces website address records and adds Azure's two verification TXT records;
+do not remove unrelated email/domain-management records or the old game's DNS.
+Recursive resolvers can retain older Squarespace answers until their previous
+cache entries expire; the one-hour value above is the new configured TTL.
+
+### Verified hostname bindings and pre-cutover checks
+
+Both managed certificates succeeded and were bound with `SniEnabled` to the
+existing production Container App `ascend-avoid` in `ascend-avoid-rg`, environment
+`ascend-avoid-env`. The old hostname binding was retained.
+
+| Hostname | Managed certificate | Binding | Verified certificate expiry |
+| --- | --- | --- | --- |
+| `ascendavoid.com` | `mc-ascend-avoid-e-ascendavoid-com-7860` | `SniEnabled` | May 21, 2027 23:59:59 UTC |
+| `www.ascendavoid.com` | `mc-ascend-avoid-e-www-ascendavoid--0207` | `SniEnabled` | May 21, 2027 23:59:59 UTC |
+
+- Normal play passed **4/4**: apex and www, each on desktop Chromium and iPhone
+  WebKit. Checks covered ordinary entry, real matchmaking/WebSockets, rendering,
+  screen fit, movement and inhale. The apex's ordinary private combat tutorial
+  also passed **2/2** on those profiles.
+- An independent Node check at 19:35:01–19:35:12 UTC validated normal TLS
+  authorization, matching SANs and certificate validity on apex, www and the old
+  host. Each returned direct 200 responses for health, HTML, four compiled
+  assets, the manifest, three manifest icons and production Digital Asset Links.
+  The old certificate was valid through March 25, 2027 23:59:59 UTC.
+- An old-host spectator used `joinOrCreate`, then an apex spectator used
+  `joinById` for the same room `WVlQrUqdw`. Both received advancing room time
+  `360144` to `360644` and left cleanly with code `4000`; neither spawned a player.
+  Machine-local JSON proof is in the ignored
+  `.tmp/domain-migration/live-domain-check-proof.json`.
+- These checks exercised the existing production game before PR #98 deployment,
+  with normal TLS verification and no production admin/test hooks. Phone results
+  are browser-engine emulation, not physical-device certification.
+- Required CI passed for the initial PR #98 preparation head `dc43bb4`, including
+  desktop Firefox, Firefox on the Android emulator and **CI Build and Test**.
+  At this checkpoint final-head checks, merge, production deployment and the
+  new redirect/canonical/menu metadata checks remained gates recorded on PR #98.
+  Portfolio links should change after the hosted cutover verification passes.
+
+## Application behavior in PR #98
 
 - The primary page and privacy page declare their new canonical URLs. The menu
   play link, visible hostname and static QR now use `https://ascendavoid.com/`.
@@ -79,13 +132,15 @@ domain-links, privacy-policy and Android website metadata browser tests against
 an isolated local production server. Hosted DNS/HTTPS and physical-device
 results cannot be inferred from these local checks.
 
-Local preparation checks passed: complete client/server type checking, the
-production build/package check, scoped source lint, HTTP redirect/origin
+Historical local preparation checks passed before the DNS/HTTPS cutover:
+complete client/server type checking, the production build/package check,
+scoped source lint, HTTP redirect/origin
 regressions, and 15 metadata/privacy/menu-link cases across desktop Chromium,
 emulated Android Chromium and iPhone WebKit. The focused HTTP suite also covers
 the index-to-root mapping and a health probe without a Host header. Menu
-screenshots were reviewed at all three sizes. This is browser-engine emulation,
-not physical Android/iPhone validation; hosted DNS/HTTPS is still pending.
+screenshots were reviewed at all three sizes. These results establish the local
+candidate's behavior; current hosted readiness is recorded above. Physical
+Android/iPhone validation remains a separate follow-up.
 
 ## Rollback
 
