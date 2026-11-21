@@ -89,6 +89,7 @@ export class DrawerUI {
                         </div>
                     </div>
                 </div>
+                <div class="menu-section"><a class="privacy-link" href="/privacy-policy.html">Privacy Policy</a></div>
                 <div class="menu-section name-section">
                     <h3>Your name</h3>
                     <form class="name-form" autocomplete="off">
@@ -207,6 +208,7 @@ export class DrawerUI {
             .name-save { font-family: inherit; font-size: 15px; font-weight: 700; padding: 0 16px; color: #0b1422;
                 background: #4fd1c5; border: 0; border-radius: 10px; cursor: pointer; }
             .name-save:active { transform: scale(0.97); }
+            .privacy-link { color: inherit; display: inline-block; padding: 6px 0; }
             .name-note { font-size: 13px; opacity: 0.7; margin: 0; }
         `;
         document.head.appendChild(style);

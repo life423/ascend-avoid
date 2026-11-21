@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="How Ascend Avoid handles information in its web game and Android app.">
+    <title>Privacy Policy | Ascend Avoid</title>
+    <style>
+        :root { color-scheme: dark; background: #0b1726; color: #eef6ff; }
+        body { margin: 0; font: 1rem/1.65 system-ui, sans-serif; }
+        main { max-width: 45rem; margin: auto; padding: clamp(1rem, 5vw, 3rem); }
+        h1, h2 { line-height: 1.2; }
+        h2 { margin-top: 2rem; }
+        a { color: #a4eedc; }
+        a:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+    </style>
+</head>
+<body>
+    <main>
+        <a href="/">Back to Ascend Avoid</a>
+        <h1>Ascend Avoid Privacy Policy</h1>
+        <p>Ascend Avoid is developed by Drew Clark. This policy covers the web game and the Android app, which opens the same game using your device's browser technology. You do not need to create an account to play.</p>
+
+        <h2>What the game uses</h2>
+        <ul>
+            <li><strong>Display name.</strong> The game uses the nickname you enter or a generated nickname. In multiplayer it sends the display name to the game server and shows it to other players, including on the leaderboard. Use a nickname rather than your real name or contact details.</li>
+            <li><strong>Live game and connection data.</strong> The server uses temporary session identifiers, gameplay inputs and game state (such as position and scores) to run rooms and tutorials, sync play, and protect the service from abuse. Other players in your room receive live multiplayer information. The service and its Azure hosting infrastructure process network information, such as IP addresses, to make the connection work.</li>
+            <li><strong>Diagnostic logs.</strong> Server logs can contain timestamps, room identifiers, player nicknames when people join or leave, and session identifiers for some abuse warnings. Azure may also handle hosting diagnostics and connection metadata. Logs help troubleshoot the service and respond to abuse.</li>
+            <li><strong>On-device storage.</strong> The game saves your display name, preferences such as sound and steering, and tutorial progress in browser storage so they are available when you return. You can remove them by clearing site data for ascend.drewclark.io in the browser that runs the game.</li>
+        </ul>
+
+        <h2>Sharing and security</h2>
+        <p>Microsoft Azure hosts the service and processes information needed to operate it. The native Android wrapper uses Android Browser Helper to launch the game. Your browser and Android or Google Play may process information separately under their own policies. Ascend Avoid does not sell personal data or use it for advertising or marketing analytics.</p>
+        <p>The live game uses HTTPS and secure WebSockets to encrypt traffic between the browser and service. Other players can see the multiplayer information described above. No internet service can guarantee absolute security.</p>
+
+        <h2>Retention and deletion</h2>
+        <p>The game keeps live player state in the running room and removes it when the player leaves or the room ends. This does not erase existing diagnostic logs. Browser site data remains until you or the browser clear it. The game does not maintain a player account or a permanent player profile.</p>
+        <p>Operational logs collected in Azure Container Apps are configured for 30-day retention in Azure Log Analytics. Support messages are stored separately from game sessions and do not have a fixed public retention period. You can contact the developer about access or deletion of information that can be identified, including a prior support message. Please provide only enough detail to locate the information, such as your nickname and approximate play time, or the email address you used for a support message.</p>
+
+        <h2>Privacy contact</h2>
+        <p>For privacy questions or deletion requests, visit <a href="https://drewclark.io/">Drew Clark's website</a> and choose <strong>Contact</strong>, or open the site menu and choose <strong>Get in touch</strong>. If you use that form, the developer receives your name, email address, and message to review and respond to your request. Do not send passwords or other sensitive information.</p>
+    </main>
+</body>
+</html>
