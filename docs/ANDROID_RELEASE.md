@@ -7,8 +7,9 @@ October 31, 2026: prepared on `codex/android-store-build`, based on deployed mai
 personal developer account. The user subsequently approved committing the work,
 merging it into main and deploying the website verification file for phone
 testing. GitHub's pull request and production workflow identify the published
-revision and rollout result. No app has been uploaded to Google Play; installed
-phone testing remains a separate check.
+revision and web rollout result. Android version 1 (1.0.0) was manually
+uploaded to the Closed testing Alpha draft in Play Console. No Play rollout
+or Play-installed launch has been verified.
 
 The Android app is a Trusted Web Activity using Google's Android Browser Helper,
 running the existing online game in a supporting browser engine. The Azure server,
@@ -293,3 +294,95 @@ evidence for these checks.
 Sources: [TWA setup](https://developer.chrome.com/docs/android/trusted-web-activity/quick-start),
 [target SDK requirements](https://developer.android.com/google/play/requirements/target-sdk),
 [new personal-account testing](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en).
+
+## Android delivery from CI (initial rollout remains separate)
+
+Use this for **native wrapper changes** such as the manifest, SDK target, icons
+or signing. Ascend Avoid is a TWA that opens the production website. Gameplay
+or tutorial-only changes normally ship through the web deployment and do not
+need a new Android bundle.
+
+1. Bump the reviewed Android `versionCode` and `versionName` in
+   `android/app/build.gradle` for a native release. Code 1 is already occupied.
+   The Android wrapper job runs without credentials after existing CI checks
+   on relevant PRs; it does not publish PR artifacts. On main it saves the
+   unsigned AAB and proof after lint and bundletool validation, with a
+   **14-day** retention window. The new Actions are pinned to commit SHAs;
+   the downloaded Android tooling and bundletool bytes are checksummed.
+2. After the exact main CI run is green, dry-run the artifact from a fresh
+   main revision with GitHub CLI (no Play, signing secrets or cloud setup needed):
+
+   ```powershell
+   $sha = gh api repos/life423/ascend-avoid/git/ref/heads/main --jq .object.sha
+   $ci = gh run list --repo life423/ascend-avoid --workflow ci.yml --branch main --event push --commit $sha --status success --limit 1 --json databaseId --jq '.[0].databaseId'
+   $version = 2 # Replace with the code embedded in the selected verified AAB.
+   gh workflow run android-delivery.yml --repo life423/ascend-avoid --ref main -f mode=plan -f commit="$sha" -f ci_run="$ci" -f version_code="$version"
+   ```
+
+   `plan` is also the dispatch default. The workflow checks the CI run ID,
+   exact main commit, attempt, immutable GitHub artifact ID/ZIP SHA-256,
+   AAB SHA-256, package, SDK and version before printing the plan. Use the
+   run summary, not the dispatch acknowledgement, as proof. If main moved,
+   CI has not succeeded, or the artifact expired, stop and pick a new valid run.
+
+### One-time setup before an authorized draft-only upload
+
+- In Google Cloud, enable the [Google Play Developer API](https://developers.google.com/android-publisher/getting_started)
+  and set up a dedicated service account and [GitHub Actions Workload Identity Federation](https://github.com/google-github-actions/auth).
+  Restrict federation to the exact repository, `refs/heads/main`, manually
+  dispatched `android-delivery.yml` workflow and `android-play-draft`
+  environment. Grant impersonation only for that service account
+  (`roles/iam.workloadIdentityUser`), not broad project roles. No service
+  account JSON key is needed.
+- In Play Console, grant that service account only app-specific permissions
+  needed to view Ascend Avoid and **release apps to testing tracks**; no
+  production, testers administration, or financial permissions. Confirm the
+  exact **closed track API ID**, which is not necessarily its display label.
+  Do not create or replace a track with this workflow.
+- Create the GitHub environment `android-play-draft`. Restrict it to main, add
+  required human reviewers and prevent self-review where supported. Configure
+  its variables `PLAY_WORKLOAD_IDENTITY_PROVIDER`, `PLAY_SERVICE_ACCOUNT`,
+  `PLAY_CLOSED_TRACK_ID`, `PLAY_APP_SIGNING_SHA256`, and
+  `ANDROID_UPLOAD_CERT_SHA256`. These last two values are different certificate
+  fingerprints unless specifically verified otherwise.
+- Add the existing matching upload keystore (base64) and password using that
+  environment's secrets `ANDROID_UPLOAD_JKS_BASE64` and
+  `ANDROID_UPLOAD_STORE_PASSWORD`. Do not create a replacement upload key,
+  put secrets in source, or paste them into chat. The job uses alias
+  `ascend-avoid-upload`, verifies the resulting signer's fingerprint against
+  the configured upload certificate, and removes the temporary keystore.
+- Separately verify Play’s **App signing key certificate** SHA-256 and serve it
+  for `io.drewclark.ascendavoid` in live
+  `https://ascend.drewclark.io/.well-known/assetlinks.json` without removing
+  the upload fingerprint needed for direct installs. Draft staging checks this
+  public association before signing. This is not proof of a Play-installed
+  TWA launch; check on a device after a legitimate release becomes available.
+
+With setup completed, code 1's existing draft resolved separately, and approval
+for the specific new draft, use the plan values:
+
+```powershell
+$track = '<verified closed track API ID>'
+gh workflow run android-delivery.yml --repo life423/ascend-avoid --ref main -f mode=stage-draft -f commit="$sha" -f ci_run="$ci" -f version_code="$version" -f confirm="DRAFT $track $version $sha"
+```
+
+This explicit dispatch signs the **same** validated AAB and is the only path
+that contacts the Google Play API. It stages one draft, never promotes it, and never updates
+countries, testers or production. It refuses an existing draft/pending
+release, a version collision, an unknown or ambiguous track, or a response
+that does not preserve the existing completed releases. It requests no
+submission and errors if something is already in review. Do not edit the app
+in Play Console while it is running; concurrent edits can invalidate the API
+edit. An uncertain commit is never retried automatically. Check Publishing
+overview before trying again. The receipt includes the exact commit, version,
+both AAB hashes and the Play edit ID, and only reports a draft once the
+[release lifecycle endpoint](https://developers.google.com/android-publisher/api-ref/rest/v3/applications.tracks.releases/list)
+confirms it. If Play will not permit a draft alongside completed releases,
+stop; there is no fallback that replaces an active release.
+
+First-run items such as account verification, app declarations, store listing,
+tester/country setup, final send for review and production eligibility stay
+separate; the API does not complete them. A draft does not start testing,
+change tester eligibility, or count toward the closed-test window. The
+workflow has no rollout or promotion command. No hosted or live Play test is
+implied by a local dry run.
