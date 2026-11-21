@@ -32,7 +32,7 @@ import { COMPACT, GOLD } from '../render/style'
 import { ANDROID_FIREFOX_RENDERING } from '../render/browserRendering'
 import { drawBall, drawBomb, drawComet, drawGem, drawLaunchPuff, gemColor, traceGemFace } from '../render/world'
 import { SMOOTHING, SNAP_DISTANCE, View } from '../render/shared'
-import { drawTopBar, drawLeaderboard, drawMinimap, drawBanner, drawShiftChip, drawTrafficChip, drawNotices, drawKnockedOut, drawMessage, drawCapturePrompt, drawCometInbound } from '../render/hud'
+import { drawTopBar, drawLeaderboard, drawMinimap, drawBanner, drawShiftChip, drawTrafficChip, drawNotices, drawKnockedOut, drawMessage, drawCapturePrompt, drawCometInbound, minimapLayout } from '../render/hud'
 import { drawGemBursts, drawBlasts, drawBursts, drawTheft } from '../render/effects'
 import { drawPuffs } from '../render/gust'
 import { SHIFT as RIM_SHIFT } from '../../server/constants/gameConstants'
@@ -51,6 +51,7 @@ import { weaponRecipe } from '../render/weaponStyle'
 import { drawRelicComet } from '../render/relicComet'
 import { RelicUnlockCue } from '../render/relicUnlock'
 import { RelicCometAim } from '../ui/RelicCometAim'
+import { RelicTutorial } from '../ui/RelicTutorial'
 
 // Forward reference for the Game type to avoid circular dependencies
 interface Game {
@@ -583,6 +584,7 @@ export class MultiplayerMode extends GameMode {
     controls: OnlineControls | null = null
     private weaponPlacement: WeaponPlacement | null = null
     private relicCometAim: RelicCometAim | null = null
+    private relicTutorial: RelicTutorial | null = null
     private relicUnlock = new RelicUnlockCue()
     private relicCometRequestId = 0
     private weaponRecord = '';
@@ -664,6 +666,7 @@ export class MultiplayerMode extends GameMode {
         if (this.game.canvas) this.controls = new OnlineControls(this.game.canvas, () => !!this.relicCometAim?.isOpen)
         this.weaponPlacement = new WeaponPlacement(() => this.multiplayerManager?.sendMessage('placeWeapon', {}))
         if (!this.isPractice) {
+            this.relicTutorial = new RelicTutorial(() => this.relicCometAim?.openTutorialAim())
             this.relicCometAim = new RelicCometAim({
                 onOpen: () => this.cancelInput(),
                 onFire: point => this.multiplayerManager?.sendMessage('fireRelicComet', {
@@ -705,6 +708,7 @@ export class MultiplayerMode extends GameMode {
         })
         eventBus.on(GameEvents.MULTIPLAYER_DISCONNECTED, (data: { code?: number }) => {
             this.relicCometAim?.update(undefined, null, false)
+            this.relicTutorial?.suspend()
             if (this.isPractice && (data.code === 4000 || data.code === 1000)) {
                 this.status = 'closed'; this.game.practiceUI?.connectionClosed()
             } else this.reconnectSoon()
@@ -1122,6 +1126,7 @@ export class MultiplayerMode extends GameMode {
         if (!ctx || !canvas) return
         const state = this.worldState()
         if (!state || !state.worldWidth) {
+            this.relicTutorial?.suspend()
             drawMessage(this, ctx, canvas, this.status === 'closed' ? 'Practice paused' : this.status === 'reconnecting' ? 'Reconnecting…' : 'Connecting…', this.isPractice ? 'Your private lesson' : 'Joining the arena')
             return
         }
@@ -1267,6 +1272,38 @@ export class MultiplayerMode extends GameMode {
             me.state === 'alive' && !me.capturedBy && !me.flying && !me.stunned && !me.recovering &&
             !me.sliding && !me.spawnProtected && state.shiftPhase !== 'grace' &&
             !this.game.joinUI?.isOpen && !document.querySelector('.drawer.active')), this.worldNow(state, timestamp))
+        this.relicTutorial?.update(state, localId, Boolean(hud > 0 && !this.relicCometAim?.isOpen &&
+            !this.game.joinUI?.isOpen && !this.game.practiceUI?.modalOpen && !document.querySelector('.drawer.active')), timestamp, !!this.relicCometAim?.canLaunch)
+        this.relicCometAim?.showLauncher(!this.relicTutorial?.teachesLaunch)
+        if (this.relicTutorial?.needsLayout) {
+            const map = minimapLayout(this, canvas, state), u = this.cssScale
+            const obstacles = this.controls?.touchBounds() ?? []
+            obstacles.push({ left: canvasBox.left + map.x / u, right: canvasBox.left + (map.x + map.width) / u,
+                top: canvasBox.top + map.y / u, bottom: canvasBox.top + (map.y + map.height) / u + 40 })
+            // Reserve the score/leaderboard lane, including the extra local row.
+            obstacles.push({ left: canvasBox.left + safe.left, right: canvasBox.left + safe.left + (COMPACT.matches ? 152 : 220),
+                top: canvasBox.top + safe.top, bottom: canvasBox.top + safe.top + (COMPACT.matches ? (canvasBox.height < 500 ? 100 : 160) : 200) })
+            if (me) {
+                const position = this.predicted ?? me
+                const size = me.width * view.scale / u, radius = size / 2
+                const x = canvasBox.left + canvasBox.width / 2 + (position.x + me.width / 2 - view.x) * view.scale / u
+                const y = canvasBox.top + canvasBox.height / 2 + (position.y + me.height / 2 - view.y) * view.scale / u
+                const fx = Math.cos(this.localFacing), fy = Math.sin(this.localFacing)
+                for (const side of [-1, 1]) {
+                    const ex = x + fx * radius * .42 - fy * radius * .36 * side
+                    const ey = y + fy * radius * .42 + fx * radius * .36 * side
+                    const eye = radius * .28 + 4
+                    obstacles.push({ left: ex - eye, right: ex + eye, top: ey - eye, bottom: ey + eye })
+                }
+            }
+            for (const selector of ['.relic-comet-ready:not([hidden])', '.weapon-place-button:not([hidden])', '.app-header', '.bar-tab']) {
+                const box = document.querySelector<HTMLElement>(selector)?.getBoundingClientRect()
+                if (box?.width && box.height) obstacles.push(box)
+            }
+            this.relicTutorial.layout({ left: canvasBox.left + safe.left + 12, right: canvasBox.right - safe.right - 12,
+                top: canvasBox.top + safe.top + 64, bottom: canvasBox.bottom - safe.bottom - 12 }, obstacles)
+            if (!this.relicTutorial.visible) this.relicCometAim?.showLauncher(true)
+        }
         this.trackWeapon(state, localId)
         if (hud > 0) {
             ctx.globalAlpha = hud
@@ -1298,7 +1335,7 @@ export class MultiplayerMode extends GameMode {
             this.controls?.draw(ctx, timestamp, this.breath)
             ctx.restore()
             drawIncoming(this, ctx, canvas, state, me, timestamp)
-            if (!this.isPractice && !this.relicCometAim?.isOpen && me?.state === 'alive') {
+            if (!this.isPractice && !this.relicCometAim?.isOpen && !this.relicTutorial?.visible && me?.state === 'alive') {
                 this.relicUnlock.draw(ctx, canvas, this, timestamp)
             }
             if (me && me.state !== 'alive') drawKnockedOut(this, ctx, canvas)
@@ -1801,6 +1838,7 @@ export class MultiplayerMode extends GameMode {
         document.removeEventListener('focusin', this.textFocused)
         this.weaponPlacement?.dispose()
         this.relicCometAim?.dispose()
+        this.relicTutorial?.dispose()
         this.disposed = true
         if (this.reconnectTimer) clearTimeout(this.reconnectTimer)
         this.reconnectTimer = null

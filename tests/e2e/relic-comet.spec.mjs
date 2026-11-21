@@ -70,6 +70,167 @@ function mapPosition(box, x, y) {
   };
 }
 
+async function expectClearTutorial(page) {
+  await expect.poll(() => page.evaluate(() => {
+    const panel = document.querySelector('.relic-tutorial');
+    const box = panel.getBoundingClientRect();
+    const mode = window.game.currentGameMode;
+    const overlaps = other => box.left < other.right && box.right > other.left && box.top < other.bottom && box.bottom > other.top;
+    const controls = mode.controls.touchBounds();
+    const me = mode.multiplayerManager.getLocalPlayer(), position = mode.predicted ?? me;
+    const canvas = document.querySelector('canvas.game-canvas').getBoundingClientRect();
+    const view = mode.lastView, scale = view.scale / mode.cssScale, radius = me.width * scale / 2;
+    const x = canvas.left + canvas.width / 2 + (position.x + me.width / 2 - view.x) * scale;
+    const y = canvas.top + canvas.height / 2 + (position.y + me.width / 2 - view.y) * scale;
+    const fx = Math.cos(mode.localFacing), fy = Math.sin(mode.localFacing);
+    for (const side of [-1, 1]) {
+      const ex = x + fx * radius * .42 - fy * radius * .36 * side;
+      const ey = y + fy * radius * .42 + fx * radius * .36 * side;
+      const r = radius * .28;
+      controls.push({ left: ex - r, right: ex + r, top: ey - r, bottom: ey + r });
+    }
+    for (const selector of ['.relic-comet-ready:not([hidden])', '.weapon-place-button:not([hidden])', '.app-header', '.bar-tab']) {
+      const r = document.querySelector(selector)?.getBoundingClientRect();
+      if (r?.width && r.height) controls.push(r);
+    }
+    return box.width >= 240 && box.left >= 0 && box.top >= 0 && box.right <= innerWidth + 1 &&
+      box.bottom <= innerHeight + 1 && !controls.some(overlaps) && panel.scrollWidth <= panel.clientWidth + 1;
+  })).toBe(true);
+}
+
+test('teaches at the size threshold, expires, and can be replayed or dismissed without losing the run', async ({ page, hasTouch }) => {
+  await page.addInitScript(() => {
+    window.relicTutorialWrites = 0;
+    const set = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key, value) {
+      if (key === 'ascend.relicTutorial.v1') window.relicTutorialWrites++;
+      return set.call(this, key, value);
+    };
+  });
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await join(page);
+  const tutorial = page.getByRole('complementary', { name: 'Asteroid launch tutorial' });
+  await expect(tutorial).toBeHidden();
+  await send(page, 'test:setGems', { count: 100 });
+  await expect.poll(async () => (await read(page)).gems).toBe(100);
+  await expect(tutorial).toBeHidden();
+  await stagePlayer(page, { x: 2100, y: 2100 }, 33_000, 1100);
+  await expect(tutorial).toBeVisible();
+  await expect(tutorial).toHaveAttribute('data-step', 'find');
+  await tutorial.evaluate(panel => {
+    window.relicTutorialTextUpdates = 0;
+    new MutationObserver(records => { window.relicTutorialTextUpdates += records.length; })
+      .observe(panel.querySelector('[role="status"]'), { childList: true, subtree: true, characterData: true });
+  });
+  await expectClearTutorial(page);
+  await page.screenshot({ path: test.info().outputPath('tutorial-unlock.png') });
+  await expect(tutorial).toBeHidden({ timeout: 15_000 });
+  expect(await page.evaluate(() => window.relicTutorialTextUpdates)).toBeLessThan(4);
+  expect(await page.evaluate(() => window.relicTutorialWrites)).toBeLessThan(5);
+  const before = await page.evaluate(() => {
+    const manager = window.game.currentGameMode.multiplayerManager;
+    return { room: manager.room.id, player: manager.localSessionId, width: manager.getLocalPlayer().width };
+  });
+  // Open the real Help surface; replay keeps the same live player and arena.
+  await page.evaluate(() => window.drawerUI.open());
+  const menu = page.getByRole('dialog', { name: 'Game Menu' });
+  await menu.getByRole('button', { name: 'Show asteroid tutorial' }).click();
+  await expect(menu).toBeHidden();
+  await expect(tutorial).toBeVisible();
+  const dismiss = tutorial.getByRole('button', { name: 'Dismiss asteroid tutorial' });
+  const dismissBox = await dismiss.boundingBox();
+  expect(dismissBox.height).toBeGreaterThanOrEqual(44);
+  if (hasTouch) {
+    const original = page.viewportSize();
+    await page.setViewportSize({ width: original.height, height: original.width });
+    await expectClearTutorial(page);
+    await page.screenshot({ path: test.info().outputPath('tutorial-rotated.png') });
+    await page.setViewportSize(original);
+    await expectClearTutorial(page);
+    await dismiss.tap();
+  } else {
+    const puff = (await read(page)).puffReadyAt;
+    await dismiss.focus();
+    await page.keyboard.press('Space');
+    expect((await read(page)).puffReadyAt).toBe(puff);
+  }
+  await expect(tutorial).toBeHidden();
+  const after = await page.evaluate(() => {
+    const manager = window.game.currentGameMode.multiplayerManager;
+    return { room: manager.room.id, player: manager.localSessionId, width: manager.getLocalPlayer().width };
+  });
+  expect(after.room).toBe(before.room);
+  expect(after.player).toBe(before.player);
+  // Ordinary upkeep continues while Help is open; tutorial replay must not respawn/reset growth.
+  expect(after.width).toBeGreaterThan(before.width - 2);
+  await send(page, 'test:setGems', { count: 0 });
+  await expect.poll(async () => (await read(page)).gems).toBe(0);
+  await send(page, 'test:setGems', { count: 33_000 });
+  await expect.poll(async () => (await read(page)).width).toBeGreaterThanOrEqual(1100);
+  await expect(tutorial).toBeHidden();
+  expect(errors).toEqual([]);
+});
+
+test('defers unread coaching during injury and menus, including when tutorial storage is blocked', async ({ page }) => {
+  await page.addInitScript(() => {
+    const get = Storage.prototype.getItem, set = Storage.prototype.setItem;
+    Storage.prototype.getItem = function (key) {
+      if (key === 'ascend.relicTutorial.v1') throw new DOMException('Blocked', 'SecurityError');
+      return get.call(this, key);
+    };
+    Storage.prototype.setItem = function (key, value) {
+      if (key === 'ascend.relicTutorial.v1') throw new DOMException('Blocked', 'SecurityError');
+      return set.call(this, key, value);
+    };
+  });
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await join(page);
+  await send(page, 'test:protect', { ms: 0 });
+  await send(page, 'test:injure');
+  await expect.poll(async () => (await read(page)).injury - (await read(page)).time).toBeGreaterThan(0);
+  await stagePlayer(page, { x: 2100, y: 2100 }, 33_000, 1100);
+  const tutorial = page.getByRole('complementary', { name: 'Asteroid launch tutorial' });
+  await expect(tutorial).toBeHidden();
+  await page.evaluate(() => window.drawerUI.open());
+  await expect.poll(async () => (await read(page)).time - (await read(page)).injury, { timeout: 10_000 }).toBeGreaterThanOrEqual(0);
+  await expect(tutorial).toBeHidden();
+  await page.getByRole('dialog', { name: 'Game Menu' }).getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(tutorial).toBeVisible();
+  await expectClearTutorial(page);
+  await tutorial.getByRole('button', { name: 'Dismiss asteroid tutorial' }).click();
+  await expect(tutorial).toBeHidden();
+  expect(errors).toEqual([]);
+});
+
+test('keeps enlarged tutorial text and actions reachable on a narrow reduced-motion phone', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await join(page);
+  await stagePlayer(page, { x: 2100, y: 2100 }, 33_000, 1100);
+  const tutorial = page.getByRole('complementary', { name: 'Asteroid launch tutorial' });
+  await expect(tutorial).toBeVisible();
+  await tutorial.evaluate(panel => {
+    panel.style.fontSize = '28px';
+    panel.querySelector('strong').style.fontSize = '28px';
+    panel.querySelectorAll('button').forEach(button => button.style.fontSize = '28px');
+  });
+  await expectClearTutorial(page);
+  const dismiss = tutorial.getByRole('button', { name: 'Dismiss asteroid tutorial' });
+  await dismiss.focus();
+  await expect(dismiss).toBeInViewport({ ratio: 1 });
+  const before = (await read(page)).center;
+  await page.keyboard.down('ArrowDown');
+  await page.waitForTimeout(150);
+  await page.keyboard.up('ArrowDown');
+  const after = (await read(page)).center;
+  expect(Math.hypot(after.x - before.x, after.y - before.y)).toBeLessThan(1);
+  await page.screenshot({ path: test.info().outputPath('tutorial-enlarged.png') });
+  await page.keyboard.press('Enter');
+  await expect(tutorial).toBeHidden();
+});
+
 async function aimWithKeys(page, dialog, target) {
   await page.keyboard.press('KeyA');
   const status = dialog.getByRole('status');
@@ -137,12 +298,22 @@ test('tow a relic, aim on the arena map, and warn another player before impact',
   await stagePlayer(page, { x: 650, y: 650 }, 33_000, 1100);
   await send(page, 'test:placeRelic', { x: 1280, y: 1280, relayX: 2340, relayY: 2340 });
   await expect.poll(async () => (await read(page)).relic.phase).toBe('available');
+  const tutorial = page.getByRole('complementary', { name: 'Asteroid launch tutorial' });
+  await expect(tutorial).toBeVisible();
+  await expect(tutorial).toHaveAttribute('data-step', 'find');
+  await expect(tutorial).toContainText(/walk into/i);
+  await expectClearTutorial(page);
+  await page.screenshot({ path: test.info().outputPath('tutorial-find.png') });
   const aimButton = page.getByRole('button', { name: 'Aim relic comet' });
   await expect(aimButton).toBeHidden();
   const input = await practiceInput(page, browserName, hasTouch);
   try {
     await input.move(Math.SQRT1_2, Math.SQRT1_2);
     await expect.poll(async () => (await read(page)).relic.phase).toBe('towed');
+    await expect(tutorial).toHaveAttribute('data-step', 'tow');
+    await expect(tutorial).toContainText('cyan RELAY');
+    await expectClearTutorial(page);
+    await page.screenshot({ path: test.info().outputPath('tutorial-tow.png') });
     const towing = await read(page);
     expect(towing.relic.towEndsAt - towing.time).toBeGreaterThan(50_000);
     await expect.poll(() => page.evaluate(() => window.relicTowCueVisible)).toBe(true);
@@ -151,6 +322,9 @@ test('tow a relic, aim on the arena map, and warn another player before impact',
     await input.stop();
     const delivery = (await read(page)).center;
     expect(Math.hypot(delivery.x - pickup.x, delivery.y - pickup.y)).toBeGreaterThan(2700);
+    await expect(tutorial).toHaveAttribute('data-step', 'launch');
+    await expectClearTutorial(page);
+    await page.screenshot({ path: test.info().outputPath('tutorial-launch.png') });
 
     const menu = page.locator('.hamburger-button');
     const menuVisible = await menu.isVisible();
@@ -158,6 +332,7 @@ test('tow a relic, aim on the arena map, and warn another player before impact',
     const dialog = page.getByRole('dialog', { name: 'Relic comet' });
     const map = dialog.getByRole('group', { name: 'Arena map' });
     await expect(dialog).toBeVisible();
+    await expect(tutorial).toBeHidden();
     await expect(dialog.getByRole('button', { name: 'Fire comet' })).toBeEnabled();
     if (menuVisible) await expect(menu).toBeHidden();
     if (hasTouch) {
@@ -218,6 +393,8 @@ test('tow a relic, aim on the arena map, and warn another player before impact',
     await expect.poll(async () => (await read(observer)).injury, { timeout: 8_000 }).toBeGreaterThan(warning.time);
     expect((await read(observer)).gems / warning.gems).toBeCloseTo(.25, 2);
     await expect(aimButton).toBeHidden();
+    await expect(tutorial).toBeHidden();
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('ascend.relicTutorial.v1')))).toEqual(expect.arrayContaining(['find', 'tow', 'launch']));
     expect(errors).toEqual([]);
   } finally {
     await input.close();
@@ -277,6 +454,7 @@ test('shows a hostile comet warning, preserves the charge and draws one expandin
 });
 
 test('shows the gold relic cue once per run and rearms it on respawn', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ascend.relicTutorial.v1', '["find","tow","launch"]'));
   await join(page);
   await send(page, 'test:clearHoles');
   const cueFrames = () => page.evaluate(() => window.relicUnlockFrames);

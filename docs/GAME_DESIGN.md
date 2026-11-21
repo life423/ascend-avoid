@@ -1,5 +1,16 @@
 # Ascend Avoid
 
+## November 21 contextual asteroid tutorial
+
+The user reports that the size unlock still does not teach launching an asteroid.
+The [contextual walkthrough](ASTEROID_TUTORIAL.md) now teaches actual relic pickup,
+trailing-cargo delivery to the cyan relay, then the existing comet aiming map.
+It starts at the physical-size threshold, expires rather than becoming pinned
+UI, and can be replayed from Help while preserving the same live player/run.
+The user approved commit, merge and deployment on November 21. The pull request
+and production workflow record publication and rollout. Gameplay parameters and
+the five private practice lessons are unchanged.
+
 ## Rounded arena corners — approved November 3, 2026
 
 The same rounded rectangle now drives authoritative body collision, client

@@ -105,6 +105,9 @@ export class RelicCometAim {
     }
 
     get isOpen(): boolean { return this.dialog.open; }
+    get canLaunch(): boolean { return this.canAim; }
+    openTutorialAim(): void { this.open(); }
+    showLauncher(visible: boolean): void { this.ready.hidden = !visible || !this.canAim || this.isOpen; }
 
     update(state: SyncedGameState | undefined, localId: string | null, canAim: boolean, worldTime = state?.time ?? 0): void {
         this.state = state;
