@@ -1,5 +1,43 @@
 # Android build and release
 
+## November 22 Google Play distribution correction
+
+The user provided the correct existing Play Console account.
+The `drewclark.io` Play Console account contains
+`io.drewclark.ascendavoid` in **closed testing**. The earlier account-setup and
+"no Play upload" notes below describe historical preparation, not current
+distribution. Update this existing app and its tester track; do not create a new
+package, replace its signing key or assume production access has been granted.
+
+The code-2 build and Pixel checks below establish the direct-install fullscreen
+fix. A Play update additionally needs an unused version code above the codes
+already used in Console, a bundle signed with the accepted upload key, and
+website associations for the **Play app-signing certificate**. The upload
+certificate that verifies a locally installed APK can differ from the
+certificate Google uses on players' installations. Confirm those identities
+from the existing app's App integrity page before preparing its next release.
+
+The user provided the correct existing Play Console account. The November 22
+Console check found the **Alpha** closed-testing release **1 / 1.0.0**, and the
+all-app-bundles list contained only code 1, leaving code 2 unused. Console's
+upload certificate matches the existing local `99:2E:…:4F:BF` certificate.
+Its authoritative app-signing certificate list has
+three SHA-256 fingerprints, now recorded alongside that local certificate in
+`public/.well-known/assetlinks.json`. These public values were copied from
+Console, not inferred from the upload certificate. The code-2 AAB is the
+candidate for the next closed-test update; publication remains a separate step.
+
+Deploy the confirmed distribution fingerprints alongside the existing local
+fingerprint at `/.well-known/assetlinks.json` on the apex, previous and www
+production hosts before rolling out the Play update. Keep the staging/Test
+association separate. A local APK playtest does not establish that the
+Play-signed build has passed website verification.
+
+Players on an eligible Play testing track can receive a published update through
+Play according to their update settings. Website deployments continue to update
+the online game; they do not publish native bundles to Play. Record Console
+release state and an actual Play-installed update separately from local builds.
+
 ## November 22 fullscreen correction
 
 The user reports the browser URL/share/close toolbar above the installed game
@@ -51,8 +89,9 @@ October 31, 2026: prepared on `codex/android-store-build`, based on deployed mai
 personal developer account. The user subsequently approved committing the work,
 merging it into main and deploying the website verification file for phone
 testing. GitHub's pull request and production workflow identify the published
-revision and rollout result. No app has been uploaded to Google Play; installed
-phone testing remains a separate check.
+revision and rollout result. At that preparation checkpoint, no app had been
+uploaded to Google Play. The current closed-testing distribution is recorded
+above; installed-phone testing remains a separate check.
 
 The Android app is a Trusted Web Activity using Google's Android Browser Helper,
 running the existing online game in a supporting browser engine. The Azure server,
@@ -72,8 +111,9 @@ notifications or analytics SDKs.
 | Orientation | Portrait and landscape supported |
 | Native dependency | `com.google.androidbrowserhelper:androidbrowserhelper:2.7.4` |
 
-The package ID must be finalized before the first Play upload. Future updates
-must keep it and increment the production `versionCode` in `android/targets.json`.
+The existing Play package ID must be preserved. Future updates must increment
+the production `versionCode` in `android/targets.json` above the codes already
+used in Console.
 
 November 1 selected artwork is now **V12**: supplied native adaptive foregrounds
 and backgrounds, regular/round entry points, and legacy density exports for both
@@ -239,38 +279,45 @@ current Windows user. Neither file belongs in Git or Docker. Build scripts pass
 the password through a temporary process environment variable and restore that
 environment afterward; passwords are not printed or placed in command arguments.
 
-Back up the key and recoverable credentials securely before the first Play upload.
+Keep the key and recoverable credentials securely backed up.
 The DPAPI password file alone is not a portable password backup for a different
 Windows installation/user. Do not regenerate or replace the key during routine
-builds; the script refuses incomplete key/password pairs. Play App Signing will
-manage the distribution key after enrollment; this local key signs uploads.
+builds; the script refuses incomplete key/password pairs. Play App Signing manages
+the distribution key; the local key must match the existing app's accepted upload
+certificate. Confirm that match in Console rather than changing signing keys.
 
 ## Website verification required for full screen
 
-The native application already declares its association with the real production
-origin. The corresponding **public** `public/.well-known/assetlinks.json` contains
-the upload certificate SHA-256, enabling direct-install APK verification after
-the website changes are deployed. The server exposes only that exact file;
-other dotfiles remain inaccessible.
+The native application declares its association with the production origins.
+The corresponding **public** `public/.well-known/assetlinks.json` must authorize
+both the direct-install certificate and the confirmed Play distribution
+certificates. The server exposes only the selected environment's association
+at the exact public path; other dotfiles remain inaccessible.
 
 **Until that file is deployed, the test APK may open with a browser address bar.**
 This is the normal unverified Custom Tab fallback, not proof that a full-screen
 TWA has been tested. No verification-bypass flags are used.
 
-Google Play normally signs distributed installations with a different app-signing
-certificate. After enrolling in Play App Signing, get the **app signing key
-certificate SHA-256** from Play Console's App integrity page, then run:
+Google Play can sign distributed installations with a different app-signing
+certificate. Get the existing app's **app signing key certificate SHA-256** from
+Play Console's App integrity page, then run:
 
 ```powershell
-npm run android:assetlinks -- -PlaySigningFingerprint 'AA:BB:...:FF'
+npm run android:assetlinks -- -Target production -PlaySigningFingerprint 'AA:BB:...:FF'
 ```
 
-Use the real full 32-byte fingerprint. The script preserves existing fingerprints
-and adds it alongside the direct-install certificate. Build, review and deploy
-the website update, then verify the Play-installed app's full-screen launch.
-An upload certificate alone does not verify the differently signed Play install.
+Use the real full 32-byte fingerprint copied from Console; do not infer or
+reconstruct it. The script preserves existing fingerprints for the selected
+package and adds it alongside the direct-install certificate. A later release
+build invokes the helper without the Play argument and retains those saved
+fingerprints. The production target does not change the Test association.
+If Console lists multiple distribution signing keys, verify and include each
+key used for supported installations. Build, review and deploy the website
+update, confirm direct 200 associations on all three production hosts, then
+verify the Play-installed app's fullscreen launch. An upload certificate alone
+does not verify a differently signed Play install.
 
-## Validation and limits
+## Historical initial validation and limits
 
 The prepared release builds pass APK signature verification, AAB JAR signature
 verification and Google bundletool 1.18.3 validation. Compiled metadata confirms
@@ -319,20 +366,21 @@ all five tutorials, sound/mute, Back, Home/resume, name entry/keyboard, network
 loss/reconnection and repeat launch. Compilation/browser emulation alone is not
 evidence for these checks.
 
-## Remaining Google Play steps
+## Closed-test update and production release
 
-1. Finish account identity/device/phone verification, then create Ascend Avoid as
-   a game in Play Console. Finalize the package ID before first upload.
-2. Review actual hosting/logging and complete the privacy policy, Data safety,
-   target audience, ads declaration, content rating and store listing. Prepare
-   screenshots and a feature graphic. These declarations are not yet completed.
-3. Upload the signed AAB to internal testing, enroll in Play App Signing, add its
-   distribution certificate to the website and verify an actual Play installation.
-4. This new personal account must meet Google's closed-test requirement before
-   applying for production: at least 12 testers opted in continuously for at least
-   14 days. Recruiting those testers remains work; bots and browser tests do not
-   establish that requirement. Meeting the minimum permits an application for
-   production access and is not a guarantee of approval.
+1. Use the existing Ascend Avoid app and closed-testing track in Console. Inspect
+   the latest used version codes, accepted upload certificate and distribution
+   signing certificates before preparing an update.
+2. Verify the actual privacy/Data safety declarations, audience, ads declaration,
+   content rating and listing status in Console. Historical unchecked items are
+   not evidence that current store setup is incomplete or complete.
+3. Deploy and verify the matching production website associations, then upload
+   the signed AAB with its new version code to the intended tester track. Record
+   review/rollout state and verify an actual Play-installed update and fullscreen
+   launch. A merged website change is not a published native release.
+4. Inspect Console's current closed-testing and production-access requirements.
+   Real tester participation and Google's review determine eligibility; bots,
+   browser tests and a local APK installation do not establish it.
 
 Sources: [TWA setup](https://developer.chrome.com/docs/android/trusted-web-activity/quick-start),
 [target SDK requirements](https://developer.android.com/google/play/requirements/target-sdk),
