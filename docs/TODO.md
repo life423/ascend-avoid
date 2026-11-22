@@ -7,6 +7,21 @@ the relic comet, true-scale minimap body outlines, and the
 request inventory is preserved in [TODO_HISTORY.md](TODO_HISTORY.md).
 Historical sections below record earlier checkpoints.
 
+## November 22 Android browser-toolbar correction
+
+The user rejects the browser toolbar above the installed Android game. This
+supersedes the November 21 domain-migration tradeoff. Production native version
+1.0.1/code 2 launches the canonical apex directly and explicitly trusts old/www
+origins, keeping package/key/artwork and the isolated Test app unchanged.
+Live association checks pass for all three origins. Signed production/Test
+APK/AAB builds, release lint and compiled trust/signature/icon/SDK checks pass.
+Production 1.0.1 was installed in place on the Pixel 10 Pro XL. Actual launch,
+portrait/landscape gameplay, touch movement/inhale, capture and launcher-return
+screens show no browser toolbar. Rotation lock was restored. Sound and other
+devices remain untested. Commit, merge to main and production deployment are
+authorized; the pull request and workflow provide the final release result.
+See [ANDROID_RELEASE.md](ANDROID_RELEASE.md).
+
 ## November 22 asteroid practice — tow across the map
 
 The user now explicitly requires dragging the relic across the map in the private

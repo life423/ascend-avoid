@@ -1,11 +1,50 @@
 # Android build and release
 
-The November 21 [web domain migration](DOMAIN_MIGRATION.md) prepares
-`ascendavoid.com`, while the Android launch origin below remains unchanged.
-The user accepted possible browser chrome when an existing installation follows
-the new-domain redirect. No new APK or launcher/trust migration is included.
+## November 22 fullscreen correction
 
-## Current preparation
+The user reports the browser URL/share/close toolbar above the installed game
+and explicitly requests its removal. This supersedes the November 21 acceptance
+of browser chrome after the [domain migration](DOMAIN_MIGRATION.md).
+
+Production version **1.0.1 / code 2** launches `https://ascendavoid.com/` directly.
+It explicitly declares `https://ascend.drewclark.io` and
+`https://www.ascendavoid.com` as additional trusted origins, with matching native
+website associations. The package ID, existing signing key, immersive mode and
+V12 artwork remain unchanged. Test stays at 1.0.0/code 1 on its separate staging
+origin with no additional trusted origins.
+
+All three production hosts serve direct 200 association JSON matching the
+existing public APK certificate. The previous/www document redirects still
+point to the canonical apex. Native launch/trust configuration, not page layout,
+causes the pictured toolbar: an old APK leaves its validated origin when it
+follows that redirect. The fix therefore requires installing the signed app
+update; a website deployment cannot update an installed APK's trust list.
+
+Signed production and Test APK/AAB builds and release lint pass. Artifact checks
+verify signatures, Google bundle validation, matching website certificate,
+launch/deep-link/manifest URLs, compiled native origin lists, immersive mode,
+artwork and SDK bounds. Production APK SHA-256:
+`E6A72A9CA9C249FBEADFCD197907F976D76B141AF4591D3DCA1ABA0E6AA7BFA0`.
+
+Installed production 1.0.1/code 2 over version 1.0.0 on the Pixel 10 Pro XL
+(Android API 37), using the same verified certificate and `adb install -r`.
+Actual device screenshots confirm no URL/share/close toolbar on the launch
+screen, live portrait gameplay (1344×2992), landscape gameplay (2992×1344), and
+after returning through the Android launcher. Normal joystick and inhale touch
+input collected seven gems; capture was also observed in landscape. The saved
+player name remains. Original portrait rotation lock was restored. Sound and
+other Android devices were not tested in this pass.
+
+Local evidence: `.tmp/android-fullscreen-{build,verify,test-build,test-verify,install}.log`,
+`.tmp/android-fullscreen-device-proof.json`, and the corresponding portrait,
+touch, landscape and reopened PNGs. The signed APK is
+`artifacts/android/Ascend-Avoid.apk`; the AAB is beside it. No new Play publication
+or website deployment was required for the phone fix. The user subsequently
+authorized committing, merging to main and running the production deployment;
+the pull request and main workflow record the final release outcome. Historical
+preparation follows.
+
+## Historical preparation
 
 October 31, 2026: prepared on `codex/android-store-build`, based on deployed main
 `cf28d12`. The user requested an Android build while Google reviews the new
@@ -34,7 +73,7 @@ notifications or analytics SDKs.
 | Native dependency | `com.google.androidbrowserhelper:androidbrowserhelper:2.7.4` |
 
 The package ID must be finalized before the first Play upload. Future updates
-must keep it and increment `versionCode` in `android/app/build.gradle`.
+must keep it and increment the production `versionCode` in `android/targets.json`.
 
 November 1 selected artwork is now **V12**: supplied native adaptive foregrounds
 and backgrounds, regular/round entry points, and legacy density exports for both

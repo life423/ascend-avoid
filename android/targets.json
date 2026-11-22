@@ -2,7 +2,13 @@
   "production": {
     "packageId": "io.drewclark.ascendavoid",
     "name": "Ascend Avoid",
-    "origin": "https://ascend.drewclark.io",
+    "origin": "https://ascendavoid.com",
+    "additionalTrustedOrigins": [
+      "https://ascend.drewclark.io",
+      "https://www.ascendavoid.com"
+    ],
+    "versionCode": 2,
+    "versionName": "1.0.1",
     "artifactName": "Ascend-Avoid",
     "artifactFolder": "",
     "assetlinksFile": "assetlinks.json"
@@ -11,6 +17,9 @@
     "packageId": "io.drewclark.ascendavoid.staging",
     "name": "Ascend Avoid Test",
     "origin": "https://ascend-avoid-staging.livelyisland-db4ad2db.eastus.azurecontainerapps.io",
+    "additionalTrustedOrigins": [],
+    "versionCode": 1,
+    "versionName": "1.0.0",
     "artifactName": "Ascend-Avoid-Test",
     "artifactFolder": "test",
     "assetlinksFile": "assetlinks-test.json"
