@@ -1,8 +1,12 @@
-param([ValidateSet('Debug','Release')][string]$Configuration = 'Debug', [ValidateSet('production','test')][string]$Target = 'production')
+param([ValidateSet('Debug','Release')][string]$Configuration = 'Debug', [ValidateSet('production','test')][string]$Target = 'production', [string]$ProjectCacheDirectory)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'android-target.ps1')
 $targetConfig = Get-AndroidTarget -Name $Target
 $repoRoot = Split-Path -Parent $PSScriptRoot
+$projectCacheArguments = @()
+if ($ProjectCacheDirectory) {
+    $projectCacheArguments = @('--project-cache-dir', [IO.Path]::GetFullPath($ProjectCacheDirectory))
+}
 $toolRoot = Join-Path $env:USERPROFILE '.android/ascend-avoid-build'
 $configPath = Join-Path $toolRoot 'toolchain.json'
 if (-not (Test-Path -LiteralPath $configPath)) { throw 'Run scripts/android-setup.ps1 -AcceptLicenses first.' }
@@ -33,7 +37,7 @@ try {
     Push-Location (Join-Path $repoRoot 'android')
     try {
         $tasks = if ($Configuration -eq 'Release') { @('assembleRelease','bundleRelease','lintRelease') } else { @('assembleDebug') }
-        & .\gradlew.bat @tasks "-PascendTarget=$Target" '--console=plain' '--no-daemon'
+        & .\gradlew.bat @tasks "-PascendTarget=$Target" '--console=plain' '--no-daemon' @projectCacheArguments
         if ($LASTEXITCODE -ne 0) { throw "Android build failed ($LASTEXITCODE)" }
     } finally { Pop-Location }
     $artifacts = $targetConfig.artifactRoot

@@ -29,13 +29,67 @@ $sdk = $manifest.manifest.'uses-sdk'
 $targetSdk = [int]$sdk.GetAttribute('targetSdkVersion',$androidNamespace)
 $minimum = [int]$sdk.GetAttribute('minSdkVersion',$androidNamespace)
 if ($manifest.manifest.package -ne $targetConfig.packageId -or $targetSdk -lt 36 -or $minimum -lt 24) { throw 'Unexpected Android application ID or SDK bounds' }
+if ([int]$manifest.manifest.GetAttribute('versionCode',$androidNamespace) -ne $targetConfig.versionCode -or $manifest.manifest.GetAttribute('versionName',$androidNamespace) -cne $targetConfig.versionName) { throw 'Bundle version does not match the selected target' }
+$launchers = @($manifest.manifest.application.activity | Where-Object { $_.GetAttribute('name',$androidNamespace) -eq $targetConfig.launcher })
+if ($launchers.Count -ne 1) { throw 'The expected Android launcher is missing or duplicated' }
+$launcherMetadata = @($launchers[0].'meta-data')
+foreach ($required in @(
+    @{name='android.support.customtabs.trusted.DEFAULT_URL';attribute='value';expected='@string/launchUrl'},
+    @{name='android.support.customtabs.trusted.ADDITIONAL_TRUSTED_ORIGINS';attribute='resource';expected='@array/additional_trusted_origins'},
+    @{name='android.support.customtabs.trusted.DISPLAY_MODE';attribute='value';expected='immersive'}
+)) {
+    $entries = @($launcherMetadata | Where-Object { $_.GetAttribute('name',$androidNamespace) -eq $required.name })
+    if ($entries.Count -ne 1 -or $entries[0].GetAttribute($required.attribute,$androidNamespace) -cne $required.expected) { throw "Bundle launcher metadata does not match: $($required.name)" }
+}
+$applicationTrust = @($manifest.manifest.application.'meta-data' | Where-Object { $_.GetAttribute('name',$androidNamespace) -eq 'asset_statements' })
+if ($applicationTrust.Count -ne 1 -or $applicationTrust[0].GetAttribute('resource',$androidNamespace) -cne '@string/assetStatements') { throw 'Bundle native website association is missing' }
 $badging = & (Join-Path $toolchain.sdkRoot 'build-tools/36.1.0/aapt2.exe') dump badging $apk
 if ($LASTEXITCODE -ne 0 -or -not ($badging | Select-String "targetSdkVersion:'$targetSdk'")) { throw 'APK target does not match the validated bundle' }
 if (-not ($badging | Select-String -SimpleMatch "package: name='$($targetConfig.packageId)'")) { throw 'APK package does not match the selected app' }
+if (-not ($badging | Select-String -SimpleMatch "versionCode='$($targetConfig.versionCode)' versionName='$($targetConfig.versionName)'")) { throw 'APK version does not match the selected target' }
 $resources = & (Join-Path $toolchain.sdkRoot 'build-tools/36.1.0/aapt2.exe') dump resources $apk
 if ($LASTEXITCODE -ne 0) { throw 'APK resource inspection failed' }
-$launchResource = ($resources | Out-String) -split '\r?\n\s*resource ' | Where-Object { $_ -match '^\S+ string/launchUrl\b' }
-if (-not $launchResource -or $launchResource -notmatch [regex]::Escape("$($targetConfig.origin)/")) { throw 'APK launch URL does not match the selected environment' }
+$resourceBlocks = ($resources | Out-String) -split '\r?\n\s*resource '
+function Get-ApkResourceBlock {
+    param([string]$ResourceName)
+    $blocksFound = @($resourceBlocks | Where-Object { $_ -match "^\S+ $([regex]::Escape($ResourceName))\b" })
+    if ($blocksFound.Count -ne 1) { throw "Expected one APK resource: $ResourceName" }
+    return $blocksFound[0]
+}
+function Get-ApkString {
+    param([string]$ResourceName)
+    $block = Get-ApkResourceBlock -ResourceName $ResourceName
+    $stringsFound = @($block -split '\r?\n' | ForEach-Object { if ($_ -match '^\s*\(\) "(.*)"\s*$') { $Matches[1] } })
+    if ($stringsFound.Count -ne 1) { throw "Expected one default APK string: $ResourceName" }
+    return $stringsFound[0]
+}
+if ((Get-ApkString -ResourceName 'string/launchUrl') -cne "$($targetConfig.origin)/") { throw 'APK launch URL does not match the selected environment' }
+if ((Get-ApkString -ResourceName 'string/hostName') -cne ([uri]$targetConfig.origin).Host) { throw 'APK deep-link hostname does not match the selected environment' }
+if ((Get-ApkString -ResourceName 'string/webManifestUrl') -cne "$($targetConfig.origin)/manifest.webmanifest") { throw 'APK web manifest URL does not match the selected environment' }
+$originsResource = Get-ApkResourceBlock -ResourceName 'array/additional_trusted_origins'
+$compiledAdditionalOrigins = @([regex]::Matches($originsResource, '"([^"]*)"') | ForEach-Object { $_.Groups[1].Value })
+if ((($compiledAdditionalOrigins | Sort-Object) -join "`n") -cne (($targetConfig.additionalTrustedOrigins | Sort-Object) -join "`n")) { throw 'APK additional trusted origins do not match the selected target' }
+$nativeStatements = @(Get-ApkString -ResourceName 'string/assetStatements' | ConvertFrom-Json)
+$compiledWebOrigins = @(foreach ($statement in $nativeStatements) {
+    if ($statement.target.namespace -cne 'web' -or @($statement.relation).Count -ne 1 -or $statement.relation[0] -cne 'delegate_permission/common.handle_all_urls') { throw 'Unexpected APK native website association' }
+    $statement.target.site
+})
+if ((($compiledWebOrigins | Sort-Object) -join "`n") -cne (($targetConfig.trustedOrigins | Sort-Object) -join "`n")) { throw 'APK native website associations do not exactly match the trusted origins' }
+$apkManifest = & (Join-Path $toolchain.sdkRoot 'build-tools/36.1.0/aapt2.exe') dump xmltree $apk --file AndroidManifest.xml
+if ($LASTEXITCODE -ne 0) { throw 'APK launcher metadata inspection failed' }
+$apkMetadata = @(($apkManifest | Out-String) -split '(?m)^\s*E: ' | Where-Object { $_ -match '^meta-data\b' })
+foreach ($required in @(
+    @{name='asset_statements';attribute='resource';resource='string/assetStatements'},
+    @{name='android.support.customtabs.trusted.DEFAULT_URL';attribute='value';resource='string/launchUrl'},
+    @{name='android.support.customtabs.trusted.ADDITIONAL_TRUSTED_ORIGINS';attribute='resource';resource='array/additional_trusted_origins'}
+)) {
+    $block = Get-ApkResourceBlock -ResourceName $required.resource
+    $resourceId = ($block -split '\s+',2)[0]
+    $entries = @($apkMetadata | Where-Object { $_ -match "name\([^)]*\)=`"$([regex]::Escape($required.name))`"" })
+    if ($entries.Count -ne 1 -or $entries[0] -notmatch ":$($required.attribute)\([^)]*\)=@$([regex]::Escape($resourceId))\b") { throw "APK launcher does not use the expected trusted resource: $($required.name)" }
+}
+$immersive = @($apkMetadata | Where-Object { $_ -match 'name\([^)]*\)="android\.support\.customtabs\.trusted\.DISPLAY_MODE"' })
+if ($immersive.Count -ne 1 -or $immersive[0] -notmatch ':value\([^)]*\)="immersive"') { throw 'APK launcher is not configured for immersive display' }
 if (-not ($badging | Select-String -SimpleMatch "application-label:'$($targetConfig.name)'")) { throw 'APK label does not match the selected app' }
 $expectedLauncherIcon = if ($Target -eq 'test') { 'ic_launcher_test' } else { 'ic_launcher_production' }
 if ($manifest.manifest.application.GetAttribute('icon',$androidNamespace) -ne "@mipmap/$expectedLauncherIcon") { throw 'Launcher icon does not match the selected app' }
@@ -53,5 +107,9 @@ $proof = [ordered]@{checkedAt=[DateTime]::UtcNow.ToString('o');packageId=[string
 $proof['launcherResource'] = $expectedLauncherIcon
 $proof['roundLauncherResource'] = $expectedRoundLauncherIcon
 $proof['adaptiveLauncherVerified'] = $true
+$proof['trustedOrigins'] = @($targetConfig.trustedOrigins)
+$proof['additionalTrustedOrigins'] = @($compiledAdditionalOrigins)
+$proof['compiledNativeTrustVerified'] = $true
+$proof['immersiveDisplayModeVerified'] = $true
 $proof | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $artifactRoot 'verification.json') -Encoding utf8
 $proof | ConvertTo-Json

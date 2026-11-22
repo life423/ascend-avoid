@@ -1,5 +1,15 @@
 # Ascend Avoid: Domain configuration and release record
 
+## November 22 Android fullscreen correction
+
+The user now explicitly requests removing the installed app's browser toolbar,
+superseding its earlier acceptance below. The Android production launcher moves
+to `https://ascendavoid.com/`, with explicit trust for the previous and www
+origins, in signed version 1.0.1/code 2. Existing installations need the native
+update. The canonical domain, web redirects and gameplay rules remain as before.
+All three hosts' direct association JSON matches the existing APK certificate.
+See [ANDROID_RELEASE.md](ANDROID_RELEASE.md) for current build/device evidence.
+
 ## November 21, 2026 pre-cutover checkpoint
 
 The user approved making `https://ascendavoid.com/` the public game address,

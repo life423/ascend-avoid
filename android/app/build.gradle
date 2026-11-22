@@ -27,6 +27,18 @@ def targets = new JsonSlurper().parse(rootProject.file('targets.json'))
 def target = targets[targetName]
 if (!(targetName in ['production', 'test']) || !target) throw new GradleException('Unknown Ascend Avoid target')
 if (targetName == 'test' && (target.packageId == targets.production.packageId || target.origin == targets.production.origin)) throw new GradleException('Test target must be isolated')
+def trustedOrigins = [target.origin] + (target.additionalTrustedOrigins ?: [])
+def otherTarget = targets[targetName == 'test' ? 'production' : 'test']
+def otherOrigins = [otherTarget.origin] + (otherTarget.additionalTrustedOrigins ?: [])
+trustedOrigins.each { origin ->
+    def uri = new URI(origin)
+    if (uri.scheme != 'https' || !uri.host || uri.userInfo || uri.query || uri.fragment ||
+            (uri.path && uri.path != '/') || uri.port != -1 || origin != "https://${uri.host}") {
+        throw new GradleException('Trusted origins must be exact HTTPS origins without paths')
+    }
+}
+if (trustedOrigins.toSet().size() != trustedOrigins.size() || trustedOrigins.any { otherOrigins.contains(it) }) throw new GradleException('App trusted origins must be unique and isolated')
+if (!(target.versionCode instanceof Number) || target.versionCode < 1 || !(target.versionName ==~ /\d+\.\d+\.\d+/)) throw new GradleException('Invalid Android target version')
 def twaManifest = [
     applicationId: target.packageId,
     hostName: new URI(target.origin).host,
@@ -69,8 +81,8 @@ android {
         applicationId twaManifest.applicationId
         minSdkVersion 24
         targetSdkVersion 36
-        versionCode 1
-        versionName "1.0.0"
+        versionCode(target.versionCode as int)
+        versionName target.versionName
         manifestPlaceholders = [
             ascendLauncherIcon: targetName == 'test' ? '@mipmap/ic_launcher_test' : '@mipmap/ic_launcher_production',
             ascendLauncherRoundIcon: targetName == 'test' ? '@mipmap/ic_launcher_test_round' : '@mipmap/ic_launcher_production_round'
@@ -85,7 +97,9 @@ android {
         // The URL that will be used when launching the TWA from the Android Launcher
         def launchUrl = "https://" + twaManifest.hostName + twaManifest.launchUrl
         resValue "string", "launchUrl", launchUrl
-        resValue "string", "assetStatements", JsonOutput.toJson([[relation: ['delegate_permission/common.handle_all_urls'], target: [namespace: 'web', site: target.origin]]]).replace('"', '\\"')
+        resValue "string", "assetStatements", JsonOutput.toJson(trustedOrigins.collect { origin ->
+            [relation: ['delegate_permission/common.handle_all_urls'], target: [namespace: 'web', site: origin]]
+        }).replace('"', '\\"')
 
 
 
