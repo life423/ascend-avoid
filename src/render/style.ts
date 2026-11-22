@@ -31,22 +31,6 @@ export function hudPanel(ctx: CanvasRenderingContext2D, x: number, y: number, w:
     ctx.stroke()
 }
 
-/** A little robot head, marking bots, centered on (centerX, centerY) */
-export function drawRobot(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, size: number): void {
-    const width = size
-    const height = size * 0.8
-    ctx.fillStyle = '#9fb3c8'
-    roundedRect(ctx, centerX - width / 2, centerY - height / 2, width, height, size * 0.2)
-    ctx.fill()
-    ctx.fillRect(centerX - size * 0.06, centerY - height / 2 - size * 0.28, size * 0.12, size * 0.28)
-    ctx.beginPath()
-    ctx.arc(centerX, centerY - height / 2 - size * 0.32, size * 0.13, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.fillStyle = 'rgba(5, 12, 24, 0.9)'
-    ctx.fillRect(centerX - width * 0.3, centerY - height * 0.15, width * 0.2, height * 0.25)
-    ctx.fillRect(centerX + width * 0.1, centerY - height * 0.15, width * 0.2, height * 0.25)
-}
-
 /** The leader's crown, standing on (centerX, bottom) */
 export function drawCrown(ctx: CanvasRenderingContext2D, centerX: number, bottom: number, width: number): void {
     const height = width * 0.7

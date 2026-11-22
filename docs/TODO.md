@@ -1,11 +1,24 @@
 # Ascend Avoid — current work and next-session handoff
 
-Updated November 21, 2026. Domain configuration and release record is below. The prior
+Updated November 22, 2026. Domain configuration and release record is below. The prior
 November 9 gameplay checkpoint identified release `eea3b81` (PR #93), including
 the relic comet, true-scale minimap body outlines, and the
 90-second black-hole lifetime with safe relocation retries. The complete earlier
 request inventory is preserved in [TODO_HISTORY.md](TODO_HISTORY.md).
 Historical sections below record earlier checkpoints.
+
+## November 22 bot-label symbol removal — release authorized
+
+- Removed the robot icon beside bot names and its unused drawing helper. Bot
+  names use the same centered labels as human names; leader identification stays.
+- Client production build, client TypeScript, targeted renderer lint and diff
+  whitespace checks pass. Local production-client checks on desktop Chromium,
+  Pixel 7 emulation and iPad emulation recorded bot-name draws with zero robot
+  paints, page errors or horizontal overflow. Screenshots and results are in
+  `.tmp/bot-labels/`. This is not physical-device or hosted verification.
+- The user authorized commit, merge to main and production deployment on
+  November 22. The pull request and production workflow record final checks and
+  rollout status. Preserve the plain bot-name preference in future UI.
 
 ## November 21 asteroid practice correction — release authorized
 

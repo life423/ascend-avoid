@@ -1,5 +1,12 @@
 # Ascend Avoid
 
+## November 22 player labels
+
+The user requested removing the symbol beside bots. Arena labels show bot names
+in the same way as human names, without a robot icon or another bot-only badge.
+The leader's crown and gem total still identify the leader. This is a rendering
+change; bot identity and shared gameplay rules are unchanged.
+
 ## November 21 asteroid tutorial: private launch practice
 
 The latest user correction requires **Practice / Tutorials → Launch an asteroid**
