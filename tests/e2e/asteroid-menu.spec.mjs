@@ -12,7 +12,10 @@ async function expectHaulVisible(page) {
       top: box.top + (canvas.height / 2 + (y - radius - view.y) * view.scale) * u, bottom: box.top + (canvas.height / 2 + (y + radius - view.y) * view.scale) * u });
     const position = mode.predicted ?? p, x = position.x + p.width / 2, y = position.y + p.height / 2, r = p.width / 2, fx = Math.cos(mode.localFacing), fy = Math.sin(mode.localFacing);
     const overlays = [...document.querySelectorAll('.practice-panel, .practice-actions')].map(el => { const r = el.getBoundingClientRect(); return {left:r.left,right:r.right,top:r.top,bottom:r.bottom}; });
+    const panel = document.querySelector('.practice-panel'), actions = panel.querySelector('.practice-actions'), primary = actions.querySelector('[data-do="ready"]');
+    const bounds = el => { const r=el.getBoundingClientRect(); return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height}; };
     return { body: rect(x,y,r), cargo: rect(state.relic.x,state.relic.y,250), eyes:[-1,1].map(side=>rect(x+fx*r*.42-fy*r*.36*side,y+fy*r*.42+fx*r*.36*side,r*.28)),
+      caption:{scrollHeight:panel.scrollHeight,clientHeight:panel.clientHeight,scrollWidth:panel.scrollWidth,clientWidth:panel.clientWidth}, toolbar:bounds(actions), primary:primary?bounds(primary):null, buttonHeights:[...actions.querySelectorAll('button')].filter(el=>el.getClientRects().length>0).map(el=>el.getBoundingClientRect().height),
       overlays, controls:mode.controls?.touchBounds()??[], viewport:{left:box.left,right:box.right,top:box.top,bottom:box.bottom} };
   });
   const overlaps = (a,b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
@@ -21,6 +24,14 @@ async function expectHaulVisible(page) {
     expect(rect.top).toBeGreaterThanOrEqual(layout.viewport.top-3); expect(rect.bottom).toBeLessThanOrEqual(layout.viewport.bottom+3);
   }
   for (const rect of [...layout.eyes, layout.cargo]) for (const obstacle of [...layout.overlays,...layout.controls]) expect(overlaps(rect,obstacle),JSON.stringify({rect,obstacle,layout})).toBe(false);
+  expect(layout.caption.scrollHeight).toBeLessThanOrEqual(layout.caption.clientHeight+1);
+  expect(layout.caption.scrollWidth).toBeLessThanOrEqual(layout.caption.clientWidth+1);
+  expect(layout.toolbar.width).toBeGreaterThanOrEqual(100);
+  for (const height of layout.buttonHeights) expect(height).toBeGreaterThanOrEqual(44);
+  if (layout.primary) {
+    expect(layout.primary.left).toBeGreaterThanOrEqual(layout.toolbar.left-1); expect(layout.primary.right).toBeLessThanOrEqual(layout.toolbar.right+1);
+    expect(layout.primary.top).toBeGreaterThanOrEqual(layout.toolbar.top-1); expect(layout.primary.bottom).toBeLessThanOrEqual(layout.toolbar.bottom+1);
+  }
 }
 
 async function earnAsteroid(page, browserName, hasTouch) {

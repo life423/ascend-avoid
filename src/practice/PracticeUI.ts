@@ -49,12 +49,13 @@ export class PracticeUI {
     if (!actions) return;
     const view = { left: canvas.left + safe.left + 12, top: canvas.top + safe.top + 8, right: canvas.right - safe.right - 12, bottom: canvas.bottom - safe.bottom - 12 };
     const hauling = subjects.length > 0;
-    const clear = (box: Bounds, obstacles: Bounds[]) => box.left >= view.left - 1 && box.right <= view.right + 1 && box.top >= view.top - 1 && box.bottom <= view.bottom + 1 && obstacles.every(b => box.right + 8 <= b.left || box.left - 8 >= b.right || box.bottom + 8 <= b.top || box.top - 8 >= b.bottom);
+    actions.style.padding = hauling && this.touch ? '2px' : '';
+    const clear = (box: Bounds, obstacles: Bounds[], gap = 8) => box.left >= view.left - 1 && box.right <= view.right + 1 && box.top >= view.top - 1 && box.bottom <= view.bottom + 1 && obstacles.every(b => box.right + gap <= b.left || box.left - gap >= b.right || box.bottom + gap <= b.top || box.top - gap >= b.bottom);
     if (hauling) {
       this.panel.style.transform = 'none'; this.panel.style.overflow = 'auto';
       const obstacles = [...controls, ...subjects], current = this.panel.getBoundingClientRect();
       // Keep a readable spot until the moving body/cargo or viewport actually obstructs it.
-      if (!clear(current, obstacles)) {
+      if (!clear(current, obstacles) || this.panel.scrollHeight > this.panel.clientHeight + 1) {
         const areas = freeAreas(view, obstacles, 8).filter(a => a.right - a.left >= 170 && a.bottom - a.top >= 72);
         areas.sort((a, b) => (b.right - b.left) * (b.bottom - b.top) - (a.right - a.left) * (a.bottom - a.top));
         let selected = areas[0];
@@ -82,19 +83,26 @@ export class PracticeUI {
       this.panel.style.maxHeight = `${Math.max(44, (view.bottom - view.top) * .4)}px`;
     }
     if (!this.touch) return;
+    const showPrimary = () => {
+      const primary = actions.querySelector<HTMLElement>('.practice-primary');
+      if (hauling && actions.dataset.scroll === 'true' && primary) actions.scrollLeft = Math.max(0, primary.offsetLeft + primary.offsetWidth - actions.clientWidth + 2);
+    };
     const header = this.panel.getBoundingClientRect();
     const place = document.querySelector<HTMLElement>('.weapon-place-button:not([hidden])')?.getBoundingClientRect();
     const obstacles: Bounds[] = [...controls, ...subjects, header, ...(place ? [place] : [])];
     const key = JSON.stringify([this.signature, view, obstacles.map(r => [r.left, r.top, r.right, r.bottom]), actions.textContent, getComputedStyle(actions).font, actions.firstElementChild && getComputedStyle(actions.firstElementChild).font, document.fonts.status]);
     if (key === this.layoutKey) { return; }
     this.layoutKey = key;
-    if (hauling && clear(actions.getBoundingClientRect(), obstacles) && actions.scrollWidth <= actions.clientWidth + 1) return;
-    const areas = freeAreas(view, obstacles);
+    const currentActions = actions.getBoundingClientRect();
+    if (hauling && currentActions.width >= 100 && currentActions.height >= 50 && clear(currentActions, obstacles, 2) && (actions.dataset.scroll === 'true' || actions.scrollWidth <= actions.clientWidth + 1)) { showPrimary(); return; }
+    // Haul subjects already include an eight-pixel buffer; a shallow strip can use the remaining gap.
+    const areas = freeAreas(view, obstacles, hauling ? 2 : 12);
     actions.dataset.scroll = 'false'; actions.style.maxHeight = ''; actions.style.height = '';
     const fits: { area: Bounds; width: number; height: number }[] = [];
     for (const area of areas) {
-      if (area.right - area.left < 100 || area.bottom - area.top < 60) continue;
+      if (area.right - area.left < 100 || area.bottom - area.top < (hauling ? 50 : 60)) continue;
       actions.style.maxWidth = `${Math.floor(area.right - area.left)}px`;
+      actions.scrollLeft = 0;
       const box = actions.getBoundingClientRect();
       if (box.height > area.bottom - area.top || actions.scrollWidth > actions.clientWidth + 1) continue;
       fits.push({ area, width: box.width, height: box.height });
@@ -110,13 +118,15 @@ export class PracticeUI {
       return;
     }
     // A very constrained viewport keeps all actions in a native scroll strip, clear of play controls.
-    const area = areas.sort((a, b) => (b.right - b.left) * (b.bottom - b.top) - (a.right - a.left) * (a.bottom - a.top))[0];
+    const viable = hauling ? areas.filter(a => a.right - a.left >= 100 && a.bottom - a.top >= 50) : areas;
+    const area = viable.sort((a, b) => (b.right - b.left) * (b.bottom - b.top) - (a.right - a.left) * (a.bottom - a.top))[0];
     if (!area) return;
     actions.dataset.scroll = 'true';
     actions.style.maxWidth = `${Math.floor(area.right - area.left)}px`;
     actions.style.maxHeight = `${Math.floor(area.bottom - area.top)}px`;
     const box = actions.getBoundingClientRect();
     actions.style.left = `${area.left}px`; actions.style.top = `${area.bottom - box.height}px`;
+    showPrimary();
     }
   begin(lesson: PracticeLesson): void {
     this.pendingLesson = lesson;
@@ -186,7 +196,7 @@ export class PracticeUI {
       if (v.stage === 'hook') return v.phase === 'ready'
         ? 'You are already large enough. Press Ready, then walk into the gold RELIC to hook it. No button needed.'
         : 'Walk into the gold RELIC to hook it. Then drag it across the map to the cyan RELAY.';
-      if (v.stage === 'tow') return `${v.phase === 'ready' ? 'Press Ready, then drag' : 'Drag'} the relic across the map to RELAY. Follow its cyan arrow, then walk past the ring so your trailing relic enters it.`;
+      if (v.stage === 'tow') return `${v.phase === 'ready' ? 'Press Ready. ' : ''}Follow the cyan arrow. Tow past RELAY.`;
       if (v.phase === 'ready') return 'Relic delivered. Press Ready, then open Aim asteroid and target the marked rival.';
       return v.cue === 'inbound' ? 'Asteroid launched. Watch the warning ring, then the impact on your practice rival.'
         : this.touch ? 'Relic delivered. Tap Aim asteroid, choose TARGET on the map, then tap Launch asteroid.'
