@@ -19,10 +19,16 @@ async function expectHaulVisible(page) {
       overlays, controls:mode.controls?.touchBounds()??[], viewport:{left:box.left,right:box.right,top:box.top,bottom:box.bottom} };
   });
   const overlaps = (a,b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
-  for (const rect of [layout.body, layout.cargo]) {
+  // A tall narrow viewport can expose the giant's white rim beyond the screen
+  // while keeping the finite arena filled. Eyes and cargo must always fit fully.
+  for (const rect of [...layout.eyes, layout.cargo]) {
     expect(rect.left).toBeGreaterThanOrEqual(layout.viewport.left-3); expect(rect.right).toBeLessThanOrEqual(layout.viewport.right+3);
     expect(rect.top).toBeGreaterThanOrEqual(layout.viewport.top-3); expect(rect.bottom).toBeLessThanOrEqual(layout.viewport.bottom+3);
   }
+  expect((layout.body.left+layout.body.right)/2).toBeGreaterThanOrEqual(layout.viewport.left);
+  expect((layout.body.left+layout.body.right)/2).toBeLessThanOrEqual(layout.viewport.right);
+  expect((layout.body.top+layout.body.bottom)/2).toBeGreaterThanOrEqual(layout.viewport.top);
+  expect((layout.body.top+layout.body.bottom)/2).toBeLessThanOrEqual(layout.viewport.bottom);
   for (const rect of [...layout.eyes, layout.cargo]) for (const obstacle of [...layout.overlays,...layout.controls]) expect(overlaps(rect,obstacle),JSON.stringify({rect,obstacle,layout})).toBe(false);
   expect(layout.caption.scrollHeight).toBeLessThanOrEqual(layout.caption.clientHeight+1);
   expect(layout.caption.scrollWidth).toBeLessThanOrEqual(layout.caption.clientWidth+1);
