@@ -1,13 +1,14 @@
 import { expect } from '@playwright/test';
 import { enterGame } from './enter-game.mjs';
+import { RELIC } from '../../../server/dist/constants/gameConstants.js';
 
 export const LESSONS = ['basics', 'combat', 'defense', 'blackhole', 'weapon', 'asteroid'];
 export const readPractice = page => page.evaluate(() => {
   const mode = window.game.currentGameMode, manager = mode.multiplayerManager, state = manager.getState(), p = manager.getLocalPlayer(), v = state.practice;
   const t = state.players.get(v.targetId);
-  return { ...v.toJSON(), room: manager.getRoom().id, time: state.time,
+  return { ...v.toJSON(), room: manager.getRoom().id, time: state.time, worldWidth: state.worldWidth, worldHeight: state.worldHeight, relic: state.relic.toJSON(),
     me: { x: p.x + p.width / 2, y: p.y + p.height / 2, gems: p.gems, width: p.width, facing: p.facing, inhaling: p.inhaling, gulping: p.gulping,
-      injured: p.breathingBlocked, injuryEnds: p.injuredUntil, state: p.state, stamina: mode.stamina, protected: p.spawnProtected },
+      injured: p.breathingBlocked, injuryEnds: p.injuredUntil, state: p.state, stamina: mode.stamina, protected: p.spawnProtected, relicCometReady: p.relicCometReady },
     target: t ? { x: t.x + t.width / 2, y: t.y + t.height / 2, width: t.width, gems: t.gems, injured: t.breathingBlocked } : null };
 });
 export async function openLesson(page, lesson = 'basics', sequence = false) {
@@ -127,7 +128,7 @@ export async function practiceInput(page, browserName, hasTouch) {
 /** Read state to select human inputs; never send lesson completion, teleport or reward commands. */
 export async function playPractice(page, input, { until = v => v.phase === 'complete', onStage = async () => {}, maxMs = 75000 } = {}) {
   const end = Date.now() + maxMs;
-  let last = '', serial = -1, fired = '', cast = '';
+  let last = '', serial = -1, fired = '', cast = '', haul = null;
   while (Date.now() < end) {
     const v = await readPractice(page);
     if (until(v)) { await input.stop(); return v; }
@@ -169,8 +170,25 @@ export async function playPractice(page, input, { until = v => v.phase === 'comp
       if (v.stage === 'capture') await input.hold();
       else if (v.me.gulping && fired !== key) { await input.releaseAction(); await page.waitForTimeout(60); await input.tap(); fired = key; }
     } else if (v.lesson === 'asteroid') {
-      await input.stop();
-      if (v.cue !== 'inbound' && fired !== key) {
+      await input.releaseAction();
+      if (v.stage === 'hook') {
+        const x = v.relic.x - v.me.x, y = v.relic.y - v.me.y, length = Math.max(1, Math.hypot(x, y));
+        await input.move(x / length, y / length);
+      } else if (v.stage === 'tow') {
+        if (haul?.key !== key) {
+          // Approach on an eight-way heading available equally to a keyboard or joystick.
+          const angle = Math.round(Math.atan2(v.relic.relayY - v.relic.y, v.relic.relayX - v.relic.x) / (Math.PI / 4)) * Math.PI / 4;
+          haul = { key, x: Math.cos(angle), y: Math.sin(angle), aligned: false };
+        }
+        const offset = v.me.width / 2 + RELIC.RADIUS + RELIC.TOW_GAP;
+        const endX = Math.max(v.me.width / 2 + 12, Math.min(v.worldWidth - v.me.width / 2 - 12, v.relic.relayX + haul.x * offset));
+        const endY = Math.max(v.me.width / 2 + 12, Math.min(v.worldHeight - v.me.width / 2 - 12, v.relic.relayY + haul.y * offset));
+        const stageX = endX - haul.x * 400, stageY = endY - haul.y * 400;
+        const x = stageX - v.me.x, y = stageY - v.me.y, length = Math.max(1, Math.hypot(x, y));
+        if (length < 35) haul.aligned = true;
+        await input.move(haul.aligned ? haul.x : x / length, haul.aligned ? haul.y : y / length);
+      } else if (v.stage === 'strike' && v.cue !== 'inbound' && fired !== key) {
+        await input.move();
         await page.getByRole('button', { name: 'Aim asteroid', exact: true }).click();
         const dialog = page.getByRole('dialog', { name: 'Launch an asteroid' });
         const map = dialog.getByRole('group', { name: 'Arena map' });
@@ -181,7 +199,7 @@ export async function playPractice(page, input, { until = v => v.phase === 'comp
         if (input.touch) { await map.tap({ position }); await dialog.getByRole('button', { name: 'Launch asteroid', exact: true }).tap(); }
         else await map.click({ position });
         fired = key;
-      }
+      } else await input.move();
     } else if (v.lesson === 'weapon') {
       await input.releaseAction();
       if (v.stage === 'collect') {

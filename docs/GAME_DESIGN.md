@@ -1,12 +1,20 @@
 # Ascend Avoid
 
-## November 21 asteroid tutorial: private launch practice
+## November 22 player labels
+
+The user requested removing the symbol beside bots. Arena labels show bot names
+in the same way as human names, without a robot icon or another bot-only badge.
+The leader's crown and gem total still identify the leader. This is a rendering
+change; bot identity and shared gameplay rules are unchanged.
+
+## November 22 asteroid tutorial: haul before launch
 
 The latest user correction requires **Practice / Tutorials → Launch an asteroid**
-as a regular private lesson. It starts with a giant player and a charged asteroid,
-so the exercise is only aiming and launching at a marked practice rival. There
-is no growth, relic pickup or towing prerequisite. A missed strike restores the
-prepared checkpoint; ordinary server-confirmed strike damage completes it.
+to teach dragging the relic across the map before launching. This supersedes the
+earlier launch-only setup. The player still starts giant, without a growth grind,
+but must hook the gold relic and tow it across the arena into the cyan relay to
+earn the asteroid charge. Pickup, towing, delivery and impact use ordinary shared
+server rules. A missed strike restores the already-earned launch checkpoint.
 It is the sixth selectable lesson and the final lesson in the full sequence.
 Existing achievements remain saved and the new lesson starts unfinished.
 

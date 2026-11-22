@@ -4,7 +4,9 @@ import { PracticeController } from '../practice/PracticeController.js';
 import { fireCaptive, exhale } from '../systems/inhale.js';
 import { fireRelicComet } from '../systems/relic.js';
 import { deployWeapon } from '../systems/weapons.js';
-import { PRACTICE_LESSONS, type PracticeLesson } from '../practice/definitions.js';
+import { ASTEROID_LESSON, PRACTICE_LESSONS, type PracticeLesson } from '../practice/definitions.js';
+import { GEMS, RELIC } from '../constants/gameConstants.js';
+import { arenaClearance } from '../game/arenaBoundary.js';
 
 function setup(lesson: PracticeLesson) {
   const s = createPracticeArena(); let now = 100_000;
@@ -18,6 +20,7 @@ function setup(lesson: PracticeLesson) {
     for (let i = 0; i < max && !condition(); i++) step();
     assert(condition(), `Timed out: ${s.practice.lesson}/${s.practice.stage}/${s.practice.phase}: ${s.practice.feedback}`);
   };
+  let towGoal: { attempt: number; x: number; y: number } | undefined;
   const drive = () => {
     const v = s.practice, t = s.players.get(v.targetId);
     p.steer(0, 0);
@@ -43,8 +46,20 @@ function setup(lesson: PracticeLesson) {
     } else if (v.lesson === 'blackhole') {
       if (v.stage === 'capture') { if (!p.inhaling) p.startInhale(now); }
       else if (p.gulping) { p.stopInhale(now); p.captureNeedsRelease = false; p.aimAt(1, 0); fireCaptive(s, p, now); }
-    } else if (v.lesson === 'asteroid' && p.relicCometReady && t) {
-      fireRelicComet(s, p, t.x + t.width / 2, t.y + t.height / 2);
+    } else if (v.lesson === 'asteroid') {
+      if (v.stage === 'strike' && p.relicCometReady && t) fireRelicComet(s, p, t.x + t.width / 2, t.y + t.height / 2);
+      else if (v.stage === 'hook' || v.stage === 'tow') {
+        const r = s.relic;
+        if (v.stage === 'tow' && towGoal?.attempt !== v.attempt) {
+          const routeX = r.relayX - p.x - p.width / 2, routeY = r.relayY - p.y - p.height / 2, length = Math.max(1, Math.hypot(routeX, routeY));
+          const past = p.width / 2 + RELIC.RADIUS + RELIC.TOW_GAP + 50;
+          towGoal = { attempt: v.attempt, x: r.relayX + routeX / length * past, y: r.relayY + routeY / length * past };
+        }
+        const x = v.stage === 'hook' ? r.x : towGoal?.x ?? r.relayX;
+        const y = v.stage === 'hook' ? r.y : towGoal?.y ?? r.relayY;
+        const dx = x - p.x - p.width / 2, dy = y - p.y - p.height / 2, distance = Math.max(1, Math.hypot(dx, dy));
+        if (distance > 10) p.steer(dx / distance * Math.min(1, distance / 30), dy / distance * Math.min(1, distance / 30));
+      }
     } else if (v.lesson === 'weapon') {
       if (v.stage === 'collect') {
         const part = s.pinwheel.parts.find(part => part.carriedBy !== p.sessionId);
@@ -63,19 +78,74 @@ function setup(lesson: PracticeLesson) {
 }
 
 {
-  const { s, p, c, step, until, now } = setup('asteroid');
+  const { s, p, c, step, until, play, now } = setup('asteroid');
   const gems = p.gems, width = p.width, attempt = s.practice.attempt;
-  assert(width >= 1100 && p.relicCometReady, 'private launch practice starts large with a charged asteroid');
+  assert(width >= RELIC.MIN_WIDTH && !p.relicCometReady, 'private asteroid practice starts large but requires earning the charge');
+  assert.equal(s.practice.stage, 'hook'); assert.equal(s.practice.total, 3); assert.equal(s.players.size, 1, 'the strike rival is not present during the haul');
+  assert.deepEqual(fireRelicComet(s, p, ASTEROID_LESSON.targetX, ASTEROID_LESSON.targetY), { ok: false, reason: 'not-ready' });
+  const relicStart = { x: s.relic.x, y: s.relic.y }, unclaimed = s.relic.expiresAt - s.time;
   for (let i = 0; i < 700; i++) step();
-  assert.equal(s.practice.phase, 'ready'); assert.equal(p.gems, gems); assert(p.relicCometReady);
+  assert.equal(s.practice.phase, 'ready'); assert.equal(p.gems, gems); assert.equal(p.width, width); assert(!p.relicCometReady);
+  assert.deepEqual({ x: s.relic.x, y: s.relic.y }, relicStart);
+  assert(Math.abs(s.relic.expiresAt - s.time - unclaimed) <= 1, 'reading preserves the real unclaimed deadline');
   c.ready(attempt, now());
-  assert(fireRelicComet(s, p, 900, 900));
-  until(() => s.practice.attempt > attempt);
-  assert.equal(s.practice.phase, 'waiting'); assert.equal(s.practice.passed, 0);
-  assert.equal(p.gems, gems); assert.equal(p.width, width); assert(p.relicCometReady);
-  assert(s.practice.feedback.includes('missed'), 'a miss restores the launch checkpoint without growth or towing');
+  const relicIdentity = s.relic;
+  play(() => s.practice.stage === 'tow');
+  assert.equal(s.practice.phase, 'ready'); assert.equal(s.practice.passed, 1); assert.equal(s.relic.phase, 'towed'); assert.equal(s.relic.carrierId, p.sessionId);
+  assert.equal(s.relic, relicIdentity, 'the actual relic survives the pickup-to-tow transition'); assert(!p.relicCometReady);
+  const hookPose = { x: p.x, y: p.y, width: p.width, gems: p.gems, relicX: s.relic.x, relicY: s.relic.y }, towBudget = s.relic.towEndsAt - s.time;
+  for (let i = 0; i < 700; i++) step();
+  assert.deepEqual({ x: p.x, y: p.y, width: p.width, gems: p.gems, relicX: s.relic.x, relicY: s.relic.y }, hookPose, 'reading preserves actual body and cargo, with no setup replay or passive delivery');
+  assert(Math.abs(s.relic.towEndsAt - s.time - towBudget) <= 1, 'reading pauses the actual carrier budget');
+  c.ready(s.practice.attempt, now());
+  for (let i = 0; i < 8; i++) { p.startInhale(now()); p.aimAt(Math.cos(i * Math.PI / 4), Math.sin(i * Math.PI / 4)); for (let j = 0; j < 15; j++) step(); }
+  p.stopInhale(now());
+  assert.deepEqual({ charged: p.relicCometReady, phase: s.relic.phase, stage: s.practice.stage }, { charged: false, phase: 'towed', stage: 'tow' }, 'standing and turning at pickup cannot substitute for crossing the map');
+  assert.deepEqual(fireRelicComet(s, p, ASTEROID_LESSON.targetX, ASTEROID_LESSON.targetY), { ok: false, reason: 'not-ready' });
+  play(() => s.practice.stage === 'strike');
+  assert.equal(s.practice.phase, 'ready'); assert.equal(s.practice.passed, 2); assert(p.relicCometReady, 'only actual shared delivery earns the strike');
+  assert(Math.hypot(s.relic.x - relicStart.x, s.relic.y - relicStart.y) > 1500, 'normal steering physically hauled the relic across the map');
+  assert(Math.hypot(p.x - hookPose.x, p.y - hookPose.y) > 1500, 'the learner crossed the map rather than just rotating at pickup');
+  assert(p.width >= RELIC.MIN_WIDTH, 'ordinary upkeep does not force a growth grind during the haul');
+  const strikeGems = p.gems, strikeWidth = p.width, strikePose = { x: p.x, y: p.y }, strikeAttempt = s.practice.attempt;
+  for (let i = 0; i < 700; i++) step();
+  assert.equal(p.gems, strikeGems); assert.equal(p.width, strikeWidth); assert(p.relicCometReady);
+  c.ready(strikeAttempt, now());
+  assert.equal(fireRelicComet(s, p, 900, 900).ok, true);
+  until(() => s.practice.attempt > strikeAttempt);
+  assert.equal(s.practice.stage, 'strike'); assert.equal(s.practice.phase, 'waiting'); assert.equal(s.practice.passed, 2);
+  assert.equal(p.gems, strikeGems); assert.deepEqual({ x: p.x, y: p.y }, strikePose); assert(p.relicCometReady);
+  assert(s.practice.feedback.includes('missed'), 'a miss restores only the already earned launch checkpoint');
   c.select('basics', false, now());
-  assert(!p.relicCometReady && s.relic.phase === 'disabled' && s.relicComet.phase === 'idle', 'switching lessons clears the prepared strike');
+  assert.deepEqual({ charged: p.relicCometReady, phase: s.relic.phase, strike: s.relicComet.phase, carrier: s.relic.carrierId }, { charged: false, phase: 'disabled', strike: 'idle', carrier: '' }, 'switching lessons clears charge, cargo and strike');
+  c.select('asteroid', true, now()); assert.equal(s.practice.stage, 'hook'); assert(!p.relicCometReady); assert.equal(s.practice.passed, 0);
+  const r = ASTEROID_LESSON, radius = r.width * GEMS.SIZE_MAX_SHARE / 2, dx = r.relayX - r.relicX, dy = r.relayY - r.relicY, distance = Math.hypot(dx, dy);
+  const towOffset = radius + RELIC.RADIUS + RELIC.TOW_GAP;
+  assert(distance >= 1500 && arenaClearance(r.relicX, r.relicY, r.width, r.height) >= radius + 20);
+  assert(arenaClearance(r.relayX + dx / distance * towOffset, r.relayY + dy / distance * towOffset, r.width, r.height) >= radius + 20, 'the shared largest-body haul corridor has legal walk-past room');
+}
+{
+  const { s, p, c, play, step, until, now } = setup('asteroid');
+  play(() => s.practice.stage === 'tow'); c.ready(s.practice.attempt, now());
+  const checkpoint = { x: p.x, y: p.y }, attempt = s.practice.attempt;
+  p.steer(1, 0); for (let i = 0; i < 30; i++) step();
+  s.relic.towEndsAt = s.time;
+  until(() => s.practice.attempt > attempt);
+  assert.equal(s.practice.stage, 'tow'); assert.equal(s.practice.passed, 1); assert.equal(s.relic.phase, 'towed'); assert.equal(s.relic.carrierId, p.sessionId);
+  assert.deepEqual({ x: p.x, y: p.y }, checkpoint, 'tow expiry restores the earned hook checkpoint, not the beginning or a launch charge');
+  assert(!p.relicCometReady); assert.equal(s.practice.failures, 1); assert(s.relic.towEndsAt > s.time);
+  c.select('weapon', false, now()); assert.equal(s.relic.phase, 'disabled'); assert.equal(s.relic.carrierId, ''); assert.equal(s.relic.towEndsAt, 0);
+}
+{
+  const { s, p, c, play, step, until, now } = setup('asteroid');
+  play(() => s.practice.stage === 'tow'); c.ready(s.practice.attempt, now());
+  const attempt = s.practice.attempt;
+  p.steer(1, 1); for (let i = 0; i < 30; i++) step();
+  p.injure(s.time); step();
+  assert.equal(s.relic.phase, 'available', 'ordinary injury drops the actual relic through shared rules');
+  until(() => s.practice.attempt > attempt);
+  assert.equal(s.practice.stage, 'tow'); assert.equal(s.practice.passed, 1); assert.equal(s.relic.phase, 'towed');
+  assert(!p.relicCometReady && !p.breathingBlocked, 'a dropped tow restores only its earned hook checkpoint and healthy learner');
 }
 for (const lesson of PRACTICE_LESSONS) {
   const { s, p, c, play, events, now } = setup(lesson);
@@ -150,7 +220,7 @@ for (const lesson of PRACTICE_LESSONS) {
   p.stopInhale(now()); p.captureNeedsRelease = false; p.facing = Math.PI / 2;
   assert(fireCaptive(s, p, now())); until(() => s.practice.attempt > attempt);
   assert.equal(s.practice.stage, 'shatter'); assert.equal(s.practice.passed, 1);
-  const rival = s.players.get(s.practice.targetId)!;
+  const rival = s.players.get(s.practice.targetId); assert(rival);
   const targetAngle = Math.atan2(rival.y + rival.height / 2 - p.y - p.height / 2, rival.x + rival.width / 2 - p.x - p.width / 2);
   assert(p.gulping); assert(Math.abs(p.facing - targetAngle) < .01, 'retry restores the already-proven aim as well as ammunition');
 }

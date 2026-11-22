@@ -7,7 +7,7 @@ import { drawCombatRewards, type CombatRewardEvent, type CombatRewardEffect } fr
 import Player from '../entities/Player'
 import { InputState } from '../types'
 import { GameEvents } from '../constants/client-constants'
-import { ARENA_RULES, BOMBS, CAMERA, EXHALE, GEMS, INHALE, LATCH, SHIFT, WORLD, WEAPON_RECIPES } from '../../server/constants/gameConstants'
+import { ARENA_RULES, BOMBS, CAMERA, EXHALE, GEMS, INHALE, LATCH, RELIC, SHIFT, WORLD, WEAPON_RECIPES } from '../../server/constants/gameConstants'
 import { allWeapons } from '../../server/game/weaponKit'
 import { isPracticeLesson } from '../../server/practice/definitions'
 import { sound } from './Sound'
@@ -585,6 +585,8 @@ export class MultiplayerMode extends GameMode {
     private weaponPlacement: WeaponPlacement | null = null
     private relicCometAim: RelicCometAim | null = null
     private relicTutorial: RelicTutorial | null = null
+    private haulFrameArea = 0
+    private haulFrameSize = ''
     private relicUnlock = new RelicUnlockCue()
     private relicCometRequestId = 0
     private weaponRecord = '';
@@ -918,6 +920,11 @@ export class MultiplayerMode extends GameMode {
         if (readingPractice) {
             this.sendSteer({ x: 0, y: 0 })
             this.predicted = { x: me.x, y: me.y }
+            if (state.practice.lesson === 'asteroid') {
+                // Pickup/delivery can pause mid-turn; show the authoritative frozen pose while reading.
+                this.localFacing = me.facing
+                this.localSpin = 0
+            }
             this.resetMotion()
             return
         }
@@ -1138,9 +1145,10 @@ export class MultiplayerMode extends GameMode {
         this.cssScale = canvas.width / Math.max(1, canvasBox.width)
         for (const side of ['top', 'right', 'bottom', 'left'] as const) this.hudInsets[side] = safe[side] * this.cssScale
         this.controls?.setInsets(this.hudInsets)
+        const haulingPractice = this.isPractice && state.practice?.lesson === 'asteroid' && ['hook', 'tow'].includes(state.practice.stage)
         if (this.isPractice) {
             this.weaponPlacement?.update(state, localId, false)
-            this.game.practiceUI?.layout(canvasBox, safe, this.controls?.touchBounds() ?? [])
+            if (!haulingPractice) this.game.practiceUI?.layout(canvasBox, safe, this.controls?.touchBounds() ?? [])
         }
         let view = this.updateCamera(canvas, canvasBox, state, me, timestamp)
         if (!CAMERA.LOCKED && timestamp < this.shakeUntil) {
@@ -1152,6 +1160,20 @@ export class MultiplayerMode extends GameMode {
         if (!CAMERA.LOCKED) { view.x += jolt.x; view.y += jolt.y }
         if (!CAMERA.LOCKED) view = constrainArenaView(view, state.worldWidth, state.worldHeight,
             me?.state === 'alive' ? { x: (this.predicted ?? me).x + me.width / 2, y: (this.predicted ?? me).y + me.height / 2, width: me.width } : undefined)
+        if (haulingPractice && me) {
+            const u = canvasBox.width / canvas.width
+            const occupied = (x: number, y: number, radius: number) => ({
+                left: canvasBox.left + (canvas.width / 2 + (x - radius - view.x) * view.scale) * u - 8,
+                right: canvasBox.left + (canvas.width / 2 + (x + radius - view.x) * view.scale) * u + 8,
+                top: canvasBox.top + (canvas.height / 2 + (y - radius - view.y) * view.scale) * u - 8,
+                bottom: canvasBox.top + (canvas.height / 2 + (y + radius - view.y) * view.scale) * u + 8,
+            })
+            const position = this.predicted ?? me
+            this.game.practiceUI?.layout(canvasBox, safe, this.controls?.touchBounds() ?? [], [
+                occupied(position.x + me.width / 2, position.y + me.height / 2, me.width / 2),
+                occupied(state.relic.x, state.relic.y, RELIC.RADIUS),
+            ])
+        }
         this.lastView = view
         const leaderId = this.leaderId(state)
         this.inGrace = state.shiftPhase === 'grace'
@@ -1179,7 +1201,7 @@ export class MultiplayerMode extends GameMode {
             const target = state.players.get(objective.targetId)
             const x = target ? target.x + target.width / 2 : objective.objectiveX
             const y = target ? target.y + target.height / 2 : objective.objectiveY
-            const radius = target ? target.width / 2 + 14 : objective.objectiveKind === 'hole' ? 80 : 24
+            const radius = target ? target.width / 2 + 14 : objective.objectiveKind === 'hole' ? 80 : objective.objectiveKind === 'relic' ? RELIC.RADIUS + 14 : objective.objectiveKind === 'relay' ? RELIC.RELAY_RADIUS + 14 : 24
             ctx.save(); ctx.strokeStyle = objective.lesson === 'defense' ? '#ff9b88' : '#c0fff0'; ctx.lineWidth = 2 / view.scale
             ctx.setLineDash([8 / view.scale, 5 / view.scale]); ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.stroke(); ctx.restore()
         }
@@ -1379,11 +1401,56 @@ export class MultiplayerMode extends GameMode {
         let scale = Math.max(canvas.width / (canvas.width >= canvas.height ? short * aspect : short), canvas.height / (canvas.width >= canvas.height ? short : short / aspect))
         this.camera = this.cameraRig.short ? { x: this.cameraRig.x, y: this.cameraRig.y } : (this.camera ?? { x: state.worldWidth / 2, y: state.worldHeight / 2 })
         let framing = this.camera
+        if (this.isPractice && state.practice?.lesson === 'asteroid' && ['hook', 'tow'].includes(state.practice.stage)) {
+            // The carrier and real cargo take priority; the cargo's cyan arrow points to a distant relay.
+            const position = this.predicted ?? me, radius = me.width / 2 + 20, cargo = state.relic, cargoRadius = RELIC.RADIUS + 20
+            const left = Math.min(position.x + me.width / 2 - radius, cargo.x - cargoRadius)
+            const right = Math.max(position.x + me.width / 2 + radius, cargo.x + cargoRadius)
+            const top = Math.min(position.y + me.height / 2 - radius, cargo.y - cargoRadius)
+            const bottom = Math.max(position.y + me.height / 2 + radius, cargo.y + cargoRadius)
+            const pixels = canvas.width / Math.max(1, canvasBox.width), margin = 12 * pixels
+            const controls = this.controls?.touchBounds() ?? [], portrait = canvas.height > canvas.width
+            const toolbarTop = Math.min(canvas.height - margin, ...controls.map(b => (b.top - canvasBox.top) * pixels - margin))
+            const reserve = portrait ? Math.min(canvas.height * .4, 230 * pixels) : Math.min(canvas.width * .35, 260 * pixels)
+            const areas = portrait ? [
+                { left: margin, right: canvas.width - margin, top: margin, bottom: Math.max(margin + 1, toolbarTop - reserve) },
+                { left: margin, right: canvas.width - margin, top: margin + reserve, bottom: toolbarTop },
+            ] : [
+                { left: margin, right: canvas.width - reserve - margin, top: margin, bottom: canvas.height - margin },
+                { left: reserve + margin, right: canvas.width - margin, top: margin, bottom: canvas.height - margin },
+            ]
+            areas.push({ left: margin, right: canvas.width - margin, top: margin, bottom: canvas.height - margin })
+            const key = `${canvas.width}/${canvas.height}`
+            if (key !== this.haulFrameSize) { this.haulFrameSize = key; this.haulFrameArea = 0 }
+            let fallback: View | null = null
+            for (const index of [this.haulFrameArea, ...areas.map((_, i) => i).filter(i => i !== this.haulFrameArea)]) {
+                const area = areas[index]
+                // A giant's ordinary wide camera can be below the map-fill floor; frame this private pair directly.
+                const fit = Math.min((area.right - area.left) / (right - left), (area.bottom - area.top) / (bottom - top))
+                if (!(fit > 0)) continue
+                const minX = right - (area.right - canvas.width / 2) / fit, maxX = left - (area.left - canvas.width / 2) / fit
+                const minY = bottom - (area.bottom - canvas.height / 2) / fit, maxY = top - (area.top - canvas.height / 2) / fit
+                const candidate = constrainArenaView({
+                    // Use all valid pan space: centering the pair can needlessly hit a rounded-map corner.
+                    x: Math.max(minX, Math.min(maxX, state.worldWidth / 2)),
+                    y: Math.max(minY, Math.min(maxY, state.worldHeight / 2)),
+                    width: canvas.width / fit, height: canvas.height / fit, scale: fit,
+                }, state.worldWidth, state.worldHeight, subject ?? undefined)
+                fallback = candidate
+                const x = (world: number) => canvas.width / 2 + (world - candidate.x) * candidate.scale
+                const y = (world: number) => canvas.height / 2 + (world - candidate.y) * candidate.scale
+                if (x(left) >= area.left - 1 && x(right) <= area.right + 1 && y(top) >= area.top - 1 && y(bottom) <= area.bottom + 1) {
+                    this.haulFrameArea = index; this.lastRenderAt = timestamp
+                    return this.inhaleFraming.update(candidate, null, dt, state.worldWidth, state.worldHeight)
+                }
+            }
+            if (fallback) { this.lastRenderAt = timestamp; return this.inhaleFraming.update(fallback, null, dt, state.worldWidth, state.worldHeight) }
+        }
         if (this.isPractice && state.practice?.objectiveKind && state.practice.objectiveKind !== 'placement') {
             const objective = state.practice, target = state.players.get(objective.framingTargetId || objective.targetId)
             const x = target ? target.x + target.width / 2 : objective.objectiveX
             const y = target ? target.y + target.height / 2 : objective.objectiveY
-            const radius = target ? target.width / 2 + 30 : objective.objectiveKind === 'hole' ? 96 : 44
+            const radius = target ? target.width / 2 + 30 : objective.objectiveKind === 'hole' ? 96 : objective.objectiveKind === 'relic' ? RELIC.RADIUS + 30 : objective.objectiveKind === 'relay' ? RELIC.RELAY_RADIUS + 30 : 44
             if (objective.objectiveKind === 'hole' || objective.lesson === 'combat' || objective.lesson === 'asteroid' || objective.lesson === 'defense' || objective.lesson === 'basics' && objective.stage === 'capture') {
                 // Fit both subjects in the visible arena below the lesson, not behind its panel.
                 const playerX = me.x + me.width / 2, playerY = me.y + me.height / 2, playerRadius = me.width / 2 + 24

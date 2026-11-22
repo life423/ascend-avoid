@@ -253,6 +253,8 @@ class GameState extends Schema {
     this.now = now;
     if (!this.startedAt) this.startedAt = now;
     this.time = Math.round(now - this.startedAt);
+    // Reading the prepared haul preserves its real body and cargo, not a replayed setup.
+    if (this.practice.enabled && this.practice.lesson === 'asteroid' && this.practice.phase === 'ready') return;
     if (this.cores.length) this.cores.clear();
     this.players.forEach((player) => player.markTick());
     updateShift(this, deltaTime, now);

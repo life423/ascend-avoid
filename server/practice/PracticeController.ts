@@ -4,10 +4,11 @@ import { GemSchema } from '../schema/GemSchema.js';
 import { BlackHoleSchema } from '../schema/BlackHoleSchema.js';
 import { clearCapture, updateInhales, injuryVulnerable } from '../systems/inhale.js';
 import { spawnWeapon, updateWeapons, deployWeapon } from '../systems/weapons.js';
-import { EXHALE } from '../constants/gameConstants.js';
+import { EXHALE, RELIC } from '../constants/gameConstants.js';
 import { PRACTICE_ARENA, PRACTICE_STAGES, PRACTICE_LESSONS, COMBAT_LESSON, BLACK_HOLE_LESSON, DEFENSE_LESSON, ASTEROID_LESSON, type PracticeLesson } from './definitions.js';
 
 type FinishCheckpoint = { gems: number; targetGems: number };
+type AsteroidCheckpoint = { gems: number; x: number; y: number; facing: number; relicX: number; relicY: number; towMs: number; unclaimedMs: number };
 
 /** Private scenarios use ordinary physics. Only server-observed results certify a stage. */
 export class PracticeController {
@@ -35,12 +36,14 @@ export class PracticeController {
   private theftStart = 0;
   private lastActivity = 0;
   private readingAt = 0;
+  private asteroidCheckpoints = new Map<'tow' | 'strike', AsteroidCheckpoint>();
   constructor(readonly state: GameState) {}
   private get view() { return this.state.practice; }
   private get learner() { return this.state.players.get(this.learnerId); }
   private get acting() { return this.view.phase === 'waiting' || this.view.phase === 'resolving'; }
   private get immediateStep() {
-    return (this.view.lesson === 'weapon' && ['collect', 'place'].includes(this.view.stage))
+    return (this.view.lesson === 'asteroid' && ['hook', 'tow'].includes(this.view.stage))
+      || (this.view.lesson === 'weapon' && ['collect', 'place'].includes(this.view.stage))
       || (this.view.lesson === 'combat' && ['aim', 'wound', 'approach', 'steal'].includes(this.view.stage));
   }
   private waitForReading(now: number): void {
@@ -57,6 +60,11 @@ export class PracticeController {
     for (const captor of this.state.players.values()) {
       if (captor.gulping && this.state.players.get(captor.gulping)?.capturedBy === captor.sessionId) captor.gulpEndsAt += elapsed;
     }
+    if (this.view.lesson === 'asteroid') {
+      const relic = this.state.relic;
+      if (relic.phase === 'available') relic.expiresAt += elapsed;
+      if (relic.phase === 'towed') relic.towEndsAt += elapsed;
+    }
     this.readingAt = now;
   }
 
@@ -65,7 +73,7 @@ export class PracticeController {
     if (sequence) this.startSequence(now); else this.select(lesson, false, now);
   }
   startSequence(now: number): void {
-    this.progress.clear(); this.completed.clear(); this.readied.clear(); this.view.completed = '';
+    this.progress.clear(); this.completed.clear(); this.readied.clear(); this.asteroidCheckpoints.clear(); this.view.completed = '';
     this.select('basics', true, now, true);
   }
   activity(now: number): void { this.lastActivity = now; }
@@ -76,6 +84,7 @@ export class PracticeController {
     this.state.worldHeight = lesson === 'asteroid' ? ASTEROID_LESSON.height : lesson === 'defense' ? DEFENSE_LESSON.height : PRACTICE_ARENA.height;
     if (replay || this.completed.has(lesson)) {
       this.progress.set(lesson, 0); this.completed.delete(lesson);
+      if (lesson === 'asteroid') this.asteroidCheckpoints.clear();
       for (const key of [...this.readied]) if (key.startsWith(lesson + '/')) this.readied.delete(key);
     }
     this.view.completed = [...this.completed].join(',');
@@ -112,6 +121,8 @@ export class PracticeController {
     this.readingAt = 0;
     this.state.gustWaves.clear();
     this.state.relic.phase = 'disabled'; this.state.relic.carrierId = '';
+    this.state.relic.availableAt = this.state.relic.expiresAt = this.state.relic.towEndsAt = this.state.relic.pausedUnclaimedMs = 0;
+    this.state.relic.towTimeRemaining.clear();
     this.state.relicComet.phase = 'idle'; this.state.relicComet.ownerId = '';
     if (this.learner) this.learner.relicCometReady = false;
     for (const p of [...this.state.players.values()]) {
@@ -216,14 +227,30 @@ export class PracticeController {
         this.objective('hole', '', BLACK_HOLE_LESSON.x, BLACK_HOLE_LESSON.y);
       }
     } else if (lesson === 'asteroid') {
-      p = this.resetLearner(ASTEROID_LESSON.gems, now);
-      p.placeAt(ASTEROID_LESSON.x - p.width / 2, ASTEROID_LESSON.y - p.height / 2);
-      p.relicCometReady = true;
-      this.state.relic.phase = 'waiting'; this.state.relic.availableAt = 2_147_483_647;
-      const target = this.npc('asteroid-target', ASTEROID_LESSON.targetGems, ASTEROID_LESSON.targetX, ASTEROID_LESSON.targetY);
-      target.name = 'Asteroid target'; this.targetId = target.sessionId;
-      this.objective('player', this.targetId);
-      if (!this.readied.has('asteroid/strike')) { this.waitForReading(now); return; }
+      const relic = this.state.relic, checkpoint = stage === 'hook' ? undefined : this.asteroidCheckpoints.get(stage as 'tow' | 'strike');
+      if (stage !== 'hook' && !checkpoint) throw new Error('Asteroid practice requires an earned haul checkpoint');
+      if (!carry) {
+        p = this.resetLearner(checkpoint?.gems ?? ASTEROID_LESSON.gems, now);
+        p.placeAt(checkpoint?.x ?? ASTEROID_LESSON.x - p.width / 2, checkpoint?.y ?? ASTEROID_LESSON.y - p.height / 2);
+        p.facing = checkpoint?.facing ?? 0;
+        relic.relayX = ASTEROID_LESSON.relayX; relic.relayY = ASTEROID_LESSON.relayY;
+        relic.x = relic.routeX = checkpoint?.relicX ?? ASTEROID_LESSON.relicX;
+        relic.y = relic.routeY = checkpoint?.relicY ?? ASTEROID_LESSON.relicY;
+        if (stage === 'hook') { relic.phase = 'available'; relic.expiresAt = this.state.time + RELIC.UNCLAIMED_MS; }
+        else if (stage === 'tow' && checkpoint) {
+          relic.phase = 'towed'; relic.carrierId = this.learnerId;
+          relic.towEndsAt = this.state.time + checkpoint.towMs; relic.pausedUnclaimedMs = checkpoint.unclaimedMs;
+        } else p.relicCometReady = true; // A retry restores only the charge already earned by actual delivery.
+      }
+      this.targetId = '';
+      if (stage === 'hook') this.objective('relic', '', relic.x, relic.y);
+      else if (stage === 'tow') this.objective('relay', '', relic.relayX, relic.relayY);
+      else {
+        relic.phase = 'waiting'; relic.availableAt = 2_147_483_647;
+        const target = this.npc('asteroid-target', ASTEROID_LESSON.targetGems, ASTEROID_LESSON.targetX, ASTEROID_LESSON.targetY);
+        target.name = 'Asteroid target'; this.targetId = target.sessionId; this.objective('player', this.targetId);
+      }
+      if (!this.readied.has('asteroid/' + stage)) { this.waitForReading(now); return; }
     } else if (lesson === 'weapon') {
       if (stage === 'collect' || !carry) {
         p = this.resetLearner(40, now); this.state.weaponsOn = true;
@@ -261,6 +288,12 @@ export class PracticeController {
   private rememberFinish(): void {
     const p = this.learner, target = this.state.players.get(this.targetId);
     if (p && target) this.finishBank = { gems: p.gems, targetGems: target.gems };
+  }
+  private rememberAsteroid(stage: 'tow' | 'strike'): void {
+    const p = this.learner, relic = this.state.relic;
+    if (!p) throw new Error('An earned asteroid checkpoint requires its learner');
+    this.asteroidCheckpoints.set(stage, { gems: p.gems, x: p.x, y: p.y, facing: p.facing,
+      relicX: relic.x, relicY: relic.y, towMs: Math.max(0, relic.towEndsAt - this.state.time), unclaimedMs: relic.pausedUnclaimedMs });
   }
   private success(now: number, feedback = 'That worked.'): void {
     if (!this.acting) return;
@@ -309,7 +342,7 @@ export class PracticeController {
       }
     } else if (lesson === 'blackhole' && stage === 'shoot' && type === 'combatReward' && own && data.targetId === this.ammoId && data.how === 'blackhole') {
       this.success(now, 'Watch their gems return to you.');
-    } else if (lesson === 'asteroid' && type === 'credit' && own && data.targetId === this.targetId && data.how === 'relicComet' && Number(data.gems) > 0) {
+    } else if (lesson === 'asteroid' && stage === 'strike' && type === 'credit' && own && data.targetId === this.targetId && data.how === 'relicComet' && Number(data.gems) > 0) {
       this.success(now, 'Asteroid hit. You aimed and launched the strike.');
     } else if (lesson === 'weapon') {
       if (stage === 'collect' && type === 'weaponAssembled' && own && this.state.pinwheel.owner === this.learnerId && this.state.pinwheel.phase === 'carried') this.success(now, 'Assembled. Place it when you are ready.');
@@ -344,11 +377,6 @@ export class PracticeController {
   afterTick(now: number): void {
     if (!this.connected || !this.learner) return;
     const p = this.learner, lesson = this.view.lesson as PracticeLesson, stage = this.view.stage;
-    if (lesson === 'asteroid' && this.view.phase === 'ready') {
-      // Reading must not spend the prepared giant before the launch exercise starts.
-      p.resetGems(ASTEROID_LESSON.gems, this.state.worldWidth, this.state.worldHeight);
-      this.state.players.get(this.targetId)?.resetGems(ASTEROID_LESSON.targetGems, this.state.worldWidth, this.state.worldHeight);
-    }
     if (this.view.phase === 'complete' && this.view.sequence && now - this.lastActivity >= 1400) {
       const next = PRACTICE_LESSONS[PRACTICE_LESSONS.indexOf(lesson) + 1];
       if (next) this.select(next, true, now, true, lesson === 'basics' && !!p.gulping);
@@ -379,10 +407,21 @@ export class PracticeController {
     if (!woundedEscape && injuryVulnerable(this.state, p)) { this.fail(now, 'You were injured. Only this attempt will restart.'); return; }
     const target = this.state.players.get(this.targetId), ammo = this.state.players.get(this.ammoId);
     if (lesson === 'asteroid') {
-      const comet = this.state.relicComet;
-      if (comet.ownerId === this.learnerId && comet.phase !== 'idle') this.view.cue = 'inbound';
-      if (p.gulping) this.fail(now, 'Use Aim asteroid rather than inhale. Your asteroid and rival are restored.');
-      else if (!p.relicCometReady && comet.phase === 'idle') this.fail(now, 'The strike missed. Your ready asteroid is restored; aim at TARGET on the map.');
+      const relic = this.state.relic, comet = this.state.relicComet;
+      if (stage === 'hook') {
+        this.objective('relic', '', relic.x, relic.y);
+        if (relic.phase === 'towed' && relic.carrierId === this.learnerId) {
+          this.rememberAsteroid('tow'); this.success(now, 'Hooked. Drag the relic across the map to the cyan relay.');
+        } else if (relic.phase !== 'available') this.fail(now, 'The relic expired. Its pickup checkpoint is ready again.');
+      } else if (stage === 'tow') {
+        if (p.relicCometReady && relic.phase === 'waiting' && !relic.carrierId) {
+          this.rememberAsteroid('strike'); this.success(now, 'Delivered. Your asteroid is ready to aim and launch.');
+        } else if (relic.phase !== 'towed' || relic.carrierId !== this.learnerId) this.fail(now, 'The tow ended. Your hooked relic is restored for this part.');
+      } else {
+        if (comet.ownerId === this.learnerId && comet.phase !== 'idle') this.view.cue = 'inbound';
+        if (p.gulping) this.fail(now, 'Use Aim asteroid rather than inhale. Your asteroid and rival are restored.');
+        else if (!p.relicCometReady && comet.phase === 'idle') this.fail(now, 'The strike missed. Your ready asteroid is restored; aim at TARGET on the map.');
+      }
     } else if (lesson === 'basics' && stage === 'grow') {
       const first = this.state.gems.values().next().value;
       if (first) this.objective('gem', '', first.x, first.y);

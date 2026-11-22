@@ -1,7 +1,7 @@
 import type { MultiplayerMode } from '../core/GameModes'
 import { CANNON, GEMS, INHALE, PLAYER_COLORS } from '../../server/constants/gameConstants'
 import { drawBreath, drawCreature, drawDizzy, drawProjectile, mouthOf } from './creatures'
-import { FONT, GOLD, drawCrown, drawRobot, roundedRect } from './style'
+import { FONT, GOLD, drawCrown, roundedRect } from './style'
 import { inView, segmentInView, SMOOTHING, SNAP_DISTANCE } from './shared'
 import { ANDROID_FIREFOX_RENDERING } from './browserRendering'
 import { drawAirflow } from './stream'
@@ -273,7 +273,6 @@ function drawPlayerLabel(ctx: CanvasRenderingContext2D, player: SyncedPlayer, la
     ctx.fillStyle = isLocal ? '#ffffff' : '#cfd8dc'
     const label = String(player.name ?? '')
     ctx.fillText(label, labelX, y - 6)
-    if (player.isBot) drawRobot(ctx, labelX - ctx.measureText(label).width / 2 - 11, y - 14, 12)
     if (isLeader) {
         drawCrown(ctx, labelX, y - 26, 22)
         // What the leader is worth
