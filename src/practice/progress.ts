@@ -9,13 +9,14 @@ export interface PracticeProgress {
   status: LessonStatus;
   lessons: Record<PracticeLesson, LessonStatus>;
   legacyCompleted: Partial<Record<PracticeLesson, boolean>>;
+  lessonRevisions: Partial<Record<PracticeLesson, number>>;
 }
 const statuses: readonly string[] = ['not-started', 'in-progress', 'skipped', 'completed'];
 const validStatus = (value: unknown): value is LessonStatus => typeof value === 'string' && statuses.includes(value);
 const empty = (): PracticeProgress => ({ version: 2, offered: false, status: 'not-started',
-  lessons: { basics: 'not-started', combat: 'not-started', defense: 'not-started', blackhole: 'not-started', weapon: 'not-started', asteroid: 'not-started' }, legacyCompleted: {} });
+  lessons: { basics: 'not-started', combat: 'not-started', defense: 'not-started', blackhole: 'not-started', weapon: 'not-started', asteroid: 'not-started' }, legacyCompleted: {}, lessonRevisions: { asteroid: 2 } });
 
-/** Local mastery is versioned. Old achievements survive without certifying a new rear-wave skill. */
+/** Old achievements survive without certifying newly added practice skills. */
 export class PracticeStore {
   value = empty();
   constructor(private storage: Pick<Storage, 'getItem' | 'setItem'> | null) {
@@ -27,8 +28,15 @@ export class PracticeStore {
           if (validStatus(current.lessons?.[id])) this.value.lessons[id] = current.lessons[id];
           if (current.legacyCompleted?.[id] === true) this.value.legacyCompleted[id] = true;
         }
+        const oldAsteroid = current.lessonRevisions?.asteroid !== 2 &&
+          ['completed', 'in-progress'].includes(this.value.lessons.asteroid);
+        if (oldAsteroid) {
+          if (this.value.lessons.asteroid === 'completed') this.value.legacyCompleted.asteroid = true;
+          this.value.lessons.asteroid = 'not-started';
+        }
         this.refreshStatus();
         if (current.status === 'skipped' && this.value.status === 'not-started') this.value.status = 'skipped';
+        if (oldAsteroid) this.save();
         return;
       }
       const old = JSON.parse(storage?.getItem(LEGACY_KEY) ?? 'null');

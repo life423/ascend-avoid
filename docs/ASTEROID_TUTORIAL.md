@@ -4,30 +4,53 @@ November 21, 2026. The user reports that becoming large enough still does not
 teach asteroid launching. The old brief “Relic unlocked” badge omits how to claim
 and deliver the relic. A tip shown only after delivery misses that discovery gap.
 
-## Latest user correction: private launch practice
+## Latest user correction — November 22: haul before launch
 
-The user explicitly requested **Practice / Tutorials**, like every other lesson,
-and clarified that the player must **already be large enough and just practice
-launching an asteroid**. A link that restarts live growth/towing coaching does
-not satisfy this request.
+The user now explicitly requires the player to **drag the relic across the map**
+in the private tutorial. This supersedes the earlier request to practice launching
+with an already charged asteroid. The player still starts large enough; gathering
+enough gems is not a prerequisite.
 
 The sixth selectable lesson is **Launch an asteroid**, also the final step of
 the full sequence. Its private 4200 × 4200 arena starts with 33,000 gems, physical
-width above `RELIC.MIN_WIDTH`, an already charged asteroid and a marked practice
-rival. Reading time preserves the prepared sizes. **Ready → Aim asteroid** opens
-the normal launch map with a gold **TARGET** label. Mouse, keyboard and touch
-use the ordinary `fireRelicComet` message and shared strike/damage physics.
-Only actual server-observed damage to the designated rival certifies completion.
-A miss restores the same large, charged checkpoint. There is no gathering,
-relic pickup or towing prerequisite in this lesson. Switching lessons clears the
-charge/strike; exiting returns to a fresh live session as other lessons do.
+width above `RELIC.MIN_WIDTH`, and an uncharged asteroid. The stages are **hook →
+tow → strike**. Walk into the gold relic, then drag it across the arena and walk
+past the cyan relay until the trailing cargo enters the ring. Only actual shared
+delivery earns the charge. **Aim asteroid** then opens the ordinary launch map
+with a gold **TARGET** label. Mouse, keyboard and touch use the ordinary
+`fireRelicComet` message and shared strike/damage physics. Actual strike damage to
+the designated rival completes the lesson. A missed strike restores the earned
+launch checkpoint rather than repeating the haul. Switching lessons clears the
+relic/charge/strike; exiting returns to a fresh live session as other lessons do.
 
-Existing five-lesson achievements survive; the new lesson starts unfinished.
+Existing lesson achievements survive. A previous launch-only asteroid completion
+is retained as a historical achievement and marked updated for the new haul skill.
 The separate Game Menu/How to Play replay button is removed. The automatic
 size-threshold live cues remain, independently of private practice completion.
 Practice setup is not evidence of naturally earned growth in the live arena.
 
-Correction validation: production client/server builds and package verification,
+The haul is 1,700 map units, with verified walk-past clearance for the largest
+body. Carrier and cargo framing takes priority over showing a distant relay;
+the existing cyan cargo arrow points toward it. Instructions and touch actions
+reuse free screen space and stay put while clear of eyes, cargo and controls.
+Ready freezes only this private lesson's physics and preserves real deadlines.
+
+November 22 local validation passes: full production build/package verification,
+both TypeScript checks, synced schema, full unit suite and lint with zero errors.
+All 15 targeted browser cases pass across desktop Chromium, Android Chrome
+emulation, iPhone WebKit portrait/landscape and iPad WebKit. Final framing
+rechecks pass on those five profiles, including rendered body/cargo and eye/UI
+clearance. The full six-lesson sequence passes on desktop and Android emulation;
+the 320px reduced-motion phone sequence passes again after the framing fix.
+Logs/results: `.tmp/haul-release-*`, `.tmp/haul-framing-*`, `.tmp/haul-sequence-*`
+and `.tmp/haul-narrow-*`. The current pull request and production workflow record
+final required checks and rollout; hosted verification is separate from these
+local results. Physical-device, assistive-technology and on-device performance
+checks remain follow-up work.
+
+## Historical November 21 launch-only validation
+
+Production client/server builds and package verification,
 both TypeScript checks, synced-schema check, practice scenario units (including
 prepared-size preservation and actual miss recovery), and progress migration
 units pass. The expanded five-profile matrix plus final corrective rechecks pass
@@ -52,10 +75,13 @@ accessibility 8/10 and performance 8/10. Follow-ups: verify an attached keyboard
 and assistive technology on an actual phone, and measure on-device input/frame
 costs. Automated browser completion is not uncoached human learnability evidence.
 
-The separate requested live test uses normal inputs from a zero-gem spawn and
-an independent spectator to confirm authoritative growth. It reached width 943
-before a knockout; it has not yet verified the 1100 automatic unlock. Private
-practice setup and guarded threshold fixtures do not count as that result.
+The separate requested live automatic-unlock test passed November 21 through
+normal inputs and actual combat. Player `0q1A77tFK` in production room `jpPHoB-zA`
+reached width 1158 with 29,661 gems; an independent spectator confirmed that size
+while the automatic first cue was visibly rendered. Practice was disabled and
+manual tutorial requests were zero. Evidence: local
+`D:/CodexTemp/ascend-avoid-live-unlock/public-result.json` and `public-success.png`.
+Private practice setup and guarded threshold fixtures do not count as that result.
 
 ## Automatic live guidance
 

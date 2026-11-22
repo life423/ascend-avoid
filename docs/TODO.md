@@ -7,6 +7,18 @@ the relic comet, true-scale minimap body outlines, and the
 request inventory is preserved in [TODO_HISTORY.md](TODO_HISTORY.md).
 Historical sections below record earlier checkpoints.
 
+## November 22 asteroid practice — tow across the map
+
+The user now explicitly requires dragging the relic across the map in the private
+lesson. This supersedes the November 21 launch-only request. Keep the prepared
+giant, require real pickup and relay delivery before charging, then aim and launch.
+Retain the earned strike checkpoint after a miss. Earlier launch-only completion
+remains historical achievement and does not certify the new hauling skill.
+This correction is included in the authorized bot-label release; current checks
+and limitations are recorded in [ASTEROID_TUTORIAL.md](ASTEROID_TUTORIAL.md).
+Full build/types/schema/unit/lint checks pass locally, along with the five-profile
+lesson matrix, corrected hauling framing and full-sequence desktop/phone checks.
+
 ## November 22 bot-label symbol removal — release authorized
 
 - Removed the robot icon beside bot names and its unused drawing helper. Bot
@@ -38,8 +50,9 @@ The earlier live guide shipped in PR #99, main `e646a51`, Azure deployment
 `44947176963`. The correction follows the user's authorization to commit, merge
 and deploy. The current PR and production workflow record final release verification. The user separately
 requested a live automatic-unlock test through actual earned gameplay, without
-size overrides; that test has not yet passed. Do not substitute private lesson
-setup or guarded threshold fixtures for that evidence.
+size overrides. That test passed November 21: an independent production spectator
+confirmed width 1158 and the visible automatic first cue, with zero manual guide
+requests. Private lesson setup and guarded threshold fixtures remain separate.
 
 ## November 21 domain configuration and release record
 

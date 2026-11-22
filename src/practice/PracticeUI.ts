@@ -7,7 +7,7 @@ import './practice.css';
 import { freeAreas, type Bounds } from './layout';
 
 const LESSON_NAMES: Record<PracticeLesson, string> = { basics: 'Move, grow & capture', combat: 'Aim, hit & finish', defense: 'Escape & recover', blackhole: 'Black-hole shot', weapon: 'Build a weapon', asteroid: 'Launch an asteroid' };
-const descriptions: Record<PracticeLesson, string> = { basics: 'Gather gems and capture a smaller healthy rival.', combat: 'Aim a shot, shatter a smaller rival, then learn an injured finish.', defense: 'Two exercises: Puff & flee, then Escape while injured.', blackhole: 'Capture a rival, then aim a long shot into the core.', weapon: 'Three matching parts. One automatic weapon.', asteroid: 'Start large with an asteroid ready. Aim and launch it at a practice rival.' };
+const descriptions: Record<PracticeLesson, string> = { basics: 'Gather gems and capture a smaller healthy rival.', combat: 'Aim a shot, shatter a smaller rival, then learn an injured finish.', defense: 'Two exercises: Puff & flee, then Escape while injured.', blackhole: 'Capture a rival, then aim a long shot into the core.', weapon: 'Three matching parts. One automatic weapon.', asteroid: 'Start large. Hook the relic, drag it across the map to the relay, then launch an asteroid.' };
 const defenseStages: Record<string, string> = { 'rear-cover': 'Puff & flee', 'injured-escape': 'Escape while injured' };
 const DESKTOP_LOADED_AIM = 'Hold A/D or Left/Right to turn, or use the cursor in Mouse mode.';
 export class PracticeUI {
@@ -43,22 +43,52 @@ export class PracticeUI {
     const actions = this.panel.querySelector<HTMLElement>('.practice-actions');
     return !this.panel.hidden && actions && getComputedStyle(actions).position === 'fixed' ? actions.getBoundingClientRect().top : Infinity;
   }
-  layout(canvas: DOMRect, safe: { top: number; right: number; bottom: number; left: number }, controls: Bounds[]): void {
+  layout(canvas: DOMRect, safe: { top: number; right: number; bottom: number; left: number }, controls: Bounds[], subjects: Bounds[] = []): void {
     if (this.panel.hidden) return;
     const actions = this.panel.querySelector<HTMLElement>('.practice-actions');
     if (!actions) return;
     const view = { left: canvas.left + safe.left + 12, top: canvas.top + safe.top + 8, right: canvas.right - safe.right - 12, bottom: canvas.bottom - safe.bottom - 12 };
-    if (!this.touch) { return; }
-    this.panel.style.left = `${view.left + Math.max(0, (view.right - view.left - 480) / 2)}px`;
-    this.panel.style.top = `${view.top}px`;
-    this.panel.style.width = `${Math.min(480, view.right - view.left)}px`;
-    this.panel.style.maxHeight = `${Math.max(44, (view.bottom - view.top) * .4)}px`;
+    const hauling = subjects.length > 0;
+    const clear = (box: Bounds, obstacles: Bounds[]) => box.left >= view.left - 1 && box.right <= view.right + 1 && box.top >= view.top - 1 && box.bottom <= view.bottom + 1 && obstacles.every(b => box.right + 8 <= b.left || box.left - 8 >= b.right || box.bottom + 8 <= b.top || box.top - 8 >= b.bottom);
+    if (hauling) {
+      this.panel.style.transform = 'none'; this.panel.style.overflow = 'auto';
+      const obstacles = [...controls, ...subjects], current = this.panel.getBoundingClientRect();
+      // Keep a readable spot until the moving body/cargo or viewport actually obstructs it.
+      if (!clear(current, obstacles)) {
+        const areas = freeAreas(view, obstacles, 8).filter(a => a.right - a.left >= 170 && a.bottom - a.top >= 72);
+        areas.sort((a, b) => (b.right - b.left) * (b.bottom - b.top) - (a.right - a.left) * (a.bottom - a.top));
+        let selected = areas[0];
+        for (const area of areas) {
+          this.panel.style.width = `${Math.min(480, area.right - area.left)}px`;
+          this.panel.style.maxHeight = `${area.bottom - area.top}px`;
+          const box = this.panel.getBoundingClientRect();
+          if (this.panel.scrollHeight <= this.panel.clientHeight + 1) { selected = area; break; }
+          if (box.height < 44) continue;
+        }
+        if (selected) {
+          this.panel.style.width = `${Math.min(480, selected.right - selected.left)}px`;
+          this.panel.style.maxHeight = `${selected.bottom - selected.top}px`;
+          const box = this.panel.getBoundingClientRect();
+          this.panel.style.left = `${selected.left + (selected.right - selected.left - box.width) / 2}px`;
+          this.panel.style.top = `${selected.top}px`;
+        }
+      }
+    } else {
+      this.panel.style.transform = ''; this.panel.style.overflow = '';
+      if (!this.touch) { this.panel.style.left = this.panel.style.top = this.panel.style.width = this.panel.style.maxHeight = ''; return; }
+      this.panel.style.left = `${view.left + Math.max(0, (view.right - view.left - 480) / 2)}px`;
+      this.panel.style.top = `${view.top}px`;
+      this.panel.style.width = `${Math.min(480, view.right - view.left)}px`;
+      this.panel.style.maxHeight = `${Math.max(44, (view.bottom - view.top) * .4)}px`;
+    }
+    if (!this.touch) return;
     const header = this.panel.getBoundingClientRect();
     const place = document.querySelector<HTMLElement>('.weapon-place-button:not([hidden])')?.getBoundingClientRect();
-    const obstacles: Bounds[] = [...controls, header, ...(place ? [place] : [])];
+    const obstacles: Bounds[] = [...controls, ...subjects, header, ...(place ? [place] : [])];
     const key = JSON.stringify([this.signature, view, obstacles.map(r => [r.left, r.top, r.right, r.bottom]), actions.textContent, getComputedStyle(actions).font, actions.firstElementChild && getComputedStyle(actions.firstElementChild).font, document.fonts.status]);
     if (key === this.layoutKey) { return; }
     this.layoutKey = key;
+    if (hauling && clear(actions.getBoundingClientRect(), obstacles) && actions.scrollWidth <= actions.clientWidth + 1) return;
     const areas = freeAreas(view, obstacles);
     actions.dataset.scroll = 'false'; actions.style.maxHeight = ''; actions.style.height = '';
     const fits: { area: Bounds; width: number; height: number }[] = [];
@@ -143,7 +173,7 @@ export class PracticeUI {
   }
   private soundButton(): string { return `<button type="button" data-do="sound" data-action="sound" aria-label="Mute sound" aria-pressed="${sound.muted}">Sound ${sound.muted ? 'off' : 'on'}</button>`; }
   private lessonActions(view: SyncedPractice, completed: boolean): string {
-    const primary = view.phase === 'ready' ? '<button type="button" data-do="ready" class="practice-primary">Ready</button>' : view.lesson === 'asteroid' && view.phase === 'waiting' && view.cue !== 'inbound' ? '<button type="button" data-do="aim-asteroid" class="practice-primary">Aim asteroid</button>' : '';
+    const primary = view.phase === 'ready' ? '<button type="button" data-do="ready" class="practice-primary">Ready</button>' : view.lesson === 'asteroid' && view.stage === 'strike' && view.phase === 'waiting' && view.cue !== 'inbound' ? '<button type="button" data-do="aim-asteroid" class="practice-primary">Aim asteroid</button>' : '';
     const rest = (completed ? '<button type="button" data-do="exit" class="practice-primary">Play now</button><button type="button" data-do="open">Other lessons</button>' : '<button type="button" data-do="skip">Skip lesson</button>') + `<button type="button" data-do="exit">Exit tutorial</button>${this.soundButton()}${this.mouseButton()}`;
     return `<div class="practice-actions" role="group" aria-label="Tutorial actions">${this.touch ? rest + primary : primary + rest}</div>`;
   }
@@ -152,11 +182,16 @@ export class PracticeUI {
   private instruction(v: SyncedPractice): string {
     const hold = this.touch ? 'Hold INHALE' : 'Hold Space';
     const fire = this.touch ? 'tap FIRE' : 'tap Space';
-    if (v.lesson === 'asteroid') return v.phase === 'ready'
-      ? 'You are already large enough, with an asteroid ready. Press Ready, then open Aim asteroid and target the marked rival.'
-      : v.cue === 'inbound' ? 'Asteroid launched. Watch the warning ring, then the impact on your practice rival.'
-      : this.touch ? 'Tap Aim asteroid. Choose TARGET on the map, then tap Launch asteroid.'
-      : 'Open Aim asteroid. Use WASD/arrows to aim at TARGET, then press Space or Enter. You can also click the target.';
+    if (v.lesson === 'asteroid') {
+      if (v.stage === 'hook') return v.phase === 'ready'
+        ? 'You are already large enough. Press Ready, then walk into the gold RELIC to hook it. No button needed.'
+        : 'Walk into the gold RELIC to hook it. Then drag it across the map to the cyan RELAY.';
+      if (v.stage === 'tow') return `${v.phase === 'ready' ? 'Press Ready, then drag' : 'Drag'} the relic across the map to RELAY. Follow its cyan arrow, then walk past the ring so your trailing relic enters it.`;
+      if (v.phase === 'ready') return 'Relic delivered. Press Ready, then open Aim asteroid and target the marked rival.';
+      return v.cue === 'inbound' ? 'Asteroid launched. Watch the warning ring, then the impact on your practice rival.'
+        : this.touch ? 'Relic delivered. Tap Aim asteroid, choose TARGET on the map, then tap Launch asteroid.'
+        : 'Relic delivered. Open Aim asteroid. Use WASD/arrows to aim at TARGET, then press Space or Enter. You can also click the target.';
+    }
     if (v.lesson === 'basics') return v.stage === 'grow' ? (this.touch ? 'Use the left stick to gather gems. Soft bodies squish; keep moving.' : 'Use WASD or arrows in Keyboard mode. In Mouse mode, follow the cursor. Gather gems and slide past the soft body.')
       : `${hold} toward the smaller healthy rival to capture it.`;
     if (v.lesson === 'combat') {
@@ -182,7 +217,9 @@ export class PracticeUI {
     return `Move right, away from the pursuer. ${this.touch ? 'Quick-tap INHALE' : 'Tap Space'} to send a brief gust behind you.`;
   }
   private hint(v: SyncedPractice): string {
-    if (v.lesson === 'asteroid') return 'Use the asteroid map, not inhale. A missed strike restores your ready asteroid for another try.';
+    if (v.lesson === 'asteroid') return v.stage === 'hook' ? 'Walk into the relic; do not inhale it. Your size is already enough to tow it.'
+      : v.stage === 'tow' ? 'Your body reaching the relay is not enough. Walk beyond it so the relic behind you enters the cyan ring.'
+      : 'Use the asteroid map, not inhale. A missed strike restores the asteroid you earned by delivering the relic.';
     if (v.lesson === 'defense') return v.stage === 'injured-escape' ? 'Use movement only. Smaller bodies can outrun the larger pursuer; wait for the cracks to close.' : 'Use a quick tap, not a hold. The puff wraps behind you and shoves once. Both players can still move, so keep fleeing.';
     if (v.stage === 'finish') return 'Keep the cracked rival in front. Move closer while inhaling; theft makes the size gap work for you.';
     if (['aim', 'shatter', 'wound', 'shoot'].includes(v.stage)) return this.touch ? 'Drag on the right, lift, then tap FIRE. Aim through the center.' : `${DESKTOP_LOADED_AIM} Release Space before tapping it again.`;
@@ -190,7 +227,7 @@ export class PracticeUI {
   }
   open = (): void => {
     this.cancel(); this.store.offered(); this.returnFocus = document.activeElement as HTMLElement;
-    this.chooser.innerHTML = `<div class="practice-dialog"><div class="practice-dialog-heading"><h2 id="practice-title">Practice / Tutorials</h2><button type="button" data-do="close" aria-label="Close lesson picker">Close</button></div><p>Follow all six in order, or choose any lesson.</p><button type="button" data-do="sequence" class="practice-start practice-primary">Start full tutorial</button><div class="practice-lessons">${PRACTICE_LESSONS.map(id => `<button type="button" data-lesson="${id}"><strong>${LESSON_NAMES[id]}</strong><span>${descriptions[id]}</span><small>${this.store.value.lessons[id] === 'completed' ? 'Completed' : this.store.value.lessons[id] === 'skipped' ? 'Unfinished · skipped' : this.store.value.legacyCompleted[id] ? 'Updated — try the escape gust' : this.store.value.lessons[id] === 'in-progress' ? 'Unfinished · in progress' : 'Ready to try'}</small></button>`).join('')}</div><button type="button" data-do="${this.active ? 'exit' : 'close'}">${this.active ? 'Exit tutorial' : 'Keep playing'}</button></div>`;
+    this.chooser.innerHTML = `<div class="practice-dialog"><div class="practice-dialog-heading"><h2 id="practice-title">Practice / Tutorials</h2><button type="button" data-do="close" aria-label="Close lesson picker">Close</button></div><p>Follow all six in order, or choose any lesson.</p><button type="button" data-do="sequence" class="practice-start practice-primary">Start full tutorial</button><div class="practice-lessons">${PRACTICE_LESSONS.map(id => `<button type="button" data-lesson="${id}"><strong>${LESSON_NAMES[id]}</strong><span>${descriptions[id]}</span><small>${this.store.value.lessons[id] === 'completed' ? 'Completed' : this.store.value.lessons[id] === 'skipped' ? 'Unfinished · skipped' : this.store.value.legacyCompleted[id] ? id === 'asteroid' ? 'Updated — tow the relic' : 'Updated — try the escape gust' : this.store.value.lessons[id] === 'in-progress' ? 'Unfinished · in progress' : 'Ready to try'}</small></button>`).join('')}</div><button type="button" data-do="${this.active ? 'exit' : 'close'}">${this.active ? 'Exit tutorial' : 'Keep playing'}</button></div>`;
     this.chooser.hidden = false; this.chooser.querySelector<HTMLButtonElement>('.practice-start')?.focus();
   };
   private close(): void { this.chooser.hidden = true; this.returnFocus?.focus(); this.returnFocus = null; }
