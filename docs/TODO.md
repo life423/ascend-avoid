@@ -7,6 +7,24 @@ the relic comet, true-scale minimap body outlines, and the
 request inventory is preserved in [TODO_HISTORY.md](TODO_HISTORY.md).
 Historical sections below record earlier checkpoints.
 
+## November 22 Play tester update and distribution certificates
+
+The user provided the correct existing Play Console account. The drewclark.io
+Console app `io.drewclark.ascendavoid` is confirmed in closed testing;
+the active Alpha release inspected November 22 is 1 / 1.0.0, and only code 1
+appears in the app-bundle list, leaving the prepared code 2 unused. Earlier notes
+that the app had never been uploaded are historical. Keep this package and its
+existing signing setup. Console's upload certificate matches the local key.
+
+Production website associations now include the three authoritative Play
+app-signing fingerprints alongside the local direct-install fingerprint. Test's
+association remains separate. Commit/deploy these public associations and verify
+direct 200 JSON on apex, old and www hosts before rolling out the code-2 native
+fullscreen candidate to Alpha. Record Console review/rollout state and verify
+the actual Play-installed update; the direct-APK Pixel checks below do not prove
+Play distribution trust. Published eligible-track updates follow users' Play
+update settings. See [ANDROID_RELEASE.md](ANDROID_RELEASE.md).
+
 ## November 22 Android browser-toolbar correction
 
 The user rejects the browser toolbar above the installed Android game. This

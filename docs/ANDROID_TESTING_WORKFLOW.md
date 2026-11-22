@@ -1,5 +1,26 @@
 # Android testing and release checklist
 
+## November 22 current Play distribution
+
+Ascend Avoid already exists in the drewclark.io Play Console account as
+`io.drewclark.ascendavoid`, with an Alpha closed-testing release 1 / 1.0.0.
+The user provided the correct existing Play Console account; Console confirms
+the app is in closed testing. Its all-app-bundles list contains only code 1, so
+the prepared code 2 is unused. Earlier "pending store phase" and account-creation
+notes below are historical.
+
+The fullscreen correction's signed 1.0.1/code-2 AAB is a native release candidate.
+The existing upload certificate matches the local signing key. Play's three
+confirmed app-signing fingerprints are authorized alongside the local fingerprint
+in the production association file; deploy and verify those associations on all
+three production hosts before the Play rollout. Test keeps its separate package,
+staging origin and association. Record the Console review/rollout result and an
+actual Play-installed fullscreen check separately from the successful direct-APK
+Pixel test. Eligible Play testers receive published updates according to their
+update settings; a website merge does not upload a native bundle to Play.
+
+## Historical November 1 workflow
+
 Agreed November 1, 2026: feature branches are tested separately. Merging to main
 continues to deploy the live website and server. The regular Android app loads
 that live game, so a fresh load picks up web changes. Native launcher, permission,
@@ -52,13 +73,13 @@ APK push from GitHub to the user's phone.
    [TODO.md](TODO.md#physical-device-checks): held tutorial input,
    thumb reach, injured escape, surprise shots, perceived stun and part/fan
    overlap. These are current device-readiness findings, not completed checks.
-5. **Distribution and operating habits — pending store phase.** Use wireless
+5. **Distribution and operating habits — November 1 preparation.** Use wireless
    debugging on trusted networks/computers while developing; turn it off when
    done. Play internal testing comes after account setup. Add the Play distribution
    certificate to website verification and test the Play-installed build. Complete
    privacy/Data safety from actual server logging, listing artwork and required
-   real-human closed testing before production. None of this preparation publishes
-   the app on Google Play.
+   real-human closed testing before production. This was the preparation status
+   on November 1; the current Alpha track is recorded above.
 
 ## Candidate to release
 
