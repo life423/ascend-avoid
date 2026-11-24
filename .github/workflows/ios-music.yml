@@ -19,7 +19,7 @@ jobs:
   ios-music:
     name: Native Safari on ${{ matrix.device }} simulator
     runs-on: macos-26
-    timeout-minutes: 25
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -122,6 +122,11 @@ jobs:
           xcrun simctl list devices --json > "$logs/devices-after-failure.json" || true
           xcrun simctl io "$SAFARI_DEVICE_UDID" screenshot "$logs/simulator-failure.png" || true
           xcrun simctl spawn "$SAFARI_DEVICE_UDID" log show --last 3m --style compact --predicate 'process == "MobileSafari"' > "$logs/mobile-safari.log" 2>&1 || true
+          for result in "$HOME"/Library/Developer/Xcode/DerivedData/WebDriverAgent-*/Logs/Test/*.xcresult; do
+            [ -d "$result" ] || continue
+            mkdir -p "$logs/wda-test-results"
+            cp -R "$result" "$logs/wda-test-results/"
+          done
       - name: Save mobile Safari results
         if: always()
         uses: actions/upload-artifact@v4

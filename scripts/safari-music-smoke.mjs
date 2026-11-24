@@ -2,6 +2,8 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
+import { request as httpRequest } from 'node:http';
+import { request as httpsRequest } from 'node:https';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { promisify } from 'node:util';
@@ -28,12 +30,40 @@ await mkdir(output, { recursive: true });
 // DOM/audio polling retains its original timeout.
 async function command(path, method = 'GET', body, timeout) {
     const nativeSetup = appiumMode && (path.endsWith('/context') || path.endsWith('/source'));
-    const response = await fetch(driver + path, {
-        method, signal: AbortSignal.timeout(timeout ?? (nativeSetup ? 60000 : 15000)),
-        ...(body === undefined ? {} : { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
+    const deadline = timeout ?? (nativeSetup ? 60000 : 15000);
+    const signal = AbortSignal.timeout(deadline);
+    const payload = body === undefined ? undefined : JSON.stringify(body);
+    const url = new URL(driver + path);
+    assert(['http:', 'https:'].includes(url.protocol), 'WebDriver uses HTTP or HTTPS');
+    // fetch/Undici has a separate 300-second headers limit. A cold WDA build
+    // can exceed that even when its explicit setup AbortSignal allows longer.
+    // Use one native-request deadline for headers and the complete response body.
+    const response = await new Promise((resolve, reject) => {
+        const fail = error => {
+            if (!signal.aborted) { reject(error); return; }
+            const timedOut = new Error(method + ' ' + path + ': timed out after ' + deadline + 'ms', { cause: error });
+            timedOut.name = 'TimeoutError';
+            reject(timedOut);
+        };
+        const send = url.protocol === 'https:' ? httpsRequest : httpRequest;
+        const request = send(url, {
+            method, signal, agent: false,
+            headers: {
+                Accept: 'application/json', 'Accept-Encoding': 'identity',
+                ...(payload === undefined ? {} : { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) }),
+            },
+        }, incoming => {
+            const chunks = [];
+            incoming.on('data', chunk => chunks.push(chunk));
+            incoming.once('error', fail);
+            incoming.once('aborted', () => fail(new Error('WebDriver response was aborted')));
+            incoming.once('end', () => resolve({ status: incoming.statusCode, text: Buffer.concat(chunks).toString('utf8') }));
+        });
+        request.once('error', fail);
+        request.end(payload);
     });
-    const { value } = await response.json();
-    assert(response.ok && !value?.error, method + ' ' + path + ': ' + (value?.message || response.status));
+    const { value } = JSON.parse(response.text.replace(/^\uFEFF/, ''));
+    assert(response.status >= 200 && response.status < 300 && !value?.error, method + ' ' + path + ': ' + (value?.message || response.status));
     return value;
 }
 const execute = (fn, ...args) => command(sessionPath + '/execute/sync', 'POST', { script: 'return (' + fn + ').apply(null, arguments);', args });
@@ -42,7 +72,7 @@ async function openSession(alwaysMatch) {
     for (;;) {
         // Cold simulator WDA builds can take four minutes before the listener
         // starts. Bound setup separately from every DOM/audio assertion below.
-        try { return await command('/session', 'POST', { capabilities: { alwaysMatch } }, appiumMode ? 480000 : 90000); }
+        try { return await command('/session', 'POST', { capabilities: { alwaysMatch } }, appiumMode ? 660000 : 90000); }
         catch (error) {
             // CoreSimulator can be booted before Safari's native inspector host
             // is discoverable. Retry this attachment race, never app assertions.
@@ -225,8 +255,11 @@ try {
         // paths still use real WDA taps, with no JavaScript-click fallback.
         'appium:nativeWebTapStrict': false,
         'appium:safariInitialUrl': new URL('/health', arena).href, 'appium:showXcodeLog': true,
-        'appium:webviewConnectTimeout': 20000, 'appium:wdaLaunchTimeout': 300000,
-        'appium:wdaStartupRetries': 1,
+        'appium:webviewConnectTimeout': 20000,
+        // Compile once before timing native startup. XCTest can fail its first
+        // cold accessibility bootstrap; only agent startup may retry, not tests.
+        'appium:prebuildWDA': true, 'appium:wdaLaunchTimeout': 180000,
+        'appium:wdaStartupRetries': 2,
         'appium:waitForIdleTimeout': 1,
     } : {
         browserName: 'safari',
