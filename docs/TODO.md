@@ -7,7 +7,32 @@ the relic comet, true-scale minimap body outlines, and the
 request inventory is preserved in [TODO_HISTORY.md](TODO_HISTORY.md).
 Historical sections below record earlier checkpoints.
 
-## November 23 native Safari music follow-up
+## November 23 iPhone and iPad music follow-up
+
+The user requested iPhone/iPad music testing and confirmed that no physical Apple
+devices are available. Native Apple iPhone/iPad simulators now have a separate
+workflow, with exact runtime/device identity recorded. It uses native Safari
+touch input and audio-clock/output checks against the candidate and live site,
+including repeated Settings-to-Safari app background/return cycles. It keeps the
+normal autoplay policy and does not override player size. Results and any needed
+fixes belong in the workflow artifacts and pull request. Simulator coverage does
+not certify physical speakers, Silent Mode, lock-screen recovery or device-only
+interruptions. Do not claim physical iPhone/iPad verification from these tests.
+Mobile CI uses pinned XCUITest tools with native web taps and explicitly verifies
+trusted activation. It dismisses only an identified Safari first-run guidance
+popover; no permission alerts or autoplay settings are overridden. The test tools
+are installed only in the runner's temporary directories.
+
+Repeated native desktop Safari testing exposed a background-suspension defect:
+the audio clock advanced 14.81 seconds during 16 seconds hidden because Safari
+froze the delayed `suspend()` timer. This does not establish that notes remained
+audible: their fade/stop was already scheduled in Web Audio. Hidden/page-away
+handling now zeros the bus, disposes voices and invokes native suspension
+immediately; visible user mute retains its fade. Candidate Safari checks gate
+the PR; explicit post-deployment workflow runs verify the live release separately,
+so a known older production defect does not obscure candidate validation.
+
+## November 23 native Safari music — desktop verified
 
 The user requested actual Safari playback verification after the music release.
 The new native Safari workflow uses the preinstalled Safari/SafariDriver on an
@@ -18,6 +43,12 @@ override player size. The workflow artifacts and its pull request record exact
 versions, target URLs, results and limits. Do not count Windows Playwright
 WebKit's unavailable audio API as successful Safari playback, or treat desktop
 Safari as physical iPhone/iPad validation.
+PR #105 merged as `e231715efb0be678d43e8062a503d7fec123b169`; native Safari run
+`45323056360` passed ten checkpoints on each target in Safari 27.2/macOS 26.7.2.
+Actual audio output and advancing clocks, mute, saved choice, independent effects,
+rapid toggles, three actual background/return cycles and tutorial controls passed.
+No game-code fix was needed. Hosted Safari PNGs were background-only and are not
+visual-QA evidence; native click/hit-test/state/audio checks remain valid.
 
 ## November 23 ambient music — released
 
@@ -50,8 +81,9 @@ Verification on November 23:
 - The Windows Playwright WebKit runtime has no native Web Audio API, confirmed
   in a bare browser without app instrumentation. Its 24 audio-output cases are
   explicitly skipped; its menu and unavailable-audio controls/error-handling
-  cases pass. Actual Safari audio and physical-device listening/backgrounding
-  remain unverified. Skips do not count as audio passes.
+  cases pass. At that Windows-only checkpoint actual Safari audio was unverified;
+  the native desktop follow-up above adds separate evidence. Physical-device
+  listening/backgrounding remains unverified. Skips do not count as audio passes.
 - Rendered screenshots were inspected for desktop, portrait phone/tablet and
   landscape tutorial controls. Touch targets, keyboard focus/Space activation,
   saved state, tutorial/menu synchronization and menu overflow are checked.

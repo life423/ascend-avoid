@@ -1,0 +1,143 @@
+name: iPhone and iPad music
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/ios-music.yml'
+      - 'scripts/safari-music-smoke.mjs'
+      - 'src/core/Music.ts'
+      - 'src/core/Sound.ts'
+      - 'src/ui/DrawerUI.ts'
+      - 'src/practice/PracticeUI.ts'
+      - 'src/styles/main.css'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ios-music:
+    name: Native Safari on ${{ matrix.device }} simulator
+    runs-on: macos-26
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        device: [iPhone, iPad]
+    env:
+      SAFARI_DEVICE_TYPE: ${{ matrix.device }}
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      SAFARI_DRIVER_MODE: appium
+      SAFARI_DRIVER_URL: http://127.0.0.1:4723
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Align the native Xcode toolchain
+        run: |
+          logs="$RUNNER_TEMP/ios-music"
+          mkdir -p "$logs"
+          env -u DEVELOPER_DIR xcode-select -p > "$logs/xcode-global-before.txt"
+          sudo xcode-select --switch "$DEVELOPER_DIR"
+          env -u DEVELOPER_DIR xcode-select -p > "$logs/xcode-global-after.txt"
+      - name: Build the candidate
+        run: |
+          npm ci
+          npm ci --prefix server
+          npm run build
+      - name: Install pinned native mobile test tools
+        run: |
+          export APPIUM_HOME="$RUNNER_TEMP/ascend-appium-home"
+          printf 'APPIUM_HOME=%s\n' "$APPIUM_HOME" >> "$GITHUB_ENV"
+          appium_prefix="$RUNNER_TEMP/ascend-appium-server"
+          npm install --prefix "$appium_prefix" --no-audit --no-fund appium@3.9.1
+          appium_bin="$appium_prefix/node_modules/.bin/appium"
+          "$appium_bin" driver install xcuitest@12.22.8
+          "$appium_bin" driver doctor xcuitest
+          printf 'APPIUM_SERVER_BIN=%s\n' "$appium_bin" >> "$GITHUB_ENV"
+      - name: Start the candidate server before simulator boot
+        run: |
+          logs="$RUNNER_TEMP/ios-music"
+          mkdir -p "$logs"
+          NODE_ENV=test PORT=3002 node server/dist/index.js > "$logs/game-server.log" 2>&1 &
+          curl --fail --silent --show-error --retry 60 --retry-connrefused --retry-delay 1 --max-time 5 http://127.0.0.1:3002/health
+      - name: Select an available Apple mobile simulator
+        run: |
+          logs="$RUNNER_TEMP/ios-music"
+          mkdir -p "$logs"
+          sw_vers > "$logs/macos.txt"
+          xcodebuild -version > "$logs/xcode.txt"
+          xcrun simctl list devices available --json > "$logs/simulators.json"
+          node --input-type=module <<'JS'
+          import { readFileSync, appendFileSync, writeFileSync } from 'node:fs';
+          const inventory = JSON.parse(readFileSync(process.env.RUNNER_TEMP + '/ios-music/simulators.json'));
+          // Hardware-specific suffixes are not newer OS versions. Prefer the
+          // generic runtime and common phone/tablet models for this baseline.
+          const runtimes = Object.keys(inventory.devices).filter(r => /\.iOS-\d+(?:-\d+){1,2}$/.test(r)).sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
+          const runtime = runtimes.find(r => inventory.devices[r].some(d => d.isAvailable && d.name.startsWith(process.env.SAFARI_DEVICE_TYPE)));
+          if (!runtime) throw new Error('No available Apple ' + process.env.SAFARI_DEVICE_TYPE + ' simulator');
+          const candidates = inventory.devices[runtime].filter(d => d.isAvailable && d.name.startsWith(process.env.SAFARI_DEVICE_TYPE));
+          const preferred = process.env.SAFARI_DEVICE_TYPE === 'iPhone' ? 'iPhone 17' : 'iPad (A16)';
+          const device = candidates.find(d => d.name === preferred) || candidates[0];
+          appendFileSync(process.env.GITHUB_ENV, 'SAFARI_DEVICE_UDID=' + device.udid + '\n');
+          writeFileSync(process.env.RUNNER_TEMP + '/ios-music/device.json', JSON.stringify({ runtime, ...device }, null, 2));
+          console.log(JSON.stringify({ runtime, name: device.name, udid: device.udid }));
+          JS
+      - name: Boot the selected Apple mobile simulator
+        timeout-minutes: 8
+        run: |
+          xcrun simctl boot "$SAFARI_DEVICE_UDID"
+          xcrun simctl bootstatus "$SAFARI_DEVICE_UDID" -b
+      - name: Launch mobile Safari
+        timeout-minutes: 4
+        run: |
+          open -a "$DEVELOPER_DIR/Applications/Simulator.app" --args -CurrentDeviceUDID "$SAFARI_DEVICE_UDID"
+          xcrun simctl launch "$SAFARI_DEVICE_UDID" com.apple.mobilesafari
+          # Give Safari an inspectable page before Appium attaches. No audio or
+          # autoplay preferences are changed, and the game resets its own choices.
+          xcrun simctl openurl "$SAFARI_DEVICE_UDID" http://127.0.0.1:3002/health
+      - name: Start native mobile automation
+        timeout-minutes: 2
+        run: |
+          logs="$RUNNER_TEMP/ios-music"
+          "$APPIUM_SERVER_BIN" --version > "$logs/appium-version.txt"
+          # Its client-connection timeout must exceed the script's explicit
+          # 660-second cold session deadline; app/audio commands still use 15s.
+          "$APPIUM_SERVER_BIN" --address 127.0.0.1 --port 4723 --keep-alive-timeout 900 --log "$logs/appium.log" > "$logs/appium-stdout.log" 2>&1 &
+      - name: Check candidate music in mobile Safari
+        env:
+          E2E_URL: http://127.0.0.1:3002/
+          SAFARI_RESULTS: ${{ runner.temp }}/ios-music/candidate
+        run: node scripts/safari-music-smoke.mjs
+      - name: Check deployed music in mobile Safari
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          E2E_URL: https://ascendavoid.com/
+          SAFARI_RESULTS: ${{ runner.temp }}/ios-music/live
+        run: node scripts/safari-music-smoke.mjs
+      - name: Collect simulator diagnostics on failure
+        if: failure()
+        timeout-minutes: 2
+        run: |
+          logs="$RUNNER_TEMP/ios-music"
+          xcrun simctl list devices --json > "$logs/devices-after-failure.json" || true
+          xcrun simctl io "$SAFARI_DEVICE_UDID" screenshot "$logs/simulator-failure.png" || true
+          xcrun simctl spawn "$SAFARI_DEVICE_UDID" log show --last 3m --style compact --predicate 'process == "MobileSafari"' > "$logs/mobile-safari.log" 2>&1 || true
+          for result in "$HOME"/Library/Developer/Xcode/DerivedData/WebDriverAgent-*/Logs/Test/*.xcresult; do
+            [ -d "$result" ] || continue
+            mkdir -p "$logs/wda-test-results"
+            cp -R "$result" "$logs/wda-test-results/"
+          done
+      - name: Save mobile Safari results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-safari-music-${{ matrix.device }}
+          path: |
+            ${{ runner.temp }}/ios-music/
+            ~/Library/Logs/com.apple.WebDriver/
+          retention-days: 7

@@ -139,6 +139,13 @@ class Music {
         if (ctx.state !== 'running') { this.disposeVoices(); return; }
         const now = ctx.currentTime;
         master.gain.cancelScheduledValues(now);
+        if (document.hidden || this.pageAway) {
+            // Hidden browsers can freeze timers; suspend natively before returning.
+            master.gain.setValueAtTime(0, now);
+            this.disposeVoices();
+            this.suspend(ctx);
+            return;
+        }
         master.gain.setValueAtTime(master.gain.value, now);
         master.gain.linearRampToValueAtTime(0, now + FADE_SECONDS);
         for (const voice of this.voices) voice.stop(now + FADE_SECONDS);
@@ -147,13 +154,19 @@ class Music {
             this.suspendTimer = null;
             if (generation !== this.generation || this.canPlay()) return;
             this.disposeVoices();
-            this.suspending = true;
-            void ctx.suspend().catch(() => {}).finally(() => {
-                this.suspending = false;
-                // A quick re-enable can arrive while the suspend promise is settling.
-                if (this.canPlay() && this.context === ctx) this.unlock();
-            });
+            this.suspend(ctx);
         }, Math.ceil(FADE_SECONDS * 1000) + 40);
+    }
+
+    private suspend(ctx: AudioContext): void {
+        // visibilitychange and pagehide can arrive while the same suspend settles.
+        if (this.suspending) return;
+        this.suspending = true;
+        void ctx.suspend().catch(() => {}).finally(() => {
+            this.suspending = false;
+            // A quick re-enable can arrive while the suspend promise is settling.
+            if (this.canPlay() && this.context === ctx) this.unlock();
+        });
     }
 
     private disposeVoices(): void {

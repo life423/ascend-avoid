@@ -1,29 +1,87 @@
-// Native Safari/safaridriver only: no Playwright browser or autoplay bypass.
+// Native Safari via SafariDriver or XCUITest: no Playwright browser/autoplay bypass.
 import assert from 'node:assert/strict';
+import { execFile } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
+import { request as httpRequest } from 'node:http';
+import { request as httpsRequest } from 'node:https';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
+import { promisify } from 'node:util';
 
-const driver = (process.env.SAFARI_DRIVER_URL || 'http://127.0.0.1:4444').replace(/\/$/, '');
+const appiumMode = process.env.SAFARI_DRIVER_MODE === 'appium';
+const driver = (process.env.SAFARI_DRIVER_URL || (appiumMode ? 'http://127.0.0.1:4723' : 'http://127.0.0.1:4444')).replace(/\/$/, '');
 const arena = process.env.E2E_URL || 'https://ascendavoid.com/';
 const output = process.env.SAFARI_RESULTS || 'test-results/safari-music';
+const deviceUDID = process.env.SAFARI_DEVICE_UDID;
+const deviceType = process.env.SAFARI_DEVICE_TYPE;
+const simulator = !!deviceUDID;
+const runFile = promisify(execFile);
 const ELEMENT = 'element-6066-11e4-a52e-4f735466cecf';
 const musicSelector = '.drawer[aria-hidden="false"] [data-action="music"]';
 const effectsSelector = '.drawer[aria-hidden="false"] [data-action="sound"]';
-const report = { target: arena, startedAt: new Date().toISOString(), checkpoints: [] };
-let sessionPath, helperHandle, stage = 'native Safari session';
+const report = {
+    target: arena, startedAt: new Date().toISOString(), checkpoints: [],
+    testHost: simulator ? { kind: 'Apple Simulator', deviceType, deviceUDID, automation: appiumMode ? 'XCUITest native taps' : 'SafariDriver' } : { kind: 'macOS Safari' },
+};
+let sessionPath, stage = 'native Safari session';
 await mkdir(output, { recursive: true });
 
-async function command(path, method = 'GET', body, timeout = 15000) {
-    const response = await fetch(driver + path, {
-        method, signal: AbortSignal.timeout(timeout),
-        ...(body === undefined ? {} : { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
+// Native hierarchy snapshots and web-context attachment can exceed 15 seconds.
+// DOM/audio polling retains its original timeout.
+async function command(path, method = 'GET', body, timeout) {
+    const nativeSetup = appiumMode && (path.endsWith('/context') || path.endsWith('/source'));
+    const deadline = timeout ?? (nativeSetup ? 60000 : 15000);
+    const signal = AbortSignal.timeout(deadline);
+    const payload = body === undefined ? undefined : JSON.stringify(body);
+    const url = new URL(driver + path);
+    assert(['http:', 'https:'].includes(url.protocol), 'WebDriver uses HTTP or HTTPS');
+    // fetch/Undici has a separate 300-second headers limit. A cold WDA build
+    // can exceed that even when its explicit setup AbortSignal allows longer.
+    // Use one native-request deadline for headers and the complete response body.
+    const response = await new Promise((resolve, reject) => {
+        const fail = error => {
+            if (!signal.aborted) { reject(error); return; }
+            const timedOut = new Error(method + ' ' + path + ': timed out after ' + deadline + 'ms', { cause: error });
+            timedOut.name = 'TimeoutError';
+            reject(timedOut);
+        };
+        const send = url.protocol === 'https:' ? httpsRequest : httpRequest;
+        const request = send(url, {
+            method, signal, agent: false,
+            headers: {
+                Accept: 'application/json', 'Accept-Encoding': 'identity',
+                ...(payload === undefined ? {} : { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) }),
+            },
+        }, incoming => {
+            const chunks = [];
+            incoming.on('data', chunk => chunks.push(chunk));
+            incoming.once('error', fail);
+            incoming.once('aborted', () => fail(new Error('WebDriver response was aborted')));
+            incoming.once('end', () => resolve({ status: incoming.statusCode, text: Buffer.concat(chunks).toString('utf8') }));
+        });
+        request.once('error', fail);
+        request.end(payload);
     });
-    const { value } = await response.json();
-    assert(response.ok && !value?.error, method + ' ' + path + ': ' + (value?.message || response.status));
+    const { value } = JSON.parse(response.text.replace(/^\uFEFF/, ''));
+    assert(response.status >= 200 && response.status < 300 && !value?.error, method + ' ' + path + ': ' + (value?.message || response.status));
     return value;
 }
 const execute = (fn, ...args) => command(sessionPath + '/execute/sync', 'POST', { script: 'return (' + fn + ').apply(null, arguments);', args });
+async function openSession(alwaysMatch) {
+    const discoveryDeadline = Date.now() + 30000;
+    for (;;) {
+        // Cold simulator WDA builds can take four minutes before the listener
+        // starts. Bound setup separately from every DOM/audio assertion below.
+        try { return await command('/session', 'POST', { capabilities: { alwaysMatch } }, appiumMode ? 660000 : 90000); }
+        catch (error) {
+            // CoreSimulator can be booted before Safari's native inspector host
+            // is discoverable. Retry this attachment race, never app assertions.
+            if (appiumMode || !simulator || !String(error).includes('Could not find any session hosts') || Date.now() >= discoveryDeadline) throw error;
+            console.warn('Waiting for the requested native simulator Safari host to become discoverable.');
+            await delay(1000);
+        }
+    }
+}
 async function wait(description, sample, matches, timeout = 15000) {
     let latest;
     const deadline = Date.now() + timeout;
@@ -34,7 +92,48 @@ async function wait(description, sample, matches, timeout = 15000) {
     } while (Date.now() < deadline);
     assert.fail(description + ': ' + JSON.stringify(latest));
 }
+async function dismissKnownSafariOnboarding() {
+    if (!appiumMode) return;
+    const title = 'View Bookmarks, Share Menu, and Open Tabs';
+    const originalContext = await command(sessionPath + '/context');
+    assert(typeof originalContext === 'string' && originalContext !== 'NATIVE_APP', 'Safari has an active web context');
+    await command(sessionPath + '/context', 'POST', { name: 'NATIVE_APP' });
+    try {
+        // Allow a bounded cold XCTest accessibility snapshot during setup only.
+        const source = await command(sessionPath + '/source', 'GET', undefined, 30000);
+        await writeFile(join(output, 'safari-native-startup.xml'), source);
+        if (!source.replace(/\s+/g, ' ').includes(title)) return;
+        await writeFile(join(output, 'safari-onboarding.xml'), source);
+        // Safari's hint has a Close label but an SF Symbol identifier, so an
+        // accessibility-id lookup for the label does not find this native button.
+        const candidates = await command(sessionPath + '/elements', 'POST', {
+            using: '-ios predicate string',
+            value: 'type == "XCUIElementTypeButton" AND label == "Close" AND visible == 1',
+        });
+        const visible = [];
+        for (const candidate of candidates) {
+            const id = candidate[ELEMENT] || candidate.ELEMENT;
+            if (id && await command(sessionPath + '/element/' + id + '/displayed')) visible.push(id);
+        }
+        assert.equal(visible.length, 1, 'known Safari onboarding has one visible Close button');
+        // This is only the named Safari guidance popover. No generic system or
+        // permission alert is accepted, and the tap remains native through WDA.
+        await command(sessionPath + '/element/' + visible[0] + '/click', 'POST', {});
+        await wait('known Safari onboarding closes', async () =>
+            (await command(sessionPath + '/source')).replace(/\s+/g, ' ').includes(title), value => !value, 5000);
+        report.onboardingDismissed = { title, nativeTap: true };
+    } finally {
+        await command(sessionPath + '/context', 'POST', { name: originalContext });
+    }
+}
 async function click(selector) {
+    if (simulator) await execute(s => {
+        const target = [...document.querySelectorAll(s)].find(e => {
+            const r = e.getBoundingClientRect(), style = getComputedStyle(e);
+            return r.width > 0 && r.height > 0 && style.visibility !== 'hidden' && !e.closest('[inert]');
+        });
+        target?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }, selector);
     const element = await wait('reachable native click: ' + selector, () => execute(s => [...document.querySelectorAll(s)].find(e => {
         const r = e.getBoundingClientRect(), style = getComputedStyle(e);
         const x = r.left + r.width / 2, y = r.top + r.height / 2;
@@ -44,7 +143,14 @@ async function click(selector) {
     }) || null, selector), value => !!value?.[ELEMENT]);
     await command(sessionPath + '/element/' + element[ELEMENT] + '/click', 'POST', {});
 }
-const screenshot = async name => writeFile(join(output, name + '.png'), Buffer.from(await command(sessionPath + '/screenshot'), 'base64'));
+async function screenshot(name) {
+    const path = join(output, name + '.png');
+    if (simulator) {
+        await runFile('xcrun', ['simctl', 'io', deviceUDID, 'screenshot', '--type=png', path], { timeout: 15000 });
+    } else {
+        await writeFile(path, Buffer.from(await command(sessionPath + '/screenshot'), 'base64'));
+    }
+}
 const snapshot = () => execute(() => window.__musicProbe?.read() || null);
 const text = selector => execute(s => document.querySelector(s)?.textContent.trim() || null, selector);
 const level = (value, index) => index === undefined ? Math.max(0, ...value.contexts.map(c => c.rms)) : value.contexts[index]?.rms || 0;
@@ -122,38 +228,118 @@ async function clockAdvances(index) {
     const before = await snapshot();
     await wait('native audio clock advances', snapshot, value => value.contexts[index].currentTime > before.contexts[index].currentTime + .15);
 }
+async function backgroundReturned(cycle, label) {
+    // Safari can defer script evaluation while hidden. The native visibility
+    // history and clock are checked only after the browser returns to the front.
+    const returned = await wait('real ' + label + ' visibility transitions', snapshot, value =>
+        value?.events.filter(e => e.type === 'visibility' && e.hidden).length >= cycle + 1 &&
+        value.events.filter(e => e.type === 'visibility' && !e.hidden).length >= cycle + 1);
+    const hidden = returned.events.filter(e => e.type === 'visibility' && e.hidden).at(-1);
+    const visible = returned.events.filter(e => e.type === 'visibility' && !e.hidden).at(-1);
+    assert(visible.at - hidden.at >= 1200, 'game was genuinely backgrounded');
+    assert(visible.contexts[0].currentTime - hidden.contexts[0].currentTime < .8, 'music clock pauses while hidden');
+    await audible(0); await clockAdvances(0);
+    await checkpoint('real-' + label + '-return-' + (cycle + 1));
+}
 
 try {
+    assert(['native', 'appium'].includes(process.env.SAFARI_DRIVER_MODE || 'native'), 'known Safari driver mode');
+    if (appiumMode) assert(simulator, 'XCUITest mode requires an explicit Apple Simulator UDID');
+    if (simulator) assert(['iPhone', 'iPad'].includes(deviceType), 'SAFARI_DEVICE_TYPE must identify iPhone or iPad');
     await wait('native Safari driver ready', () => command('/status').catch(() => null), value => value?.ready === true, 30000);
-    const session = await command('/session', 'POST', { capabilities: { alwaysMatch: { browserName: 'safari' } } }, 90000);
+    const alwaysMatch = appiumMode ? {
+        platformName: 'ios', browserName: 'Safari',
+        'appium:automationName': 'XCUITest', 'appium:udid': deviceUDID,
+        'appium:nativeWebTap': true,
+        // Prefer native accessibility matching over forced calibration. Both
+        // paths still use real WDA taps, with no JavaScript-click fallback.
+        'appium:nativeWebTapStrict': false,
+        // The workflow seeds a real page with simctl before attachment. Preserve
+        // that browser instead of WDA's racy terminate/deep-link/running check.
+        // Game preferences are explicitly reset below; autoplay stays unchanged.
+        'appium:noReset': true, 'appium:forceAppLaunch': false,
+        'appium:safariInitialUrl': new URL('/health', arena).href, 'appium:showXcodeLog': true,
+        'appium:webviewConnectTimeout': 60000,
+        // Compile once before timing native startup. XCTest can fail its first
+        // cold accessibility bootstrap; only agent startup may retry, not tests.
+        'appium:prebuildWDA': true, 'appium:wdaLaunchTimeout': 180000,
+        'appium:wdaStartupRetries': 2,
+        'appium:waitForIdleTimeout': 1,
+    } : {
+        browserName: 'safari',
+        ...(simulator ? {
+            platformName: 'ios', 'safari:useSimulator': true,
+            'safari:deviceUDID': deviceUDID, 'safari:deviceType': deviceType,
+        } : {}),
+    };
+    const session = await openSession(alwaysMatch);
     assert(session.sessionId, 'safaridriver created a session');
     sessionPath = '/session/' + session.sessionId;
     report.capabilities = session.capabilities;
     assert.equal(session.capabilities.browserName.toLowerCase(), 'safari', 'native Safari capability');
+    if (simulator) {
+        assert.equal(session.capabilities.platformName.toLowerCase(), 'ios', 'actual iOS/iPadOS Safari platform');
+        if (appiumMode) {
+            const automationName = session.capabilities.automationName || session.capabilities['appium:automationName'];
+            const actualUDID = session.capabilities.udid || session.capabilities['appium:udid'];
+            assert.equal(String(automationName).toLowerCase(), 'xcuitest', 'actual native XCUITest session');
+            assert.equal(String(actualUDID).toLowerCase(), deviceUDID.toLowerCase(), 'actual selected simulator UDID');
+        } else {
+            assert.equal(session.capabilities['safari:useSimulator'], true, 'actual Apple Simulator session');
+            if (session.capabilities['safari:deviceUDID']) assert.equal(session.capabilities['safari:deviceUDID'], deviceUDID, 'requested native simulator');
+            if (session.capabilities['safari:deviceType']) assert.equal(session.capabilities['safari:deviceType'], deviceType, 'requested native device type');
+        }
+    }
     await command(sessionPath + '/timeouts', 'POST', { implicit: 0, pageLoad: 60000, script: 15000 });
-    await command(sessionPath + '/window/rect', 'POST', { width: 1280, height: 900 });
-    await command(sessionPath + '/url', 'POST', { url: 'about:blank' });
+    await dismissKnownSafariOnboarding();
+    // Native iOS Safari does not implement desktop window resizing.
+    if (!simulator) await command(sessionPath + '/window/rect', 'POST', { width: 1280, height: 900 });
+    // Mobile Safari can keep native Start Page UI above an about:blank WebView.
+    // Use a real lightweight response so native taps reach the isolated probe.
+    report.nativeBackendUrl = simulator ? new URL('/health', arena).href : 'about:blank';
+    await command(sessionPath + '/url', 'POST', { url: report.nativeBackendUrl });
     report.userAgent = await execute(() => navigator.userAgent);
     assert.match(report.userAgent, /AppleWebKit\/.*Version\/.*Safari\//, 'actual Safari user agent');
     assert.doesNotMatch(report.userAgent, /Chrome|Chromium|Firefox/);
+    report.device = await execute(() => ({
+        touchPoints: navigator.maxTouchPoints, width: innerWidth, height: innerHeight,
+        screen: { width: screen.width, height: screen.height }, pixelRatio: devicePixelRatio,
+    }));
+    // iPad's desktop browsing mode may expose the same UA as macOS Safari.
+    if (simulator) assert(report.device.touchPoints > 0, 'native touch-capable iPhone/iPad session');
 
     stage = 'isolated native audio backend preflight';
     await execute(() => {
+        document.head.innerHTML = '<meta name="viewport" content="width=device-width, initial-scale=1">';
         document.body.innerHTML = '<button id="native-audio" style="width:240px;height:64px">Test native audio backend</button>';
-        document.querySelector('button').addEventListener('click', () => {
-            const context = new AudioContext(), oscillator = context.createOscillator(), analyser = context.createAnalyser(), gain = context.createGain();
-            gain.gain.value = 0; oscillator.connect(analyser); analyser.connect(gain); gain.connect(context.destination); oscillator.start();
-            window.__nativeAudio = { context, oscillator, analyser, samples: new Float32Array(analyser.fftSize), resumeError: null };
-            void context.resume().catch(error => { window.__nativeAudio.resumeError = String(error); });
+        const record = window.__nativeAudio = { context: null, oscillator: null, analyser: null, samples: null, tap: null, errors: [], resumeError: null };
+        record.read = () => {
+            if (record.analyser && record.samples) record.analyser.getFloatTimeDomainData(record.samples);
+            return {
+                tap: record.tap, errors: [...record.errors], resumeError: record.resumeError,
+                state: record.context?.state || null, currentTime: record.context?.currentTime || 0,
+                peak: record.samples ? Math.max(...record.samples.map(Math.abs)) : 0,
+                viewport: { width: innerWidth, height: innerHeight, scale: visualViewport?.scale || 1 },
+            };
+        };
+        document.querySelector('button').addEventListener('click', event => {
+            // Record delivery before any audio API call so a missed/blocked tap
+            // and an AudioContext setup error have distinct failure evidence.
+            record.tap = { trusted: event.isTrusted, activation: navigator.userActivation?.isActive ?? null };
+            try {
+                const context = record.context = new AudioContext();
+                const oscillator = record.oscillator = context.createOscillator();
+                const analyser = record.analyser = context.createAnalyser(), gain = context.createGain();
+                record.samples = new Float32Array(analyser.fftSize);
+                gain.gain.value = 0; oscillator.connect(analyser); analyser.connect(gain); gain.connect(context.destination); oscillator.start();
+                void context.resume().catch(error => { record.resumeError = String(error); });
+            } catch (error) { record.errors.push(String(error)); }
         });
     });
+    await dismissKnownSafariOnboarding();
     await click('#native-audio');
-    report.nativeBackend = await wait(stage, () => execute(() => {
-        const r = window.__nativeAudio;
-        if (!r) return null;
-        r.analyser.getFloatTimeDomainData(r.samples);
-        return { state: r.context.state, currentTime: r.context.currentTime, peak: Math.max(...r.samples.map(Math.abs)), resumeError: r.resumeError };
-    }), value => value?.state === 'running' && value.currentTime > .15 && value.peak > .1);
+    report.nativeBackend = await wait(stage, () => execute(() => window.__nativeAudio?.read() || null),
+        value => value?.tap?.trusted === true && value.state === 'running' && value.currentTime > .15 && value.peak > .1);
     await execute(() => { window.__nativeAudio.oscillator.stop(); void window.__nativeAudio.context.close(); });
 
     stage = 'fresh music preference';
@@ -217,32 +403,27 @@ try {
     assert(rapid.intervals <= baselineIntervals + 1, 'rapid toggles do not stack music schedulers');
     await checkpoint('rapid-toggles');
 
-    stage = 'real Safari tab background and foreground';
-    const gameHandle = await command(sessionPath + '/window');
-    const initialHandles = await command(sessionPath + '/window/handles');
-    // NewWindow's type is only a hint, and switching command targets alone does
-    // not prove real backgrounding. Open a real tab with the existing user link.
-    await click('.drawer[aria-hidden="false"] .invite-link[target="_blank"]');
-    const opened = await wait('native link opens one tab', () => command(sessionPath + '/window/handles'), handles => handles.filter(handle => !initialHandles.includes(handle)).length === 1);
-    helperHandle = opened.find(handle => !initialHandles.includes(handle));
-    report.tabNavigation = { gameHandle, helperHandle, transitions: [] };
-    // Safari may defer script evaluation in the hidden tab. Inspect its actual
-    // visibility history and paused clock after returning, not while hidden.
-    for (let cycle = 0; cycle < 3; cycle++) {
-        await command(sessionPath + '/window', 'POST', { handle: helperHandle });
-        if (cycle === 0) await command(sessionPath + '/url', 'POST', { url: 'about:blank' });
-        report.tabNavigation.transitions.push({ cycle, away: await execute(() => ({ url: location.href, hidden: document.hidden, visibilityState: document.visibilityState, focused: document.hasFocus() })) });
-        await delay(1600);
-        await command(sessionPath + '/window', 'POST', { handle: gameHandle });
-        const returned = await wait('real tab visibility transitions', snapshot, value =>
-            value.events.filter(e => e.type === 'visibility' && e.hidden).length >= cycle + 1 &&
-            value.events.filter(e => e.type === 'visibility' && !e.hidden).length >= cycle + 1);
-        const hidden = returned.events.filter(e => e.type === 'visibility' && e.hidden).at(-1);
-        const visible = returned.events.filter(e => e.type === 'visibility' && !e.hidden).at(-1);
-        assert(visible.at - hidden.at >= 1200, 'game was genuinely backgrounded');
-        assert(visible.contexts[0].currentTime - hidden.contexts[0].currentTime < .8, 'music clock pauses while hidden');
-        await audible(0); await clockAdvances(0);
-        await checkpoint('real-tab-return-' + (cycle + 1));
+    if (simulator) {
+        stage = 'real iOS app background and foreground';
+        report.appNavigation = { away: 'com.apple.Preferences', back: 'com.apple.mobilesafari', cycles: 3 };
+        for (let cycle = 0; cycle < 3; cycle++) {
+            await runFile('xcrun', ['simctl', 'launch', deviceUDID, 'com.apple.Preferences'], { timeout: 30000 });
+            await delay(3000);
+            await runFile('xcrun', ['simctl', 'launch', deviceUDID, 'com.apple.mobilesafari'], { timeout: 30000 });
+            await backgroundReturned(cycle, 'app');
+        }
+    } else {
+        stage = 'real Safari window background and foreground';
+        const rect = await command(sessionPath + '/window/rect');
+        // Native minimization guarantees an actual hidden window. Merely
+        // switching SafariDriver command targets does not establish OS focus.
+        report.windowNavigation = { strategy: 'native minimize/restore', rect, cycles: 3 };
+        for (let cycle = 0; cycle < 3; cycle++) {
+            await command(sessionPath + '/window/minimize', 'POST', {});
+            await delay(3000);
+            await command(sessionPath + '/window/rect', 'POST', rect);
+            await backgroundReturned(cycle, 'window');
+        }
     }
 
     stage = 'tutorial music control';
@@ -272,7 +453,7 @@ try {
             url: location.href, userAgent: navigator.userAgent, hidden: document.hidden,
             visibilityState: document.visibilityState, focused: document.hasFocus(),
             audio: window.__musicProbe?.read() || null,
-            nativeBackend: window.__nativeAudio ? { state: window.__nativeAudio.context.state, currentTime: window.__nativeAudio.context.currentTime, error: window.__nativeAudio.resumeError } : null,
+            nativeBackend: window.__nativeAudio?.read() || null,
             visibleDialogs: [...document.querySelectorAll('[role="dialog"], dialog[open]')].map(e => e.textContent.slice(0, 800)),
         })).catch(value => ({ diagnosticError: String(value) }));
         await screenshot('failure').catch(() => {});
@@ -281,9 +462,5 @@ try {
     console.error(JSON.stringify(report, null, 2));
     process.exitCode = 1;
 } finally {
-    // Safari sessions must not leave the auxiliary tab to affect the next run.
-    if (sessionPath && helperHandle) {
-        await command(sessionPath + '/window', 'POST', { handle: helperHandle }).then(() => command(sessionPath + '/window', 'DELETE')).catch(() => {});
-    }
     if (sessionPath) await command(sessionPath, 'DELETE').catch(error => { console.error(String(error)); process.exitCode = 1; });
 }
