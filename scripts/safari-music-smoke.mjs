@@ -104,24 +104,37 @@ async function dismissKnownSafariOnboarding() {
         await writeFile(join(output, 'safari-native-startup.xml'), source);
         if (!source.replace(/\s+/g, ' ').includes(title)) return;
         await writeFile(join(output, 'safari-onboarding.xml'), source);
-        // Safari's hint has a Close label but an SF Symbol identifier, so an
-        // accessibility-id lookup for the label does not find this native button.
-        const candidates = await command(sessionPath + '/elements', 'POST', {
+        const hintVisible = async () => (await command(sessionPath + '/elements', 'POST', {
             using: '-ios predicate string',
-            value: 'type == "XCUIElementTypeButton" AND label == "Close" AND visible == 1',
-        });
-        const visible = [];
-        for (const candidate of candidates) {
-            const id = candidate[ELEMENT] || candidate.ELEMENT;
-            if (id && await command(sessionPath + '/element/' + id + '/displayed')) visible.push(id);
+            value: 'type == "XCUIElementTypeStaticText" AND label == ' + JSON.stringify(title) + ' AND visible == 1',
+        })).length > 0;
+        if (!await hintVisible()) return;
+        // Cold Safari can consume the first tap while presenting its hint. Only
+        // this identified browser guidance may retry; no app/audio action does.
+        for (let attempt = 1; attempt <= 2; attempt++) {
+            // The Close label differs from the native SF Symbol identifier.
+            const candidates = await command(sessionPath + '/elements', 'POST', {
+                using: '-ios predicate string',
+                value: 'type == "XCUIElementTypeButton" AND label == "Close" AND visible == 1',
+            });
+            const visible = [];
+            for (const candidate of candidates) {
+                const id = candidate[ELEMENT] || candidate.ELEMENT;
+                if (id && await command(sessionPath + '/element/' + id + '/displayed')) visible.push(id);
+            }
+            assert.equal(visible.length, 1, 'known Safari onboarding has one visible Close button');
+            // No generic system or permission alert is accepted.
+            await command(sessionPath + '/element/' + visible[0] + '/click', 'POST', {});
+            const settled = Date.now() + 3000;
+            do {
+                if (!await hintVisible()) {
+                    report.onboardingDismissed = { title, nativeTap: true, attempts: attempt };
+                    return;
+                }
+                await delay(100);
+            } while (Date.now() < settled);
         }
-        assert.equal(visible.length, 1, 'known Safari onboarding has one visible Close button');
-        // This is only the named Safari guidance popover. No generic system or
-        // permission alert is accepted, and the tap remains native through WDA.
-        await command(sessionPath + '/element/' + visible[0] + '/click', 'POST', {});
-        await wait('known Safari onboarding closes', async () =>
-            (await command(sessionPath + '/source')).replace(/\s+/g, ' ').includes(title), value => !value, 5000);
-        report.onboardingDismissed = { title, nativeTap: true };
+        assert.fail('known Safari onboarding remains visible after two native Close taps');
     } finally {
         await command(sessionPath + '/context', 'POST', { name: originalContext });
     }
