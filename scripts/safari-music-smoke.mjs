@@ -216,6 +216,18 @@ async function entry() {
     await wait('ordinary join screen', () => execute(() => !!document.querySelector('.join-dialog[open] .join-play')), Boolean);
     await execute(installProbe);
 }
+async function refreshApp() {
+    const marker = String(Date.now());
+    await execute(value => { window.__nativeMusicReload = value; }, marker);
+    await command(sessionPath + '/refresh', 'POST', {}, 70000);
+    // XCUITest returns from refresh before WebKit commits the new document.
+    // The old join screen must not satisfy readiness or receive the Play tap.
+    await wait('new app document after refresh', () => execute(value => ({
+        fresh: window.__nativeMusicReload !== value,
+        complete: document.readyState === 'complete',
+        join: !!document.querySelector('.join-dialog[open] .join-play'),
+    }), marker).catch(error => ({ navigationError: String(error) })), value => value.fresh && value.complete && value.join, 60000);
+}
 async function play() {
     await click('.join-dialog[open] .join-play');
     await wait('ordinary live player', () => execute(() => !!window.game?.currentGameMode?.multiplayerManager?.getLocalPlayer() && !document.body.classList.contains('intro-playing')), Boolean);
@@ -349,7 +361,7 @@ try {
         localStorage.removeItem('ascend.music'); localStorage.setItem('ascend.muted', 'true');
         localStorage.setItem('ascend.guideSeen', 'true'); localStorage.setItem('ascend.mouseFollow', 'off');
     });
-    await command(sessionPath + '/refresh', 'POST', {}, 70000);
+    await refreshApp();
     await entry(); await play(); await openMenu();
     assert.equal(await text(musicSelector), 'Music off');
     assert.equal((await snapshot()).contexts.length, 0, 'no music context before opt-in');
@@ -373,7 +385,7 @@ try {
 
     stage = 'remembered opt-in waits for ordinary Play';
     await click(musicSelector); await audible(0);
-    await command(sessionPath + '/refresh', 'POST', {}, 70000);
+    await refreshApp();
     await entry(); await delay(750);
     assert.equal(await execute(() => localStorage.getItem('ascend.music')), 'true');
     assert.equal((await snapshot()).contexts.length, 0, 'stored opt-in alone does not autoplay');
