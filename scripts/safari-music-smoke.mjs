@@ -242,7 +242,10 @@ try {
     await dismissKnownSafariOnboarding();
     // Native iOS Safari does not implement desktop window resizing.
     if (!simulator) await command(sessionPath + '/window/rect', 'POST', { width: 1280, height: 900 });
-    await command(sessionPath + '/url', 'POST', { url: 'about:blank' });
+    // Mobile Safari can keep native Start Page UI above an about:blank WebView.
+    // Use a real lightweight response so native taps reach the isolated probe.
+    report.nativeBackendUrl = simulator ? new URL('/health', arena).href : 'about:blank';
+    await command(sessionPath + '/url', 'POST', { url: report.nativeBackendUrl });
     report.userAgent = await execute(() => navigator.userAgent);
     assert.match(report.userAgent, /AppleWebKit\/.*Version\/.*Safari\//, 'actual Safari user agent');
     assert.doesNotMatch(report.userAgent, /Chrome|Chromium|Firefox/);
