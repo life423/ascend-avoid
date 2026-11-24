@@ -35,6 +35,13 @@ jobs:
         with:
           node-version: '20'
           cache: npm
+      - name: Align the native Xcode toolchain
+        run: |
+          logs="$RUNNER_TEMP/ios-music"
+          mkdir -p "$logs"
+          env -u DEVELOPER_DIR xcode-select -p > "$logs/xcode-global-before.txt"
+          sudo xcode-select --switch "$DEVELOPER_DIR"
+          env -u DEVELOPER_DIR xcode-select -p > "$logs/xcode-global-after.txt"
       - name: Build the candidate
         run: |
           npm ci
@@ -76,6 +83,7 @@ jobs:
       - name: Launch mobile Safari
         timeout-minutes: 4
         run: |
+          open -a "$DEVELOPER_DIR/../Applications/DeviceHub.app" "devices://device/open?id=$SAFARI_DEVICE_UDID"
           xcrun simctl launch "$SAFARI_DEVICE_UDID" com.apple.mobilesafari
       - name: Start SafariDriver
         timeout-minutes: 2
@@ -83,7 +91,7 @@ jobs:
           logs="$RUNNER_TEMP/ios-music"
           /usr/bin/safaridriver --version > "$logs/safaridriver-version.txt"
           sudo /usr/bin/safaridriver --enable
-          /usr/bin/safaridriver --port 4444 > "$logs/safaridriver.log" 2>&1 &
+          /usr/bin/safaridriver --diagnose --port 4444 > "$logs/safaridriver.log" 2>&1 &
       - name: Check candidate music in mobile Safari
         env:
           E2E_URL: http://127.0.0.1:3002/
@@ -108,5 +116,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: mobile-safari-music-${{ matrix.device }}
-          path: ${{ runner.temp }}/ios-music/
+          path: |
+            ${{ runner.temp }}/ios-music/
+            ~/Library/Logs/com.apple.WebDriver/
           retention-days: 7

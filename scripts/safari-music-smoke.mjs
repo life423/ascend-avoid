@@ -33,6 +33,19 @@ async function command(path, method = 'GET', body, timeout = 15000) {
     return value;
 }
 const execute = (fn, ...args) => command(sessionPath + '/execute/sync', 'POST', { script: 'return (' + fn + ').apply(null, arguments);', args });
+async function openSession(alwaysMatch) {
+    const discoveryDeadline = Date.now() + 30000;
+    for (;;) {
+        try { return await command('/session', 'POST', { capabilities: { alwaysMatch } }, 90000); }
+        catch (error) {
+            // CoreSimulator can be booted before Safari's native inspector host
+            // is discoverable. Retry this attachment race, never app assertions.
+            if (!simulator || !String(error).includes('Could not find any session hosts') || Date.now() >= discoveryDeadline) throw error;
+            console.warn('Waiting for the requested native simulator Safari host to become discoverable.');
+            await delay(1000);
+        }
+    }
+}
 async function wait(description, sample, matches, timeout = 15000) {
     let latest;
     const deadline = Date.now() + timeout;
@@ -169,7 +182,7 @@ try {
             'safari:deviceUDID': deviceUDID, 'safari:deviceType': deviceType,
         } : {}),
     };
-    const session = await command('/session', 'POST', { capabilities: { alwaysMatch } }, 90000);
+    const session = await openSession(alwaysMatch);
     assert(session.sessionId, 'safaridriver created a session');
     sessionPath = '/session/' + session.sessionId;
     report.capabilities = session.capabilities;
