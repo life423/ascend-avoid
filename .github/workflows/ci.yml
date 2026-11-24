@@ -75,11 +75,25 @@ jobs:
         node -e "const { existsSync } = require('node:fs'); const { firefox } = require('playwright'); const { version } = require('@playwright/test/package.json'); if (version !== '1.64.1') throw new Error('Update the CI image to match Playwright ' + version); if (!existsSync(firefox.executablePath())) throw new Error('Missing bundled Firefox');"
     - name: Build application
       run: npm run build
+    - name: Provide a clocked audio output for Firefox
+      run: |
+        # The container has no physical sound card. Keep a real native audio
+        # backend/clock so Web Audio output assertions can run unchanged.
+        apt-get update
+        apt-get install -y --no-install-recommends pulseaudio pulseaudio-utils
+        pulseaudio --system --daemonize=yes --disallow-exit --disallow-module-loading \
+          --exit-idle-time=-1 -n \
+          --load='module-native-protocol-unix auth-anonymous=1 socket=/tmp/ascend-ci-pulse' \
+          --load='module-null-sink sink_name=ci_output rate=48000 channels=2'
+        PULSE_SERVER=unix:/tmp/ascend-ci-pulse pactl info
+        PULSE_SERVER=unix:/tmp/ascend-ci-pulse pactl list short sinks
     - name: Firefox gameplay and renderer checks
       env:
         CI: '1'
         E2E_START_SERVER: '1'
         E2E_TEST_HOOKS: '1'
+        PRACTICE_E2E: '1'
+        PULSE_SERVER: unix:/tmp/ascend-ci-pulse
         E2E_URL: http://127.0.0.1:3002
       run: |
         # GitHub mounts a pwuser-owned home but runs this trusted test container as root.
@@ -88,6 +102,7 @@ jobs:
         npx playwright test \
           tests/e2e/game.spec.mjs tests/e2e/join-modal.spec.mjs \
           tests/e2e/render-performance.spec.mjs tests/e2e/renderer-culling.spec.mjs \
+          tests/e2e/menu-access.spec.mjs tests/e2e/music.spec.mjs \
           --project='Firefox (desktop)' --retries=0
     - name: Save failure traces, screenshots and performance samples
       if: always()

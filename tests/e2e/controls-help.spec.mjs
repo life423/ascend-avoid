@@ -75,7 +75,7 @@ test('short Help fits, has reachable actions and keeps keyboard focus inside', a
   await page.keyboard.press('Shift+Tab');
   await expect(dialog.locator('button, input, a[href], [tabindex="0"]').last()).toBeFocused();
   await page.keyboard.press('Tab'); await expect(close).toBeFocused();
-  const sound = dialog.getByRole('button', { name: 'Mute sound', exact: true });
+  const sound = dialog.getByRole('button', { name: 'Mute sound effects', exact: true });
   await sound.focus(); await page.keyboard.press('Space');
   await expect(sound).toHaveAttribute('aria-pressed', 'true');
   await close.focus();

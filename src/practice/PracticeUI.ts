@@ -2,6 +2,7 @@ import type { SyncedPractice } from '../types/synced';
 import { PRACTICE_LESSONS, type PracticeLesson, isPracticeLesson } from '../../server/practice/definitions';
 import { browserPracticeStore } from './progress';
 import { sound } from '../core/Sound';
+import { music } from '../core/Music';
 import { mouseControlEnabled, setMouseControl } from '../core/MouseControl';
 import './practice.css';
 import { freeAreas, type Bounds } from './layout';
@@ -181,14 +182,15 @@ export class PracticeUI {
     this.panel.dataset.phase = view.phase;
     this.panel.innerHTML = `<div class="practice-heading"><button type="button" data-do="open" aria-label="Choose any lesson">${LESSON_NAMES[lesson]} <span aria-hidden="true">⌄</span></button><span>${completed ? 'Finished' : `${Math.min(view.passed + 1, view.total)} / ${view.total}`}</span></div><p class="practice-instruction" role="status">${instruction}</p>${active && view.feedback ? `<p class="practice-feedback">${view.feedback}</p>` : ''}${view.failures >= 2 && active ? `<p class="practice-hint">${this.hint(view)}</p>` : ''}${injury ? `<details${detailOpen ? ' open' : ''}><summary>About injury</summary><p>${injuryText}</p></details>` : ''}${this.lessonActions(view, completed)}`;
   }
-  private soundButton(): string { return `<button type="button" data-do="sound" data-action="sound" aria-label="Mute sound" aria-pressed="${sound.muted}">Sound ${sound.muted ? 'off' : 'on'}</button>`; }
+  private soundButton(): string { return `<button type="button" data-do="sound" data-action="sound" aria-label="Mute sound effects" aria-pressed="${sound.muted}">Effects ${sound.muted ? 'off' : 'on'}</button>`; }
+  private musicButton(): string { return `<button type="button" data-do="music" data-action="music" aria-label="Background music" aria-pressed="${music.enabled}">Music ${music.enabled ? 'on' : 'off'}</button>`; }
   private lessonActions(view: SyncedPractice, completed: boolean): string {
     const primary = view.phase === 'ready' ? '<button type="button" data-do="ready" class="practice-primary">Ready</button>' : view.lesson === 'asteroid' && view.stage === 'strike' && view.phase === 'waiting' && view.cue !== 'inbound' ? '<button type="button" data-do="aim-asteroid" class="practice-primary">Aim asteroid</button>' : '';
-    const rest = (completed ? '<button type="button" data-do="exit" class="practice-primary">Play now</button><button type="button" data-do="open">Other lessons</button>' : '<button type="button" data-do="skip">Skip lesson</button>') + `<button type="button" data-do="exit">Exit tutorial</button>${this.soundButton()}${this.mouseButton()}`;
+    const rest = (completed ? '<button type="button" data-do="exit" class="practice-primary">Play now</button><button type="button" data-do="open">Other lessons</button>' : '<button type="button" data-do="skip">Skip lesson</button>') + `<button type="button" data-do="exit">Exit tutorial</button>${this.soundButton()}${this.musicButton()}${this.mouseButton()}`;
     return `<div class="practice-actions" role="group" aria-label="Tutorial actions">${this.touch ? rest + primary : primary + rest}</div>`;
   }
   private mouseButton(): string { return `<button type="button" data-do="mouse" data-action="mouse" role="switch" aria-label="Mouse steering" aria-checked="${mouseControlEnabled()}">Steering <span>${mouseControlEnabled() ? 'Mouse' : 'Keyboard'}</span></button>`; }
-  private actions(): string { return `<div class="practice-actions"><button type="button" data-do="skip">Skip lesson</button><button type="button" data-do="exit">Exit tutorial</button>${this.soundButton()}${this.mouseButton()}</div>`; }
+  private actions(): string { return `<div class="practice-actions"><button type="button" data-do="skip">Skip lesson</button><button type="button" data-do="exit">Exit tutorial</button>${this.soundButton()}${this.musicButton()}${this.mouseButton()}</div>`; }
   private instruction(v: SyncedPractice): string {
     const hold = this.touch ? 'Hold INHALE' : 'Hold Space';
     const fire = this.touch ? 'tap FIRE' : 'tap Space';
@@ -263,6 +265,7 @@ export class PracticeUI {
       case 'open': this.open(); break;
       case 'aim-asteroid': window.dispatchEvent(new CustomEvent('ascend:asteroid-aim', { detail: { opener: button } })); break;
       case 'sound': sound.toggle(); break;
+      case 'music': music.toggle(); break;
       case 'mouse': this.cancel(); setMouseControl(!mouseControlEnabled()); break;
       case 'ready':
         if (!event.detail || performance.now() - this.readyTouchAt >= 700) this.startAttempt();
