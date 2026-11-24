@@ -56,6 +56,9 @@ jobs:
           SAFARI_RESULTS: ${{ runner.temp }}/safari-music/live
         # Both targets use ordinary player/menu actions; no server test fixtures.
         run: node scripts/safari-music-smoke.mjs
+      - name: Capture native window diagnostics on failure
+        if: failure()
+        run: /usr/sbin/screencapture -x "$RUNNER_TEMP/safari-music/desktop.png" || true
       - name: Save Safari diagnostics and screenshots
         if: always()
         uses: actions/upload-artifact@v4

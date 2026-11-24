@@ -11,7 +11,7 @@ const ELEMENT = 'element-6066-11e4-a52e-4f735466cecf';
 const musicSelector = '.drawer[aria-hidden="false"] [data-action="music"]';
 const effectsSelector = '.drawer[aria-hidden="false"] [data-action="sound"]';
 const report = { target: arena, startedAt: new Date().toISOString(), checkpoints: [] };
-let sessionPath, stage = 'native Safari session';
+let sessionPath, helperHandle, stage = 'native Safari session';
 await mkdir(output, { recursive: true });
 
 async function command(path, method = 'GET', body, timeout = 15000) {
@@ -219,10 +219,18 @@ try {
 
     stage = 'real Safari tab background and foreground';
     const gameHandle = await command(sessionPath + '/window');
-    const otherTab = await command(sessionPath + '/window/new', 'POST', { type: 'tab' });
+    const initialHandles = await command(sessionPath + '/window/handles');
+    // NewWindow's type is only a hint, and switching command targets alone does
+    // not prove real backgrounding. Open a real tab with the existing user link.
+    await click('.drawer[aria-hidden="false"] .invite-link[target="_blank"]');
+    const opened = await wait('native link opens one tab', () => command(sessionPath + '/window/handles'), handles => handles.filter(handle => !initialHandles.includes(handle)).length === 1);
+    helperHandle = opened.find(handle => !initialHandles.includes(handle));
+    report.tabNavigation = { gameHandle, helperHandle, transitions: [] };
+    await wait('native link really backgrounds the game', snapshot, value => value?.hidden === true);
     for (let cycle = 0; cycle < 3; cycle++) {
-        await command(sessionPath + '/window', 'POST', { handle: otherTab.handle });
+        await command(sessionPath + '/window', 'POST', { handle: helperHandle });
         if (cycle === 0) await command(sessionPath + '/url', 'POST', { url: 'about:blank' });
+        report.tabNavigation.transitions.push({ cycle, away: await execute(() => ({ url: location.href, hidden: document.hidden, visibilityState: document.visibilityState, focused: document.hasFocus() })) });
         await delay(1600);
         await command(sessionPath + '/window', 'POST', { handle: gameHandle });
         const returned = await wait('real tab visibility transitions', snapshot, value =>
@@ -261,6 +269,7 @@ try {
     if (sessionPath) {
         report.failure = await execute(() => ({
             url: location.href, userAgent: navigator.userAgent, hidden: document.hidden,
+            visibilityState: document.visibilityState, focused: document.hasFocus(),
             audio: window.__musicProbe?.read() || null,
             nativeBackend: window.__nativeAudio ? { state: window.__nativeAudio.context.state, currentTime: window.__nativeAudio.context.currentTime, error: window.__nativeAudio.resumeError } : null,
             visibleDialogs: [...document.querySelectorAll('[role="dialog"], dialog[open]')].map(e => e.textContent.slice(0, 800)),
@@ -271,5 +280,9 @@ try {
     console.error(JSON.stringify(report, null, 2));
     process.exitCode = 1;
 } finally {
+    // Safari sessions must not leave the auxiliary tab to affect the next run.
+    if (sessionPath && helperHandle) {
+        await command(sessionPath + '/window', 'POST', { handle: helperHandle }).then(() => command(sessionPath + '/window', 'DELETE')).catch(() => {});
+    }
     if (sessionPath) await command(sessionPath, 'DELETE').catch(error => { console.error(String(error)); process.exitCode = 1; });
 }
