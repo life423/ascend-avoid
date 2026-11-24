@@ -1,16 +1,25 @@
 // Native Safari/safaridriver only: no Playwright browser or autoplay bypass.
 import assert from 'node:assert/strict';
+import { execFile } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
+import { promisify } from 'node:util';
 
 const driver = (process.env.SAFARI_DRIVER_URL || 'http://127.0.0.1:4444').replace(/\/$/, '');
 const arena = process.env.E2E_URL || 'https://ascendavoid.com/';
 const output = process.env.SAFARI_RESULTS || 'test-results/safari-music';
+const deviceUDID = process.env.SAFARI_DEVICE_UDID;
+const deviceType = process.env.SAFARI_DEVICE_TYPE;
+const simulator = !!deviceUDID;
+const runFile = promisify(execFile);
 const ELEMENT = 'element-6066-11e4-a52e-4f735466cecf';
 const musicSelector = '.drawer[aria-hidden="false"] [data-action="music"]';
 const effectsSelector = '.drawer[aria-hidden="false"] [data-action="sound"]';
-const report = { target: arena, startedAt: new Date().toISOString(), checkpoints: [] };
+const report = {
+    target: arena, startedAt: new Date().toISOString(), checkpoints: [],
+    testHost: simulator ? { kind: 'Apple Simulator', deviceType, deviceUDID } : { kind: 'macOS Safari' },
+};
 let sessionPath, helperHandle, stage = 'native Safari session';
 await mkdir(output, { recursive: true });
 
@@ -35,6 +44,13 @@ async function wait(description, sample, matches, timeout = 15000) {
     assert.fail(description + ': ' + JSON.stringify(latest));
 }
 async function click(selector) {
+    if (simulator) await execute(s => {
+        const target = [...document.querySelectorAll(s)].find(e => {
+            const r = e.getBoundingClientRect(), style = getComputedStyle(e);
+            return r.width > 0 && r.height > 0 && style.visibility !== 'hidden' && !e.closest('[inert]');
+        });
+        target?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }, selector);
     const element = await wait('reachable native click: ' + selector, () => execute(s => [...document.querySelectorAll(s)].find(e => {
         const r = e.getBoundingClientRect(), style = getComputedStyle(e);
         const x = r.left + r.width / 2, y = r.top + r.height / 2;
@@ -44,7 +60,14 @@ async function click(selector) {
     }) || null, selector), value => !!value?.[ELEMENT]);
     await command(sessionPath + '/element/' + element[ELEMENT] + '/click', 'POST', {});
 }
-const screenshot = async name => writeFile(join(output, name + '.png'), Buffer.from(await command(sessionPath + '/screenshot'), 'base64'));
+async function screenshot(name) {
+    const path = join(output, name + '.png');
+    if (simulator) {
+        await runFile('xcrun', ['simctl', 'io', deviceUDID, 'screenshot', '--type=png', path], { timeout: 15000 });
+    } else {
+        await writeFile(path, Buffer.from(await command(sessionPath + '/screenshot'), 'base64'));
+    }
+}
 const snapshot = () => execute(() => window.__musicProbe?.read() || null);
 const text = selector => execute(s => document.querySelector(s)?.textContent.trim() || null, selector);
 const level = (value, index) => index === undefined ? Math.max(0, ...value.contexts.map(c => c.rms)) : value.contexts[index]?.rms || 0;
@@ -122,20 +145,54 @@ async function clockAdvances(index) {
     const before = await snapshot();
     await wait('native audio clock advances', snapshot, value => value.contexts[index].currentTime > before.contexts[index].currentTime + .15);
 }
+async function backgroundReturned(cycle, label) {
+    // Safari can defer script evaluation while hidden. The native visibility
+    // history and clock are checked only after the browser returns to the front.
+    const returned = await wait('real ' + label + ' visibility transitions', snapshot, value =>
+        value?.events.filter(e => e.type === 'visibility' && e.hidden).length >= cycle + 1 &&
+        value.events.filter(e => e.type === 'visibility' && !e.hidden).length >= cycle + 1);
+    const hidden = returned.events.filter(e => e.type === 'visibility' && e.hidden).at(-1);
+    const visible = returned.events.filter(e => e.type === 'visibility' && !e.hidden).at(-1);
+    assert(visible.at - hidden.at >= 1200, 'game was genuinely backgrounded');
+    assert(visible.contexts[0].currentTime - hidden.contexts[0].currentTime < .8, 'music clock pauses while hidden');
+    await audible(0); await clockAdvances(0);
+    await checkpoint('real-' + label + '-return-' + (cycle + 1));
+}
 
 try {
+    if (simulator) assert(['iPhone', 'iPad'].includes(deviceType), 'SAFARI_DEVICE_TYPE must identify iPhone or iPad');
     await wait('native Safari driver ready', () => command('/status').catch(() => null), value => value?.ready === true, 30000);
-    const session = await command('/session', 'POST', { capabilities: { alwaysMatch: { browserName: 'safari' } } }, 90000);
+    const alwaysMatch = {
+        browserName: 'safari',
+        ...(simulator ? {
+            platformName: 'ios', 'safari:useSimulator': true,
+            'safari:deviceUDID': deviceUDID, 'safari:deviceType': deviceType,
+        } : {}),
+    };
+    const session = await command('/session', 'POST', { capabilities: { alwaysMatch } }, 90000);
     assert(session.sessionId, 'safaridriver created a session');
     sessionPath = '/session/' + session.sessionId;
     report.capabilities = session.capabilities;
     assert.equal(session.capabilities.browserName.toLowerCase(), 'safari', 'native Safari capability');
+    if (simulator) {
+        assert.equal(session.capabilities.platformName.toLowerCase(), 'ios', 'actual iOS/iPadOS Safari platform');
+        assert.equal(session.capabilities['safari:useSimulator'], true, 'actual Apple Simulator session');
+        if (session.capabilities['safari:deviceUDID']) assert.equal(session.capabilities['safari:deviceUDID'], deviceUDID, 'requested native simulator');
+        if (session.capabilities['safari:deviceType']) assert.equal(session.capabilities['safari:deviceType'], deviceType, 'requested native device type');
+    }
     await command(sessionPath + '/timeouts', 'POST', { implicit: 0, pageLoad: 60000, script: 15000 });
-    await command(sessionPath + '/window/rect', 'POST', { width: 1280, height: 900 });
+    // Native iOS Safari does not implement desktop window resizing.
+    if (!simulator) await command(sessionPath + '/window/rect', 'POST', { width: 1280, height: 900 });
     await command(sessionPath + '/url', 'POST', { url: 'about:blank' });
     report.userAgent = await execute(() => navigator.userAgent);
     assert.match(report.userAgent, /AppleWebKit\/.*Version\/.*Safari\//, 'actual Safari user agent');
     assert.doesNotMatch(report.userAgent, /Chrome|Chromium|Firefox/);
+    report.device = await execute(() => ({
+        touchPoints: navigator.maxTouchPoints, width: innerWidth, height: innerHeight,
+        screen: { width: screen.width, height: screen.height }, pixelRatio: devicePixelRatio,
+    }));
+    // iPad's desktop browsing mode may expose the same UA as macOS Safari.
+    if (simulator) assert(report.device.touchPoints > 0, 'native touch-capable iPhone/iPad session');
 
     stage = 'isolated native audio backend preflight';
     await execute(() => {
@@ -217,32 +274,33 @@ try {
     assert(rapid.intervals <= baselineIntervals + 1, 'rapid toggles do not stack music schedulers');
     await checkpoint('rapid-toggles');
 
-    stage = 'real Safari tab background and foreground';
-    const gameHandle = await command(sessionPath + '/window');
-    const initialHandles = await command(sessionPath + '/window/handles');
-    // NewWindow's type is only a hint, and switching command targets alone does
-    // not prove real backgrounding. Open a real tab with the existing user link.
-    await click('.drawer[aria-hidden="false"] .invite-link[target="_blank"]');
-    const opened = await wait('native link opens one tab', () => command(sessionPath + '/window/handles'), handles => handles.filter(handle => !initialHandles.includes(handle)).length === 1);
-    helperHandle = opened.find(handle => !initialHandles.includes(handle));
-    report.tabNavigation = { gameHandle, helperHandle, transitions: [] };
-    // Safari may defer script evaluation in the hidden tab. Inspect its actual
-    // visibility history and paused clock after returning, not while hidden.
-    for (let cycle = 0; cycle < 3; cycle++) {
-        await command(sessionPath + '/window', 'POST', { handle: helperHandle });
-        if (cycle === 0) await command(sessionPath + '/url', 'POST', { url: 'about:blank' });
-        report.tabNavigation.transitions.push({ cycle, away: await execute(() => ({ url: location.href, hidden: document.hidden, visibilityState: document.visibilityState, focused: document.hasFocus() })) });
-        await delay(1600);
-        await command(sessionPath + '/window', 'POST', { handle: gameHandle });
-        const returned = await wait('real tab visibility transitions', snapshot, value =>
-            value.events.filter(e => e.type === 'visibility' && e.hidden).length >= cycle + 1 &&
-            value.events.filter(e => e.type === 'visibility' && !e.hidden).length >= cycle + 1);
-        const hidden = returned.events.filter(e => e.type === 'visibility' && e.hidden).at(-1);
-        const visible = returned.events.filter(e => e.type === 'visibility' && !e.hidden).at(-1);
-        assert(visible.at - hidden.at >= 1200, 'game was genuinely backgrounded');
-        assert(visible.contexts[0].currentTime - hidden.contexts[0].currentTime < .8, 'music clock pauses while hidden');
-        await audible(0); await clockAdvances(0);
-        await checkpoint('real-tab-return-' + (cycle + 1));
+    if (simulator) {
+        stage = 'real iOS app background and foreground';
+        report.appNavigation = { away: 'com.apple.Preferences', back: 'com.apple.mobilesafari', cycles: 3 };
+        for (let cycle = 0; cycle < 3; cycle++) {
+            await runFile('xcrun', ['simctl', 'launch', deviceUDID, 'com.apple.Preferences'], { timeout: 30000 });
+            await delay(1600);
+            await runFile('xcrun', ['simctl', 'launch', deviceUDID, 'com.apple.mobilesafari'], { timeout: 30000 });
+            await backgroundReturned(cycle, 'app');
+        }
+    } else {
+        stage = 'real Safari tab background and foreground';
+        const gameHandle = await command(sessionPath + '/window');
+        const initialHandles = await command(sessionPath + '/window/handles');
+        // NewWindow's type is only a hint, and switching command targets alone
+        // does not prove real backgrounding. Use the existing native user link.
+        await click('.drawer[aria-hidden="false"] .invite-link[target="_blank"]');
+        const opened = await wait('native link opens one tab', () => command(sessionPath + '/window/handles'), handles => handles.filter(handle => !initialHandles.includes(handle)).length === 1);
+        helperHandle = opened.find(handle => !initialHandles.includes(handle));
+        report.tabNavigation = { gameHandle, helperHandle, transitions: [] };
+        for (let cycle = 0; cycle < 3; cycle++) {
+            await command(sessionPath + '/window', 'POST', { handle: helperHandle });
+            if (cycle === 0) await command(sessionPath + '/url', 'POST', { url: 'about:blank' });
+            report.tabNavigation.transitions.push({ cycle, away: await execute(() => ({ url: location.href, hidden: document.hidden, visibilityState: document.visibilityState, focused: document.hasFocus() })) });
+            await delay(1600);
+            await command(sessionPath + '/window', 'POST', { handle: gameHandle });
+            await backgroundReturned(cycle, 'tab');
+        }
     }
 
     stage = 'tutorial music control';

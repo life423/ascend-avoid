@@ -1,0 +1,94 @@
+name: iPhone and iPad music
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/ios-music.yml'
+      - 'scripts/safari-music-smoke.mjs'
+      - 'src/core/Music.ts'
+      - 'src/core/Sound.ts'
+      - 'src/ui/DrawerUI.ts'
+      - 'src/practice/PracticeUI.ts'
+      - 'src/styles/main.css'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ios-music:
+    name: Native Safari on ${{ matrix.device }} simulator
+    runs-on: xcode-27
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        device: [iPhone, iPad]
+    env:
+      SAFARI_DEVICE_TYPE: ${{ matrix.device }}
+      DEVELOPER_DIR: /Applications/Xcode_27.2.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Build the candidate
+        run: |
+          npm ci
+          npm ci --prefix server
+          npm run build
+      - name: Boot an available Apple mobile simulator
+        run: |
+          logs="$RUNNER_TEMP/ios-music"
+          mkdir -p "$logs"
+          sw_vers > "$logs/macos.txt"
+          xcodebuild -version > "$logs/xcode.txt"
+          xcrun simctl list devices available --json > "$logs/simulators.json"
+          node --input-type=module <<'JS'
+          import { readFileSync, appendFileSync, writeFileSync } from 'node:fs';
+          const inventory = JSON.parse(readFileSync(process.env.RUNNER_TEMP + '/ios-music/simulators.json'));
+          const runtimes = Object.keys(inventory.devices).filter(r => r.includes('.iOS-')).sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
+          const runtime = runtimes.find(r => inventory.devices[r].some(d => d.isAvailable && d.name.startsWith(process.env.SAFARI_DEVICE_TYPE)));
+          if (!runtime) throw new Error('No available Apple ' + process.env.SAFARI_DEVICE_TYPE + ' simulator');
+          const device = inventory.devices[runtime].find(d => d.isAvailable && d.name.startsWith(process.env.SAFARI_DEVICE_TYPE));
+          appendFileSync(process.env.GITHUB_ENV, 'SAFARI_DEVICE_UDID=' + device.udid + '\n');
+          writeFileSync(process.env.RUNNER_TEMP + '/ios-music/device.json', JSON.stringify({ runtime, ...device }, null, 2));
+          console.log(JSON.stringify({ runtime, name: device.name, udid: device.udid }));
+          JS
+      - name: Start simulator Safari and the candidate server
+        run: |
+          logs="$RUNNER_TEMP/ios-music"
+          xcrun simctl boot "$SAFARI_DEVICE_UDID"
+          xcrun simctl bootstatus "$SAFARI_DEVICE_UDID" -b
+          xcrun simctl launch "$SAFARI_DEVICE_UDID" com.apple.mobilesafari
+          /usr/bin/safaridriver --version > "$logs/safaridriver-version.txt"
+          sudo /usr/bin/safaridriver --enable
+          /usr/bin/safaridriver --port 4444 > "$logs/safaridriver.log" 2>&1 &
+          NODE_ENV=test PORT=3002 node server/dist/index.js > "$logs/game-server.log" 2>&1 &
+          curl --fail --silent --show-error --retry 20 --retry-connrefused --retry-delay 1 --max-time 5 http://127.0.0.1:3002/health
+      - name: Check candidate music in mobile Safari
+        env:
+          E2E_URL: http://127.0.0.1:3002/
+          SAFARI_RESULTS: ${{ runner.temp }}/ios-music/candidate
+        run: node scripts/safari-music-smoke.mjs
+      - name: Check deployed music in mobile Safari
+        env:
+          E2E_URL: https://ascendavoid.com/
+          SAFARI_RESULTS: ${{ runner.temp }}/ios-music/live
+        run: node scripts/safari-music-smoke.mjs
+      - name: Collect simulator diagnostics on failure
+        if: failure()
+        run: |
+          logs="$RUNNER_TEMP/ios-music"
+          xcrun simctl io "$SAFARI_DEVICE_UDID" screenshot "$logs/simulator-failure.png" || true
+          xcrun simctl spawn "$SAFARI_DEVICE_UDID" log show --last 3m --style compact --predicate 'process == "MobileSafari"' > "$logs/mobile-safari.log" 2>&1 || true
+      - name: Save mobile Safari results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-safari-music-${{ matrix.device }}
+          path: ${{ runner.temp }}/ios-music/
+          retention-days: 7
