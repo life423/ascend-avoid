@@ -18,7 +18,7 @@ permissions:
 jobs:
   ios-music:
     name: Native Safari on ${{ matrix.device }} simulator
-    runs-on: xcode-27
+    runs-on: macos-26
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -26,7 +26,7 @@ jobs:
         device: [iPhone, iPad]
     env:
       SAFARI_DEVICE_TYPE: ${{ matrix.device }}
-      DEVELOPER_DIR: /Applications/Xcode_27.2.app/Contents/Developer
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
     steps:
       - uses: actions/checkout@v4
         with:
@@ -83,7 +83,7 @@ jobs:
       - name: Launch mobile Safari
         timeout-minutes: 4
         run: |
-          open -a "$DEVELOPER_DIR/../Applications/DeviceHub.app" "devices://device/open?id=$SAFARI_DEVICE_UDID"
+          open -a "$DEVELOPER_DIR/Applications/Simulator.app"
           xcrun simctl launch "$SAFARI_DEVICE_UDID" com.apple.mobilesafari
       - name: Start SafariDriver
         timeout-minutes: 2
