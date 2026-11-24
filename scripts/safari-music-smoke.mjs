@@ -24,9 +24,12 @@ const report = {
 let sessionPath, stage = 'native Safari session';
 await mkdir(output, { recursive: true });
 
-async function command(path, method = 'GET', body, timeout = 15000) {
+// Native hierarchy snapshots and web-context attachment can exceed 15 seconds.
+// DOM/audio polling retains its original timeout.
+async function command(path, method = 'GET', body, timeout) {
+    const nativeSetup = appiumMode && (path.endsWith('/context') || path.endsWith('/source'));
     const response = await fetch(driver + path, {
-        method, signal: AbortSignal.timeout(timeout),
+        method, signal: AbortSignal.timeout(timeout ?? (nativeSetup ? 60000 : 15000)),
         ...(body === undefined ? {} : { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
     });
     const { value } = await response.json();
