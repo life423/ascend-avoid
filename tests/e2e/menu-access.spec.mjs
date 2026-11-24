@@ -35,7 +35,12 @@ test('tutorials and settings are immediately reachable even after a long activit
   const tutorial = dialog.getByRole('button', { name: 'Practice / Tutorials', exact: true });
   await expect(dialog.locator('.drawer-content button').first()).toHaveText('Practice / Tutorials');
   const sound = dialog.getByRole('button', { name: 'Mute sound effects', exact: true });
-  for (const button of [tutorial, sound]) {
+  const silentAppleDevice = await page.evaluate(() => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+  if (silentAppleDevice) {
+    await expect(sound).toHaveCount(0);
+    await expect(dialog.getByRole('button', { name: 'Background music', exact: true })).toHaveCount(0);
+  }
+  for (const button of silentAppleDevice ? [tutorial] : [tutorial, sound]) {
     const b = await button.boundingBox(); expect(b.y).toBeGreaterThanOrEqual(0); expect(b.y + b.height).toBeLessThanOrEqual(page.viewportSize().height);
     expect(b.height).toBeGreaterThanOrEqual(44);
   }
@@ -52,6 +57,7 @@ test('tutorials and settings are immediately reachable even after a long activit
 });
 
 test('sound is reachable, synchronizes with settings, persists and does not inhale on keyboard activation', async ({ page }) => {
+  test.skip(await page.evaluate(() => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)), 'iPhone and iPad intentionally have no sound controls');
   let button = await soundControl(page);
   await expect(button).toHaveText('Effects on'); await expect(button).toHaveAttribute('aria-pressed', 'false');
   const box = await button.boundingBox(); expect(box.height).toBeGreaterThanOrEqual(44);

@@ -785,6 +785,8 @@ body.online-mode .weapon-place-button { bottom: calc(var(--arena-bottom, 0px) + 
 .drawer .menu-quick-actions .practice-open { width: 100%; margin: 0 0 20px; text-align: left; font: 700 15px Montserrat, system-ui, sans-serif; }
 .drawer .settings-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
 .drawer .settings-row h3 { margin: 0; }
+.drawer .settings-row.settings-steering-only { display: none; }
+@media (pointer: fine) { .drawer .settings-row.settings-steering-only { display: flex; } }
 .drawer .settings-controls { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-left: auto; }
 .drawer .settings-controls :is(.mouse-preference, .sound-toggle, .music-toggle) { margin: 0; }
 .drawer .settings-controls :is(.sound-toggle, .music-toggle) { font: 600 14px Montserrat, system-ui, sans-serif; }

@@ -1,5 +1,15 @@
 # Ascend Avoid
 
+## November 24 iPhone and iPad audio removal
+
+The user explicitly removed both music and sound effects from iPhone and iPad.
+These devices stay silent even with a previously saved audio opt-in; the menu,
+desktop-width iPad toolbar and tutorial omit audio controls. Desktop-style iPadOS
+identification is covered. Desktop and Android keep their current audio behavior,
+including music off by default. This supersedes the mobile music testing request
+below. The unreliable native iPhone/iPad music workflow is retired; required
+gameplay/Firefox checks and desktop Safari audio coverage remain.
+
 ## November 23 optional ambient music
 
 The user approved subtle space ambience, muted by default. **Game Menu → Settings →
