@@ -254,6 +254,8 @@ try {
         // Prefer native accessibility matching over forced calibration. Both
         // paths still use real WDA taps, with no JavaScript-click fallback.
         'appium:nativeWebTapStrict': false,
+        // Seed the web page during native launch, before webview attachment.
+        'appium:initialDeeplinkUrl': new URL('/health', arena).href,
         'appium:safariInitialUrl': new URL('/health', arena).href, 'appium:showXcodeLog': true,
         'appium:webviewConnectTimeout': 20000,
         // Compile once before timing native startup. XCTest can fail its first
