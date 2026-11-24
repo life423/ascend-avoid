@@ -1,3 +1,5 @@
+import { music } from './Music';
+
 type Cue = 'gem' | 'capture' | 'ready' | 'launch' | 'impact' | 'cannon' | 'shatter' | 'parry' | 'surge';
 export const SOUND_EVENT = 'ascend:sound';
 const NOTES: Record<Cue, [number, number, number]> = {
@@ -10,22 +12,31 @@ const NOTES: Record<Cue, [number, number, number]> = {
 class Sound {
     private context: AudioContext | null = null;
     private last = new Map<Cue, number>();
+    private toggleGeneration = 0;
     muted = false;
     constructor() {
         try { this.muted = localStorage.getItem('ascend.muted') === 'true'; } catch { /* optional storage */ }
     }
-    unlock(): void {
-        if (this.muted) return;
+    unlock(): Promise<void> {
+        music.unlock();
+        if (this.muted) return Promise.resolve();
         try {
             this.context ??= new AudioContext();
-            if (this.context.state === 'suspended') void this.context.resume().catch(() => {});
+            // Enqueue resume even while a previous mute's suspend is settling.
+            return this.context.resume().catch(() => {});
         } catch { /* Audio is optional on unsupported browsers. */ }
+        return Promise.resolve();
     }
     toggle(): void {
+        const generation = ++this.toggleGeneration;
         this.muted = !this.muted;
         try { localStorage.setItem('ascend.muted', String(this.muted)); } catch { /* optional storage */ }
         if (this.muted) void this.context?.suspend().catch(() => {});
-        if (!this.muted) { this.unlock(); this.play('gem'); }
+        if (!this.muted) void this.unlock().then(() => {
+            if (this.muted || generation !== this.toggleGeneration) return;
+            this.last.delete('gem');
+            this.play('gem');
+        });
         window.dispatchEvent(new Event(SOUND_EVENT));
     }
     private noise: AudioBuffer | null = null;

@@ -17,13 +17,12 @@ async function openMenu(page) {
   const compact = page.getByRole('button', { name: 'Toggle menu', exact: true });
   if (await compact.isVisible()) await compact.click();
   else await page.getByRole('button', { name: /Help & settings/ }).filter({ visible: true }).first().click();
-  await expect.poll(() => dialog.evaluate(e => {
-    const r = e.getBoundingClientRect(); return r.left >= -.1 && r.right <= innerWidth + .1;
-  })).toBe(true);
+  await expect.poll(() => dialog.evaluate(e => e.getBoundingClientRect().left)).toBeGreaterThanOrEqual(-.1);
+  await expect.poll(() => dialog.evaluate(e => e.getBoundingClientRect().right - innerWidth)).toBeLessThanOrEqual(.1);
   return dialog;
 }
 async function soundControl(page) {
-  if (page.viewportSize().width < 1200) return (await openMenu(page)).getByRole('button', { name: 'Mute sound', exact: true });
+  if (page.viewportSize().width < 1200) return (await openMenu(page)).getByRole('button', { name: 'Mute sound effects', exact: true });
   return page.locator('.bar-sound:visible').first();
 }
 
@@ -35,7 +34,7 @@ test('tutorials and settings are immediately reachable even after a long activit
   const dialog = await openMenu(page);
   const tutorial = dialog.getByRole('button', { name: 'Practice / Tutorials', exact: true });
   await expect(dialog.locator('.drawer-content button').first()).toHaveText('Practice / Tutorials');
-  const sound = dialog.getByRole('button', { name: 'Mute sound', exact: true });
+  const sound = dialog.getByRole('button', { name: 'Mute sound effects', exact: true });
   for (const button of [tutorial, sound]) {
     const b = await button.boundingBox(); expect(b.y).toBeGreaterThanOrEqual(0); expect(b.y + b.height).toBeLessThanOrEqual(page.viewportSize().height);
     expect(b.height).toBeGreaterThanOrEqual(44);
@@ -54,22 +53,22 @@ test('tutorials and settings are immediately reachable even after a long activit
 
 test('sound is reachable, synchronizes with settings, persists and does not inhale on keyboard activation', async ({ page }) => {
   let button = await soundControl(page);
-  await expect(button).toHaveText('Sound on'); await expect(button).toHaveAttribute('aria-pressed', 'false');
+  await expect(button).toHaveText('Effects on'); await expect(button).toHaveAttribute('aria-pressed', 'false');
   const box = await button.boundingBox(); expect(box.height).toBeGreaterThanOrEqual(44);
-  await button.click(); await expect(button).toHaveText('Sound off');
+  await button.click(); await expect(button).toHaveText('Effects off');
   expect(await page.evaluate(() => localStorage.getItem('ascend.muted'))).toBe('true');
-  const dialog = await openMenu(page), setting = dialog.getByRole('button', { name: 'Mute sound', exact: true });
-  await expect(setting).toHaveText('Sound off'); await expect(setting).toHaveAttribute('aria-pressed', 'true');
-  await setting.click(); await expect(setting).toHaveText('Sound on');
+  const dialog = await openMenu(page), setting = dialog.getByRole('button', { name: 'Mute sound effects', exact: true });
+  await expect(setting).toHaveText('Effects off'); await expect(setting).toHaveAttribute('aria-pressed', 'true');
+  await setting.click(); await expect(setting).toHaveText('Effects on');
   await dialog.getByRole('button', { name: 'Close', exact: true }).click();
   await expect(dialog).toBeHidden();
   button = await soundControl(page);
   await button.focus(); await page.keyboard.press('Space');
-  await expect(button).toHaveText('Sound off');
+  await expect(button).toHaveText('Effects off');
   expect(await page.evaluate(() => window.game.currentGameMode.multiplayerManager.getLocalPlayer().inhaling)).toBe(false);
   await page.screenshot({ path: test.info().outputPath('one-tap-mute.png') });
   await page.reload();
   await playFromEntry(page);
   await page.waitForFunction(() => !!window.game?.currentGameMode?.multiplayerManager?.getLocalPlayer() && !document.body.classList.contains('intro-playing'));
-  await expect(await soundControl(page)).toHaveText('Sound off');
+  await expect(await soundControl(page)).toHaveText('Effects off');
 });

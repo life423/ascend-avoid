@@ -24,7 +24,7 @@ export class DesktopChrome {
         const actions = header.querySelector<HTMLDivElement>('.bar-actions') ?? document.createElement('div')
         actions.className = 'bar-actions'
         const mouseSwitch = `<button type="button" role="switch" class="bar-button bar-mouse" data-action="mouse" aria-label="Mouse steering" aria-checked="${mouseControlEnabled()}" title="Steer with WASD or arrows, or follow the cursor">Steering <span>${mouseControlEnabled() ? 'Mouse' : 'Keyboard'}</span></button>`
-        const soundSwitch = `<button type="button" class="bar-button bar-sound" data-action="sound" aria-label="Mute sound" aria-pressed="${sound.muted}">Sound ${sound.muted ? 'off' : 'on'}</button>`
+        const soundSwitch = `<button type="button" class="bar-button bar-sound" data-action="sound" aria-label="Mute sound effects" aria-pressed="${sound.muted}">Effects ${sound.muted ? 'off' : 'on'}</button>`
         actions.innerHTML = `
             ${mouseSwitch}
             ${soundSwitch}

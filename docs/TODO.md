@@ -1,11 +1,62 @@
 # Ascend Avoid — current work and next-session handoff
 
-Updated November 22, 2026. Domain configuration and release record is below. The prior
+Updated November 23, 2026. Domain configuration and release record is below. The prior
 November 9 gameplay checkpoint identified release `eea3b81` (PR #93), including
 the relic comet, true-scale minimap body outlines, and the
 90-second black-hole lifetime with safe relocation retries. The complete earlier
 request inventory is preserved in [TODO_HISTORY.md](TODO_HISTORY.md).
 Historical sections below record earlier checkpoints.
+
+## November 23 ambient music — release authorized
+
+The user approved an original, subtle ambient space soundtrack, **muted by
+default**, with an easy menu toggle and a remembered preference. Settings now
+distinguish **Music** from **Effects**, with no extra pinned arena control.
+Music opt-in is separate from the existing effects preference; ordinary entry,
+keyboard and touch gestures can resume previously enabled music even when effects
+are muted. The existing tutorial action strip also includes Music so it remains
+reachable while the normal game menu is hidden. The user authorized commit,
+merge to main and production deployment on November 23. The work is on
+`codex/ambient-music`; its pull request and main's production workflow record
+the final release result. This status does not itself certify deployment.
+
+Verification on November 23:
+
+- Production build/package verification and client/server type checks pass.
+  Targeted TypeScript lint reports no errors and one existing non-null-assertion
+  warning in `Sound.ts`; whitespace checks pass.
+- All eight original desktop music/menu cases pass with no retries. The final
+  expanded run has **66 passed, zero failed and 24 skipped** across ten
+  desktop/phone/tablet/landscape profiles. Chromium and Firefox checks measure
+  real destination-bound audio signals for opt-in, mute, independent effects,
+  persisted choices, rapid toggles, storage failure and background pause/resume.
+  Pause/resume uses a deterministic visibility event, not a physical device
+  backgrounding test. No player size is overridden.
+- The Windows Playwright WebKit runtime has no native Web Audio API, confirmed
+  in a bare browser without app instrumentation. Its 24 audio-output cases are
+  explicitly skipped; its menu and unavailable-audio controls/error-handling
+  cases pass. Actual Safari audio and physical-device listening/backgrounding
+  remain unverified. Skips do not count as audio passes.
+- Rendered screenshots were inspected for desktop, portrait phone/tablet and
+  landscape tutorial controls. Touch targets, keyboard focus/Space activation,
+  saved state, tutorial/menu synchronization and menu overflow are checked.
+  Artifacts and the final log are under `.tmp/music-validation/`.
+- Checks exposed and fixed two real defects: the inactive drawer overlay could
+  intercept tutorial input during its fade, and a pending AudioContext suspend
+  could silence the effects unmute confirmation. Regression checks now pass.
+  A separate final code review found no blocking regression.
+- The existing Firefox desktop CI job now includes the focused music/menu
+  regression suites. Preserve the required gameplay and both Firefox gates.
+  Production verification must independently check health, the served client
+  revision and fresh-session music off/on/off behavior after the workflow; the
+  workflow's final verification step only prints the deployment details.
+
+Internal UI review (heuristics, not measured quality): usability, hierarchy,
+consistency, responsive layout and feedback are 9/10 for this scoped control;
+accessibility and performance are 8/10 because broader validation is incomplete.
+Next validation priorities are screen-reader/text-enlargement checks on physical
+devices and sustained mobile audio/battery profiling, including Safari. These
+limits do not justify unrelated visual redesign or gameplay changes.
 
 ## November 22 Play tester update and distribution certificates
 

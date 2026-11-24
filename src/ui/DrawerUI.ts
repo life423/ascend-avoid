@@ -1,6 +1,7 @@
 import { playerName, setPlayerName } from '../core/PlayerName';
 import { GAME_RULES } from './GameRules';
 import { sound, SOUND_EVENT } from '../core/Sound';
+import { music, MUSIC_EVENT } from '../core/Music';
 import { mouseControlEnabled, setMouseControl } from '../core/MouseControl';
 
 /** Large screens: the drawer sizes itself to its content (see fitToScreen) */
@@ -20,8 +21,14 @@ export class DrawerUI {
     private returnFocus: HTMLElement | null = null;
     private syncSound = (): void => {
         document.querySelectorAll<HTMLButtonElement>('[data-action="sound"]').forEach(button => {
-            button.textContent = `Sound ${sound.muted ? 'off' : 'on'}`;
+            button.textContent = `Effects ${sound.muted ? 'off' : 'on'}`;
             button.setAttribute('aria-pressed', String(sound.muted));
+        });
+    };
+    private syncMusic = (): void => {
+        document.querySelectorAll<HTMLButtonElement>('[data-action="music"]').forEach(button => {
+            button.textContent = `Music ${music.enabled ? 'on' : 'off'}`;
+            button.setAttribute('aria-pressed', String(music.enabled));
         });
     };
     private activity = (event: Event): void => {
@@ -46,6 +53,7 @@ export class DrawerUI {
         window.addEventListener('ascend:weapon-record', this.weaponRecord);
         window.addEventListener('ascend:activity', this.activity);
         window.addEventListener(SOUND_EVENT, this.syncSound);
+        window.addEventListener(MUSIC_EVENT, this.syncMusic);
     }
 
     private createElements(): void {
@@ -85,7 +93,8 @@ export class DrawerUI {
                         <h3>Settings</h3>
                         <div class="settings-controls">
                             <button type="button" role="switch" class="mouse-preference" data-action="mouse" aria-label="Mouse steering" aria-checked="${mouseControlEnabled()}">Steering <span>${mouseControlEnabled() ? 'Mouse' : 'Keyboard'}</span></button>
-                            <button type="button" class="sound-toggle" data-action="sound" aria-label="Mute sound" aria-pressed="${sound.muted}">Sound ${sound.muted ? 'off' : 'on'}</button>
+                            <button type="button" class="sound-toggle" data-action="sound" aria-label="Mute sound effects" aria-pressed="${sound.muted}">Effects ${sound.muted ? 'off' : 'on'}</button>
+                            <button type="button" class="music-toggle" data-action="music" aria-label="Background music" aria-pressed="${music.enabled}">Music ${music.enabled ? 'on' : 'off'}</button>
                         </div>
                     </div>
                 </div>
@@ -133,6 +142,7 @@ export class DrawerUI {
         this.drawer.querySelector('.mouse-preference')?.addEventListener('click', () => setMouseControl(!mouseControlEnabled()));
         const soundButton = this.drawer.querySelector<HTMLButtonElement>('.sound-toggle');
         soundButton?.addEventListener('click', () => sound.toggle());
+        this.drawer.querySelector<HTMLButtonElement>('.music-toggle')?.addEventListener('click', () => music.toggle());
         this.drawer.querySelector('.practice-open')?.addEventListener('click', () => {
             this.close();
             window.dispatchEvent(new Event('ascend:practice-open'));
@@ -276,6 +286,7 @@ export class DrawerUI {
             /* Overlay */
             .drawer-overlay {
                 position: fixed;
+                pointer-events: none;
                 top: 0;
                 left: 0;
                 width: 100%;
@@ -290,6 +301,7 @@ export class DrawerUI {
             }
 
             .drawer-overlay.active {
+                pointer-events: auto;
                 opacity: 1;
                 visibility: visible;
             }
@@ -519,6 +531,7 @@ export class DrawerUI {
         window.removeEventListener('ascend:weapon-record', this.weaponRecord);
         window.removeEventListener('ascend:activity', this.activity);
         window.removeEventListener(SOUND_EVENT, this.syncSound);
+        window.removeEventListener(MUSIC_EVENT, this.syncMusic);
         this.hamburgerBtn.remove();
         this.drawer.remove();
         this.overlay.remove();

@@ -1,5 +1,17 @@
 # Ascend Avoid
 
+## November 23 optional ambient music
+
+The user approved subtle space ambience, muted by default. **Game Menu → Settings →
+Music off/on** controls it independently of **Effects off/on**. A new visitor hears
+no music; an explicit choice is remembered on that device. Previously enabled music
+resumes through an ordinary player gesture on the next visit. Hidden/backgrounded
+pages pause the soundtrack. Keep the arena free of extra pinned audio controls.
+The existing tutorial action strip includes the same Music toggle while the
+normal menu is hidden; tutorial and menu choices stay synchronized.
+The original synthesized score adds no audio downloads or external music license.
+Implementation and verification status are tracked in the current TODO.
+
 ## November 22 player labels
 
 The user requested removing the symbol beside bots. Arena labels show bot names

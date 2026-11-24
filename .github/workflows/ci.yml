@@ -80,6 +80,7 @@ jobs:
         CI: '1'
         E2E_START_SERVER: '1'
         E2E_TEST_HOOKS: '1'
+        PRACTICE_E2E: '1'
         E2E_URL: http://127.0.0.1:3002
       run: |
         # GitHub mounts a pwuser-owned home but runs this trusted test container as root.
@@ -88,6 +89,7 @@ jobs:
         npx playwright test \
           tests/e2e/game.spec.mjs tests/e2e/join-modal.spec.mjs \
           tests/e2e/render-performance.spec.mjs tests/e2e/renderer-culling.spec.mjs \
+          tests/e2e/menu-access.spec.mjs tests/e2e/music.spec.mjs \
           --project='Firefox (desktop)' --retries=0
     - name: Save failure traces, screenshots and performance samples
       if: always()
