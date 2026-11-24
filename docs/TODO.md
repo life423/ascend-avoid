@@ -18,6 +18,10 @@ normal autoplay policy and does not override player size. Results and any needed
 fixes belong in the workflow artifacts and pull request. Simulator coverage does
 not certify physical speakers, Silent Mode, lock-screen recovery or device-only
 interruptions. Do not claim physical iPhone/iPad verification from these tests.
+Mobile CI uses pinned XCUITest tools with native web taps and explicitly verifies
+trusted activation. It dismisses only an identified Safari first-run guidance
+popover; no permission alerts or autoplay settings are overridden. The test tools
+are installed only in the runner's temporary directories.
 
 Repeated native desktop Safari testing exposed a background-suspension defect:
 the audio clock advanced 14.81 seconds during 16 seconds hidden because Safari

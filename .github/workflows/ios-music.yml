@@ -27,6 +27,9 @@ jobs:
     env:
       SAFARI_DEVICE_TYPE: ${{ matrix.device }}
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      SAFARI_DRIVER_MODE: appium
+      SAFARI_DRIVER_URL: http://127.0.0.1:4723
+      APPIUM_HOME: ${{ runner.temp }}/ascend-appium-home
     steps:
       - uses: actions/checkout@v4
         with:
@@ -47,6 +50,14 @@ jobs:
           npm ci
           npm ci --prefix server
           npm run build
+      - name: Install pinned native mobile test tools
+        run: |
+          appium_prefix="$RUNNER_TEMP/ascend-appium-server"
+          npm install --prefix "$appium_prefix" --no-audit --no-fund appium@3.9.1
+          appium_bin="$appium_prefix/node_modules/.bin/appium"
+          "$appium_bin" driver install xcuitest@12.22.8
+          "$appium_bin" driver doctor xcuitest
+          printf 'APPIUM_SERVER_BIN=%s\n' "$appium_bin" >> "$GITHUB_ENV"
       - name: Start the candidate server before simulator boot
         run: |
           logs="$RUNNER_TEMP/ios-music"
@@ -83,15 +94,14 @@ jobs:
       - name: Launch mobile Safari
         timeout-minutes: 4
         run: |
-          open -a "$DEVELOPER_DIR/Applications/Simulator.app"
+          open -a "$DEVELOPER_DIR/Applications/Simulator.app" --args -CurrentDeviceUDID "$SAFARI_DEVICE_UDID"
           xcrun simctl launch "$SAFARI_DEVICE_UDID" com.apple.mobilesafari
-      - name: Start SafariDriver
+      - name: Start native mobile automation
         timeout-minutes: 2
         run: |
           logs="$RUNNER_TEMP/ios-music"
-          /usr/bin/safaridriver --version > "$logs/safaridriver-version.txt"
-          sudo /usr/bin/safaridriver --enable
-          /usr/bin/safaridriver --diagnose --port 4444 > "$logs/safaridriver.log" 2>&1 &
+          "$APPIUM_SERVER_BIN" --version > "$logs/appium-version.txt"
+          "$APPIUM_SERVER_BIN" --address 127.0.0.1 --port 4723 --log "$logs/appium.log" > "$logs/appium-stdout.log" 2>&1 &
       - name: Check candidate music in mobile Safari
         env:
           E2E_URL: http://127.0.0.1:3002/
