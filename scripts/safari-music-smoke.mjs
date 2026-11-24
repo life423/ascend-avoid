@@ -40,7 +40,9 @@ const execute = (fn, ...args) => command(sessionPath + '/execute/sync', 'POST', 
 async function openSession(alwaysMatch) {
     const discoveryDeadline = Date.now() + 30000;
     for (;;) {
-        try { return await command('/session', 'POST', { capabilities: { alwaysMatch } }, appiumMode ? 300000 : 90000); }
+        // Cold simulator WDA builds can take four minutes before the listener
+        // starts. Bound setup separately from every DOM/audio assertion below.
+        try { return await command('/session', 'POST', { capabilities: { alwaysMatch } }, appiumMode ? 480000 : 90000); }
         catch (error) {
             // CoreSimulator can be booted before Safari's native inspector host
             // is discoverable. Retry this attachment race, never app assertions.
@@ -223,7 +225,8 @@ try {
         // paths still use real WDA taps, with no JavaScript-click fallback.
         'appium:nativeWebTapStrict': false,
         'appium:safariInitialUrl': new URL('/health', arena).href, 'appium:showXcodeLog': true,
-        'appium:webviewConnectTimeout': 20000, 'appium:wdaLaunchTimeout': 120000,
+        'appium:webviewConnectTimeout': 20000, 'appium:wdaLaunchTimeout': 300000,
+        'appium:wdaStartupRetries': 1,
         'appium:waitForIdleTimeout': 1,
     } : {
         browserName: 'safari',
