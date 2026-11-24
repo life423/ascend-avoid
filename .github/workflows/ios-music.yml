@@ -29,7 +29,6 @@ jobs:
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
       SAFARI_DRIVER_MODE: appium
       SAFARI_DRIVER_URL: http://127.0.0.1:4723
-      APPIUM_HOME: ${{ runner.temp }}/ascend-appium-home
     steps:
       - uses: actions/checkout@v4
         with:
@@ -52,6 +51,8 @@ jobs:
           npm run build
       - name: Install pinned native mobile test tools
         run: |
+          export APPIUM_HOME="$RUNNER_TEMP/ascend-appium-home"
+          printf 'APPIUM_HOME=%s\n' "$APPIUM_HOME" >> "$GITHUB_ENV"
           appium_prefix="$RUNNER_TEMP/ascend-appium-server"
           npm install --prefix "$appium_prefix" --no-audit --no-fund appium@3.9.1
           appium_bin="$appium_prefix/node_modules/.bin/appium"
