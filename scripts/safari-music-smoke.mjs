@@ -158,11 +158,20 @@ async function click(selector) {
 }
 async function screenshot(name) {
     const path = join(output, name + '.png');
-    if (simulator) {
-        await runFile('xcrun', ['simctl', 'io', deviceUDID, 'screenshot', '--type=png', path], { timeout: 15000 });
+    const previousStage = stage;
+    stage = 'native screenshot: ' + name;
+    if (appiumMode) {
+        // Reuse the running WDA screenshot service. Spawning simctl while the
+        // game renders can stall; artifact capture has its own bounded deadline.
+        const data = await command(sessionPath + '/screenshot', 'GET', undefined, 60000);
+        assert(typeof data === 'string' && data.length > 0, 'native screenshot has image data');
+        await writeFile(path, Buffer.from(data, 'base64'));
+    } else if (simulator) {
+        await runFile('xcrun', ['simctl', 'io', deviceUDID, 'screenshot', '--type=png', path], { timeout: 60000 });
     } else {
         await writeFile(path, Buffer.from(await command(sessionPath + '/screenshot'), 'base64'));
     }
+    stage = previousStage;
 }
 const snapshot = () => execute(() => window.__musicProbe?.read() || null);
 const text = selector => execute(s => document.querySelector(s)?.textContent.trim() || null, selector);
@@ -288,7 +297,7 @@ try {
         // Compile once before timing native startup. XCTest can fail its first
         // cold accessibility bootstrap; only agent startup may retry, not tests.
         'appium:prebuildWDA': true, 'appium:wdaLaunchTimeout': 180000,
-        'appium:wdaStartupRetries': 2,
+        'appium:wdaStartupRetries': 2, 'appium:screenshotQuality': 0,
         'appium:waitForIdleTimeout': 1,
     } : {
         browserName: 'safari',
@@ -316,6 +325,7 @@ try {
         }
     }
     await command(sessionPath + '/timeouts', 'POST', { implicit: 0, pageLoad: 60000, script: 15000 });
+    if (appiumMode) await command(sessionPath + '/appium/settings', 'POST', { settings: { webScreenshotMode: 'native' } });
     await dismissKnownSafariOnboarding();
     // Native iOS Safari does not implement desktop window resizing.
     if (!simulator) await command(sessionPath + '/window/rect', 'POST', { width: 1280, height: 900 });
@@ -391,7 +401,7 @@ try {
     assert.equal(await text(musicSelector), 'Music on');
     assert.equal(await execute(() => localStorage.getItem('ascend.music')), 'true');
     assert.equal((await snapshot()).contexts[0].routes, 1, 'passive probe preserves one destination route');
-    await screenshot('music-on'); await checkpoint('trusted-opt-in-audio');
+    await checkpoint('trusted-opt-in-audio'); await screenshot('music-on');
     await click(musicSelector); await silent();
     assert.equal(await text(musicSelector), 'Music off');
     await checkpoint('muted-silence');
