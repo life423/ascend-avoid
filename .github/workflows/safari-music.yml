@@ -1,0 +1,65 @@
+name: Native Safari music
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/safari-music.yml'
+      - 'scripts/safari-music-smoke.mjs'
+      - 'src/core/Music.ts'
+      - 'src/core/Sound.ts'
+      - 'src/ui/DrawerUI.ts'
+      - 'src/practice/PracticeUI.ts'
+      - 'src/styles/main.css'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  safari-music:
+    name: Native Safari audio and controls
+    runs-on: macos-26
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Build the candidate
+        run: |
+          npm ci
+          npm ci --prefix server
+          npm run build
+      - name: Start native Safari and the candidate server
+        run: |
+          logs="$RUNNER_TEMP/safari-music"
+          mkdir -p "$logs"
+          sw_vers > "$logs/macos.txt"
+          uname -m >> "$logs/macos.txt"
+          /usr/bin/safaridriver --version > "$logs/safaridriver-version.txt"
+          system_profiler SPAudioDataType > "$logs/audio-devices.txt"
+          sudo /usr/bin/safaridriver --enable
+          /usr/bin/safaridriver --port 4444 > "$logs/safaridriver.log" 2>&1 &
+          NODE_ENV=test PORT=3002 node server/dist/index.js > "$logs/game-server.log" 2>&1 &
+          curl --fail --silent --show-error --retry 20 --retry-connrefused --retry-delay 1 --max-time 5 http://127.0.0.1:3002/health
+      - name: Check candidate music in native Safari
+        env:
+          E2E_URL: http://127.0.0.1:3002/
+          SAFARI_RESULTS: ${{ runner.temp }}/safari-music/candidate
+        run: node scripts/safari-music-smoke.mjs
+      - name: Check deployed music in native Safari
+        env:
+          E2E_URL: https://ascendavoid.com/
+          SAFARI_RESULTS: ${{ runner.temp }}/safari-music/live
+        # Both targets use ordinary player/menu actions; no server test fixtures.
+        run: node scripts/safari-music-smoke.mjs
+      - name: Save Safari diagnostics and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-safari-music
+          path: ${{ runner.temp }}/safari-music/
+          retention-days: 7

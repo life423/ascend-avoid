@@ -7,7 +7,19 @@ the relic comet, true-scale minimap body outlines, and the
 request inventory is preserved in [TODO_HISTORY.md](TODO_HISTORY.md).
 Historical sections below record earlier checkpoints.
 
-## November 23 ambient music — release authorized
+## November 23 native Safari music follow-up
+
+The user requested actual Safari playback verification after the music release.
+The new native Safari workflow uses the preinstalled Safari/SafariDriver on an
+ARM macOS runner, with ordinary WebDriver input against the built candidate and
+the live site. It checks an actual native audio clock/output first, then the
+music controls, preferences and tab lifecycle. It does not bypass autoplay or
+override player size. The workflow artifacts and its pull request record exact
+versions, target URLs, results and limits. Do not count Windows Playwright
+WebKit's unavailable audio API as successful Safari playback, or treat desktop
+Safari as physical iPhone/iPad validation.
+
+## November 23 ambient music — released
 
 The user approved an original, subtle ambient space soundtrack, **muted by
 default**, with an easy menu toggle and a remembered preference. Settings now
@@ -16,9 +28,12 @@ Music opt-in is separate from the existing effects preference; ordinary entry,
 keyboard and touch gestures can resume previously enabled music even when effects
 are muted. The existing tutorial action strip also includes Music so it remains
 reachable while the normal game menu is hidden. The user authorized commit,
-merge to main and production deployment on November 23. The work is on
-`codex/ambient-music`; its pull request and main's production workflow record
-the final release result. This status does not itself certify deployment.
+merge to main and production deployment on November 23. PR #104 was merged as
+`a78e0e1c49f16672bacf96b9e5852a8b4cf9b57b`, and production workflow
+`45319802301` succeeded. Fresh hosted Chrome desktop/phone-emulation checks all
+passed (six cases), with healthy production status and a byte-for-byte match
+between the served `main-DGaEGhHk.js` and the validated client build. The PR
+records exact release evidence and remaining device-validation limits.
 
 Verification on November 23:
 
