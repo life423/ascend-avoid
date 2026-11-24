@@ -70,7 +70,7 @@ test.beforeEach(async ({ page }) => {
       supported: true,
       read() {
         measure();
-        return { contexts: contexts.map(entry => ({ state: entry.context.state, rms: entry.rms, peak: entry.peak, maxPeak: entry.maxPeak })), intervals: intervals.size };
+        return { contexts: contexts.map(entry => ({ state: entry.context.state, currentTime: entry.context.currentTime, rms: entry.rms, peak: entry.peak, maxPeak: entry.maxPeak })), intervals: intervals.size };
       },
       resetPeaks() { for (const entry of contexts) entry.maxPeak = 0; },
     };
@@ -104,7 +104,14 @@ const probe = page => page.evaluate(() => window.__audioProbe.read());
 const level = (state, index) => index === undefined
   ? Math.max(0, ...state.contexts.map(context => context.rms))
   : state.contexts[index]?.rms || 0;
-const expectAudible = (page, index) => expect.poll(async () => level(await probe(page), index), { timeout: 8000 }).toBeGreaterThan(0.00002);
+const expectAudible = async (page, index) => {
+  try {
+    await expect.poll(async () => level(await probe(page), index), { timeout: 8000 }).toBeGreaterThan(0.00002);
+  } catch (error) {
+    await test.info().attach('native-audio-output', { body: JSON.stringify(await probe(page)), contentType: 'application/json' });
+    throw error;
+  }
+};
 const expectSilent = (page, index) => expect.poll(async () => level(await probe(page), index), { timeout: 5000 }).toBeLessThan(0.000001);
 
 test('music starts off, is reachable on touch and keyboard, and actually plays only after opting in', async ({ page, browserName }) => {

@@ -47,6 +47,9 @@ Verification on November 23:
   A separate final code review found no blocking regression.
 - The existing Firefox desktop CI job now includes the focused music/menu
   regression suites. Preserve the required gameplay and both Firefox gates.
+  Its Linux container supplies a clocked PulseAudio null output device: without
+  a sound backend, native Firefox AudioContexts stayed suspended after input.
+  Audio-output assertions remain unchanged; failures attach context/clock data.
   Production verification must independently check health, the served client
   revision and fresh-session music off/on/off behavior after the workflow; the
   workflow's final verification step only prints the deployment details.
