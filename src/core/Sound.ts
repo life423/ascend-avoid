@@ -1,4 +1,5 @@
 import { music } from './Music';
+import { GAME_AUDIO_AVAILABLE } from './AudioPolicy';
 
 type Cue = 'gem' | 'capture' | 'ready' | 'launch' | 'impact' | 'cannon' | 'shatter' | 'parry' | 'surge';
 export const SOUND_EVENT = 'ascend:sound';
@@ -15,9 +16,11 @@ class Sound {
     private toggleGeneration = 0;
     muted = false;
     constructor() {
+        if (!GAME_AUDIO_AVAILABLE) { this.muted = true; return; }
         try { this.muted = localStorage.getItem('ascend.muted') === 'true'; } catch { /* optional storage */ }
     }
     unlock(): Promise<void> {
+        if (!GAME_AUDIO_AVAILABLE) return Promise.resolve();
         music.unlock();
         if (this.muted) return Promise.resolve();
         try {
@@ -28,6 +31,7 @@ class Sound {
         return Promise.resolve();
     }
     toggle(): void {
+        if (!GAME_AUDIO_AVAILABLE) return;
         const generation = ++this.toggleGeneration;
         this.muted = !this.muted;
         try { localStorage.setItem('ascend.muted', String(this.muted)); } catch { /* optional storage */ }
@@ -62,7 +66,7 @@ class Sound {
     }
     play(cue: Cue): void {
         const ctx = this.context;
-        if (this.muted || !ctx || ctx.state !== 'running') return;
+        if (!GAME_AUDIO_AVAILABLE || this.muted || !ctx || ctx.state !== 'running') return;
         const now = ctx.currentTime;
         if (now - (this.last.get(cue) ?? -10) < (cue === 'gem' ? 0.09 : 0.15)) return;
         this.last.set(cue, now);

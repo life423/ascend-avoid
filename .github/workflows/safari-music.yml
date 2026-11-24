@@ -6,6 +6,7 @@ on:
       - '.github/workflows/safari-music.yml'
       - 'scripts/safari-music-smoke.mjs'
       - 'src/core/Music.ts'
+      - 'src/core/AudioPolicy.ts'
       - 'src/core/Sound.ts'
       - 'src/ui/DrawerUI.ts'
       - 'src/practice/PracticeUI.ts'

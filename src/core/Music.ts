@@ -1,3 +1,5 @@
+import { GAME_AUDIO_AVAILABLE } from './AudioPolicy';
+
 export const MUSIC_EVENT = 'ascend:music';
 const STORAGE_KEY = 'ascend.music';
 const BAR_SECONDS = 8;
@@ -36,6 +38,7 @@ class Music {
     private barIndex = 0;
 
     constructor() {
+        if (!GAME_AUDIO_AVAILABLE) return;
         try { this.enabled = localStorage.getItem(STORAGE_KEY) === 'true'; } catch { /* Optional storage defaults off. */ }
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) this.pause();
@@ -49,6 +52,7 @@ class Music {
     }
 
     toggle(): void {
+        if (!GAME_AUDIO_AVAILABLE) return;
         this.enabled = !this.enabled;
         try { localStorage.setItem(STORAGE_KEY, String(this.enabled)); } catch { /* The current-page choice still works. */ }
         if (this.enabled) this.unlock();
@@ -58,7 +62,7 @@ class Music {
 
     /** Call from an existing trusted input handler; saved opt-in alone never starts audio. */
     unlock(): void {
-        if (!this.enabled || document.hidden || this.pageAway) return;
+        if (!GAME_AUDIO_AVAILABLE || !this.enabled || document.hidden || this.pageAway) return;
         this.unlocked = true;
         try {
             const ctx = this.audioContext();
@@ -76,7 +80,7 @@ class Music {
     }
 
     private canPlay(): boolean {
-        return this.enabled && this.unlocked && !document.hidden && !this.pageAway;
+        return GAME_AUDIO_AVAILABLE && this.enabled && this.unlocked && !document.hidden && !this.pageAway;
     }
 
     private audioContext(): AudioContext {

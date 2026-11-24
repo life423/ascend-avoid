@@ -6,6 +6,7 @@ test.skip(!process.env.PRACTICE_E2E, 'explicit local audio and interface checks'
 // Observe actual Web Audio output rather than the music implementation's fields.
 // Effects start muted so the first audible context can only be background music.
 test.beforeEach(async ({ page }) => {
+  test.skip(await page.evaluate(() => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)), 'iPhone and iPad intentionally have no game audio; covered by ios-silent.spec.mjs');
   await page.addInitScript(() => {
     localStorage.setItem('ascend.guideSeen', 'true');
     localStorage.setItem('ascend.mouseFollow', 'off');

@@ -2,6 +2,7 @@ import { playerName, setPlayerName } from '../core/PlayerName';
 import { GAME_RULES } from './GameRules';
 import { sound, SOUND_EVENT } from '../core/Sound';
 import { music, MUSIC_EVENT } from '../core/Music';
+import { GAME_AUDIO_AVAILABLE } from '../core/AudioPolicy';
 import { mouseControlEnabled, setMouseControl } from '../core/MouseControl';
 
 /** Large screens: the drawer sizes itself to its content (see fitToScreen) */
@@ -89,12 +90,12 @@ export class DrawerUI {
             <div class="drawer-content">
                 <div class="menu-section menu-quick-actions">
                     <button type="button" class="practice-open">Practice / Tutorials</button>
-                    <div class="settings-row">
+                    <div class="settings-row${GAME_AUDIO_AVAILABLE ? '' : ' settings-steering-only'}">
                         <h3>Settings</h3>
                         <div class="settings-controls">
                             <button type="button" role="switch" class="mouse-preference" data-action="mouse" aria-label="Mouse steering" aria-checked="${mouseControlEnabled()}">Steering <span>${mouseControlEnabled() ? 'Mouse' : 'Keyboard'}</span></button>
-                            <button type="button" class="sound-toggle" data-action="sound" aria-label="Mute sound effects" aria-pressed="${sound.muted}">Effects ${sound.muted ? 'off' : 'on'}</button>
-                            <button type="button" class="music-toggle" data-action="music" aria-label="Background music" aria-pressed="${music.enabled}">Music ${music.enabled ? 'on' : 'off'}</button>
+                            ${GAME_AUDIO_AVAILABLE ? `<button type="button" class="sound-toggle" data-action="sound" aria-label="Mute sound effects" aria-pressed="${sound.muted}">Effects ${sound.muted ? 'off' : 'on'}</button>
+                            <button type="button" class="music-toggle" data-action="music" aria-label="Background music" aria-pressed="${music.enabled}">Music ${music.enabled ? 'on' : 'off'}</button>` : ''}
                         </div>
                     </div>
                 </div>

@@ -1,13 +1,40 @@
 # Ascend Avoid — current work and next-session handoff
 
-Updated November 23, 2026. Domain configuration and release record is below. The prior
+Updated November 24, 2026. Domain configuration and release record is below. The prior
 November 9 gameplay checkpoint identified release `eea3b81` (PR #93), including
 the relic comet, true-scale minimap body outlines, and the
 90-second black-hole lifetime with safe relocation retries. The complete earlier
 request inventory is preserved in [TODO_HISTORY.md](TODO_HISTORY.md).
 Historical sections below record earlier checkpoints.
 
-## November 23 iPhone and iPad music follow-up
+## November 24 iPhone and iPad now stay silent
+
+The user stopped the mobile audio investigation after repeated CI failure alerts
+and explicitly requested removing **music and sound effects** on iPhone and iPad.
+The new shared audio policy prevents either AudioContext from being created on
+these devices, ignores old enabled preferences and removes audio buttons from
+the menu, tutorial and desktop-width toolbar. It covers mobile Apple identities
+and iPadOS's Mac-style desktop identity. Desktop/Android audio is unchanged.
+
+The native mobile music workflow is disabled in GitHub and removed from source;
+the unmerged automation experiment (PR #109) is closed. Required gameplay,
+desktop/Android Firefox and native desktop Safari checks remain. The replacement
+browser regression exercises the silent platform policy using ordinary Play and
+tutorial actions with old enabled preferences. This tests removal, not native
+audio playback or physical Apple devices. Release verification belongs in the
+new pull request and production workflow.
+
+Local verification: production build and client/server types pass; scoped lint
+has no errors (one existing `Sound.ts` assertion warning). All 36 focused
+music/menu/policy cases pass without retries across Chromium, Firefox and Android
+Chrome emulation. After removing the empty touch-only Settings row, all six
+iPhone/iPad policy cases pass again across Chromium/Firefox. Phone, tablet and
+desktop-width iPad menu/tutorial screenshots were inspected. Native Apple
+hardware remains unavailable; these are browser device-identity policy checks.
+The scoped UI review found no remaining removal-related usability/overflow defect;
+broader physical-device accessibility/performance validation remains open.
+
+## November 23 iPhone and iPad music follow-up — superseded
 
 The user requested iPhone/iPad music testing and confirmed that no physical Apple
 devices are available. Native Apple iPhone/iPad simulators now have a separate

@@ -102,7 +102,7 @@ jobs:
         npx playwright test \
           tests/e2e/game.spec.mjs tests/e2e/join-modal.spec.mjs \
           tests/e2e/render-performance.spec.mjs tests/e2e/renderer-culling.spec.mjs \
-          tests/e2e/menu-access.spec.mjs tests/e2e/music.spec.mjs \
+          tests/e2e/menu-access.spec.mjs tests/e2e/music.spec.mjs tests/e2e/ios-silent.spec.mjs \
           --project='Firefox (desktop)' --retries=0
     - name: Save failure traces, screenshots and performance samples
       if: always()
