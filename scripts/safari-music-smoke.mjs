@@ -1,0 +1,289 @@
+// Native Safari/safaridriver only: no Playwright browser or autoplay bypass.
+import assert from 'node:assert/strict';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
+
+const driver = (process.env.SAFARI_DRIVER_URL || 'http://127.0.0.1:4444').replace(/\/$/, '');
+const arena = process.env.E2E_URL || 'https://ascendavoid.com/';
+const output = process.env.SAFARI_RESULTS || 'test-results/safari-music';
+const ELEMENT = 'element-6066-11e4-a52e-4f735466cecf';
+const musicSelector = '.drawer[aria-hidden="false"] [data-action="music"]';
+const effectsSelector = '.drawer[aria-hidden="false"] [data-action="sound"]';
+const report = { target: arena, startedAt: new Date().toISOString(), checkpoints: [] };
+let sessionPath, helperHandle, stage = 'native Safari session';
+await mkdir(output, { recursive: true });
+
+async function command(path, method = 'GET', body, timeout = 15000) {
+    const response = await fetch(driver + path, {
+        method, signal: AbortSignal.timeout(timeout),
+        ...(body === undefined ? {} : { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
+    });
+    const { value } = await response.json();
+    assert(response.ok && !value?.error, method + ' ' + path + ': ' + (value?.message || response.status));
+    return value;
+}
+const execute = (fn, ...args) => command(sessionPath + '/execute/sync', 'POST', { script: 'return (' + fn + ').apply(null, arguments);', args });
+async function wait(description, sample, matches, timeout = 15000) {
+    let latest;
+    const deadline = Date.now() + timeout;
+    do {
+        latest = await sample();
+        if (matches(latest)) return latest;
+        await delay(100);
+    } while (Date.now() < deadline);
+    assert.fail(description + ': ' + JSON.stringify(latest));
+}
+async function click(selector) {
+    const element = await wait('reachable native click: ' + selector, () => execute(s => [...document.querySelectorAll(s)].find(e => {
+        const r = e.getBoundingClientRect(), style = getComputedStyle(e);
+        const x = r.left + r.width / 2, y = r.top + r.height / 2;
+        return r.width > 0 && r.height > 0 && x >= 0 && x < innerWidth && y >= 0 && y < innerHeight &&
+            style.visibility !== 'hidden' && style.display !== 'none' && !e.closest('[inert]') &&
+            e.contains(document.elementFromPoint(x, y));
+    }) || null, selector), value => !!value?.[ELEMENT]);
+    await command(sessionPath + '/element/' + element[ELEMENT] + '/click', 'POST', {});
+}
+const screenshot = async name => writeFile(join(output, name + '.png'), Buffer.from(await command(sessionPath + '/screenshot'), 'base64'));
+const snapshot = () => execute(() => window.__musicProbe?.read() || null);
+const text = selector => execute(s => document.querySelector(s)?.textContent.trim() || null, selector);
+const level = (value, index) => index === undefined ? Math.max(0, ...value.contexts.map(c => c.rms)) : value.contexts[index]?.rms || 0;
+const audible = index => wait('native music audio output', snapshot, value => value && level(value, index) > .00002);
+const silent = index => wait('muted native audio output', snapshot, value => value && level(value, index) < .000001);
+async function checkpoint(name, extra = {}) {
+    stage = name;
+    report.checkpoints.push({ name, at: new Date().toISOString(), audio: await snapshot(), ...extra });
+    await writeFile(join(output, 'result.json'), JSON.stringify(report, null, 2) + '\n');
+}
+
+function installProbe() {
+    if (window.__musicProbe) return;
+    const NativeContext = window.AudioContext;
+    if (typeof NativeContext !== 'function') throw new Error('Native Safari Web Audio is unavailable');
+    const originalConnect = AudioNode.prototype.connect, contexts = [], intervals = new Set(), events = [], errors = [];
+    const originalSetInterval = window.setInterval.bind(window), originalClearInterval = window.clearInterval.bind(window);
+    window.setInterval = (...args) => { const id = originalSetInterval(...args); intervals.add(id); return id; };
+    window.clearInterval = id => { intervals.delete(id); originalClearInterval(id); };
+    const states = () => contexts.map(r => ({ state: r.context.state, currentTime: r.context.currentTime }));
+    window.addEventListener('error', event => errors.push(String(event.message)));
+    window.addEventListener('unhandledrejection', event => errors.push(String(event.reason)));
+    document.addEventListener('visibilitychange', () => events.push({ type: 'visibility', hidden: document.hidden, at: performance.now(), contexts: states() }));
+    class ProbedContext extends NativeContext {
+        constructor(options) {
+            super(options);
+            const analyser = this.createAnalyser(), sink = this.createGain();
+            analyser.fftSize = 2048; sink.gain.value = 0;
+            originalConnect.call(analyser, sink); originalConnect.call(sink, this.destination);
+            const record = { context: this, analyser, sink, samples: new Float32Array(2048), rms: 0, maxPeak: 0, routes: 0 };
+            contexts.push(record);
+            this.addEventListener('statechange', () => events.push({ type: 'context', index: contexts.indexOf(record), hidden: document.hidden, at: performance.now(), contexts: states() }));
+        }
+    }
+    window.AudioContext = ProbedContext;
+    AudioNode.prototype.connect = function(destination, ...args) {
+        const result = originalConnect.call(this, destination, ...args);
+        const record = contexts.find(r => r.context === this.context);
+        if (record && destination === record.context.destination && this !== record.sink) {
+            originalConnect.call(this, record.analyser, args[0] || 0, 0);
+            record.routes++;
+        }
+        return result;
+    };
+    const measure = () => {
+        for (const r of contexts) {
+            r.rms = 0;
+            if (r.context.state !== 'running') continue;
+            r.analyser.getFloatTimeDomainData(r.samples);
+            let energy = 0;
+            for (const sample of r.samples) { energy += sample * sample; r.maxPeak = Math.max(r.maxPeak, Math.abs(sample)); }
+            r.rms = Math.sqrt(energy / r.samples.length);
+        }
+    };
+    const frame = () => { measure(); requestAnimationFrame(frame); };
+    requestAnimationFrame(frame);
+    window.__musicProbe = {
+        read() { measure(); return { hidden: document.hidden, contexts: contexts.map(r => ({ state: r.context.state, currentTime: r.context.currentTime, rms: r.rms, maxPeak: r.maxPeak, routes: r.routes })), intervals: intervals.size, events: events.slice(-80), errors: [...errors] }; },
+        resetPeaks() { for (const r of contexts) r.maxPeak = 0; },
+    };
+}
+async function entry() {
+    await wait('ordinary join screen', () => execute(() => !!document.querySelector('.join-dialog[open] .join-play')), Boolean);
+    await execute(installProbe);
+}
+async function play() {
+    await click('.join-dialog[open] .join-play');
+    await wait('ordinary live player', () => execute(() => !!window.game?.currentGameMode?.multiplayerManager?.getLocalPlayer() && !document.body.classList.contains('intro-playing')), Boolean);
+}
+async function openMenu() {
+    if (!await execute(() => !!document.querySelector('.drawer[aria-hidden="false"]'))) await click('.hamburger-button, .bar-help');
+    await wait('visible game menu', () => text(musicSelector), value => value === 'Music off' || value === 'Music on');
+}
+async function clockAdvances(index) {
+    const before = await snapshot();
+    await wait('native audio clock advances', snapshot, value => value.contexts[index].currentTime > before.contexts[index].currentTime + .15);
+}
+
+try {
+    await wait('native Safari driver ready', () => command('/status').catch(() => null), value => value?.ready === true, 30000);
+    const session = await command('/session', 'POST', { capabilities: { alwaysMatch: { browserName: 'safari' } } }, 90000);
+    assert(session.sessionId, 'safaridriver created a session');
+    sessionPath = '/session/' + session.sessionId;
+    report.capabilities = session.capabilities;
+    assert.equal(session.capabilities.browserName.toLowerCase(), 'safari', 'native Safari capability');
+    await command(sessionPath + '/timeouts', 'POST', { implicit: 0, pageLoad: 60000, script: 15000 });
+    await command(sessionPath + '/window/rect', 'POST', { width: 1280, height: 900 });
+    await command(sessionPath + '/url', 'POST', { url: 'about:blank' });
+    report.userAgent = await execute(() => navigator.userAgent);
+    assert.match(report.userAgent, /AppleWebKit\/.*Version\/.*Safari\//, 'actual Safari user agent');
+    assert.doesNotMatch(report.userAgent, /Chrome|Chromium|Firefox/);
+
+    stage = 'isolated native audio backend preflight';
+    await execute(() => {
+        document.body.innerHTML = '<button id="native-audio" style="width:240px;height:64px">Test native audio backend</button>';
+        document.querySelector('button').addEventListener('click', () => {
+            const context = new AudioContext(), oscillator = context.createOscillator(), analyser = context.createAnalyser(), gain = context.createGain();
+            gain.gain.value = 0; oscillator.connect(analyser); analyser.connect(gain); gain.connect(context.destination); oscillator.start();
+            window.__nativeAudio = { context, oscillator, analyser, samples: new Float32Array(analyser.fftSize), resumeError: null };
+            void context.resume().catch(error => { window.__nativeAudio.resumeError = String(error); });
+        });
+    });
+    await click('#native-audio');
+    report.nativeBackend = await wait(stage, () => execute(() => {
+        const r = window.__nativeAudio;
+        if (!r) return null;
+        r.analyser.getFloatTimeDomainData(r.samples);
+        return { state: r.context.state, currentTime: r.context.currentTime, peak: Math.max(...r.samples.map(Math.abs)), resumeError: r.resumeError };
+    }), value => value?.state === 'running' && value.currentTime > .15 && value.peak > .1);
+    await execute(() => { window.__nativeAudio.oscillator.stop(); void window.__nativeAudio.context.close(); });
+
+    stage = 'fresh music preference';
+    await command(sessionPath + '/url', 'POST', { url: arena }, 70000);
+    await wait('app document loaded', () => execute(() => !!document.querySelector('.join-dialog')), Boolean);
+    await execute(() => {
+        localStorage.removeItem('ascend.music'); localStorage.setItem('ascend.muted', 'true');
+        localStorage.setItem('ascend.guideSeen', 'true'); localStorage.setItem('ascend.mouseFollow', 'off');
+    });
+    await command(sessionPath + '/refresh', 'POST', {}, 70000);
+    await entry(); await play(); await openMenu();
+    assert.equal(await text(musicSelector), 'Music off');
+    assert.equal((await snapshot()).contexts.length, 0, 'no music context before opt-in');
+    const bounds = await execute(s => {
+        const e = document.querySelector(s), r = e.getBoundingClientRect();
+        return { width: r.width, height: r.height, top: r.top, bottom: r.bottom, viewport: innerHeight, pressed: e.getAttribute('aria-pressed') };
+    }, musicSelector);
+    assert(bounds.width >= 44 && bounds.height >= 44 && bounds.top >= 0 && bounds.bottom <= bounds.viewport, 'visible 44px Music control');
+    assert.equal(bounds.pressed, 'false');
+    await checkpoint('muted-by-default', { bounds });
+
+    stage = 'trusted opt-in and mute';
+    await click(musicSelector); await audible(0); await clockAdvances(0);
+    assert.equal(await text(musicSelector), 'Music on');
+    assert.equal(await execute(() => localStorage.getItem('ascend.music')), 'true');
+    assert.equal((await snapshot()).contexts[0].routes, 1, 'passive probe preserves one destination route');
+    await screenshot('music-on'); await checkpoint('trusted-opt-in-audio');
+    await click(musicSelector); await silent();
+    assert.equal(await text(musicSelector), 'Music off');
+    await checkpoint('muted-silence');
+
+    stage = 'remembered opt-in waits for ordinary Play';
+    await click(musicSelector); await audible(0);
+    await command(sessionPath + '/refresh', 'POST', {}, 70000);
+    await entry(); await delay(750);
+    assert.equal(await execute(() => localStorage.getItem('ascend.music')), 'true');
+    assert.equal((await snapshot()).contexts.length, 0, 'stored opt-in alone does not autoplay');
+    await play(); await audible(0); await openMenu(); await checkpoint('remembered-choice-after-Play');
+
+    stage = 'independent effects and music';
+    assert.equal(await text(effectsSelector), 'Effects off');
+    await click(effectsSelector);
+    await wait('real effects confirmation output', snapshot, value => value.contexts[1]?.maxPeak > .00002);
+    await audible(0);
+    await click(effectsSelector); await audible(0);
+    await click(musicSelector); await silent();
+    await execute(() => window.__musicProbe.resetPeaks());
+    await click(effectsSelector);
+    await wait('effects output while music is muted', snapshot, value => value.contexts[1]?.maxPeak > .00002);
+    await silent(0); await click(effectsSelector);
+    await checkpoint('independent-effects');
+
+    stage = 'rapid toggles keep one music context';
+    const baselineIntervals = (await snapshot()).intervals;
+    await click(musicSelector); await audible(0);
+    for (let i = 0; i < 6; i++) { await click(musicSelector); await click(musicSelector); }
+    await audible(0);
+    const rapid = await snapshot();
+    assert.equal(rapid.contexts.length, 2, 'one music context plus the independent effects context');
+    assert.equal(rapid.contexts.filter(c => c.state === 'running').length, 1);
+    assert(rapid.intervals <= baselineIntervals + 1, 'rapid toggles do not stack music schedulers');
+    await checkpoint('rapid-toggles');
+
+    stage = 'real Safari tab background and foreground';
+    const gameHandle = await command(sessionPath + '/window');
+    const initialHandles = await command(sessionPath + '/window/handles');
+    // NewWindow's type is only a hint, and switching command targets alone does
+    // not prove real backgrounding. Open a real tab with the existing user link.
+    await click('.drawer[aria-hidden="false"] .invite-link[target="_blank"]');
+    const opened = await wait('native link opens one tab', () => command(sessionPath + '/window/handles'), handles => handles.filter(handle => !initialHandles.includes(handle)).length === 1);
+    helperHandle = opened.find(handle => !initialHandles.includes(handle));
+    report.tabNavigation = { gameHandle, helperHandle, transitions: [] };
+    // Safari may defer script evaluation in the hidden tab. Inspect its actual
+    // visibility history and paused clock after returning, not while hidden.
+    for (let cycle = 0; cycle < 3; cycle++) {
+        await command(sessionPath + '/window', 'POST', { handle: helperHandle });
+        if (cycle === 0) await command(sessionPath + '/url', 'POST', { url: 'about:blank' });
+        report.tabNavigation.transitions.push({ cycle, away: await execute(() => ({ url: location.href, hidden: document.hidden, visibilityState: document.visibilityState, focused: document.hasFocus() })) });
+        await delay(1600);
+        await command(sessionPath + '/window', 'POST', { handle: gameHandle });
+        const returned = await wait('real tab visibility transitions', snapshot, value =>
+            value.events.filter(e => e.type === 'visibility' && e.hidden).length >= cycle + 1 &&
+            value.events.filter(e => e.type === 'visibility' && !e.hidden).length >= cycle + 1);
+        const hidden = returned.events.filter(e => e.type === 'visibility' && e.hidden).at(-1);
+        const visible = returned.events.filter(e => e.type === 'visibility' && !e.hidden).at(-1);
+        assert(visible.at - hidden.at >= 1200, 'game was genuinely backgrounded');
+        assert(visible.contexts[0].currentTime - hidden.contexts[0].currentTime < .8, 'music clock pauses while hidden');
+        await audible(0); await clockAdvances(0);
+        await checkpoint('real-tab-return-' + (cycle + 1));
+    }
+
+    stage = 'tutorial music control';
+    await openMenu(); await click('.drawer[aria-hidden="false"] .practice-open');
+    await click('[data-lesson="basics"]');
+    await wait('ordinary private basics lesson', () => execute(() => window.game?.currentGameMode?.multiplayerManager?.getState()?.practice?.lesson), value => value === 'basics');
+    const tutorialMusic = '.practice-actions [data-do="music"]';
+    assert.equal(await text(tutorialMusic), 'Music on');
+    await click(tutorialMusic); await silent(); await screenshot('tutorial-music-off');
+    await click(tutorialMusic); await audible(0);
+    await click('.practice-actions [data-do="exit"]');
+    await wait('ordinary tutorial exit', () => execute(() => window.game?.currentGameMode?.multiplayerManager?.getState()?.practice?.enabled), value => value === false);
+    await openMenu(); assert.equal(await text(musicSelector), 'Music on');
+    await click(musicSelector); await silent(); await screenshot('final-music-off');
+    await checkpoint('tutorial-and-menu-synchronized');
+
+    report.assets = await execute(() => [...document.scripts].map(s => s.src).filter(s => /\/assets\/main-/.test(s)));
+    assert.deepEqual((await snapshot()).errors, [], 'no page errors or unhandled audio rejections');
+    report.passed = true;
+    report.finishedAt = new Date().toISOString();
+    await writeFile(join(output, 'result.json'), JSON.stringify(report, null, 2) + '\n');
+    console.log(JSON.stringify(report, null, 2));
+} catch (error) {
+    report.passed = false; report.failedStage = stage; report.error = String(error.stack || error);
+    if (sessionPath) {
+        report.failure = await execute(() => ({
+            url: location.href, userAgent: navigator.userAgent, hidden: document.hidden,
+            visibilityState: document.visibilityState, focused: document.hasFocus(),
+            audio: window.__musicProbe?.read() || null,
+            nativeBackend: window.__nativeAudio ? { state: window.__nativeAudio.context.state, currentTime: window.__nativeAudio.context.currentTime, error: window.__nativeAudio.resumeError } : null,
+            visibleDialogs: [...document.querySelectorAll('[role="dialog"], dialog[open]')].map(e => e.textContent.slice(0, 800)),
+        })).catch(value => ({ diagnosticError: String(value) }));
+        await screenshot('failure').catch(() => {});
+    }
+    await writeFile(join(output, 'result.json'), JSON.stringify(report, null, 2) + '\n');
+    console.error(JSON.stringify(report, null, 2));
+    process.exitCode = 1;
+} finally {
+    // Safari sessions must not leave the auxiliary tab to affect the next run.
+    if (sessionPath && helperHandle) {
+        await command(sessionPath + '/window', 'POST', { handle: helperHandle }).then(() => command(sessionPath + '/window', 'DELETE')).catch(() => {});
+    }
+    if (sessionPath) await command(sessionPath, 'DELETE').catch(error => { console.error(String(error)); process.exitCode = 1; });
+}
