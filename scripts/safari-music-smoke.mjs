@@ -20,7 +20,7 @@ const report = {
     target: arena, startedAt: new Date().toISOString(), checkpoints: [],
     testHost: simulator ? { kind: 'Apple Simulator', deviceType, deviceUDID } : { kind: 'macOS Safari' },
 };
-let sessionPath, helperHandle, stage = 'native Safari session';
+let sessionPath, stage = 'native Safari session';
 await mkdir(output, { recursive: true });
 
 async function command(path, method = 'GET', body, timeout = 15000) {
@@ -284,22 +284,16 @@ try {
             await backgroundReturned(cycle, 'app');
         }
     } else {
-        stage = 'real Safari tab background and foreground';
-        const gameHandle = await command(sessionPath + '/window');
-        const initialHandles = await command(sessionPath + '/window/handles');
-        // NewWindow's type is only a hint, and switching command targets alone
-        // does not prove real backgrounding. Use the existing native user link.
-        await click('.drawer[aria-hidden="false"] .invite-link[target="_blank"]');
-        const opened = await wait('native link opens one tab', () => command(sessionPath + '/window/handles'), handles => handles.filter(handle => !initialHandles.includes(handle)).length === 1);
-        helperHandle = opened.find(handle => !initialHandles.includes(handle));
-        report.tabNavigation = { gameHandle, helperHandle, transitions: [] };
+        stage = 'real Safari window background and foreground';
+        const rect = await command(sessionPath + '/window/rect');
+        // Native minimization guarantees an actual hidden window. Merely
+        // switching SafariDriver command targets does not establish OS focus.
+        report.windowNavigation = { strategy: 'native minimize/restore', rect, cycles: 3 };
         for (let cycle = 0; cycle < 3; cycle++) {
-            await command(sessionPath + '/window', 'POST', { handle: helperHandle });
-            if (cycle === 0) await command(sessionPath + '/url', 'POST', { url: 'about:blank' });
-            report.tabNavigation.transitions.push({ cycle, away: await execute(() => ({ url: location.href, hidden: document.hidden, visibilityState: document.visibilityState, focused: document.hasFocus() })) });
-            await delay(1600);
-            await command(sessionPath + '/window', 'POST', { handle: gameHandle });
-            await backgroundReturned(cycle, 'tab');
+            await command(sessionPath + '/window/minimize', 'POST', {});
+            await delay(3000);
+            await command(sessionPath + '/window/rect', 'POST', rect);
+            await backgroundReturned(cycle, 'window');
         }
     }
 
@@ -339,9 +333,5 @@ try {
     console.error(JSON.stringify(report, null, 2));
     process.exitCode = 1;
 } finally {
-    // Safari sessions must not leave the auxiliary tab to affect the next run.
-    if (sessionPath && helperHandle) {
-        await command(sessionPath + '/window', 'POST', { handle: helperHandle }).then(() => command(sessionPath + '/window', 'DELETE')).catch(() => {});
-    }
     if (sessionPath) await command(sessionPath, 'DELETE').catch(error => { console.error(String(error)); process.exitCode = 1; });
 }
