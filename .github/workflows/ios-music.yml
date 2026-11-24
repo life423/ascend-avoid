@@ -97,6 +97,9 @@ jobs:
         run: |
           open -a "$DEVELOPER_DIR/Applications/Simulator.app" --args -CurrentDeviceUDID "$SAFARI_DEVICE_UDID"
           xcrun simctl launch "$SAFARI_DEVICE_UDID" com.apple.mobilesafari
+          # Give Safari an inspectable page before Appium attaches. No audio or
+          # autoplay preferences are changed, and the game resets its own choices.
+          xcrun simctl openurl "$SAFARI_DEVICE_UDID" http://127.0.0.1:3002/health
       - name: Start native mobile automation
         timeout-minutes: 2
         run: |
