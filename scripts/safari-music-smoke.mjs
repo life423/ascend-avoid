@@ -226,7 +226,8 @@ try {
     const opened = await wait('native link opens one tab', () => command(sessionPath + '/window/handles'), handles => handles.filter(handle => !initialHandles.includes(handle)).length === 1);
     helperHandle = opened.find(handle => !initialHandles.includes(handle));
     report.tabNavigation = { gameHandle, helperHandle, transitions: [] };
-    await wait('native link really backgrounds the game', snapshot, value => value?.hidden === true);
+    // Safari may defer script evaluation in the hidden tab. Inspect its actual
+    // visibility history and paused clock after returning, not while hidden.
     for (let cycle = 0; cycle < 3; cycle++) {
         await command(sessionPath + '/window', 'POST', { handle: helperHandle });
         if (cycle === 0) await command(sessionPath + '/url', 'POST', { url: 'about:blank' });
