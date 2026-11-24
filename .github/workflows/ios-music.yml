@@ -56,10 +56,14 @@ jobs:
           node --input-type=module <<'JS'
           import { readFileSync, appendFileSync, writeFileSync } from 'node:fs';
           const inventory = JSON.parse(readFileSync(process.env.RUNNER_TEMP + '/ios-music/simulators.json'));
-          const runtimes = Object.keys(inventory.devices).filter(r => r.includes('.iOS-')).sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
+          // Hardware-specific suffixes are not newer OS versions. Prefer the
+          // generic runtime and common phone/tablet models for this baseline.
+          const runtimes = Object.keys(inventory.devices).filter(r => /\.iOS-\d+(?:-\d+){1,2}$/.test(r)).sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
           const runtime = runtimes.find(r => inventory.devices[r].some(d => d.isAvailable && d.name.startsWith(process.env.SAFARI_DEVICE_TYPE)));
           if (!runtime) throw new Error('No available Apple ' + process.env.SAFARI_DEVICE_TYPE + ' simulator');
-          const device = inventory.devices[runtime].find(d => d.isAvailable && d.name.startsWith(process.env.SAFARI_DEVICE_TYPE));
+          const candidates = inventory.devices[runtime].filter(d => d.isAvailable && d.name.startsWith(process.env.SAFARI_DEVICE_TYPE));
+          const preferred = process.env.SAFARI_DEVICE_TYPE === 'iPhone' ? 'iPhone 17' : 'iPad (A16)';
+          const device = candidates.find(d => d.name === preferred) || candidates[0];
           appendFileSync(process.env.GITHUB_ENV, 'SAFARI_DEVICE_UDID=' + device.udid + '\n');
           writeFileSync(process.env.RUNNER_TEMP + '/ios-music/device.json', JSON.stringify({ runtime, ...device }, null, 2));
           console.log(JSON.stringify({ runtime, name: device.name, udid: device.udid }));
@@ -70,7 +74,7 @@ jobs:
           xcrun simctl boot "$SAFARI_DEVICE_UDID"
           xcrun simctl bootstatus "$SAFARI_DEVICE_UDID" -b
       - name: Launch mobile Safari
-        timeout-minutes: 2
+        timeout-minutes: 4
         run: |
           xcrun simctl launch "$SAFARI_DEVICE_UDID" com.apple.mobilesafari
       - name: Start SafariDriver
