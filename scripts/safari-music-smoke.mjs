@@ -72,7 +72,12 @@ async function dismissKnownSafariOnboarding() {
         await writeFile(join(output, 'safari-native-startup.xml'), source);
         if (!source.replace(/\s+/g, ' ').includes(title)) return;
         await writeFile(join(output, 'safari-onboarding.xml'), source);
-        const candidates = await command(sessionPath + '/elements', 'POST', { using: 'accessibility id', value: 'Close' });
+        // Safari's hint has a Close label but an SF Symbol identifier, so an
+        // accessibility-id lookup for the label does not find this native button.
+        const candidates = await command(sessionPath + '/elements', 'POST', {
+            using: '-ios predicate string',
+            value: 'type == "XCUIElementTypeButton" AND label == "Close" AND visible == 1',
+        });
         const visible = [];
         for (const candidate of candidates) {
             const id = candidate[ELEMENT] || candidate.ELEMENT;
