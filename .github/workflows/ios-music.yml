@@ -40,7 +40,13 @@ jobs:
           npm ci
           npm ci --prefix server
           npm run build
-      - name: Boot an available Apple mobile simulator
+      - name: Start the candidate server before simulator boot
+        run: |
+          logs="$RUNNER_TEMP/ios-music"
+          mkdir -p "$logs"
+          NODE_ENV=test PORT=3002 node server/dist/index.js > "$logs/game-server.log" 2>&1 &
+          curl --fail --silent --show-error --retry 60 --retry-connrefused --retry-delay 1 --max-time 5 http://127.0.0.1:3002/health
+      - name: Select an available Apple mobile simulator
         run: |
           logs="$RUNNER_TEMP/ios-music"
           mkdir -p "$logs"
@@ -58,31 +64,39 @@ jobs:
           writeFileSync(process.env.RUNNER_TEMP + '/ios-music/device.json', JSON.stringify({ runtime, ...device }, null, 2));
           console.log(JSON.stringify({ runtime, name: device.name, udid: device.udid }));
           JS
-      - name: Start simulator Safari and the candidate server
+      - name: Boot the selected Apple mobile simulator
+        timeout-minutes: 8
         run: |
-          logs="$RUNNER_TEMP/ios-music"
           xcrun simctl boot "$SAFARI_DEVICE_UDID"
           xcrun simctl bootstatus "$SAFARI_DEVICE_UDID" -b
+      - name: Launch mobile Safari
+        timeout-minutes: 2
+        run: |
           xcrun simctl launch "$SAFARI_DEVICE_UDID" com.apple.mobilesafari
+      - name: Start SafariDriver
+        timeout-minutes: 2
+        run: |
+          logs="$RUNNER_TEMP/ios-music"
           /usr/bin/safaridriver --version > "$logs/safaridriver-version.txt"
           sudo /usr/bin/safaridriver --enable
           /usr/bin/safaridriver --port 4444 > "$logs/safaridriver.log" 2>&1 &
-          NODE_ENV=test PORT=3002 node server/dist/index.js > "$logs/game-server.log" 2>&1 &
-          curl --fail --silent --show-error --retry 20 --retry-connrefused --retry-delay 1 --max-time 5 http://127.0.0.1:3002/health
       - name: Check candidate music in mobile Safari
         env:
           E2E_URL: http://127.0.0.1:3002/
           SAFARI_RESULTS: ${{ runner.temp }}/ios-music/candidate
         run: node scripts/safari-music-smoke.mjs
       - name: Check deployed music in mobile Safari
+        if: github.event_name == 'workflow_dispatch'
         env:
           E2E_URL: https://ascendavoid.com/
           SAFARI_RESULTS: ${{ runner.temp }}/ios-music/live
         run: node scripts/safari-music-smoke.mjs
       - name: Collect simulator diagnostics on failure
         if: failure()
+        timeout-minutes: 2
         run: |
           logs="$RUNNER_TEMP/ios-music"
+          xcrun simctl list devices --json > "$logs/devices-after-failure.json" || true
           xcrun simctl io "$SAFARI_DEVICE_UDID" screenshot "$logs/simulator-failure.png" || true
           xcrun simctl spawn "$SAFARI_DEVICE_UDID" log show --last 3m --style compact --predicate 'process == "MobileSafari"' > "$logs/mobile-safari.log" 2>&1 || true
       - name: Save mobile Safari results

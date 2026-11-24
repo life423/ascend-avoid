@@ -51,6 +51,7 @@ jobs:
           SAFARI_RESULTS: ${{ runner.temp }}/safari-music/candidate
         run: node scripts/safari-music-smoke.mjs
       - name: Check deployed music in native Safari
+        if: github.event_name == 'workflow_dispatch'
         env:
           E2E_URL: https://ascendavoid.com/
           SAFARI_RESULTS: ${{ runner.temp }}/safari-music/live

@@ -19,6 +19,15 @@ fixes belong in the workflow artifacts and pull request. Simulator coverage does
 not certify physical speakers, Silent Mode, lock-screen recovery or device-only
 interruptions. Do not claim physical iPhone/iPad verification from these tests.
 
+Repeated native desktop Safari testing exposed a background-suspension defect:
+the audio clock advanced 14.81 seconds during 16 seconds hidden because Safari
+froze the delayed `suspend()` timer. This does not establish that notes remained
+audible: their fade/stop was already scheduled in Web Audio. Hidden/page-away
+handling now zeros the bus, disposes voices and invokes native suspension
+immediately; visible user mute retains its fade. Candidate Safari checks gate
+the PR; explicit post-deployment workflow runs verify the live release separately,
+so a known older production defect does not obscure candidate validation.
+
 ## November 23 native Safari music — desktop verified
 
 The user requested actual Safari playback verification after the music release.
