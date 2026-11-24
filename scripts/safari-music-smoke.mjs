@@ -67,7 +67,8 @@ async function dismissKnownSafariOnboarding() {
     assert(typeof originalContext === 'string' && originalContext !== 'NATIVE_APP', 'Safari has an active web context');
     await command(sessionPath + '/context', 'POST', { name: 'NATIVE_APP' });
     try {
-        const source = await command(sessionPath + '/source');
+        // Allow a bounded cold XCTest accessibility snapshot during setup only.
+        const source = await command(sessionPath + '/source', 'GET', undefined, 30000);
         await writeFile(join(output, 'safari-native-startup.xml'), source);
         if (!source.replace(/\s+/g, ' ').includes(title)) return;
         await writeFile(join(output, 'safari-onboarding.xml'), source);
@@ -212,8 +213,11 @@ try {
     const alwaysMatch = appiumMode ? {
         platformName: 'ios', browserName: 'Safari',
         'appium:automationName': 'XCUITest', 'appium:udid': deviceUDID,
-        'appium:nativeWebTap': true, 'appium:nativeWebTapStrict': true,
-        'appium:safariInitialUrl': arena, 'appium:showXcodeLog': true,
+        'appium:nativeWebTap': true,
+        // Prefer native accessibility matching over forced calibration. Both
+        // paths still use real WDA taps, with no JavaScript-click fallback.
+        'appium:nativeWebTapStrict': false,
+        'appium:safariInitialUrl': new URL('/health', arena).href, 'appium:showXcodeLog': true,
         'appium:webviewConnectTimeout': 20000, 'appium:wdaLaunchTimeout': 120000,
         'appium:waitForIdleTimeout': 1,
     } : {
