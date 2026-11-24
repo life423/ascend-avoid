@@ -106,7 +106,7 @@ jobs:
           logs="$RUNNER_TEMP/ios-music"
           "$APPIUM_SERVER_BIN" --version > "$logs/appium-version.txt"
           # Its client-connection timeout must exceed the script's explicit
-          # 660-second cold session deadline; app/audio commands still use 15s.
+          # 660-second cold session deadline; DOM/audio checks still use 15s.
           "$APPIUM_SERVER_BIN" --address 127.0.0.1 --port 4723 --keep-alive-timeout 900 --log "$logs/appium.log" > "$logs/appium-stdout.log" 2>&1 &
       - name: Check candidate music in mobile Safari
         env:

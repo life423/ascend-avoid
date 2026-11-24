@@ -26,11 +26,11 @@ const report = {
 let sessionPath, stage = 'native Safari session';
 await mkdir(output, { recursive: true });
 
-// Native hierarchy snapshots and web-context attachment can exceed 15 seconds.
+// Native hierarchy, attachment and tap bookkeeping can exceed 15 seconds.
 // DOM/audio polling retains its original timeout.
 async function command(path, method = 'GET', body, timeout) {
-    const nativeSetup = appiumMode && (path.endsWith('/context') || path.endsWith('/source'));
-    const deadline = timeout ?? (nativeSetup ? 60000 : 15000);
+    const nativeOperation = appiumMode && ['/context', '/source', '/click'].some(suffix => path.endsWith(suffix));
+    const deadline = timeout ?? (nativeOperation ? 60000 : 15000);
     const signal = AbortSignal.timeout(deadline);
     const payload = body === undefined ? undefined : JSON.stringify(body);
     const url = new URL(driver + path);
@@ -69,11 +69,20 @@ async function command(path, method = 'GET', body, timeout) {
 const execute = (fn, ...args) => command(sessionPath + '/execute/sync', 'POST', { script: 'return (' + fn + ').apply(null, arguments);', args });
 async function openSession(alwaysMatch) {
     const discoveryDeadline = Date.now() + 30000;
+    let recoveredWebview = false;
     for (;;) {
         // Cold simulator WDA builds can take four minutes before the listener
         // starts. Bound setup separately from every DOM/audio assertion below.
         try { return await command('/session', 'POST', { capabilities: { alwaysMatch } }, appiumMode ? 660000 : 90000); }
         catch (error) {
+            if (appiumMode && !recoveredWebview && String(error).includes('The remote debugger did not return any connected web applications')) {
+                recoveredWebview = true;
+                const page = new URL('/health', arena).href;
+                report.nativeAttachmentRecovery = { attempts: 2, reason: String(error), page };
+                console.warn('Reopening the native Safari page after cold Web Inspector discovery failed; no app assertions have run.');
+                await runFile('xcrun', ['simctl', 'openurl', deviceUDID, page], { timeout: 30000 });
+                continue;
+            }
             // CoreSimulator can be booted before Safari's native inspector host
             // is discoverable. Retry this attachment race, never app assertions.
             if (appiumMode || !simulator || !String(error).includes('Could not find any session hosts') || Date.now() >= discoveryDeadline) throw error;
@@ -237,6 +246,13 @@ function installProbe() {
 async function entry() {
     await wait('ordinary join screen', () => execute(() => !!document.querySelector('.join-dialog[open] .join-play')), Boolean);
     await execute(installProbe);
+    // The entry UI can appear while its ordinary spectator connection retries.
+    // Wait for that real connection before testing Play; never create a player
+    // or change game state through the driver.
+    await wait('connected ordinary arena preview', () => execute(() => ({
+        connected: window.game?.currentGameMode?.multiplayerManager?.isConnected() === true,
+        status: window.game?.currentGameMode?.status || null,
+    })), value => value.connected, 60000);
 }
 async function refreshApp() {
     const marker = String(Date.now());
