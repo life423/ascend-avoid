@@ -1,8 +1,15 @@
 # Standard living bullets
 
-October 29, 2026 release batch. The user approved the implementation and subsequently authorized committing, merging to main and deploying. GitHub's pull request and production workflow record the published revision. The rule uses one standard bullet size and an immediate transfer of captured growth above that size.
+## November 25 local tuning
 
-## Rule
+All captives fly as 50-unit cannonballs at 85% of the October launch speed.
+Capture transfers still use a 60-unit body as their threshold, and impact power
+uses the original 60-unit payload. A 100-gem captive still transfers 68 gems.
+The shorter reach and smaller collision circle apply to both player and bot
+shots. The player used as ammunition sees the name of the rival they crashed
+into if the impact knocks them out.
+
+## October 29 release rule
 
 Every player-fired captive becomes a **60-unit-diameter bullet**. Sixty is three newborn body diameters: readable as ammunition without inheriting a giant captive's enormous collision area. It is an initial tuning choice, not a proven optimum for human fun.
 

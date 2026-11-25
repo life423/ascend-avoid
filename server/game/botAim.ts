@@ -3,10 +3,25 @@ import type { GameState } from '../schema/GameState.js';
 import type { PlayerSchema } from '../schema/PlayerSchema.js';
 import { impactGems, shooterMassContribution, lethalPlayerImpact } from './cannon.js';
 import { blackHoleIsLethal, circleEntry } from './blackHole.js';
-import { viewShort } from './camera.js';
+import { constrainArenaView, viewShort, type ArenaView } from './camera.js';
 import { cannonInjuryOpportunity } from './projectileInjury.js';
 
 const LEADER_SHOT_WINDOW_MS = 3500;
+
+/** Bots have no device aspect ratio. Use the camera's size-based square view,
+ * contained in the same arena, rather than granting the full firing range as sight.
+ */
+export function botShotView(state: GameState, shooter: PlayerSchema): ArenaView {
+  const short = viewShort(shooter.width);
+  const focus = { x: shooter.x + shooter.width / 2, y: shooter.y + shooter.height / 2, width: shooter.width };
+  return constrainArenaView({ ...focus, width: short, height: short, scale: 1 }, state.worldWidth, state.worldHeight, focus);
+}
+
+/** Seeing any part of the physical body counts; a corner outside both axes does not. */
+export function botShotVisible(view: ArenaView, x: number, y: number, radius: number): boolean {
+  return Math.hypot(Math.max(0, Math.abs(x - view.x) - view.width / 2),
+    Math.max(0, Math.abs(y - view.y) - view.height / 2)) <= radius;
+}
 
 /** Opportunity selection changes the target, never the bot's observation delay, aim error or firing rules. */
 export function cannonTargetAppeal(gems: number, width: number, ammoWidth: number, speed: number, distance: number, shooterWidth?: number): number {
@@ -31,8 +46,7 @@ export function leaderShotOpportunity(state: GameState, shooter: PlayerSchema, n
   const x = shooter.x + shooter.width / 2, y = shooter.y + shooter.height / 2;
   const radius = leader.width / 2;
   const dx = leader.x + radius - x, dy = leader.y + radius - y;
-  const sight = viewShort(shooter.width) / 2;
-  if (Math.hypot(Math.max(0, Math.abs(dx) - sight), Math.max(0, Math.abs(dy) - sight)) > radius) return null;
+  if (!botShotVisible(botShotView(state, shooter), leader.x + radius, leader.y + radius, radius)) return null;
   const distance = Math.hypot(dx, dy);
   if (distance - shooter.width / 2 - radius > BOTS.FIRE_RANGE) return null;
   const opportunity = cannonInjuryOpportunity(shooter.width, leader.width, leader.gems, distance);

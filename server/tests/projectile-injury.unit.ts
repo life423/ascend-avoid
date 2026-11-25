@@ -4,7 +4,7 @@ import type { PlayerSchema } from '../schema/PlayerSchema.js';
 import { TurbineSchema } from '../schema/TurbineSchema.js';
 import { CANNON, EXHALE, INHALE, PROJECTILE_INJURY, TURBINE } from '../constants/gameConstants.js';
 import { creatureSize } from '../game/creatureSize.js';
-import { impactGems } from '../game/cannon.js';
+import { cannonImpactSpeed, impactGems } from '../game/cannon.js';
 import { airflowQuality } from '../game/airflow.js';
 import { projectileEarnsInjury, projectileInjuryPower, type ProjectileInjuryImpact } from '../game/projectileInjury.js';
 import { exhale, fireCaptive, injuryVulnerable, syncInjuryState, updateInhales } from '../systems/inhale.js';
@@ -64,7 +64,7 @@ function impact(f: Fixture, ms = 100): { lost: number; at: number; widthBefore: 
   s.time += ms; s.now = NOW + s.time; updateFlights(s, s.now, ms / 1000);
   assert(ammo.flightHit, 'fixture must produce a real swept impact');
   const lost = before - target.gems;
-  if (target.state === 'alive') assert.equal(lost, impactGems(before, speed, width, widthBefore, bonus, kind, kind === 'missile' ? shooter : 0), 'injury qualification does not change gem damage');
+  if (target.state === 'alive') assert.equal(lost, impactGems(before, kind === 'missile' ? cannonImpactSpeed(speed, shooter) : speed, kind === 'missile' ? CANNON.PAYLOAD_SIZE : width, widthBefore, bonus, kind, kind === 'missile' ? shooter : 0), 'injury qualification does not change gem damage');
   return { lost, at: s.time, widthBefore, speed };
 }
 

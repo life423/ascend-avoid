@@ -1,11 +1,105 @@
 # Ascend Avoid — current work and next-session handoff
 
-Updated November 24, 2026. Domain configuration and release record is below. The prior
+Updated November 25, 2026. Domain configuration and release record is below. The prior
 November 9 gameplay checkpoint identified release `eea3b81` (PR #93), including
 the relic comet, true-scale minimap body outlines, and the
 90-second black-hole lifetime with safe relocation retries. The complete earlier
 request inventory is preserved in [TODO_HISTORY.md](TODO_HISTORY.md).
 Historical sections below record earlier checkpoints.
+
+## November 25 off-screen bullet audit — counterplay remains unresolved
+
+The user authorized merging and publishing the smaller, slower cannonballs,
+the advance aim warning and the corrected captive knockout messages.
+The [production workflow](https://github.com/life423/ascend-avoid/actions/workflows/deploy.yml)
+records the released revision. The notes below describe the preceding local trials.
+
+**Mobile camera comparison complete locally.** The physical Pixel and both emulated
+orientations produced the same dodge outcomes at the current view, 10% wider and
+20% wider. Keep the current framing. The local client now warns for predicted hits
+from hidden shooters whose bullets just overlap the viewport at launch. The Pixel's 350-unit side shot also
+had less total flight time than the scripted response delay. [Measurements and
+phone screenshots](BOT_SHOOTING_AND_CAMERA.md#mobile-zoom-trial-on-the-pixel-10-pro-xl).
+
+The [portrait bullet comparison](BOT_SHOOTING_AND_CAMERA.md#portrait-warning-and-smaller-slower-cannonballs)
+tested the local warning and four tunings on the Pixel. Slowing launch by 15%
+helped at 850 units. Narrowing the bullet as well helped at 750. All four
+settings hit at 300 and 350. The current local candidate adopts the 50-unit
+diameter and 15% speed cut for everyone, preserves launch power for damage and
+adds the pre-fire cue. Short snap shots and human recognition remain open
+playtest questions. [Warning and flight study](INCOMING_WARNING_COUNTERPLAY.md).
+
+**Latest local follow-up:** public launch events now retain exact origins instead
+of reconstructing them from first-step age/velocity. All 27 repeated near-edge
+idle encounters warn before impact (116–598ms of paint-to-impact lead); idle
+controls still hit, so this is detection evidence, not solved dodge fairness.
+[After-fix data](playtests/incoming-origin-fix-2026-11-25.json) is separate from
+the earlier 177 encounters. Ordinary visible shots and clear misses remain quiet.
+
+The user also approved **bots may only plan cannon shots at visible targets**.
+The old global-range fallback is removed; lost sight immediately cancels aim,
+and reacquisition retains delays. The same check covers leader/hole targets and
+loaded-shot repositioning. The existing camera supplies a bounded, size-based
+square bot view. [The bot/camera audit](BOT_SHOOTING_AND_CAMERA.md) records exact
+behavior and 5,400 controlled attempts: 3,547 shots, zero unseen releases; miss
+rates vary with physical size, distance and movement. Full 63-suite unit command,
+types, production build and scoped lint pass, with no lint errors.
+The final 96 focused warning browser cases pass without retries across six
+desktop/emulated-mobile profiles; all 19 multiplayer scenarios pass. Actual
+phone, tablet and desktop warning frames were inspected. Hardware recognition,
+performance and adequate short-shot dodge time remain unverified.
+
+The earlier 576 isolated speed/range comparisons found that modest reductions
+help distant sidesteps. The current candidate also tests advance notice when a
+hidden shooter holds aim. The camera stays at its established zoom and firing
+remains immediate. Local preview at `http://127.0.0.1:3362/`.
+
+**Dodge timing now measured locally:** [the counterplay study](INCOMING_WARNING_COUNTERPLAY.md)
+records 177 real browser encounters plus shared-physics comparisons. All nine
+near-edge 250ms-wait attempts hit in each of desktop, phone portrait and phone
+landscape. Distant small/medium bodies escaped, while the 196.5-unit defender did
+not in the tested strong-shot cases. All nine zero-added-delay near-edge phone
+attempts also hit. This is not a human success-rate or physical-phone study.
+
+The timing study found a remaining first-receipt visibility defect: 32 of 63
+near-edge core trials had no cue before impact despite verified off-screen
+launches. Reconstructing launch origin from first-update age/velocity can classify
+the shot as an ordinary visible launch. Public launch coordinates/history should
+replace that inference, with predicted-contact gating retained. This defect is
+documented, **not fixed by the timing study itself**; the later exact-origin fix
+above supersedes that status. Do not mark counterplay complete from cue paint
+alone. No commit, push, merge or deployment was made.
+
+**Local follow-up implemented, not deployed:** the user accepted coral for now,
+requested a warning ahead of the bullet near the threatened creature, and
+explicitly rejected showing it for every shot. The cue now uses the existing
+coral danger color and only follows predicted off-screen threats through arrival.
+Ordinary visibly launched shots and clear misses stay quiet; spent flights clear
+the cue. Fan bodies use their actual drag in the shared bot/human predictor.
+No speed, damage, gust or windup tuning is included. The full build/types/unit
+command passes; all 84 focused browser cases have passing results across the
+final run and corrected-fixture checks, without retries. Actual phone/desktop
+warning frames were inspected. See the audit for exact evidence and remaining
+first-receipt fan, reaction-time and physical-device limits. Local preview is
+`http://127.0.0.1:3281/`. No commit, merge, push or deployment is made.
+
+The following findings describe the released baseline before this local fix.
+
+The user reports surprise hits everywhere, especially on mobile, and questions
+whether a warning alone is enough. [The current audit](MOBILE_PROJECTILE_AUDIT.md)
+confirms that the live bundle matches current source and includes the warning.
+All six older distant-shot regressions pass, but all twelve strict near-edge
+encounters with 250ms added reaction still hit. A small phone defender was hit
+about 171ms after its first cue even with zero added reaction; moving that body
+clear takes about 196ms before any human reaction allowance. The current 1.2s
+prediction horizon cannot supply time before a newly fired short-range shot.
+
+The audit also reproduces a first-visible-frame halo without an edge arrow and
+confirms damaging fan-launched bodies are excluded from the shared predictor.
+The separate Test app's staging build is older, but the user also sees the
+problem in current production. Evidence, limits and proposed isolated timing/
+speed comparisons are saved in the audit. Visibility changes are now local only;
+counterplay tuning and physical Pixel review remain open.
 
 ## November 24 iPhone and iPad now stay silent
 

@@ -6,11 +6,11 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 /** Conserved capture reward, selected by physical body width rather than a percentage of the score. */
 export function captureGrowthTransfer(gems: number, worldWidth?: number, worldHeight?: number): number {
   if (!Number.isFinite(gems) || gems <= 0) return 0;
-  if (creatureSize(gems, worldWidth, worldHeight) <= CANNON.BULLET_SIZE) return 0;
+  if (creatureSize(gems, worldWidth, worldHeight) <= CANNON.PAYLOAD_SIZE) return 0;
   let lo = 0, hi = gems;
   while (lo < hi) {
     const mid = Math.ceil((lo + hi) / 2);
-    if (creatureSize(mid, worldWidth, worldHeight) <= CANNON.BULLET_SIZE) lo = mid;
+    if (creatureSize(mid, worldWidth, worldHeight) <= CANNON.PAYLOAD_SIZE) lo = mid;
     else hi = mid - 1;
   }
   return gems - lo;
@@ -33,15 +33,23 @@ export function canCatch(captorWidth: number, preyWidth: number): boolean {
 }
 
 /**
- * How fast a captor this wide launches a captive this wide (units a second): LAUNCH_SPEED_MIN when just big
- * enough to catch it, LAUNCH_SPEED_PER_DOUBLING more every time it's twice as wide again relative to the
- * captive, up to LAUNCH_SPEED_MAX. Doubling the size advantage adds a fixed amount, so giants hit hard
- * without the speed ever running away.
+ * Reference speed for impact power. Each doubling of the size advantage adds a fixed
+ * amount up to LAUNCH_SPEED_MAX. Actual travel speed also uses FLIGHT_SPEED_SCALE.
  */
-export function launchSpeed(captorWidth: number, captiveWidth: number = CANNON.BULLET_SIZE): number {
+function launchPower(captorWidth: number, captiveWidth: number): number {
   const ratio = clamp(captorWidth / Math.max(1, captiveWidth), INHALE.EAT_RATIO, CANNON.LAUNCH_RATIO_CAP);
   const doublings = Math.log2(ratio / INHALE.EAT_RATIO);
   return clamp(CANNON.LAUNCH_SPEED_MIN + CANNON.LAUNCH_SPEED_PER_DOUBLING * doublings, CANNON.LAUNCH_SPEED_MIN, CANNON.LAUNCH_SPEED_MAX);
+}
+
+export function launchSpeed(captorWidth: number, captiveWidth: number = CANNON.PAYLOAD_SIZE): number {
+  return launchPower(captorWidth, captiveWidth) * CANNON.FLIGHT_SPEED_SCALE;
+}
+
+/** With exponential drag, speed lost is proportional to distance flown. Preserve the
+ * original power curve at that distance while giving the defender more travel time. */
+export function cannonImpactSpeed(flightSpeed: number, shooterWidth: number): number {
+  return flightSpeed + launchPower(shooterWidth, CANNON.PAYLOAD_SIZE) * (1 - CANNON.FLIGHT_SPEED_SCALE);
 }
 
 /** Width is proportional to the square root of mass, so keeping 10% width retains about 1% mass. */

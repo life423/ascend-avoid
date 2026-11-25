@@ -255,57 +255,51 @@ export function drawBreath(ctx: CanvasRenderingContext2D, x: number, y: number, 
     ctx.restore()
 }
 
-/**
- * A creature fired as a living cannonball: the same creature, shaped for it. The round body bristles with
- * spikes all the way round and spins as it flies, a buzzsaw streaking across the arena (the streaks behind
- * it show the way it's going); the outline runs hot, and its eyes are screwed shut, braced for the hit.
- * Still its own colour, so everyone can see who's been fired.
- */
-export function drawProjectile(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string, heading: number, timestamp: number): void {
+/** The shell outlines the collision circle. A translucent wake trails the braced creature. */
+export function drawProjectile(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string, heading: number, missile: boolean): void {
     const r = size / 2
-    const spin = heading + (timestamp / 1000) * Math.PI * 2 * 2.5
     ctx.save()
     ctx.translate(x, y)
-    ctx.rotate(spin)
-    // The body
-    ctx.beginPath()
-    ctx.arc(0, 0, r * 0.92, 0, Math.PI * 2)
-    ctx.fillStyle = color
-    ctx.fill()
-    // The outline runs hot: a soft glow under a crisp line
-    ctx.strokeStyle = 'rgba(255, 190, 110, 0.4)'
-    ctx.lineWidth = Math.max(4, size * 0.18)
-    ctx.stroke()
-    ctx.strokeStyle = 'rgba(255, 236, 205, 0.95)'
-    ctx.lineWidth = Math.max(1.5, size * 0.06)
-    ctx.stroke()
-    // Spikes all the way round
-    ctx.fillStyle = '#ffffff'
-    const spikes = 10
-    for (let i = 0; i < spikes; i++) {
-        const a = (i / spikes) * Math.PI * 2
-        const bx = Math.cos(a) * r * 0.9
-        const by = Math.sin(a) * r * 0.9
-        const length = r * 0.55
-        const half = r * 0.17
+    ctx.rotate(heading)
+    ctx.scale(r, r)
+    if (missile) {
+        const mist = ctx.createLinearGradient(-2.5, 0, -.55, 0)
+        mist.addColorStop(0, 'rgba(166,219,245,0)')
+        mist.addColorStop(.55, 'rgba(166,219,245,.24)')
+        mist.addColorStop(1, 'rgba(209,240,255,.54)')
+        ctx.fillStyle = mist
         ctx.beginPath()
-        ctx.moveTo(bx + Math.cos(a) * length, by + Math.sin(a) * length)
-        ctx.lineTo(bx - Math.sin(a) * half, by + Math.cos(a) * half)
-        ctx.lineTo(bx + Math.sin(a) * half, by - Math.cos(a) * half)
+        ctx.moveTo(-.45, -.85)
+        ctx.bezierCurveTo(-1.32, -.67, -1.82, -.30, -2.49, -.08)
+        ctx.bezierCurveTo(-1.70, -.06, -1.38, .59, -.45, .85)
         ctx.closePath()
         ctx.fill()
     }
-    // Eyes screwed shut, spinning with it: two short lines, angled like a wince
-    ctx.strokeStyle = '#10151f'
+    ctx.beginPath()
+    ctx.arc(0, 0, .95, 0, Math.PI * 2)
+    ctx.fillStyle = color
+    ctx.fill()
+    ctx.lineWidth = .1
+    ctx.strokeStyle = '#233447'
+    ctx.stroke()
+
+    // A narrow reflected light makes the leading edge readable against the dark arena.
     ctx.lineCap = 'round'
-    ctx.lineWidth = Math.max(1.5, size * 0.07)
+    ctx.strokeStyle = '#fff1d6'
+    ctx.lineWidth = .095
+    ctx.beginPath()
+    ctx.arc(0, 0, .90, -1.32, 1.18)
+    ctx.stroke()
     for (const side of [-1, 1]) {
-        const cx = r * 0.3
-        const cy = side * r * 0.36
+        // Braced eyes look downrange. A light sclera separates the pupil from dark shells.
         ctx.beginPath()
-        ctx.moveTo(cx - r * 0.16, cy - side * r * 0.07)
-        ctx.lineTo(cx + r * 0.16, cy + side * r * 0.07)
-        ctx.stroke()
+        ctx.ellipse(.28, side * .32, .28, .215, side * .22, 0, Math.PI * 2)
+        ctx.fillStyle = '#fff7e7'
+        ctx.fill()
+        ctx.beginPath()
+        ctx.ellipse(.40, side * .30, .102, .135, side * .16, 0, Math.PI * 2)
+        ctx.fillStyle = '#182334'
+        ctx.fill()
     }
     ctx.restore()
 }

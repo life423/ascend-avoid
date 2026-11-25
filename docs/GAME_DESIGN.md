@@ -1,5 +1,40 @@
 # Ascend Avoid
 
+## November 25 living cannonballs and incoming warnings
+
+The game uses a contextual coral cue beside the threatened creature
+for predicted off-screen player bullets, retaining quiet ordinary visible shots
+and clear misses. The user requests measuring whether it gives enough time to
+dodge, especially on mobile. [The counterplay study](INCOMING_WARNING_COUNTERPLAY.md)
+finds that near-edge attacks still fail normal sidestep checks and that some fast
+first receipts suppress the cue. Warning visibility is not finished counterplay.
+The exact-origin detection fix now uses public launch events and warns before
+impact in all 27 repeated near-edge idle controls. Bots' cannon planning now
+requires a size-based, arena-contained view; unseen targets cancel aim instead
+of using the old global-range fallback. A 5,400-encounter accuracy study confirms
+that miss rates depend strongly on size, distance and movement. Details and the
+camera/speed comparison are in [the bot/camera audit](BOT_SHOOTING_AND_CAMERA.md).
+The cannon fires a 50-unit living bullet at 85% of its former
+launch speed. Lifetime is still 2.6 seconds. Capture growth and impact power
+use the original 60-unit reference. The same rules apply to bots and people.
+The shooter fires immediately.
+
+Keep the current portrait camera. A player-fired bullet that clips the viewport
+at launch also qualifies for the coral warning when the shooter's entire body
+is out of view and the bullet is on course to hit the local player. A fully
+visible launch or a clear miss stays quiet. The same rendering rule applies
+whether a person or a bot fired the shot.
+
+The captive keeps its own shell color, has an ivory leading rim and trails a
+short pale-blue wake. Only the threatened defender sees the coral outline on a
+confirmed incoming shot. A hollow directional cue beside the defender shows
+when a hidden, loaded shooter holds an imminent line for 100 ms.
+
+On the captive's knockout screen, a player collision names the rival, for
+example “Crashed into Gizmo”. A collision with the arena wall says “Crashed
+into the arena wall”. “Burned up in flight” is reserved for a small captive
+that reaches the end of an unimpacted flight.
+
 ## November 24 iPhone and iPad audio removal
 
 The user explicitly removed both music and sound effects from iPhone and iPad.

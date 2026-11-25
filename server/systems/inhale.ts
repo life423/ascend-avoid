@@ -524,7 +524,7 @@ export function fireCaptive(state: GameState, eater: PlayerSchema, now: number):
   eater.gulping = "";
   if (canFire) {
     const angle = eater.facing;
-    const power = shooterMassContribution(eater.width, CANNON.BULLET_SIZE);
+    const power = shooterMassContribution(eater.width, CANNON.PAYLOAD_SIZE);
     const speed = launchSpeed(eater.width);
     // Set clear of the captor's body first, along the shot, so the flight never starts with the two overlapping
     captive.launch(now, Math.cos(angle) * speed, Math.sin(angle) * speed, eater.sessionId, CANNON.FLIGHT_MS);

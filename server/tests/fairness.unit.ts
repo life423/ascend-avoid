@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { GameState } from '../schema/GameState.js';
 import { BotBrain } from '../game/bots.js';
-import { BotCannonAim, cannonTargetAppeal } from '../game/botAim.js';
+import { BotCannonAim, botShotView, botShotVisible, cannonTargetAppeal } from '../game/botAim.js';
+import { BlackHoleSchema } from '../schema/BlackHoleSchema.js';
 import { creatureSize } from '../game/creatureSize.js';
 import { botMouth } from '../systems/bots.js';
 import { stealWeight, updateHolds, updateInhales } from '../systems/inhale.js';
@@ -82,7 +83,7 @@ function setup() {
   const {s,a,b}=setup();s.blackHoles.clear();
   const target=s.addPlayer('aim-target','Target',NOW);target.spawnProtected=false;
   a.isBot=true;s.brains.set(a.sessionId,new BotBrain());
-  target.placeAt(a.x,a.y-550);const initial=a.facing;let firedAt=0,turned=false;
+  target.placeAt(a.x,a.y-300);const initial=a.facing;let firedAt=0,turned=false;
   for(let ms=0;ms<4000;ms+=25){
     s.time=ms;s.now=NOW+ms;updateHolds(s,s.now,.025);botMouth(s,a,s.now);
     if(b.flying){firedAt=ms;break;}
@@ -92,21 +93,56 @@ function setup() {
   assert(firedAt>=BOTS.FIRE_MIN_CAPTURE_MS&&firedAt<4000);assert(turned,'the body visibly turns toward the target');
   assert(Math.abs(Math.atan2(b.flightVy,b.flightVx)+Math.PI/2)<.5,'shot follows the ordinary physically turned mouth');
 }
-for(const loss of ['none','dead','protected','range','disconnect'] as const){
+for(const loss of ['none','dead','protected','range','offscreen','disconnect'] as const){
   const {s,a,b}=setup();s.blackHoles.clear();
-  const target=loss==='none'?null:s.addPlayer('aim-target','Target',NOW);if(target){target.spawnProtected=false;target.placeAt(a.x+500,a.y);}
+  const target=loss==='none'?null:s.addPlayer('aim-target','Target',NOW);if(target){target.spawnProtected=false;target.placeAt(a.x+300,a.y);}
   a.isBot=true;s.brains.set(a.sessionId,new BotBrain());s.botFill=2;
   for(let ms=0;ms<=Math.ceil(b.captureHoldMs);ms+=25){
     s.time=ms;s.now=NOW+ms;
     if(ms===1200&&target){
       if(loss==='dead')target.knockOut(s.now);if(loss==='protected')target.spawnProtected=true;
       if(loss==='range')target.placeAt(4000,4000);if(loss==='disconnect')s.removePlayer(target.sessionId);
+      if(loss==='offscreen')target.placeAt(a.x+650,a.y);
     }
     updateHolds(s,s.now,.025);botMouth(s,a,s.now);a.updateMovement(4200,4200,s.now,.025);
     assert(!b.flying,`${loss}: no blind shot after losing a valid target`);
   }
   s.time=b.captureHoldMs;s.now=NOW+s.time;updateHolds(s,s.now);
   assert(!b.capturedBy&&b.state==='alive',`${loss}: normal hold timeout ejects instead of forcing a shot`);
+}
+{
+  const {s,a}=setup();a.placeAt(2100-a.width/2,2100-a.height/2);
+  const view=botShotView(s,a), right=view.x+view.width/2, bottom=view.y+view.height/2;
+  assert(botShotVisible(view,right+9,view.y,10),'a partially visible physical body can be targeted');
+  assert(!botShotVisible(view,right+11,view.y,10),'a wholly off-screen body cannot be targeted');
+  assert(!botShotVisible(view,right+8,bottom+8,10),'diagonal corners test the circle, not its bounding box');
+  for(const [x,y] of [[350,350],[3850,350],[350,3850],[3850,3850]]){
+    a.placeAt(x-a.width/2,y-a.height/2);const edge=botShotView(s,a);
+    assert(botShotVisible(edge,x,y,a.width/2),'the bounded view retains its own creature');
+    assert(edge.x-edge.width/2>=0&&edge.x+edge.width/2<=s.worldWidth);
+    assert(edge.y-edge.height/2>=0&&edge.y+edge.height/2<=s.worldHeight);
+  }
+}
+for(const kind of ['player','hole'] as const){
+  const {s,a,b}=setup();s.blackHoles.clear();a.placeAt(2100-a.width/2,2100-a.height/2);
+  const view=botShotView(s,a), edge=view.x+view.width/2;
+  const target=s.addPlayer('aim-target','Target',NOW);target.dropProtection();
+  a.isBot=true;const brain=new BotBrain();s.brains.set(a.sessionId,brain);
+  const hole=new BlackHoleSchema(edge+240,view.y);hole.phase='active';hole.at=20000;
+  if(kind==='hole'){s.blackHoles.push(hole);target.spawnProtected=true;}
+  const move=(visible:boolean)=>{
+    if(kind==='hole')hole.x=visible?view.x+260:edge+hole.radius+20;
+    else target.placeAt((visible?view.x+260:edge+target.width/2+20)-target.width/2,view.y-target.height/2);
+  };
+  move(false);botMouth(s,a,NOW);botMouth(s,a,NOW+BOTS.FIRE_READ_MS);
+  assert.equal(brain.cannonAim.targetId,null,`${kind}: firing range does not confer sight`);
+  move(true);botMouth(s,a,NOW+701);assert(brain.cannonAim.targetId,`${kind}: a visible target is acquired normally`);
+  move(false);botMouth(s,a,NOW+702);
+  assert.equal(brain.cannonAim.targetId,null,`${kind}: leaving the view cancels aim between observations`);
+  assert(!b.flying,`${kind}: target loss does not fire blindly`);
+  move(true);botMouth(s,a,NOW+952);
+  assert(brain.cannonAim.targetId,`${kind}: re-entry permits fresh observation`);
+  assert(!b.flying,`${kind}: re-entry retains reaction and aim-settling delays`);
 }
 {
   const { s, a } = setup();

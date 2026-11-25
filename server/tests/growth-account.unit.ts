@@ -119,13 +119,13 @@ function capture(gems: number, captorGems: number, bot = false, shrinkTo?: numbe
 }
 for (const bot of [false, true]) {
   const { s, owner, prey, before, hold } = capture(1000, 5000, bot);
-  assert.equal(prey.gems, 32); assert.equal(prey.width, CANNON.BULLET_SIZE, 'capture conversion uses the normal bullet backing, not a proportional damage debit');
+  assert.equal(prey.gems, 32); assert.equal(prey.width, CANNON.PAYLOAD_SIZE, 'capture conversion uses the normal bullet backing, not a proportional damage debit');
   assert.equal(owner.gems + prey.gems, before.ownerGems + before.preyGems);
   assert.equal(prey.captureRatio, before.ownerWidth / before.preyWidth); assert.equal(prey.captureHoldMs, hold); assert.equal(owner.gulpEndsAt, hold);
   const balances = [owner.gems, prey.gems]; s.time = hold - 1; updateHolds(s, NOW + s.time);
   assert.deepEqual([owner.gems, prey.gems], balances, 'holding does not transfer growth or gems again');
   s.time = hold; updateHolds(s, NOW + s.time);
-  assert(!prey.capturedBy && !prey.flying); assert.equal(prey.width, CANNON.BULLET_SIZE); assert.deepEqual([owner.gems, prey.gems], balances);
+  assert(!prey.capturedBy && !prey.flying); assert.equal(prey.width, CANNON.PAYLOAD_SIZE); assert.deepEqual([owner.gems, prey.gems], balances);
 }
 {
   // A tiny physical body can still carry real overflow wealth after a large proportional debit.

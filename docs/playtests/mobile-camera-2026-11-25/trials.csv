@@ -1,0 +1,133 @@
+profile,defenderWidth,approach,muzzleDistance,viewFactor,attempt,result,bodyCssPx,bulletCssPx,viewWidth,viewHeight,shooterPartVisible,warningMs,bulletFirstOverlapMs,bulletCenterVisibleMs,firstSignalMs,swipeMs,impactMs
+pixel,20,short axis,350,1,idle,hit,14.8,44.5,604.6,1180.8,false,69,70,70,69,,201
+pixel,20,short axis,350,1.1,idle,hit,13.5,40.4,665,1298.9,false,,38,107,107,,197
+pixel,20,short axis,350,1.2,idle,hit,12.4,37.1,725.5,1416.9,false,,67,67,67,,180
+pixel,20,short axis,350,1,sidestep,hit,14.8,44.5,604.6,1180.8,false,99,99,99,99,386,210
+pixel,20,short axis,350,1.1,sidestep,hit,13.5,40.4,665,1298.9,false,,49,49,49,338,159
+pixel,20,short axis,350,1.2,sidestep,hit,12.4,37.1,725.5,1416.9,false,,31,31,31,319,209
+pixel,20,short axis,850,1,idle,hit,14.8,44.5,604.6,1180.8,false,77,342,376,77,,451
+pixel,20,short axis,850,1.1,idle,hit,13.5,40.4,665,1298.9,false,29,279,328,29,,457
+pixel,20,short axis,850,1.2,idle,hit,12.4,37.1,725.5,1416.9,false,28,311,344,28,,486
+pixel,20,short axis,850,1,sidestep,hit,14.8,44.5,604.6,1180.8,false,47,363,363,47,336,504
+pixel,20,short axis,850,1.1,sidestep,hit,13.5,40.4,665,1298.9,false,48,347,347,48,321,504
+pixel,20,short axis,850,1.2,sidestep,hit,12.4,37.1,725.5,1416.9,false,31,311,327,31,317,493
+pixel,20,diagonal,1500,1,idle,hit,14.8,44.5,604.6,1180.8,false,61,701,729,61,,917
+pixel,20,diagonal,1500,1.1,idle,hit,13.5,40.4,665,1298.9,false,74,690,705,74,,925
+pixel,20,diagonal,1500,1.2,idle,hit,12.4,37.1,725.5,1416.9,false,46,596,596,46,,941
+pixel,20,diagonal,1500,1,sidestep,dodged,14.8,44.5,604.6,1180.8,false,55,620,687,55,343,
+pixel,20,diagonal,1500,1.1,sidestep,dodged,13.5,40.4,665,1298.9,false,49,581,613,49,321,
+pixel,20,diagonal,1500,1.2,sidestep,dodged,12.4,37.1,725.5,1416.9,false,28,560,593,28,318,
+pixel,20,long axis,650,1,idle,hit,14.8,44.5,604.6,1180.8,false,107,107,107,107,,379
+pixel,20,long axis,650,1.1,idle,hit,13.5,40.4,665,1298.9,false,,33,33,33,,358
+pixel,20,long axis,650,1.2,idle,hit,12.4,37.1,725.5,1416.9,false,,12,12,12,,304
+pixel,20,long axis,650,1.2,sidestep,hit,12.4,37.1,725.5,1416.9,false,,56,56,56,329,358
+pixel,20,long axis,650,1.1,sidestep,hit,13.5,40.4,665,1298.9,false,,48,115,115,386,380
+pixel,20,long axis,650,1,sidestep,hit,14.8,44.5,604.6,1180.8,false,62,62,62,62,333,343
+pixel,20,short axis,1020,1,idle,hit,14.8,44.5,604.6,1180.8,false,46,461,495,46,,604
+pixel,20,short axis,1020,1.1,idle,hit,13.5,40.4,665,1298.9,false,31,396,430,31,,551
+pixel,20,short axis,1020,1.2,idle,hit,12.4,37.1,725.5,1416.9,false,41,408,408,41,,597
+pixel,20,short axis,1020,1,sidestep,dodged,14.8,44.5,604.6,1180.8,false,67,449,486,67,338,
+pixel,20,short axis,1020,1.1,sidestep,dodged,13.5,40.4,665,1298.9,false,12,394,461,12,301,
+pixel,20,short axis,1020,1.2,sidestep,dodged,12.4,37.1,725.5,1416.9,false,62,428,444,62,350,
+pixel,20,short axis,1020,1.1,sidestep,dodged,13.5,40.4,665,1298.9,false,32,396,396,32,319,
+pixel,20,short axis,1020,1.2,sidestep,dodged,12.4,37.1,725.5,1416.9,false,98,446,464,98,386,
+pixel,20,short axis,1020,1,sidestep,dodged,14.8,44.5,604.6,1180.8,false,46,461,477,46,334,
+pixel,20,short axis,1020,1.2,sidestep,dodged,12.4,37.1,725.5,1416.9,false,28,411,411,28,317,
+pixel,20,short axis,1020,1,sidestep,dodged,14.8,44.5,604.6,1180.8,false,48,464,496,48,336,
+pixel,20,short axis,1020,1.1,sidestep,dodged,13.5,40.4,665,1298.9,false,48,397,397,48,337,
+portrait,20,short axis,350,1,idle,hit,14.2,42.6,579.8,1180.8,false,54,54,54,54,,201
+portrait,20,short axis,350,1.1,idle,hit,12.9,38.8,637.8,1298.9,false,82,82,82,82,,202
+portrait,20,short axis,350,1.2,idle,hit,11.8,35.5,695.8,1416.9,false,,46,46,46,,176
+portrait,20,short axis,350,1,sidestep,hit,14.2,42.6,579.8,1180.8,false,60,60,93,60,359,165
+portrait,20,short axis,350,1.1,sidestep,hit,12.9,38.8,637.8,1298.9,false,4,4,4,4,303,130
+portrait,20,short axis,350,1.2,sidestep,hit,11.8,35.5,695.8,1416.9,false,,14,14,14,313,91
+portrait,20,long axis,650,1,idle,hit,14.2,42.6,579.8,1180.8,false,15,15,15,15,,290
+portrait,20,long axis,650,1.1,idle,hit,12.9,38.8,637.8,1298.9,false,,21,87,87,,342
+portrait,20,long axis,650,1.2,idle,hit,11.8,35.5,695.8,1416.9,false,,3,3,3,,342
+portrait,20,long axis,650,1,sidestep,hit,14.2,42.6,579.8,1180.8,false,15,15,15,15,313,318
+portrait,20,long axis,650,1.1,sidestep,hit,12.9,38.8,637.8,1298.9,false,,10,10,10,292,346
+portrait,20,long axis,650,1.2,sidestep,hit,11.8,35.5,695.8,1416.9,false,,16,16,16,315,262
+portrait,20,short axis,850,1,idle,hit,14.2,42.6,579.8,1180.8,false,12,345,362,12,,448
+portrait,20,short axis,850,1.1,idle,hit,12.9,38.8,637.8,1298.9,false,10,325,359,10,,453
+portrait,20,short axis,850,1.2,idle,hit,11.8,35.5,695.8,1416.9,false,14,297,313,14,,463
+portrait,20,short axis,850,1,sidestep,hit,14.2,42.6,579.8,1180.8,false,14,329,363,14,328,450
+portrait,20,short axis,850,1.1,sidestep,hit,12.9,38.8,637.8,1298.9,false,10,327,342,10,309,439
+portrait,20,short axis,850,1.2,sidestep,hit,11.8,35.5,695.8,1416.9,false,97,348,380,97,397,518
+portrait,20,diagonal,1500,1,idle,hit,14.2,42.6,579.8,1180.8,false,14,646,679,14,,886
+portrait,20,diagonal,1500,1.1,idle,hit,12.9,38.8,637.8,1298.9,false,4,638,638,4,,907
+portrait,20,diagonal,1500,1.2,idle,hit,11.8,35.5,695.8,1416.9,false,20,652,652,20,,924
+portrait,20,diagonal,1500,1,sidestep,dodged,14.2,42.6,579.8,1180.8,false,15,596,631,15,312,
+portrait,20,diagonal,1500,1.1,sidestep,dodged,12.9,38.8,637.8,1298.9,false,7,591,624,7,306,
+portrait,20,diagonal,1500,1.2,sidestep,dodged,11.8,35.5,695.8,1416.9,false,14,515,563,14,314,
+portrait,101.5,short axis,460,1,idle,hit,52.4,31,797.8,1624.6,false,61,61,61,61,,189
+portrait,101.5,short axis,460,1.1,idle,hit,47.7,28.2,877.6,1787.1,false,,32,32,32,,209
+portrait,101.5,short axis,460,1.2,idle,hit,43.7,25.8,957.3,1949.5,false,,26,26,26,,207
+portrait,101.5,short axis,460,1,sidestep,hit,52.4,31,797.8,1624.6,false,31,32,32,31,330,160
+portrait,101.5,short axis,460,1.1,sidestep,hit,47.7,28.2,877.6,1787.1,false,,27,95,95,393,214
+portrait,101.5,short axis,460,1.2,sidestep,hit,43.7,25.8,957.3,1949.5,false,,16,16,16,314,158
+portrait,101.5,long axis,870,1,idle,hit,52.4,31,797.8,1624.6,false,15,15,15,15,,444
+portrait,101.5,long axis,870,1.1,idle,hit,47.7,28.2,877.6,1787.1,false,,11,11,11,,420
+portrait,101.5,long axis,870,1.2,idle,hit,43.7,25.8,957.3,1949.5,true,,25,25,25,,479
+portrait,101.5,long axis,870,1,sidestep,hit,52.4,31,797.8,1624.6,false,13,13,13,13,328,420
+portrait,101.5,long axis,870,1.1,sidestep,hit,47.7,28.2,877.6,1787.1,false,,11,11,11,294,422
+portrait,101.5,long axis,870,1.2,sidestep,hit,43.7,25.8,957.3,1949.5,true,,5,5,5,304,433
+portrait,101.5,short axis,850,1,idle,hit,52.4,31,797.7,1624.5,false,13,230,279,13,,413
+portrait,101.5,short axis,850,1.1,idle,hit,47.7,28.2,877.6,1787.1,false,47,297,297,47,,454
+portrait,101.5,short axis,850,1.2,idle,hit,43.7,25.8,957.3,1949.5,false,14,196,196,14,,467
+portrait,101.5,short axis,850,1,sidestep,hit,52.4,31,797.8,1624.6,false,13,196,196,13,312,420
+portrait,101.5,short axis,850,1.1,sidestep,hit,47.7,28.2,877.6,1787.1,false,25,207,207,25,323,427
+portrait,101.5,short axis,850,1.2,sidestep,hit,43.7,25.8,957.3,1949.5,false,49,182,182,49,347,427
+portrait,101.5,diagonal,1500,1,idle,hit,52.4,31,797.8,1624.6,false,15,565,565,15,,880
+portrait,101.5,diagonal,1500,1.1,idle,hit,47.7,28.2,877.6,1787.1,false,53,518,568,53,,889
+portrait,101.5,diagonal,1500,1.2,idle,hit,43.7,25.8,957.3,1949.5,false,8,442,442,8,,807
+portrait,101.5,diagonal,1500,1,sidestep,dodged,52.4,31,797.8,1624.6,false,95,562,594,95,377,
+portrait,101.5,diagonal,1500,1.1,sidestep,dodged,47.7,28.2,877.6,1787.1,false,15,514,530,15,299,
+portrait,101.5,diagonal,1500,1.2,sidestep,dodged,43.7,25.8,957.4,1949.6,false,76,527,527,76,374,
+landscape,20,short axis,350,1,idle,hit,13.2,39.5,1275.3,626.2,false,41,41,41,41,,186
+landscape,20,short axis,350,1.1,idle,hit,12,35.9,1402.8,688.9,false,,44,94,94,,186
+landscape,20,short axis,350,1.2,idle,hit,11,32.9,1530.3,751.5,false,,10,10,10,,167
+landscape,20,short axis,350,1,sidestep,hit,13.2,39.5,1275.3,626.2,false,31,31,31,31,315,115
+landscape,20,short axis,350,1.1,sidestep,hit,12,35.9,1402.8,688.9,false,,12,12,12,311,126
+landscape,20,short axis,350,1.2,sidestep,hit,11,32.9,1530.3,751.5,false,,11,11,11,293,111
+landscape,20,long axis,650,1,idle,hit,13.2,39.5,1275.3,626.2,false,,25,91,91,,362
+landscape,20,long axis,650,1.1,idle,hit,12,35.9,1402.8,688.9,false,,14,14,14,,299
+landscape,20,long axis,650,1.2,idle,hit,11,32.9,1530.3,751.5,true,,4,4,4,,266
+landscape,20,long axis,650,1,sidestep,hit,13.2,39.5,1275.3,626.2,false,,11,11,11,310,315
+landscape,20,long axis,650,1.1,sidestep,hit,12,35.9,1402.8,688.9,false,,15,15,15,297,281
+landscape,20,long axis,650,1.2,sidestep,hit,11,32.9,1530.3,751.5,true,,2,2,2,301,339
+landscape,20,short axis,850,1,idle,hit,13.2,39.5,1275.3,626.2,false,7,257,257,7,,437
+landscape,20,short axis,850,1.1,idle,hit,12,35.9,1402.8,688.9,false,3,302,319,3,,438
+landscape,20,short axis,850,1.2,idle,hit,11,32.9,1530.3,751.5,false,15,296,313,15,,454
+landscape,20,short axis,850,1,sidestep,hit,13.2,39.5,1275.3,626.2,false,12,312,346,12,311,437
+landscape,20,short axis,850,1.1,sidestep,hit,12,35.9,1402.8,688.9,false,8,225,275,8,307,417
+landscape,20,short axis,850,1.2,sidestep,hit,11,32.9,1530.3,751.5,false,87,270,320,87,387,492
+landscape,20,diagonal,1500,1,idle,hit,13.2,39.5,1275.3,626.2,false,9,642,693,9,,916
+landscape,20,diagonal,1500,1.1,idle,hit,12,35.9,1402.8,688.9,false,64,647,679,64,,956
+landscape,20,diagonal,1500,1.2,idle,hit,11,32.9,1530.3,751.5,false,12,578,612,12,,886
+landscape,20,diagonal,1500,1,sidestep,dodged,13.2,39.5,1275.3,626.2,false,14,730,748,14,313,
+landscape,20,diagonal,1500,1.1,sidestep,dodged,12,35.9,1402.8,688.9,false,93,742,759,93,374,
+landscape,20,diagonal,1500,1.2,sidestep,dodged,11,32.9,1530.3,751.5,false,13,631,697,13,296,
+landscape,101.5,short axis,460,1,idle,hit,48.5,28.7,1754.6,861.6,false,,12,62,62,,191
+landscape,101.5,short axis,460,1.1,idle,hit,44.1,26.1,1930.1,947.8,false,,15,15,15,,186
+landscape,101.5,short axis,460,1.2,idle,hit,40.4,23.9,2105.5,1033.9,false,,2,2,2,,141
+landscape,101.5,short axis,460,1,sidestep,hit,48.5,28.7,1754.6,861.6,false,,13,13,13,297,154
+landscape,101.5,short axis,460,1.1,sidestep,hit,44.1,26.1,1930.1,947.8,false,,10,10,10,309,159
+landscape,101.5,short axis,460,1.2,sidestep,hit,40.4,23.9,2105.5,1033.9,false,,2,2,2,285,198
+landscape,101.5,long axis,870,1,idle,hit,48.5,28.7,1754.6,861.6,false,,14,14,14,,437
+landscape,101.5,long axis,870,1.1,idle,hit,44.1,26.1,1930,947.8,true,,11,11,11,,465
+landscape,101.5,long axis,870,1.2,idle,hit,40.4,23.9,2105.5,1033.9,true,,14,14,14,,418
+landscape,101.5,long axis,870,1,sidestep,hit,48.5,28.7,1754.6,861.6,false,,10,10,10,309,417
+landscape,101.5,long axis,870,1.1,sidestep,hit,44.1,26.1,1930.1,947.8,true,,24,24,24,307,482
+landscape,101.5,long axis,870,1.2,sidestep,hit,40.4,23.9,2105.5,1033.9,true,,15,15,15,313,427
+landscape,101.5,short axis,850,1,idle,hit,48.5,28.7,1754.6,861.6,false,3,219,237,3,,402
+landscape,101.5,short axis,850,1.1,idle,hit,44.1,26.1,1930.1,947.8,false,29,212,247,29,,407
+landscape,101.5,short axis,850,1.2,idle,hit,40.4,23.9,2105.5,1033.9,false,31,165,214,31,,429
+landscape,101.5,short axis,850,1,sidestep,hit,48.5,28.7,1754.6,861.6,false,7,240,256,7,306,420
+landscape,101.5,short axis,850,1.1,sidestep,hit,44.1,26.1,1930.1,947.8,false,11,178,211,11,310,386
+landscape,101.5,short axis,850,1.2,sidestep,hit,40.4,23.9,2105.5,1033.9,false,9,175,192,9,308,395
+landscape,101.5,diagonal,1500,1,idle,hit,48.5,28.7,1754.5,861.6,false,10,559,559,10,,869
+landscape,101.5,diagonal,1500,1.1,idle,hit,44.1,26.1,1930.1,947.8,false,6,473,522,6,,872
+landscape,101.5,diagonal,1500,1.2,idle,hit,40.4,23.9,2105.5,1033.9,false,15,432,481,15,,859
+landscape,101.5,diagonal,1500,1,sidestep,dodged,48.5,28.7,1754.6,861.6,false,11,561,594,11,294,
+landscape,101.5,diagonal,1500,1.1,sidestep,dodged,44.1,26.1,1930.1,947.8,false,16,467,467,16,315,
+landscape,101.5,diagonal,1500,1.2,sidestep,dodged,40.4,23.9,2105.5,1033.9,false,14,447,531,14,297,

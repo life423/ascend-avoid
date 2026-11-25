@@ -175,6 +175,10 @@ for (const targetGems of [12, 40, 100]) for (const protectedTarget of [false, tr
   assert(events.some(e => e.type === 'impact' && e.data.projectileId === captive.sessionId));
   assert(events.some(e => e.type === 'credit' && e.data.byId === captor.sessionId && e.data.how === 'cannon'));
   assert.equal(captive.state, 'dead', 'a missile impact is a knockout when no growth remains');
+  const spent = events.filter(e => e.type === 'credit' && e.data.targetId === captive.sessionId);
+  assert.equal(spent.length, 1);
+  assert.equal(spent[0].data.surface, 'player');
+  assert.equal(spent[0].data.struckName, target.name);
 }
 for (const facing of [0, Math.PI / 3, -Math.PI / 2]) {
   const { state, captor, captive } = capture();

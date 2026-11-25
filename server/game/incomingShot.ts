@@ -1,5 +1,5 @@
 export interface MovingCircle { x: number; y: number; vx: number; vy: number; radius: number }
-import { CANNON } from '../constants/gameConstants.js';
+import { CANNON, TURBINE } from '../constants/gameConstants.js';
 export const PLAYER_SHOT_WARNING_S = 1.2;
 export interface IncomingShot extends MovingCircle { id: string; visible: boolean; remaining?: number; arming?: number; drag?: number }
 export interface IncomingImpact { id: string; seconds: number; x: number; y: number }
@@ -45,20 +45,21 @@ export function firstImpact(target: MovingCircle, shots: readonly IncomingShot[]
   return nearest;
 }
 
-interface PlayerMissile {
+interface PlayerFlight {
   x: number; y: number; width: number; height: number; state: string;
   flying: boolean; flightKind: string; flightHit: boolean; flightAgeMs: number;
   flightVx: number; flightVy: number; flightRemainingMs: number; launchedBy: string;
 }
 /** Public flight telemetry, shared by human warnings and delayed bot decisions. */
-export function playerMissileShot(p: PlayerMissile, id: string, targetId: string, lead = 0, visible = false): IncomingShot | null {
-  if (id === targetId || p.state !== 'alive' || !p.flying || p.flightKind !== 'missile' || p.flightHit
+export function playerFlightShot(p: PlayerFlight, id: string, targetId: string, lead = 0, visible = false): IncomingShot | null {
+  if (id === targetId || p.state !== 'alive' || !p.flying || !['missile', 'turbine'].includes(p.flightKind) || p.flightHit
     || p.launchedBy === targetId && p.flightAgeMs + lead * 1000 < CANNON.LAUNCHER_GRACE_MS) return null;
-  const keep = Math.exp(-CANNON.DRAG * lead), travel = (1 - keep) / CANNON.DRAG;
+  const drag = p.flightKind === 'turbine' ? TURBINE.PLAYER_DRAG : CANNON.DRAG;
+  const keep = Math.exp(-drag * lead), travel = (1 - keep) / drag;
   const vx = p.flightVx * keep, vy = p.flightVy * keep;
   const speed = Math.hypot(vx, vy);
-  const remaining = Math.min(p.flightRemainingMs / 1000 - lead, Math.log(speed / CANNON.STOP_SPEED) / CANNON.DRAG);
+  const remaining = Math.min(p.flightRemainingMs / 1000 - lead, Math.log(speed / CANNON.STOP_SPEED) / drag);
   if (!(remaining > 0)) return null;
   return { id: `player:${id}`, x: p.x + p.width / 2 + p.flightVx * travel, y: p.y + p.height / 2 + p.flightVy * travel,
-    vx, vy, radius: p.width / 2, visible, remaining, drag: CANNON.DRAG };
+    vx, vy, radius: p.width / 2, visible, remaining, drag };
 }

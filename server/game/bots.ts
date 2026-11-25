@@ -1,6 +1,6 @@
 import { BOTS, INHALE, PLAYER_STATE, TURBINE } from "../constants/gameConstants.js";
 import { hop, moveSpeed } from "./movement.js";
-import { BotCannonAim } from './botAim.js';
+import { BotCannonAim, botShotView, botShotVisible } from './botAim.js';
 import { BotGustDefense } from './botDefense.js';
 import { BotWeaponPlan } from './botWeapons.js';
 import { BotProjectileDodge } from './botProjectiles.js';
@@ -109,6 +109,8 @@ export class BotBrain {
 
   /** The hop to make now, if any */
   think(bot: PlayerSchema, world: GameState, now: number): Direction | null {
+    // Read the same sustained public cue between steering decisions.
+    this.projectileDodge.observeAim(bot, world, now);
     if (now < this.nextThinkAt) return null;
     this.nextThinkAt = now + this.thinkMs * (0.8 + Math.random() * 0.4);
     if (bot.state !== PLAYER_STATE.ALIVE) return null;
@@ -204,7 +206,8 @@ export class BotBrain {
     if (world.jackpotOn && (bot.gems < 20 || this.reckless)) return { x: world.jackpotX, y: world.jackpotY };
     if (bot.gulping) {
       const target = world.players.get(this.cannonAim.targetId ?? '');
-      if (target && target.state === PLAYER_STATE.ALIVE && !target.capturedBy && !target.flying && !target.spawnProtected) {
+      if (target && target.state === PLAYER_STATE.ALIVE && !target.capturedBy && !target.flying && !target.spawnProtected
+        && botShotVisible(botShotView(world, bot), target.x + target.width / 2, target.y + target.height / 2, target.width / 2)) {
         const dx = target.x + target.width / 2 - cx, dy = target.y + target.height / 2 - cy, d = Math.hypot(dx, dy);
         const standOff = Math.max((bot.width + target.width) / 2 + 80, BOTS.FIRE_RANGE * .55);
         // Hold a usable firing distance instead of chasing unrelated ammunition with a full mouth.

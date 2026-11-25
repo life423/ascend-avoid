@@ -24,7 +24,7 @@ export function drawCannon(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
     })
     ctx.setLineDash([])
     state.players.forEach((player, id) => {
-        if (!player.flying) {
+        if (!player.flying || player.flightKind === 'missile') {
             lastSeen.delete(id)
             return
         }

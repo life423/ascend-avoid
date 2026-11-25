@@ -124,8 +124,9 @@ for (const phase of ['warning', 'active', 'closing', 'dormant']) {
 }
 for (const phase of ['warning', 'active', 'closing', 'dormant']) {
   const { s, h } = setup(); h.phase = phase; h.at = s.time + 1;
+  h.x = h.y = 2100; // Keep this lifecycle fixture visible in the bot's bounded camera.
   const bot = s.addPlayer('bot', 'Bot', NOW), ammo = s.addPlayer('ammo', 'Ammo', NOW);
-  bot.isBot = true; bot.setGems(3000, 4200, 4200); bot.placeAt(h.x - 700 - bot.width / 2, h.y - bot.height / 2);
+  bot.isBot = true; bot.setGems(3000, 4200, 4200); bot.placeAt(h.x - 600 - bot.width / 2, h.y - bot.height / 2);
   bot.dropProtection(); ammo.dropProtection(); bot.gulping = ammo.sessionId; ammo.capturedBy = bot.sessionId; bot.captureStartedAt = NOW;
   const brain = new BotBrain(); s.brains.set(bot.sessionId, brain);
   botMouth(s, bot, NOW); botMouth(s, bot, NOW + BOTS.FIRE_READ_MS + 1);

@@ -2,12 +2,21 @@ import assert from 'node:assert/strict';
 import { GameState } from '../schema/GameState.js';
 import { PlayerSchema } from '../schema/PlayerSchema.js';
 import { CANNON } from '../constants/gameConstants.js';
-import { captureGrowthTransfer, launchSpeed } from '../game/cannon.js';
+import { cannonImpactSpeed, captureGrowthTransfer, launchSpeed } from '../game/cannon.js';
 import { creatureSize } from '../game/creatureSize.js';
 import { clearCapture, fireCaptive, updateHolds, updateInhales } from '../systems/inhale.js';
 import { updateFlights } from '../systems/flights.js';
 
 const NOW=100000;
+for (const shooter of [40, 78, 120, 310, 480, 1470]) {
+  const baseline = Math.min(2000, 1250 + 300 * Math.log2(Math.min(8, Math.max(1.3, shooter / 60)) / 1.3));
+  assert(Math.abs(launchSpeed(shooter) - baseline * .85) < 1e-8);
+  for (const travel of [0, 350, 850, 1500]) {
+    const current = launchSpeed(shooter) - CANNON.DRAG * travel;
+    assert(Math.abs(cannonImpactSpeed(current, shooter) - (baseline - CANNON.DRAG * travel)) < 1e-8,
+      'launch and damage calibration agree at the same travel distance');
+  }
+}
 function captured(gems: number, bot = false) {
   const s=new GameState(0);s.botFill=s.fieldGemTarget=0;s.surgesOn=s.weaponsOn=false;s.setTurbines('off');s.blackHoles.clear();s.update(0,NOW);
   const owner=s.addPlayer('owner','Owner',NOW),ammo=s.addPlayer('ammo','Ammo',NOW);
@@ -28,10 +37,10 @@ for(const bot of [false,true])for(const gems of [0,4,12,32,33,100,1000]) {
   if(sourceWidth<=60)assert.equal(owner.stolenTotal,0,'small captives do not grant an immediate capture reward');
   else assert.equal(owner.stolenTotal,gems-kept,'all excess growth transfers immediately');
   updateHolds(s,NOW+100);assert.equal(ammo.gems,kept);assert.equal(owner.gulpEndsAt,deadline);
-  assert(fireCaptive(s,owner,NOW+101));assert.equal(ammo.width,60);assert.equal(ammo.height,60);
+  assert(fireCaptive(s,owner,NOW+101));assert.equal(ammo.width,50);assert.equal(ammo.height,50);
   assert.equal(ammo.gems,kept,'the standard shell grants no free growth');
   assert.equal(Math.hypot(ammo.flightVx,ammo.flightVy),launchSpeed(owner.width),'same shooter launches the same projectile regardless of captured size');
-  const centre={x:ammo.x+30,y:ammo.y+30};ammo.land();
+  const centre={x:ammo.x+ammo.width/2,y:ammo.y+ammo.height/2};ammo.land();
   assert.equal(ammo.width,creatureSize(kept));assert.equal(ammo.x+ammo.width/2,centre.x);assert.equal(ammo.y+ammo.height/2,centre.y);
 }
 for(const reason of ['timeout','disconnect','death'] as const) {
@@ -67,12 +76,12 @@ for(const gems of [0,1000])for(const hits of [false,true]) {
   const {s,owner,ammo}=captured(gems);assert(fireCaptive(s,owner,NOW));
   const target=s.addPlayer('target','Target',NOW);target.setGems(100,4200,4200);target.dropProtection();
   const radius=(target.width+CANNON.BULLET_SIZE)/2;
-  target.placeAt(ammo.x+30+350-target.width/2,ammo.y+30+radius+(hits?-1:1)-target.height/2);
+  target.placeAt(ammo.x+ammo.width/2+350-target.width/2,ammo.y+ammo.height/2+radius+(hits?-1:1)-target.height/2);
   updateFlights(s,NOW+300,.3);assert.equal(ammo.flightHit,hits,'the swept collision radius is identical for newborn and previously large ammunition');
 }
 {
   const p=new PlayerSchema('flight',0);p.setGems(12,1600,1600);p.placeAt(700,700);p.launch(NOW,1250,0,'owner',2600);
-  p.setGems(20,1600,1600);assert.equal(p.width,60,'growth changes do not resize a flying bullet');p.land();assert.equal(p.width,creatureSize(20,1600,1600));
+  p.setGems(20,1600,1600);assert.equal(p.width,50,'growth changes do not resize a flying bullet');p.land();assert.equal(p.width,creatureSize(20,1600,1600));
   p.setGems(1000,1600,1600);const natural=p.width;p.launch(NOW,900,0,'',2600,.35,'turbine');assert.equal(p.width,natural,'turbine transportation keeps its natural body');
   p.land();assert.equal(p.width,natural);
 }

@@ -394,7 +394,9 @@ export const CANNON = {
   HOLD_MIN_MS: 5000,
   HOLD_DOUBLE_MS: 8000,
   HOLD_MAX_MS: 12000,
-  BULLET_SIZE: 60, // fixed player-missile diameter; capture transfers only growth above this body size
+  BULLET_SIZE: 50, // visible and swept diameter in flight
+  PAYLOAD_SIZE: 60, // retained growth and combat power of a standard captive
+  FLIGHT_SPEED_SCALE: 0.85, // flight tuning is independent of capture and knockout tuning
   BREAK_PUSH: 70, // ...pushed this far clear
   ESCAPE_SAFE_MS: 4000, // a full four seconds to move clear after escape/release; damage still applies
   LAND_SAFE_MS: 4000, // same four-second suction/capture recovery after a surviving flight
@@ -404,7 +406,7 @@ export const CANNON = {
   LAUNCH_SPEED_MAX: 2000, // ...up to this (reached at LAUNCH_RATIO_CAP times wider)
   LAUNCH_RATIO_CAP: 8,
   LAUNCH_CLEARANCE: 4, // the captive is set this far clear of the captor's body before it flies, so the two never start the flight overlapping
-  DRAG: 0.35, // a captive's flight loses this share of its speed a second (with FLIGHT_MS, it carries about 2,100 units at the minimum speed and 3,400 at the maximum, in the open: most of the arena)...
+  DRAG: 0.35, // exponential drag; a standard shot carries about 1,800–2,900 units over its lifetime
   STOP_SPEED: 140, // ...and ends below this speed...
   FLIGHT_MS: 2600, // ...or after this long (a turbine's throw has its own: TURBINE.PLAYER_DRAG, PLAYER_FLIGHT_MS)
   STEER: 520, // turbine throws only: lateral steering acceleration; player-fired missiles ignore input

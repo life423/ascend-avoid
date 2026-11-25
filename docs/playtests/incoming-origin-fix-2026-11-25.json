@@ -1,0 +1,1464 @@
+{
+  "date": "2026-11-25",
+  "localOnly": true,
+  "method": "After exact launch-origin fix: 27 real browser near-edge idle controls at three widths, three approaches and desktop/phone/landscape. All warned before actual impact. Idle controls are meant to be hit; this verifies detection, not sufficient dodge time. No new speed/camera tuning. Earlier 177-encounter baseline remains separate.",
+  "bundle": "/assets/main-BjzjyP0K.js",
+  "sha256": {
+    "src/render/incoming.ts": "058b5cef7262c0a99a76275b6275d4e3eed12d1da60aab5cd65af05c80f99a14",
+    "server/game/launchVisibility.ts": "02b8ba8f7703264f5ed8b775c02eda35b0128421caddfaaad6ed31e653fd4e95",
+    "src/core/GameModes.ts": "3ccab4a151a4ff45f399f5d1bf218cb07d65ec5b3dc0d86d96d107430e42bc3d"
+  },
+  "encounters": 27,
+  "warnedBeforeImpact": 27,
+  "rows": [
+    {
+      "profile": "desktop",
+      "viewport": [
+        1280,
+        720
+      ],
+      "defenderWidth": 20,
+      "direction": "above",
+      "launch": {
+        "x": 2100,
+        "y": 1685.7626229603648,
+        "radius": 30,
+        "outside": true,
+        "distance": 414.23737703963525
+      },
+      "view": {
+        "x": 2100,
+        "y": 2100,
+        "width": 1259.510673918703,
+        "height": 708.4747540792706,
+        "scale": 1.0162676875278465
+      },
+      "firstWarning": {
+        "at": 1553.9000000059605,
+        "alpha": 1,
+        "x": 640,
+        "y": 305.8373107910156,
+        "distance": 353.97924364672735,
+        "speed": 1826.00404220933,
+        "flightAgeMs": 15,
+        "trafficLead": 0.02220046999709416,
+        "playerX": 640,
+        "playerY": 360,
+        "sourceX": 640,
+        "sourceY": 0.26233262628426246,
+        "sourceOnScreen": false
+      },
+      "warningLeadMs": 173.8999999910593,
+      "hit": true,
+      "impact": {
+        "byId": "yZZzMu8uU",
+        "projectileId": "p5bjWt99_",
+        "targetId": "H34i6uXyg",
+        "x": 2100,
+        "y": 2100,
+        "size": 20,
+        "gems": 0,
+        "out": true,
+        "kind": "cannon",
+        "angle": 4.71238898038469,
+        "at": 1727.7999999970198
+      }
+    },
+    {
+      "profile": "landscape",
+      "viewport": [
+        839,
+        412
+      ],
+      "defenderWidth": 20,
+      "direction": "above",
+      "launch": {
+        "x": 2100,
+        "y": 1726.8862469456574,
+        "radius": 30,
+        "outside": true,
+        "distance": 373.1137530543426
+      },
+      "view": {
+        "x": 2100,
+        "y": 2100,
+        "width": 1275.2545573426871,
+        "height": 626.2275061086854,
+        "scale": 0.6579078625276722
+      },
+      "firstWarning": {
+        "at": 1353.2000000029802,
+        "alpha": 1,
+        "x": 419.5,
+        "y": 155.42092895507812,
+        "distance": 287.7110631867906,
+        "speed": 1817.078507820257,
+        "flightAgeMs": 30,
+        "trafficLead": 0.036415247245860885,
+        "playerX": 419.5,
+        "playerY": 206,
+        "sourceX": 419.5,
+        "sourceY": 16.71262939321454,
+        "sourceOnScreen": false
+      },
+      "warningLeadMs": 169.59999999403954,
+      "hit": true,
+      "impact": {
+        "byId": "JikCoOeyq",
+        "projectileId": "5oUHotc2N",
+        "targetId": "t65gRsf8c",
+        "x": 2100,
+        "y": 2100,
+        "size": 20,
+        "gems": 0,
+        "out": true,
+        "kind": "cannon",
+        "angle": 4.71238898038469,
+        "at": 1522.7999999970198
+      }
+    },
+    {
+      "profile": "phone",
+      "viewport": [
+        412,
+        839
+      ],
+      "defenderWidth": 20,
+      "direction": "above",
+      "launch": {
+        "x": 2100,
+        "y": 1449.604371600608,
+        "radius": 30,
+        "outside": true,
+        "distance": 650.3956283993921
+      },
+      "view": {
+        "x": 2100,
+        "y": 2100,
+        "width": 579.840283433968,
+        "height": 1180.7912567987844,
+        "scale": 0.710540491529886
+      },
+      "firstWarning": {
+        "at": 1415.7000000029802,
+        "alpha": 1,
+        "x": 206,
+        "y": 368.39459228515625,
+        "distance": 500.38895976413323,
+        "speed": 1794.326954410459,
+        "flightAgeMs": 79,
+        "trafficLead": 0.02360293720205391,
+        "playerX": 206,
+        "playerY": 419.5,
+        "sourceX": 206,
+        "sourceY": 63.95338257306446,
+        "sourceOnScreen": true
+      },
+      "warningLeadMs": 270.09999999403954,
+      "hit": true,
+      "impact": {
+        "byId": "lpyHUg6Tb",
+        "projectileId": "RS0C5P5mY",
+        "targetId": "fhwPCAMcp",
+        "x": 2100,
+        "y": 2100,
+        "size": 20,
+        "gems": 0,
+        "out": true,
+        "kind": "cannon",
+        "angle": 4.71238898038469,
+        "at": 1685.7999999970198
+      }
+    },
+    {
+      "profile": "desktop",
+      "viewport": [
+        1280,
+        720
+      ],
+      "defenderWidth": 20,
+      "direction": "diagonal",
+      "launch": {
+        "x": 1703.3362160891718,
+        "y": 1703.3362160891718,
+        "radius": 30,
+        "outside": true,
+        "distance": 560.967302908924
+      },
+      "view": {
+        "x": 2100,
+        "y": 2100,
+        "width": 1259.510673918703,
+        "height": 708.4747540792706,
+        "scale": 1.0162676875278465
+      },
+      "firstWarning": {
+        "at": 1499.2999999970198,
+        "alpha": 1,
+        "x": 601.7012329101562,
+        "y": 321.7012023925781,
+        "distance": 488.1058705838153,
+        "speed": 1821.535808127715,
+        "flightAgeMs": 13,
+        "trafficLead": 0.036568740667746624,
+        "playerX": 640,
+        "playerY": 360,
+        "sourceX": 289.24235096812464,
+        "sourceY": 9.24235096812464,
+        "sourceOnScreen": false
+      },
+      "warningLeadMs": 260.5,
+      "hit": true,
+      "impact": {
+        "byId": "nqikQNn2Y",
+        "projectileId": "OEs_9qpUp",
+        "targetId": "YbjT1G346",
+        "x": 2100,
+        "y": 2100,
+        "size": 20,
+        "gems": 0,
+        "out": true,
+        "kind": "cannon",
+        "angle": 3.9269908169872414,
+        "at": 1759.7999999970198
+      }
+    },
+    {
+      "profile": "landscape",
+      "viewport": [
+        839,
+        412
+      ],
+      "defenderWidth": 20,
+      "direction": "diagonal",
+      "launch": {
+        "x": 1744.4598400744646,
+        "y": 1744.4598400744646,
+        "radius": 30,
+        "outside": true,
+        "distance": 502.80971613499133
+      },
+      "view": {
+        "x": 2100,
+        "y": 2100,
+        "width": 1275.2545573426871,
+        "height": 626.2275061086854,
+        "scale": 0.6579078625276722
+      },
+      "firstWarning": {
+        "at": 1420.7000000029802,
+        "alpha": 1,
+        "x": 383.7351989746094,
+        "y": 170.2351837158203,
+        "distance": 420.9839252721175,
+        "speed": 1818.3509080638605,
+        "flightAgeMs": 33,
+        "trafficLead": 0.04633886535306988,
+        "playerX": 419.5,
+        "playerY": 206,
+        "sourceX": 223.65360041553697,
+        "sourceY": 10.153600415536973,
+        "sourceOnScreen": false
+      },
+      "warningLeadMs": 212.19999998807907,
+      "hit": true,
+      "impact": {
+        "byId": "nqD9WywFY",
+        "projectileId": "X5u6P4FIU",
+        "targetId": "Q4k2oV-wD",
+        "x": 2100,
+        "y": 2100,
+        "size": 20,
+        "gems": 0,
+        "out": true,
+        "kind": "cannon",
+        "angle": 3.9269908169872414,
+        "at": 1632.8999999910593
+      }
+    },
+    {
+      "profile": "phone",
+      "viewport": [
+        412,
+        839
+      ],
+      "defenderWidth": 20,
+      "direction": "diagonal",
+      "launch": {
+        "x": 1767.6534514118232,
+        "y": 1767.6534514118232,
+        "radius": 30,
+        "outside": true,
+        "distance": 470.0089964212885
+      },
+      "view": {
+        "x": 2100,
+        "y": 2100,
+        "width": 579.840283433968,
+        "height": 1180.7912567987844,
+        "scale": 0.710540491529886
+      },
+      "firstWarning": {
+        "at": 1416,
+        "alpha": 1,
+        "x": 169.86302185058594,
+        "y": 383.3630065917969,
+        "distance": 386.3941249773646,
+        "speed": 1817.7145966070384,
+        "flightAgeMs": 38,
+        "trafficLead": 0.029593521104995715,
+        "playerX": 206,
+        "playerY": 419.5,
+        "sourceX": 11.864772626720196,
+        "sourceY": 225.3647726267202,
+        "sourceOnScreen": false
+      },
+      "warningLeadMs": 211.30000001192093,
+      "hit": true,
+      "impact": {
+        "byId": "g3P6BeXkg",
+        "projectileId": "pQ4SLBEQ9",
+        "targetId": "rPyA8Lpd_",
+        "x": 2100,
+        "y": 2100,
+        "size": 20,
+        "gems": 0,
+        "out": true,
+        "kind": "cannon",
+        "angle": 3.9269908169872414,
+        "at": 1627.300000011921
+      }
+    },
+    {
+      "profile": "desktop",
+      "viewport": [
+        1280,
+        720
+      ],
+      "defenderWidth": 20,
+      "direction": "left",
+      "launch": {
+        "x": 1410.2446630406484,
+        "y": 2100,
+        "radius": 30,
+        "outside": true,
+        "distance": 689.7553369593516
+      },
+      "view": {
+        "x": 2100,
+        "y": 2100,
+        "width": 1259.510673918703,
+        "height": 708.4747540792706,
+        "scale": 1.0162676875278465
+      },
+      "firstWarning": {
+        "at": 1613.7000000029802,
+        "alpha": 1,
+        "x": 585.8373413085938,
+        "y": 360,
+        "distance": 609.7198894995302,
+        "speed": 1818.9874422686705,
+        "flightAgeMs": 34,
+        "trafficLead": 0.020116118847094185,
+        "playerX": 640,
+        "playerY": 360,
+        "sourceX": 20.361377858578408,
+        "sourceY": 360,
+        "sourceOnScreen": false
+      },
+      "warningLeadMs": 342.40000000596046,
+      "hit": true,
+      "impact": {
+        "byId": "TPNzeAXMC",
+        "projectileId": "t4T4FTbvN",
+        "targetId": "BgA26zcG4",
+        "x": 2100,
+        "y": 2100,
+        "size": 20,
+        "gems": 0,
+        "out": true,
+        "kind": "cannon",
+        "angle": 3.141592653589793,
+        "at": 1956.1000000089407
+      }
+    },
+    {
+      "profile": "landscape",
+      "viewport": [
+        839,
+        412
+      ],
+      "defenderWidth": 20,
+      "direction": "left",
+      "launch": {
+        "x": 1402.3727213286566,
+        "y": 2100,
+        "radius": 30,
+        "outside": true,
+        "distance": 697.6272786713434
+      },
+      "view": {
+        "x": 2100,
+        "y": 2100,
+        "width": 1275.2545573426871,
+        "height": 626.2275061086854,
+        "scale": 0.6579078625276722
+      },
+      "firstWarning": {
+        "at": 1515.2000000029802,
+        "alpha": 1,
+        "x": 368.9209289550781,
+        "y": 206,
+        "distance": 621.1763091435078,
+        "speed": 1820.2611792341854,
+        "flightAgeMs": 32,
+        "trafficLead": 0.05120916166822826,
+        "playerX": 419.5,
+        "playerY": 206,
+        "sourceX": 10.82322219856627,
+        "sourceY": 206,
+        "sourceOnScreen": false
+      },
+      "warningLeadMs": 331,
+      "hit": true,
+      "impact": {
+        "byId": "nnpGbtPpf",
+        "projectileId": "YCGLD6eZP",
+        "targetId": "gIM9r6TOb",
+        "x": 2100,
+        "y": 2100,
+        "size": 20,
+        "gems": 0,
+        "out": true,
+        "kind": "cannon",
+        "angle": 3.141592653589793,
+        "at": 1846.2000000029802
+      }
+    },
+    {
+      "profile": "phone",
+      "viewport": [
+        412,
+        839
+      ],
+      "defenderWidth": 20,
+      "direction": "left",
+      "launch": {
+        "x": 1750.079858283016,
+        "y": 2100,
+        "radius": 30,
+        "outside": true,
+        "distance": 349.92014171698406
+      },
+      "view": {
+        "x": 2100,
+        "y": 2100,
+        "width": 579.840283433968,
+        "height": 1180.7912567987844,
+        "scale": 0.710540491529886
+      },
+      "firstWarning": {
+        "at": 1484.2999999970198,
+        "alpha": 1,
+        "x": 154.89459228515625,
+        "y": 419.5,
+        "distance": 230.09636670157852,
+        "speed": 1805.0350247073145,
+        "flightAgeMs": 35,
+        "trafficLead": 0.042062729797474274,
+        "playerX": 206,
+        "playerY": 419.5,
+        "sourceX": 42.507214504619526,
+        "sourceY": 419.5,
+        "sourceOnScreen": true
+      },
+      "warningLeadMs": 116.1000000089407,
+      "hit": true,
+      "impact": {
+        "byId": "3tR8qJpCX",
+        "projectileId": "jp6M8p4zb",
+        "targetId": "ZvWUQba8m",
+        "x": 2100,
+        "y": 2100,
+        "size": 20,
+        "gems": 0,
+        "out": true,
+        "kind": "cannon",
+        "angle": 3.141592653589793,
+        "at": 1600.4000000059605
+      }
+    },
+    {
+      "profile": "desktop",
+      "viewport": [
+        1280,
+        720
+      ],
+      "defenderWidth": 101.5,
+      "direction": "above",
+      "launch": {
+        "x": 2100,
+        "y": 1552.6225255311306,
+        "radius": 30,
+        "outside": true,
+        "distance": 547.3774744688694
+      },
+      "view": {
+        "x": 2100,
+        "y": 2100,
+        "width": 1732.8898116053379,
+        "height": 974.7505190280026,
+        "scale": 0.7386505428260417
+      },
+      "firstWarning": {
+        "at": 4887.20000000298,
+        "alpha": 1,
+        "x": 640,
+        "y": 278.5148010253906,
+        "distance": 462.00708503035435,
+        "speed": 1816.3912646492588,
+        "flightAgeMs": 31,
+        "trafficLead": 0.032763296976294626,
+        "playerX": 640,
+        "playerY": 360,
+        "sourceX": 640,
+        "sourceY": 18.750264155579544,
+        "sourceOnScreen": false
+      },
+      "warningLeadMs": 193.29999999701977,
+      "hit": true,
+      "impact": {
+        "byId": "_RrRtA-hR",
+        "projectileId": "wsdwS6_39",
+        "targetId": "d99j4ST_e",
+        "x": 2100,
+        "y": 2100,
+        "size": 101.5,
+        "gems": 100,
+        "out": true,
+        "kind": "cannon",
+        "angle": 4.71238898038469,
+        "at": 5080.5
+      }
+    },
+    {
+      "profile": "landscape",
+      "viewport": [
+        839,
+        412
+      ],
+      "defenderWidth": 101.5,
+      "direction": "above",
+      "launch": {
+        "x": 2100,
+        "y": 1609.20057569387,
+        "radius": 30,
+        "outside": true,
+        "distance": 490.79942430613005
+      },
+      "view": {
+        "x": 2100,
+        "y": 2100,
+        "width": 1754.5665873438984,
+        "height": 861.59884861226,
+        "scale": 0.4781807690012476
+      },
+      "firstWarning": {
+        "at": 4753.899999991059,
+        "alpha": 1,
+        "x": 419.5,
+        "y": 137.73333740234375,
+        "distance": 321.45150069179294,
+        "speed": 1786.7560462940837,
+        "flightAgeMs": 90,
+        "trafficLead": 0.01557692557567676,
+        "playerX": 419.5,
+        "playerY": 206,
+        "sourceX": 419.5,
+        "sourceY": 52.29443536706892,
+        "sourceOnScreen": true
+      },
+      "warningLeadMs": 131.20000000298023,
+      "hit": true,
+      "impact": {
+        "byId": "t3njgYzqm",
+        "projectileId": "GvW4orGDR",
+        "targetId": "U0q6e4bkl",
+        "x": 2100,
+        "y": 2100,
+        "size": 101.5,
+        "gems": 100,
+        "out": true,
+        "kind": "cannon",
+        "angle": 4.71238898038469,
+        "at": 4885.0999999940395
+      }
+    },
+    {
+      "profile": "phone",
+      "viewport": [
+        412,
+        839
+      ],
+      "defenderWidth": 101.5,
+      "direction": "above",
+      "launch": {
+        "x": 2100,
+        "y": 1227.7042309129467,
+        "radius": 30,
+        "outside": true,
+        "distance": 872.2957690870533
+      },
+      "view": {
+        "x": 2100,
+        "y": 2100,
+        "width": 797.7731987219688,
+        "height": 1624.5915381741065,
+        "scale": 0.5164375046191364
+      },
+      "firstWarning": {
+        "at": 4844.100000008941,
+        "alpha": 1,
+        "x": 206,
+        "y": 349.2919921875,
+        "distance": 702.9482316734311,
+        "speed": 1786.7560462940837,
+        "flightAgeMs": 90,
+        "trafficLead": 0.018969132872029622,
+        "playerX": 206,
+        "playerY": 419.5,
+        "sourceX": 206,
+        "sourceY": 56.48779133237002,
+        "sourceOnScreen": true
+      },
+      "warningLeadMs": 370.20000000298023,
+      "hit": true,
+      "impact": {
+        "byId": "0WaWGIPgw",
+        "projectileId": "xGTxFhGqG",
+        "targetId": "OwPkiOf-9",
+        "x": 2100,
+        "y": 2100,
+        "size": 101.5,
+        "gems": 100,
+        "out": true,
+        "kind": "cannon",
+        "angle": 4.71238898038469,
+        "at": 5214.300000011921
+      }
+    },
+    {
+      "profile": "desktop",
+      "viewport": [
+        1280,
+        720
+      ],
+      "defenderWidth": 101.5,
+      "direction": "diagonal",
+      "launch": {
+        "x": 1570.188058967144,
+        "y": 1570.188058967144,
+        "radius": 30,
+        "outside": true,
+        "distance": 749.2672325158796
+      },
+      "view": {
+        "x": 2100,
+        "y": 2100,
+        "width": 1732.912532658679,
+        "height": 974.7632996205069,
+        "scale": 0.7386408580219517
+      },
+      "firstWarning": {
+        "at": 4905.4000000059605,
+        "alpha": 1,
+        "x": 582.38134765625,
+        "y": 302.38134765625,
+        "distance": 676.4333573500129,
+        "speed": 1820.8468791466735,
+        "flightAgeMs": 13,
+        "trafficLead": 0.04807785149691561,
+        "playerX": 640,
+        "playerY": 360,
+        "sourceX": 286.709216065996,
+        "sourceY": 6.7092160659959745,
+        "sourceOnScreen": false
+      },
+      "warningLeadMs": 324.20000000298023,
+      "hit": true,
+      "impact": {
+        "byId": "jH6x82Kwd",
+        "projectileId": "PHN2raF4I",
+        "targetId": "SjeOgnM2y",
+        "x": 2100,
+        "y": 2100,
+        "size": 101.5,
+        "gems": 100,
+        "out": true,
+        "kind": "cannon",
+        "angle": 3.9269908169872414,
+        "at": 5229.600000008941
+      }
+    },
+    {
+      "profile": "landscape",
+      "viewport": [
+        839,
+        412
+      ],
+      "defenderWidth": 101.5,
+      "direction": "diagonal",
+      "launch": {
+        "x": 1626.7760543134152,
+        "y": 1626.7760543134154,
+        "radius": 30,
+        "outside": true,
+        "distance": 669.239722029677
+      },
+      "view": {
+        "x": 2100,
+        "y": 2100,
+        "width": 1754.5589080879308,
+        "height": 861.5950776307836,
+        "scale": 0.4781828618762756
+      },
+      "firstWarning": {
+        "at": 4750.29999999702,
+        "alpha": 1,
+        "x": 371.2279052734375,
+        "y": 157.72792053222656,
+        "distance": 585.6564748381707,
+        "speed": 1817.027112858832,
+        "flightAgeMs": 22,
+        "trafficLead": 0.04837030713870965,
+        "playerX": 419.5,
+        "playerY": 206,
+        "sourceX": 221.48020465353363,
+        "sourceY": 7.980204653533689,
+        "sourceOnScreen": false
+      },
+      "warningLeadMs": 272.40000000596046,
+      "hit": true,
+      "impact": {
+        "byId": "jl5LsCDw1",
+        "projectileId": "HhQoUK7Eu",
+        "targetId": "PSjfznhs5",
+        "x": 2100,
+        "y": 2100,
+        "size": 101.5,
+        "gems": 100,
+        "out": true,
+        "kind": "cannon",
+        "angle": 3.9269908169872414,
+        "at": 5022.70000000298
+      }
+    },
+    {
+      "profile": "phone",
+      "viewport": [
+        412,
+        839
+      ],
+      "defenderWidth": 101.5,
+      "direction": "diagonal",
+      "launch": {
+        "x": 1658.6869831145557,
+        "y": 1658.6869831145557,
+        "radius": 30,
+        "outside": true,
+        "distance": 624.1108537311821
+      },
+      "view": {
+        "x": 2100,
+        "y": 2100,
+        "width": 797.7696165556006,
+        "height": 1624.5842434226913,
+        "scale": 0.5164398235405668
+      },
+      "firstWarning": {
+        "at": 4782.79999999702,
+        "alpha": 1,
+        "x": 156.35528564453125,
+        "y": 369.85528564453125,
+        "distance": 483.00895780862095,
+        "speed": 1796.7899488585927,
+        "flightAgeMs": 66,
+        "trafficLead": 0.013645845388670712,
+        "playerX": 206,
+        "playerY": 419.5,
+        "sourceX": 29.62304610456536,
+        "sourceY": 243.1230461045654,
+        "sourceOnScreen": false
+      },
+      "warningLeadMs": 271,
+      "hit": true,
+      "impact": {
+        "byId": "pgZ3OzzV1",
+        "projectileId": "0WFvfXXcS",
+        "targetId": "5JzVTSTB5",
+        "x": 2100,
+        "y": 2100,
+        "size": 101.5,
+        "gems": 100,
+        "out": true,
+        "kind": "cannon",
+        "angle": 3.9269908169872414,
+        "at": 5053.79999999702
+      }
+    },
+    {
+      "profile": "desktop",
+      "viewport": [
+        1280,
+        720
+      ],
+      "defenderWidth": 101.5,
+      "direction": "left",
+      "launch": {
+        "x": 1173.5473642746183,
+        "y": 2100,
+        "radius": 30,
+        "outside": true,
+        "distance": 926.4526357253817
+      },
+      "view": {
+        "x": 2100,
+        "y": 2100,
+        "width": 1732.8976870004244,
+        "height": 974.7549489377386,
+        "scale": 0.7386471859256897
+      },
+      "firstWarning": {
+        "at": 4961.899999991059,
+        "alpha": 1,
+        "x": 558.51513671875,
+        "y": 360,
+        "distance": 781.8068771396954,
+        "speed": 1795.5326360052309,
+        "flightAgeMs": 67,
+        "trafficLead": 0.03007693413271365,
+        "playerX": 640,
+        "playerY": 360,
+        "sourceX": 62.54369764295927,
+        "sourceY": 360,
+        "sourceOnScreen": false
+      },
+      "warningLeadMs": 426.1000000089407,
+      "hit": true,
+      "impact": {
+        "byId": "kquImKCUx",
+        "projectileId": "EEKXp4Y3B",
+        "targetId": "IbuPp3m3P",
+        "x": 2100,
+        "y": 2100,
+        "size": 101.5,
+        "gems": 100,
+        "out": true,
+        "kind": "cannon",
+        "angle": 3.141592653589793,
+        "at": 5388
+      }
+    },
+    {
+      "profile": "landscape",
+      "viewport": [
+        839,
+        412
+      ],
+      "defenderWidth": 101.5,
+      "direction": "left",
+      "launch": {
+        "x": 1162.7205459560348,
+        "y": 2100,
+        "radius": 30,
+        "outside": true,
+        "distance": 937.2794540439652
+      },
+      "view": {
+        "x": 2100,
+        "y": 2100,
+        "width": 1754.5589080879304,
+        "height": 861.5950776307835,
+        "scale": 0.47818286187627573
+      },
+      "firstWarning": {
+        "at": 4762.79999999702,
+        "alpha": 1,
+        "x": 351.2328796386719,
+        "y": 206,
+        "distance": 878.8489774105383,
+        "speed": 1825.9523947945881,
+        "flightAgeMs": 0,
+        "trafficLead": 0.05390838869258456,
+        "playerX": 419.5,
+        "playerY": 206,
+        "sourceX": -0.7390051527430614,
+        "sourceY": 206,
+        "sourceOnScreen": false
+      },
+      "warningLeadMs": 466.09999999403954,
+      "hit": true,
+      "impact": {
+        "byId": "7FthV_iKG",
+        "projectileId": "LFa3-y4Ps",
+        "targetId": "fZzI2_aXh",
+        "x": 2100,
+        "y": 2100,
+        "size": 101.5,
+        "gems": 100,
+        "out": true,
+        "kind": "cannon",
+        "angle": 3.141592653589793,
+        "at": 5228.899999991059
+      }
+    },
+    {
+      "profile": "phone",
+      "viewport": [
+        412,
+        839
+      ],
+      "defenderWidth": 101.5,
+      "direction": "left",
+      "launch": {
+        "x": 1641.1116544206025,
+        "y": 2100,
+        "radius": 30,
+        "outside": true,
+        "distance": 458.88834557939754
+      },
+      "view": {
+        "x": 2100,
+        "y": 2100,
+        "width": 797.7732200285031,
+        "height": 1624.5915815628985,
+        "scale": 0.5164374908263778
+      },
+      "firstWarning": {
+        "at": 4925.5,
+        "alpha": 1,
+        "x": 135.7919921875,
+        "y": 419.5,
+        "distance": 287.7836781678943,
+        "speed": 1786.1307911039219,
+        "flightAgeMs": 95,
+        "trafficLead": 0.017049000006020065,
+        "playerX": 206,
+        "playerY": 419.5,
+        "sourceX": 57.38452033441499,
+        "sourceY": 419.5,
+        "sourceOnScreen": true
+      },
+      "warningLeadMs": 128,
+      "hit": true,
+      "impact": {
+        "byId": "PF4dv3TL5",
+        "projectileId": "a6H6zyZTI",
+        "targetId": "CFqNi2AB6",
+        "x": 2100,
+        "y": 2100,
+        "size": 101.5,
+        "gems": 100,
+        "out": true,
+        "kind": "cannon",
+        "angle": 3.141592653589793,
+        "at": 5053.5
+      }
+    },
+    {
+      "profile": "desktop",
+      "viewport": [
+        1280,
+        720
+      ],
+      "defenderWidth": 196.5,
+      "direction": "above",
+      "launch": {
+        "x": 2100,
+        "y": 1437.8008034049785,
+        "radius": 30,
+        "outside": true,
+        "distance": 662.1991965950215
+      },
+      "view": {
+        "x": 2100,
+        "y": 2100,
+        "width": 2141.1450197415043,
+        "height": 1204.394073604596,
+        "scale": 0.5978109787979385
+      },
+      "firstWarning": {
+        "at": 5109.199999988079,
+        "alpha": 1,
+        "x": 640,
+        "y": 257.2663879394531,
+        "distance": 596.5568739935654,
+        "speed": 1823.397850040446,
+        "flightAgeMs": 20,
+        "trafficLead": 0.04590377072006598,
+        "playerX": 640,
+        "playerY": 360,
+        "sourceX": 640,
+        "sourceY": 3.379793682269053,
+        "sourceOnScreen": false
+      },
+      "warningLeadMs": 272.20000000298023,
+      "hit": true,
+      "impact": {
+        "byId": "19x4a8Qm9",
+        "projectileId": "u9Upu01Xh",
+        "targetId": "ZxiFIcBhB",
+        "x": 2100,
+        "y": 2100,
+        "size": 196.5,
+        "gems": 400,
+        "out": true,
+        "kind": "cannon",
+        "angle": 4.71238898038469,
+        "at": 5381.399999991059
+      }
+    },
+    {
+      "profile": "landscape",
+      "viewport": [
+        839,
+        412
+      ],
+      "defenderWidth": 196.5,
+      "direction": "above",
+      "launch": {
+        "x": 2100,
+        "y": 1507.7104598392514,
+        "radius": 30,
+        "outside": true,
+        "distance": 592.2895401607486
+      },
+      "view": {
+        "x": 2100,
+        "y": 2100,
+        "width": 2167.9171077420783,
+        "height": 1064.5790803214973,
+        "scale": 0.38700741693663393
+      },
+      "firstWarning": {
+        "at": 5077.0999999940395,
+        "alpha": 1,
+        "x": 419.5,
+        "y": 123.97744750976562,
+        "distance": 508.70629296924244,
+        "speed": 1817.0271128588317,
+        "flightAgeMs": 30,
+        "trafficLead": 0.04175918462754933,
+        "playerX": 419.5,
+        "playerY": 206,
+        "sourceX": 419.5,
+        "sourceY": 9.131691633318695,
+        "sourceOnScreen": false
+      },
+      "warningLeadMs": 201,
+      "hit": true,
+      "impact": {
+        "byId": "PWLVFMt5U",
+        "projectileId": "ubeXg0b56",
+        "targetId": "76GNn8zBP",
+        "x": 2100,
+        "y": 2100,
+        "size": 196.5,
+        "gems": 400,
+        "out": true,
+        "kind": "cannon",
+        "angle": 4.71238898038469,
+        "at": 5278.0999999940395
+      }
+    },
+    {
+      "profile": "phone",
+      "viewport": [
+        412,
+        839
+      ],
+      "defenderWidth": 196.5,
+      "direction": "above",
+      "launch": {
+        "x": 2100,
+        "y": 1036.3382719961696,
+        "radius": 30,
+        "outside": true,
+        "distance": 1063.6617280038304
+      },
+      "view": {
+        "x": 2100,
+        "y": 2100,
+        "width": 985.7141418238299,
+        "height": 2007.3159344422168,
+        "scale": 0.4179710755064261
+      },
+      "firstWarning": {
+        "at": 4984.399999991059,
+        "alpha": 1,
+        "x": 206,
+        "y": 334.435546875,
+        "distance": 894.3138043894933,
+        "speed": 1786.7560462940837,
+        "flightAgeMs": 87,
+        "trafficLead": 0.016361470898804183,
+        "playerX": 206,
+        "playerY": 419.5,
+        "sourceX": 206,
+        "sourceY": 45.71356821388878,
+        "sourceOnScreen": true
+      },
+      "warningLeadMs": 489.29999999701977,
+      "hit": true,
+      "impact": {
+        "byId": "U3tuibQM8",
+        "projectileId": "-9BJgKjUw",
+        "targetId": "QA-gspnTn",
+        "x": 2100,
+        "y": 2100,
+        "size": 196.5,
+        "gems": 400,
+        "out": true,
+        "kind": "cannon",
+        "angle": 4.71238898038469,
+        "at": 5473.699999988079
+      }
+    },
+    {
+      "profile": "desktop",
+      "viewport": [
+        1280,
+        720
+      ],
+      "defenderWidth": 196.5,
+      "direction": "diagonal",
+      "launch": {
+        "x": 1455.3788127961418,
+        "y": 1455.3788127961423,
+        "radius": 30,
+        "outside": true,
+        "distance": 911.6320255367417
+      },
+      "view": {
+        "x": 2100,
+        "y": 2100,
+        "width": 2141.136996738365,
+        "height": 1204.38956066533,
+        "scale": 0.5978132188411338
+      },
+      "firstWarning": {
+        "at": 5226.20000000298,
+        "alpha": 1,
+        "x": 567.3568115234375,
+        "y": 287.3568115234375,
+        "distance": 763.4474848222796,
+        "speed": 1794.2762029628966,
+        "flightAgeMs": 76,
+        "trafficLead": 0.021246026105916173,
+        "playerX": 640,
+        "playerY": 360,
+        "sourceX": 317.289028857195,
+        "sourceY": 37.28902885719526,
+        "sourceOnScreen": false
+      },
+      "warningLeadMs": 409.70000000298023,
+      "hit": true,
+      "impact": {
+        "byId": "YbvuEVBih",
+        "projectileId": "pKCmvvzzi",
+        "targetId": "6Y01ZUp-U",
+        "x": 2100,
+        "y": 2100,
+        "size": 196.5,
+        "gems": 400,
+        "out": true,
+        "kind": "cannon",
+        "angle": 3.926990816987241,
+        "at": 5635.9000000059605
+      }
+    },
+    {
+      "profile": "landscape",
+      "viewport": [
+        839,
+        412
+      ],
+      "defenderWidth": 196.5,
+      "direction": "diagonal",
+      "launch": {
+        "x": 1525.280423139686,
+        "y": 1525.280423139686,
+        "radius": 30,
+        "outside": true,
+        "distance": 812.7762201571825
+      },
+      "view": {
+        "x": 2100,
+        "y": 2100,
+        "width": 2167.9318913634593,
+        "height": 1064.5863399782422,
+        "scale": 0.3870047778449049
+      },
+      "firstWarning": {
+        "at": 5042.29999999702,
+        "alpha": 1,
+        "x": 361.5014953613281,
+        "y": 148.00149536132812,
+        "distance": 730.9813768927423,
+        "speed": 1817.6631836542283,
+        "flightAgeMs": 30,
+        "trafficLead": 0.02892486616480812,
+        "playerX": 419.5,
+        "playerY": 206,
+        "sourceX": 219.4692355754202,
+        "sourceY": 5.969235575420213,
+        "sourceOnScreen": false
+      },
+      "warningLeadMs": 355.20000000298023,
+      "hit": true,
+      "impact": {
+        "byId": "sDEp0Vra1",
+        "projectileId": "qTUhp7j_T",
+        "targetId": "e4-qP0xiT",
+        "x": 2100,
+        "y": 2100,
+        "size": 196.5,
+        "gems": 400,
+        "out": true,
+        "kind": "cannon",
+        "angle": 3.9269908169872414,
+        "at": 5397.5
+      }
+    },
+    {
+      "profile": "phone",
+      "viewport": [
+        412,
+        839
+      ],
+      "defenderWidth": 196.5,
+      "direction": "diagonal",
+      "launch": {
+        "x": 1564.7165222168921,
+        "y": 1564.7165222168921,
+        "radius": 30,
+        "outside": true,
+        "distance": 757.0051539951085
+      },
+      "view": {
+        "x": 2100,
+        "y": 2100,
+        "width": 985.7141418238299,
+        "height": 2007.3159344422168,
+        "scale": 0.4179710755064261
+      },
+      "firstWarning": {
+        "at": 4979.70000000298,
+        "alpha": 1,
+        "x": 145.850341796875,
+        "y": 359.350341796875,
+        "distance": 673.4219068036022,
+        "speed": 1817.0271128588317,
+        "flightAgeMs": 19,
+        "trafficLead": 0.029354498362706944,
+        "playerX": 206,
+        "playerY": 419.5,
+        "sourceX": 6.9758180033216775,
+        "sourceY": 220.47581800332168,
+        "sourceOnScreen": false
+      },
+      "warningLeadMs": 329.5,
+      "hit": true,
+      "impact": {
+        "byId": "mKICLUTBi",
+        "projectileId": "PJSquqVSq",
+        "targetId": "SMDn1owda",
+        "x": 2100,
+        "y": 2100,
+        "size": 196.5,
+        "gems": 400,
+        "out": true,
+        "kind": "cannon",
+        "angle": 3.9269908169872414,
+        "at": 5309.20000000298
+      }
+    },
+    {
+      "profile": "desktop",
+      "viewport": [
+        1280,
+        720
+      ],
+      "defenderWidth": 196.5,
+      "direction": "left",
+      "launch": {
+        "x": 969.4444618448158,
+        "y": 2100,
+        "radius": 30,
+        "outside": true,
+        "distance": 1130.5555381551842
+      },
+      "view": {
+        "x": 2100,
+        "y": 2100,
+        "width": 2141.1017436516963,
+        "height": 1204.3697308040792,
+        "scale": 0.5978230617929121
+      },
+      "firstWarning": {
+        "at": 5058.29999999702,
+        "alpha": 1,
+        "x": 537.265869140625,
+        "y": 360,
+        "distance": 1046.972290963678,
+        "speed": 1817.0271128588317,
+        "flightAgeMs": 30,
+        "trafficLead": 0.009518255594918663,
+        "playerX": 640,
+        "playerY": 360,
+        "sourceX": 14.11699842770554,
+        "sourceY": 360,
+        "sourceOnScreen": false
+      },
+      "warningLeadMs": 597.9000000059605,
+      "hit": true,
+      "impact": {
+        "byId": "fR11aAUA1",
+        "projectileId": "6TItbxwk2",
+        "targetId": "F8Pvj2C1k",
+        "x": 2100,
+        "y": 2100,
+        "size": 196.5,
+        "gems": 400,
+        "out": true,
+        "kind": "cannon",
+        "angle": 3.141592653589793,
+        "at": 5656.20000000298
+      }
+    },
+    {
+      "profile": "landscape",
+      "viewport": [
+        839,
+        412
+      ],
+      "defenderWidth": 196.5,
+      "direction": "left",
+      "launch": {
+        "x": 956.0340756230319,
+        "y": 2100,
+        "radius": 30,
+        "outside": true,
+        "distance": 1143.9659243769681
+      },
+      "view": {
+        "x": 2100,
+        "y": 2100,
+        "width": 2167.9318487539363,
+        "height": 1064.5863190543764,
+        "scale": 0.3870047854512736
+      },
+      "firstWarning": {
+        "at": 5043.5999999940395,
+        "alpha": 1,
+        "x": 337.4776306152344,
+        "y": 206,
+        "distance": 974.618000762631,
+        "speed": 1786.7560462940837,
+        "flightAgeMs": 82,
+        "trafficLead": 0.0184608814485716,
+        "playerX": 419.5,
+        "playerY": 206,
+        "sourceX": 42.32670066241104,
+        "sourceY": 206,
+        "sourceOnScreen": true
+      },
+      "warningLeadMs": 559.4000000059605,
+      "hit": true,
+      "impact": {
+        "byId": "mfEumOqiX",
+        "projectileId": "PSMPz6fq_",
+        "targetId": "Go_0tWIWp",
+        "x": 2100,
+        "y": 2100,
+        "size": 196.5,
+        "gems": 400,
+        "out": true,
+        "kind": "cannon",
+        "angle": 3.141592653589793,
+        "at": 5603
+      }
+    },
+    {
+      "profile": "phone",
+      "viewport": [
+        412,
+        839
+      ],
+      "defenderWidth": 196.5,
+      "direction": "left",
+      "launch": {
+        "x": 1547.1393146659736,
+        "y": 2100,
+        "radius": 30,
+        "outside": true,
+        "distance": 552.8606853340264
+      },
+      "view": {
+        "x": 2100,
+        "y": 2100,
+        "width": 985.7213706680527,
+        "height": 2007.3306553167386,
+        "scale": 0.4179680102915648
+      },
+      "firstWarning": {
+        "at": 5034.20000000298,
+        "alpha": 1,
+        "x": 120.93553924560547,
+        "y": 419.5,
+        "distance": 487.2183627325703,
+        "speed": 1823.397850040446,
+        "flightAgeMs": 11,
+        "trafficLead": 0.07039475251676428,
+        "playerX": 206,
+        "playerY": 419.5,
+        "sourceX": 2.362736017708528,
+        "sourceY": 419.5,
+        "sourceOnScreen": false
+      },
+      "warningLeadMs": 157.19999998807907,
+      "hit": true,
+      "impact": {
+        "byId": "kXrRFdOTi",
+        "projectileId": "FPmsNogAk",
+        "targetId": "t7j2TPpBQ",
+        "x": 2100,
+        "y": 2100,
+        "size": 196.5,
+        "gems": 400,
+        "out": true,
+        "kind": "cannon",
+        "angle": 3.141592653589793,
+        "at": 5191.399999991059
+      }
+    }
+  ],
+  "verification": {
+    "warningBrowserCases": 96,
+    "retries": 0,
+    "multiplayerScenarios": 19,
+    "unitSuites": 63,
+    "build": true,
+    "typeCheck": true,
+    "lintErrors": 0,
+    "physicalPhoneTested": false,
+    "logs": [
+      ".tmp/nov25-final-browser.log",
+      ".tmp/nov25-final-network.log",
+      ".tmp/nov25-final-units.log",
+      ".tmp/nov25-final-build.log",
+      ".tmp/nov25-final-types.log",
+      ".tmp/nov25-final-lint.log"
+    ]
+  }
+}

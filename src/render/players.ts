@@ -32,9 +32,6 @@ export function captorOf(state: SyncedGameState, player: SyncedPlayer, sessionId
 }
 
 
-/** Which way each flying creature is heading, frame to frame (kept from the last frame that moved it enough to tell) */
-const headings = new Map<string, number>()
-
 export function drawPlayer(mode: MultiplayerMode, ctx: CanvasRenderingContext2D, player: SyncedPlayer, sessionId: string, isLocal: boolean, isLeader: boolean, timestamp: number, held?: HeldPose) : void {
     if (player.state !== 'alive') {
         mode.contactShapes.delete(sessionId)
@@ -59,7 +56,6 @@ export function drawPlayer(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
     // Your own player is drawn where your hops put it; other players ease toward the
     // server position so ~20 updates a second still look smooth at 60 fps
     let drawn = mode.drawnPositions.get(sessionId)
-    const before = drawn ? { x: drawn.x, y: drawn.y } : null
     if (held) {
         // Being sucked in: drawn where its captor's mouth is this frame, so the two never drift apart
         drawn = { x: held.x - player.width / 2, y: held.y - player.height / 2 }
@@ -96,15 +92,7 @@ export function drawPlayer(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
     const centerX = drawn.x + player.width / 2
     const centerY = drawn.y + player.height / 2
     const facing = isLocal ? mode.localFacing : (player.facing ?? -Math.PI / 2)
-    // Fired: it flies nose first, the way it's actually moving
-    if (player.flying) {
-        const dx = before ? drawn.x - before.x : 0
-        const dy = before ? drawn.y - before.y : 0
-        if (Math.hypot(dx, dy) > 0.5) headings.set(sessionId, Math.atan2(dy, dx))
-    } else {
-        headings.delete(sessionId)
-    }
-    const heading = headings.get(sessionId) ?? facing
+    const heading = player.flying ? Math.atan2(player.flightVy, player.flightVx) : facing
     const view = ANDROID_FIREFOX_RENDERING && !isLocal && !held ? mode.renderView : null
     const u = 1 / Math.max(.001, view?.scale ?? 1)
     const bodyRadius = Math.max(.95 * size, .85 * player.width) + 16 * u + 5
@@ -234,7 +222,7 @@ export function drawPlayer(mode: MultiplayerMode, ctx: CanvasRenderingContext2D,
     const heldFor = world && holding ? mode.worldNow(world, timestamp) - (player.gulpEndsAt - holding.captureHoldMs) : 0
     const cheekProgress = holding ? mode.isPractice && world?.practice.phase === 'ready' ? 1 : Math.max(0, Math.min(1, heldFor / SUCK_MS)) : 0
     const cheeks = 1 - Math.pow(1 - cheekProgress, 3)
-    if (player.flying) drawProjectile(ctx, left + size / 2, top + size / 2, size, color, heading, timestamp)
+    if (player.flying) drawProjectile(ctx, centerX, centerY, size, color, heading, standardMissile)
     else drawCreature(ctx, left + size / 2, top + size / 2, size, color, facing, timestamp, player.mouth ?? '', Boolean(player.inhaling), cheeks, Boolean(player.stunned),
         !held&&injuryRemaining>0?{age:injuryAge,remaining:injuryRemaining,reduced:REDUCED_MOTION.matches,pixelRatio:mode.cssScale}:null)
     ctx.restore()

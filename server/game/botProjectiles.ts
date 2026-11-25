@@ -1,8 +1,10 @@
 import { WEAPON_SHOTS, ARENA_RULES } from '../constants/gameConstants.js';
 import { weaponShots } from './weaponShots.js';
 import { allWeapons } from './weaponKit.js';
-import { firstImpact, playerMissileShot, PLAYER_SHOT_WARNING_S, type IncomingShot } from './incomingShot.js';
+import { firstImpact, playerFlightShot, PLAYER_SHOT_WARNING_S, type IncomingShot } from './incomingShot.js';
 import { viewShort } from './camera.js';
+import { botShotView } from './botAim.js';
+import { AimWarning, type Aim } from './aimWarning.js';
 import { moveSpeed, type Direction } from './movement.js';
 import type { GameState } from '../schema/GameState.js';
 import type { PlayerSchema } from '../schema/PlayerSchema.js';
@@ -10,10 +12,30 @@ import type { PlayerSchema } from '../schema/PlayerSchema.js';
 /** Read actual visible shots or the same offscreen warning, then steer after a human-scale delay. */
 export class BotProjectileDodge {
   private noticed = new Map<string, number>();
+  private readonly aimWarning = new AimWarning();
+  private aimedAt: Aim | null = null;
   private readonly reaction: number;
   private escape: { move: Direction; until: number } | null = null;
   constructor(random: () => number = Math.random) {
     this.reaction = WEAPON_SHOTS.BOT_REACT_MIN_MS + random() * (WEAPON_SHOTS.BOT_REACT_MAX_MS - WEAPON_SHOTS.BOT_REACT_MIN_MS);
+  }
+
+  observeAim(bot: PlayerSchema, state: GameState, now: number): void {
+    let next: Aim | null = null;
+    if (bot.state === 'alive' && !bot.spawnProtected && !bot.capturedBy && !bot.flying) {
+      const target = { x: bot.x + bot.width / 2, y: bot.y + bot.height / 2, vx: bot.movementVx, vy: bot.movementVy, radius: bot.width / 2 };
+      next = this.aimWarning.update(state, bot.sessionId, target, () => botShotView(state, bot));
+    } else this.aimWarning.clear();
+    if (this.aimedAt && this.aimedAt.id !== next?.id) {
+      const previous = this.aimedAt, ammo = state.players.get(previous.ammoId);
+      const since = this.noticed.get(previous.id);
+      if (since !== undefined && ammo?.flying && ammo.launchedBy === previous.shooterId) {
+        this.noticed.set('player:' + previous.ammoId, since);
+      }
+      this.noticed.delete(previous.id);
+    }
+    if (next && !this.noticed.has(next.id)) this.noticed.set(next.id, now);
+    this.aimedAt = next;
   }
 
   move(bot: PlayerSchema, state: GameState, now: number): Direction | undefined {
@@ -23,7 +45,9 @@ export class BotProjectileDodge {
     const velocity = bot.velocity();
     const target = { x, y, vx: velocity.x, vy: velocity.y, radius: bot.width / 2 };
     const available: IncomingShot[] = state.weaponsOn ? weaponShots(allWeapons(state), state.time, bot.sessionId) : [];
-    state.players.forEach((p, id) => { const shot = playerMissileShot(p, id, bot.sessionId); if (shot) available.push(shot); });
+    state.players.forEach((p, id) => { const shot = playerFlightShot(p, id, bot.sessionId); if (shot) available.push(shot); });
+    const aim = this.aimedAt?.shot;
+    if (aim) available.push(aim);
     const horizon = Math.max(WEAPON_SHOTS.WARNING_S, PLAYER_SHOT_WARNING_S);
     const shots = available.filter(shot => {
       const seen = Math.abs(shot.x - x) <= sight && Math.abs(shot.y - y) <= sight;
@@ -33,14 +57,15 @@ export class BotProjectileDodge {
     for (const id of this.noticed.keys()) if (!current.has(id)) this.noticed.delete(id);
     for (const shot of shots) if (!this.noticed.has(shot.id)) this.noticed.set(shot.id, now);
     const read = shots.filter(shot => now - this.noticed.get(shot.id)! >= this.reaction);
-    const hit = firstImpact(target, read, horizon);
+    const confirmed = read.filter(shot => shot !== aim);
+    const hit = firstImpact(target, confirmed, horizon) ?? firstImpact(target, read, horizon);
     if (!hit) return;
     const speed = moveSpeed(bot.width), margin = ARENA_RULES.EDGE_MARGIN + bot.width / 2;
     const moves: [Direction, number, number][] = [['up', 0, -1], ['down', 0, 1], ['left', -1, 0], ['right', 1, 0]];
     let best: Direction | undefined, score = -Infinity;
     for (const [move, dx, dy] of moves) {
       if (x + dx * speed * .5 < margin || x + dx * speed * .5 > state.worldWidth - margin || y + dy * speed * .5 < margin || y + dy * speed * .5 > state.worldHeight - margin) continue;
-      const danger = firstImpact({ x, y, vx: dx * speed, vy: dy * speed, radius: target.radius }, read, horizon);
+      const danger = firstImpact({ x, y, vx: dx * speed, vy: dy * speed, radius: target.radius }, hit.id === aim?.id ? read : confirmed, horizon);
       const value = danger ? danger.seconds : horizon + 1;
       if (value > score) { score = value; best = move; }
     }
