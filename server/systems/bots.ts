@@ -2,8 +2,8 @@ import type { GameState } from "../schema/GameState.js";
 import { PlayerSchema } from "../schema/PlayerSchema.js";
 import { BotBrain } from "../game/bots.js";
 import { GAME_CONSTANTS } from "../constants/serverConstants.js";
-import { launchSpeed } from "../game/cannon.js";
-import { cannonTargetAppeal, leaderShotOpportunity } from '../game/botAim.js';
+import { cannonImpactSpeed, launchSpeed } from "../game/cannon.js";
+import { botShotView, botShotVisible, cannonTargetAppeal, leaderShotOpportunity } from '../game/botAim.js';
 import { exhale, fireCaptive, stealWeight, injuryVulnerable } from "./inhale.js";
 import { botPreyAvailable, botSuctionThreat } from '../game/botTargets.js';
 import { CANNON, EXHALE } from '../constants/gameConstants.js';
@@ -197,11 +197,13 @@ function botFire(state: GameState, bot: PlayerSchema, cx: number, cy: number, no
   const brain = state.brains.get(bot.sessionId);
   if (!captive || !brain) return;
   bot.captureNeedsRelease = false; // AI releases capture input; its later shot is a separate decision.
+  const view = botShotView(state, bot);
   const valid = (id: string): boolean => {
     if (id.startsWith('hole:')) {
       const [index,generation] = id.slice(5).split(':').map(Number);
-      const hole = state.blackHoles[index];
-      if (!hole || generation !== hole.generation || !blackHoleIsLethal(hole,state.time) || state.shiftPhase === 'grace' || !state.isFloorAt(hole.x,hole.y)) return false;
+      const hole = state.blackHoles.at(index);
+      if (!hole || generation !== hole.generation || !blackHoleIsLethal(hole,state.time) || state.shiftPhase === 'grace' || !state.isFloorAt(hole.x,hole.y)
+        || !botShotVisible(view, hole.x, hole.y, hole.radius)) return false;
       const d = Math.hypot(hole.x - cx, hole.y - cy);
       if (hole.phase === 'closing' && state.time + 700 + d/launchSpeed(bot.width)*1500 >= hole.at) return false;
       return d <= BOTS.FIRE_RANGE && d > (bot.width + CANNON.BULLET_SIZE) / 2 + CANNON.LAUNCH_CLEARANCE + hole.radius;
@@ -209,6 +211,7 @@ function botFire(state: GameState, bot: PlayerSchema, cx: number, cy: number, no
     const other = state.players.get(id);
     return !!other && other !== bot && other !== captive && other.state === PLAYER_STATE.ALIVE
       && !other.spawnProtected && !other.capturedBy && !other.flying && now >= other.impactImmuneUntil
+      && botShotVisible(view, other.x + other.width / 2, other.y + other.height / 2, other.width / 2)
       && Math.hypot(other.x + other.width / 2 - cx, other.y + other.height / 2 - cy) - (bot.width + other.width) / 2 <= BOTS.FIRE_RANGE;
   };
   const shot = brain.cannonAim.update(`${bot.gulping}:${bot.captureStartedAt}`, bot.captureStartedAt, now, bot.facing, () => {
@@ -219,7 +222,7 @@ function botFire(state: GameState, bot: PlayerSchema, cx: number, cy: number, no
     state.players.forEach((other, id) => {
       if (!valid(id)) return;
       const dx = other.x + other.width / 2 - cx, dy = other.y + other.height / 2 - cy, d = Math.hypot(dx, dy);
-      const score = cannonTargetAppeal(other.gems, other.width, CANNON.BULLET_SIZE, launchSpeed(bot.width), d, bot.width);
+      const score = cannonTargetAppeal(other.gems, other.width, CANNON.PAYLOAD_SIZE, cannonImpactSpeed(launchSpeed(bot.width), bot.width), d, bot.width);
       if (score > best) { best = score; target = { id, angle: Math.atan2(dy, dx) }; }
     });
     state.blackHoles.forEach((hole, index) => {

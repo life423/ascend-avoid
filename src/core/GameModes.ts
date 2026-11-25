@@ -46,7 +46,7 @@ import { drawPickups } from '../render/pickups'
 import type { SyncedBlackHole, SyncedGameState, SyncedGem, SyncedObstacle, SyncedPlayer, SyncedTurbine } from '../types/synced'
 import { drawCannon } from '../render/cannon'
 import { drawWeapons } from '../render/weapons'
-import { drawIncoming } from '../render/incoming'
+import { clearIncoming, drawIncoming, noteIncomingLaunch } from '../render/incoming'
 import { weaponRecipe } from '../render/weaponStyle'
 import { drawRelicComet } from '../render/relicComet'
 import { RelicUnlockCue } from '../render/relicUnlock'
@@ -573,7 +573,7 @@ export class MultiplayerMode extends GameMode {
     /** When your player was knocked out, for the "back in" countdown */
     knockedOutAt: number | null = null
     /** The last time someone got you (and how), for the knocked-out screen: "Blasted by Drew" */
-    knockoutCause: { how: string; by: string; at: number } | null = null
+    knockoutCause: { how: string; by: string; at: number; title?: string } | null = null
     /** Messages at the top right: who joined, who shoved whom off the edge, who took the jackpot */
     notices: { text: string; at: number; strong: boolean; category?: 'weapon' }[] = []
     /** When each dropping gem was first seen, to draw its fall */
@@ -746,7 +746,8 @@ export class MultiplayerMode extends GameMode {
         })
         eventBus.on('multiplayer:burst', (data: any) => this.noteBurst(data))
         eventBus.on('multiplayer:impact', (data: any) => this.noteImpact(data))
-        eventBus.on('multiplayer:launch', (data: { byId?: string; id?: string }) => {
+        eventBus.on('multiplayer:launch', (data: { byId?: string; id?: string; x?: number; y?: number }) => {
+            noteIncomingLaunch(this, data)
             const id = this.multiplayerManager?.localSessionId
             if (data?.byId === id || data?.id === id) sound.play('launch')
         })
@@ -1573,7 +1574,12 @@ export class MultiplayerMode extends GameMode {
         if (how === 'cannon') {
             // Spending the ammunition is not another target hit or a second knockout.
             if (!data?.projectileId) {
-                if (targetIsYou && data?.out) this.knockoutCause = { how: 'burnup', by: String(data?.by ?? 'Someone'), at: performance.now() }
+                if (targetIsYou && data?.out) {
+                    let title = 'Shattered on impact'
+                    if (data.surface === 'wall') title = 'Crashed into the arena wall'
+                    if (data.surface === 'player' && data.struckName) title = `Crashed into ${data.struckName}`
+                    this.knockoutCause = { how: 'cannonImpact', by: String(data.by ?? 'Someone'), at: performance.now(), title }
+                }
                 return
             }
             if (targetIsYou && data?.out) this.knockoutCause = { how: 'cannon', by: String(data?.by ?? 'Someone'), at: performance.now() }
@@ -1901,6 +1907,7 @@ export class MultiplayerMode extends GameMode {
     dispose(): void {
         if (this.disposed) return
         this.cancelInput()
+        clearIncoming(this)
         window.removeEventListener('blur', this.releaseControls)
         document.removeEventListener('visibilitychange', this.visibilityChanged)
         document.removeEventListener('focusin', this.textFocused)

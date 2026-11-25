@@ -98,7 +98,7 @@ check(scaleDrain(20, 548) === LATCH.SCALE_MIN && scaleDrain(110, 120) === 1 && s
 // The living cannonball
 check(canCatch(26.5, 20) && !canCatch(25.5, 20) && !canCatch(20, 20), "catching needs a mouth INHALE.EAT_RATIO (1.3x) wider, gems or none");
 check(launchSpeed(200) > launchSpeed(40), "a bigger captor launches harder");
-check(launchSpeed(130, 100) === CANNON.LAUNCH_SPEED_MIN && launchSpeed(200, 100) > launchSpeed(130, 100) && launchSpeed(400, 100) > launchSpeed(200, 100) && launchSpeed(800, 100) > launchSpeed(400, 100) && launchSpeed(1600, 100) === launchSpeed(800, 100), "launch speed grows with the captor's size advantage and caps at LAUNCH_RATIO_CAP");
+check(launchSpeed(130, 100) === CANNON.LAUNCH_SPEED_MIN * CANNON.FLIGHT_SPEED_SCALE && launchSpeed(200, 100) > launchSpeed(130, 100) && launchSpeed(400, 100) > launchSpeed(200, 100) && launchSpeed(800, 100) > launchSpeed(400, 100) && launchSpeed(1600, 100) === launchSpeed(800, 100), "launch speed grows with the captor's size advantage and caps at LAUNCH_RATIO_CAP");
 // How far a captive's shot carries in the open: flightStep integrated with the shot's drag for FLIGHT_MS, from each launch speed
 const carries = (captorWidth: number, captiveWidth: number) => {
   let vx = launchSpeed(captorWidth, captiveWidth), vy = 0, x = 0;
@@ -111,7 +111,7 @@ const carries = (captorWidth: number, captiveWidth: number) => {
   }
   return x;
 };
-check(carries(130, 100) > 2000 && carries(130, 100) < 2300 && carries(200, 100) > 2300 && carries(200, 100) < 2600 && carries(400, 100) > 2800 && carries(400, 100) < 3100 && carries(800, 100) > 3300 && carries(800, 100) < 3550, `a shot carries about 2,100 units at the smallest size advantage and 3,400 at the largest, in the open (${Math.round(carries(130, 100))}, ${Math.round(carries(200, 100))}, ${Math.round(carries(400, 100))}, ${Math.round(carries(800, 100))})`);
+check(carries(130, 100) > 1760 && carries(130, 100) < 1850 && carries(200, 100) > 2000 && carries(200, 100) < 2120 && carries(400, 100) > 2400 && carries(400, 100) < 2550 && carries(800, 100) > 2800 && carries(800, 100) < 2950, `a shot carries about 1,800 units at the smallest size advantage and 2,900 at the largest, in the open (${Math.round(carries(130, 100))}, ${Math.round(carries(200, 100))}, ${Math.round(carries(400, 100))}, ${Math.round(carries(800, 100))})`);
 check(impactGems(1000, 900, 20) > 0 && impactGems(1000, 900, 20) < 10 && impactGems(400, 900, 60) > impactGems(400, 900, 20) && impactGems(400, 800, 100) < impactGems(400, 1600, 100), 'tiny shots chip giants; projectile mass and impact speed still increase damage');
 const straightOn = flightStep(900, 0, 1, 0, 0.1);
 const bentFlight = flightStep(900, 0, 0, 1, 0.1);

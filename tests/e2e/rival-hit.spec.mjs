@@ -26,7 +26,7 @@ for(const [width,gems]of[[200,414],[500,3125]])test(`equal-width ${width} shot v
     shooter.send('inhale');await expect.poll(()=>shooter.state.players.get(shooter.sessionId).gulping).toBe(ammo.sessionId);
     shooter.send('exhale');shooter.send('aim',{x:1,y:0});await page.waitForTimeout(100);shooter.send('tap');
     await expect.poll(()=>ammo.state.players.get(ammo.sessionId)?.flying).toBe(true);
-    expect(ammo.state.players.get(ammo.sessionId).width).toBe(60);
+    expect(ammo.state.players.get(ammo.sessionId).width).toBe(50);
     await expect.poll(()=>page.evaluate(id=>window.rivalImpacts.filter(e=>e.targetId===id).length,meta.me)).toBe(1);
     const hit=await page.evaluate(id=>window.rivalImpacts.find(e=>e.targetId===id),meta.me),damage=hit.gems;
     // The existing shared upkeep runs during room setup/flight; the event records actual loss.

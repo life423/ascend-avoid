@@ -432,7 +432,7 @@ class PlayerSchema extends Schema {
     if (!Number.isFinite(kept)) return;
     this.gems = Math.min(this.gems, Math.max(0, Math.round(kept)));
     this.bodyGrowthMass = Math.min(this.bodyGrowthMass, bodyGrowthForGems(this.gems, worldWidth, worldHeight),
-      Math.max(0, bodyMass(CANNON.BULLET_SIZE) - GEMS.BASE_MASS));
+      Math.max(0, bodyMass(CANNON.PAYLOAD_SIZE) - GEMS.BASE_MASS));
     this.applyGrowth(worldWidth, worldHeight);
   }
 

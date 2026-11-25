@@ -23,7 +23,8 @@ const tier = width => width < 100 ? 'below100' : width < 300 ? '100to300' : widt
 const centre = p => ({ x: p.x + p.width / 2, y: p.y + p.height / 2 });
 const tuningBefore = JSON.stringify(tuning);
 assert.equal(tuning.CANNON.PEER_HIT_SHARE, .25);
-assert.equal(tuning.CANNON.BULLET_SIZE, 60);
+assert.equal(tuning.CANNON.BULLET_SIZE, 50);
+assert.equal(tuning.CANNON.PAYLOAD_SIZE, 60);
 assert.equal(tuning.CANNON.SHATTER_SHOOTER_RATIO, 1.2);
 assert.equal(tuning.INHALE.INJURY_MS, 7000);
 assert.equal(tuning.BOTS.FILL_TO, 20);

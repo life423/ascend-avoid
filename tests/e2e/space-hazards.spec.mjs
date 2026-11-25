@@ -15,23 +15,46 @@ async function start(page, options = {}) {
 }
 const send = (page, type, data) => page.evaluate(({ type, data }) => window.game.currentGameMode.multiplayerManager.room.send(type, data), { type, data });
 
-test('a small missed cannon shot burns up, explains why and respawns on the map', async ({ page, baseURL }) => {
-  await start(page);
+for (const [outcome, title] of [
+  ['miss', 'Burned up in flight'],
+  ['player', 'Crashed into Gizmo'],
+  ['wall', 'Crashed into the arena wall'],
+]) test(`a fired captive sees the actual knockout cause after a ${outcome} and respawns`, async ({ page, baseURL }) => {
+  await start(page, { testCalm: true });
   const id = await page.evaluate(() => window.game.currentGameMode.multiplayerManager.room.id);
-  const captor = await new Client(baseURL.replace(/^http/, 'ws')).joinById(id, { name: 'Burnup regression' }); captor.onMessage('*', () => {});
+  const client = new Client(baseURL.replace(/^http/, 'ws'));
+  const captor = await client.joinById(id, { name: 'Launcher' }); captor.onMessage('*', () => {});
+  const rival = outcome === 'player' ? await client.joinById(id, { name: 'Gizmo' }) : null;
   try {
-    captor.send('test:setGems', { count: 16 }); captor.send('test:moveTo', { x: 800, y: 1000 }); captor.send('test:face', { angle: 0 }); captor.send('test:protect', { ms: 0 });
-    await send(page, 'test:setGems', { count: 4 }); await send(page, 'test:moveTo', { x: 860, y: 1012.75 }); await send(page, 'test:protect', { ms: 0 });
+    await send(page, 'test:clearHoles');
+    const x = outcome === 'wall' ? 3800 : 800;
+    if (rival) {
+      rival.onMessage('*', () => {});
+      rival.send('test:setGems', { count: 100 }); rival.send('test:moveTo', { x: x + 360, y: 980 }); rival.send('test:protect', { ms: 0 });
+    }
+    // Observe the text actually painted on the local captive's canvas.
+    await page.evaluate(() => {
+      const m = window.game.currentGameMode, ctx = m.game.canvas.getContext('2d');
+      const paint = ctx.fillText.bind(ctx);
+      window.flightTitles = [];
+      ctx.fillText = (text, ...args) => {
+        if (m.multiplayerManager.getLocalPlayer()?.state === 'dead' && !window.flightTitles.includes(text)) window.flightTitles.push(text);
+        paint(text, ...args);
+      };
+    });
+    captor.send('test:setGems', { count: 16 }); captor.send('test:moveTo', { x, y: 1000 }); captor.send('test:face', { angle: 0 }); captor.send('test:protect', { ms: 0 });
+    await send(page, 'test:setGems', { count: 4 }); await send(page, 'test:moveTo', { x: x + 60, y: 1012.75 }); await send(page, 'test:protect', { ms: 0 });
     await page.waitForTimeout(150); captor.send('inhale');
     await page.waitForFunction(() => !!window.game.currentGameMode.multiplayerManager.getLocalPlayer().capturedBy);
     captor.send('exhale'); captor.send('tap');
     await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getLocalPlayer().flying);
-    await page.waitForFunction(() => window.game.currentGameMode.multiplayerManager.getLocalPlayer().state === 'dead' && window.game.currentGameMode.knockoutCause?.how === 'burnup');
-    await page.screenshot({ path: test.info().outputPath('missile-burnup.png') });
+    await page.waitForFunction(title => window.flightTitles.includes(title), title);
+    await page.screenshot({ path: test.info().outputPath(`captive-${outcome}.png`) });
     await page.waitForFunction(() => { const p = window.game.currentGameMode.multiplayerManager.getLocalPlayer(); return p.state === 'alive' && p.spawnProtected; });
     const outside = await page.evaluate(() => { const m = window.game.currentGameMode, s = m.multiplayerManager.room.state, v = m.lastView; return Math.max(0, v.width / 2 - v.x, v.height / 2 - v.y, v.x + v.width / 2 - s.worldWidth, v.y + v.height / 2 - s.worldHeight); });
     expect(outside).toBeLessThan(.1);
-  } finally { await captor.leave(); }
+    if (outcome !== 'miss') expect(await page.evaluate(() => window.flightTitles)).not.toContain('Burned up in flight');
+  } finally { await Promise.all([captor.leave(), rival?.leave()]); }
 });
 
 test('the fan blocks an oversized creature but launches a fitting small player safely', async ({ page }) => {

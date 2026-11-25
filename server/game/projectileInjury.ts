@@ -1,5 +1,5 @@
 import { CANNON, GEMS, PROJECTILE_INJURY } from '../constants/gameConstants.js';
-import { impactGems, launchSpeed, lethalPlayerImpact, shooterMassContribution } from './cannon.js';
+import { cannonImpactSpeed, impactGems, launchSpeed, lethalPlayerImpact, shooterMassContribution } from './cannon.js';
 import { bodyMass } from './creatureSize.js';
 
 export interface ProjectileInjuryImpact {
@@ -45,15 +45,16 @@ export function projectileEarnsInjury(hit: ProjectileInjuryImpact): boolean {
 export function cannonInjuryOpportunity(shooterWidth: number, targetWidth: number, targetGems: number,
   centerDistance: number): { muzzle: number; travel: number } | null {
   if (!Number.isFinite(centerDistance) || centerDistance <= 0) return null;
-  const ammoWidth = CANNON.BULLET_SIZE;
-  const muzzle = shooterWidth / 2 + ammoWidth / 2 + CANNON.LAUNCH_CLEARANCE;
-  const hitRadius = targetWidth / 2 + ammoWidth / 2;
+  const ammoWidth = CANNON.PAYLOAD_SIZE;
+  const muzzle = shooterWidth / 2 + CANNON.BULLET_SIZE / 2 + CANNON.LAUNCH_CLEARANCE;
+  const hitRadius = targetWidth / 2 + CANNON.BULLET_SIZE / 2;
   if (centerDistance + hitRadius <= muzzle) return null;
   const travel = Math.max(0, centerDistance - muzzle - hitRadius);
   const initialSpeed = launchSpeed(shooterWidth);
   // Exponential flight drag yields this speed at the near collision edge.
-  const speed = initialSpeed - CANNON.DRAG * travel;
-  if (speed <= Math.max(CANNON.STOP_SPEED, initialSpeed * Math.exp(-CANNON.DRAG * CANNON.FLIGHT_MS / 1000))) return null;
+  const flightSpeed = initialSpeed - CANNON.DRAG * travel;
+  if (flightSpeed <= Math.max(CANNON.STOP_SPEED, initialSpeed * Math.exp(-CANNON.DRAG * CANNON.FLIGHT_MS / 1000))) return null;
+  const speed = cannonImpactSpeed(flightSpeed, shooterWidth);
   const bonus = shooterMassContribution(shooterWidth, ammoWidth);
   if (!projectileEarnsInjury({ speed, ammoWidth, targetWidth, kind: 'missile', deliberate: true,
     shooterWidth, shooterMassBonus: bonus })) return null;

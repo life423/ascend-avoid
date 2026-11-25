@@ -1,0 +1,1898 @@
+{
+  "date": "2026-11-25",
+  "revision": "dd4e142d1fe9d437347fae5e9dff63f0254a18a1",
+  "productionOrigin": "https://ascendavoid.com",
+  "productionBundle": "main-7btyuOWR.js",
+  "productionBundleSha256": "c9ae3456d97b9eaa3a9d0196564f2e18017faff9624f5babcd8b6f42ef608b4a",
+  "sourceMatchesHostedBundle": true,
+  "method": "24 local real-browser encounters on a production build matching hosted JS: desktop/Pixel-7 phone emulation x 20/101.5 physical widths x short-axis/top/diagonal launch x zero/250ms added reaction. A normally prepared larger shooter captures real ammo and fires a standard 60-unit player missile. The whole projectile starts outside the actual camera view (asserted for every case); keyboard/trusted touch performs a perpendicular dodge. No screenshots block the dodge. Zero added delay still includes browser/automation/network/input time. This is a controlled strong-shot audit, not a random human-match or physical-Pixel study. Passing diagnostic assertions means the shot and records worked, not that the defender escaped.",
+  "summary": [
+    {
+      "platform": "desktop",
+      "addedReactionMs": 0,
+      "cases": 6,
+      "hits": 3,
+      "hitWarningLeadRangeMs": [
+        242.20000000298023,
+        347.70000000298023
+      ]
+    },
+    {
+      "platform": "desktop",
+      "addedReactionMs": 250,
+      "cases": 6,
+      "hits": 6,
+      "hitWarningLeadRangeMs": [
+        211.5,
+        395.79999999701977
+      ]
+    },
+    {
+      "platform": "phone emulation",
+      "addedReactionMs": 0,
+      "cases": 6,
+      "hits": 4,
+      "hitWarningLeadRangeMs": [
+        171,
+        392.79999999701977
+      ]
+    },
+    {
+      "platform": "phone emulation",
+      "addedReactionMs": 250,
+      "cases": 6,
+      "hits": 6,
+      "hitWarningLeadRangeMs": [
+        161.79999999701977,
+        362.5
+      ]
+    }
+  ],
+  "rows": [
+    {
+      "platform": "desktop",
+      "viewport": [
+        1280,
+        720
+      ],
+      "bodyWidth": 101.5,
+      "direction": "diagonal",
+      "addedReactionMs": 250,
+      "launchFullyOffscreen": true,
+      "launch": {
+        "x": 1592.0570709106944,
+        "y": 1592.0570709106944,
+        "radius": 30,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 1448.6716686861694,
+          "height": 814.8778136359703,
+          "scale": 0.8835680490396135
+        },
+        "outside": true
+      },
+      "hit": true,
+      "firstWarningToHitMs": 349.70000000298023,
+      "edgePaintFrames": 18,
+      "haloPaintFrames": 14,
+      "firstWarning": {
+        "edge": {
+          "alpha": 1,
+          "at": 1178.7999999970198,
+          "x": 370,
+          "y": 90,
+          "distance": 634.7249077856875,
+          "speed": 1817.7145966070384
+        },
+        "haloAt": 0,
+        "hitAt": 0
+      },
+      "firstReceivedFlight": {
+        "me": {
+          "x": 2049.25,
+          "y": 2049.25,
+          "state": "alive",
+          "protected": false,
+          "vx": 0,
+          "vy": 0
+        },
+        "shot": {
+          "x": 1621.1817135167344,
+          "y": 1621.1817135167344,
+          "vx": 1285.3183175226068,
+          "vy": 1285.3183175226065,
+          "age": 34,
+          "left": 2566,
+          "hit": false,
+          "by": "663Q4Y5nl"
+        },
+        "at": 1173.0999999940395,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 1475.4522776359763,
+          "height": 829.9419061702366,
+          "scale": 0.8675306002108472
+        },
+        "local": "QQMnmc2dd"
+      },
+      "end": {
+        "state": "dead",
+        "injury": 0,
+        "x": 2087.0680503786143,
+        "y": 2092.931949621386
+      }
+    },
+    {
+      "platform": "phone emulation",
+      "viewport": [
+        412,
+        839
+      ],
+      "bodyWidth": 101.5,
+      "direction": "diagonal",
+      "addedReactionMs": 250,
+      "launchFullyOffscreen": true,
+      "launch": {
+        "x": 1665.2222585642041,
+        "y": 1665.2222585642041,
+        "radius": 30,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 660.5455233909342,
+          "height": 1345.1400342839654,
+          "scale": 0.6237268824183126
+        },
+        "outside": true
+      },
+      "hit": true,
+      "firstWarningToHitMs": 231.79999999701977,
+      "edgePaintFrames": 14,
+      "haloPaintFrames": 14,
+      "firstWarning": {
+        "edge": {
+          "alpha": 1,
+          "at": 1150.5,
+          "x": 18,
+          "y": 231.5,
+          "distance": 471.9644781249152,
+          "speed": 1796.8407714079415
+        },
+        "haloAt": 1150.4000000059605,
+        "hitAt": 0
+      },
+      "firstReceivedFlight": {
+        "me": {
+          "x": 2049.25,
+          "y": 2049.25,
+          "state": "alive",
+          "protected": false,
+          "vx": 0,
+          "vy": 0
+        },
+        "shot": {
+          "x": 1736.2707170387025,
+          "y": 1736.2707170387025,
+          "vx": 1270.5582941750226,
+          "vy": 1270.5582941750224,
+          "age": 68,
+          "left": 2532,
+          "hit": false,
+          "by": "1gL2TYYW5"
+        },
+        "at": 1147.2000000029802,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 679.2352223493531,
+          "height": 1383.1998824056002,
+          "scale": 0.6065645397112442
+        },
+        "local": "Y8Sn1XVSR"
+      },
+      "end": {
+        "state": "dead",
+        "injury": 0,
+        "x": 2090,
+        "y": 2090
+      }
+    },
+    {
+      "platform": "desktop",
+      "viewport": [
+        1280,
+        720
+      ],
+      "bodyWidth": 20,
+      "direction": "diagonal",
+      "addedReactionMs": 0,
+      "launchFullyOffscreen": true,
+      "launch": {
+        "x": 1609.3882413737745,
+        "y": 1609.3882413737745,
+        "radius": 30,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 1259.510673918703,
+          "height": 708.4747540792706,
+          "scale": 1.0162676875278465
+        },
+        "outside": true
+      },
+      "hit": false,
+      "firstWarningToHitMs": null,
+      "edgePaintFrames": 4,
+      "haloPaintFrames": 0,
+      "firstWarning": {
+        "edge": {
+          "alpha": 1,
+          "at": 1093.5999999940395,
+          "x": 370,
+          "y": 90,
+          "distance": 624.562972385118,
+          "speed": 1822.811329573827
+        },
+        "haloAt": 0,
+        "hitAt": 0
+      },
+      "firstReceivedFlight": {
+        "me": {
+          "x": 2090,
+          "y": 2090,
+          "state": "alive",
+          "protected": false,
+          "vx": 0,
+          "vy": 0
+        },
+        "shot": {
+          "x": 1628.3672869484567,
+          "y": 1628.3672869484567,
+          "vx": 1288.92225196532,
+          "vy": 1288.9222519653197,
+          "age": 0,
+          "left": 2600,
+          "hit": false,
+          "by": "j2kAj9b8x"
+        },
+        "at": 1114.0999999940395,
+        "view": {
+          "x": 2099.2032737637523,
+          "y": 2100.7967262362477,
+          "width": 1259.510673918703,
+          "height": 708.4747540792706,
+          "scale": 1.0162676875278465
+        },
+        "local": "oSm0dPz1D"
+      },
+      "end": {
+        "state": "alive",
+        "injury": 0,
+        "x": 1883.304246038213,
+        "y": 2296.6957539617865
+      }
+    },
+    {
+      "platform": "phone emulation",
+      "viewport": [
+        412,
+        839
+      ],
+      "bodyWidth": 20,
+      "direction": "diagonal",
+      "addedReactionMs": 0,
+      "launchFullyOffscreen": true,
+      "launch": {
+        "x": 1673.7054766964256,
+        "y": 1673.7054766964256,
+        "radius": 30,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 579.840283433968,
+          "height": 1180.7912567987844,
+          "scale": 0.710540491529886
+        },
+        "outside": true
+      },
+      "hit": false,
+      "firstWarningToHitMs": null,
+      "edgePaintFrames": 10,
+      "haloPaintFrames": 10,
+      "firstWarning": {
+        "edge": {
+          "alpha": 1,
+          "at": 1050.2000000029802,
+          "x": 18,
+          "y": 231.5,
+          "distance": 440.50065284398,
+          "speed": 1789.936234200685
+        },
+        "haloAt": 1050.0999999940395,
+        "hitAt": 0
+      },
+      "firstReceivedFlight": {
+        "me": {
+          "x": 2090,
+          "y": 2090,
+          "state": "alive",
+          "protected": false,
+          "vx": 0,
+          "vy": 0
+        },
+        "shot": {
+          "x": 1758.5190012569205,
+          "y": 1758.5190012569205,
+          "vx": 1265.6760490948168,
+          "vy": 1265.6760490948166,
+          "age": 84,
+          "left": 2516,
+          "hit": false,
+          "by": "2xY5_KRkW"
+        },
+        "at": 1061.2999999970198,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 579.840283433968,
+          "height": 1180.7912567987844,
+          "scale": 0.710540491529886
+        },
+        "local": "hGCICzS_f"
+      },
+      "end": {
+        "state": "alive",
+        "injury": 0,
+        "x": 1883.1170803137675,
+        "y": 2296.8829196862325
+      }
+    },
+    {
+      "platform": "desktop",
+      "viewport": [
+        1280,
+        720
+      ],
+      "bodyWidth": 101.5,
+      "direction": "short",
+      "addedReactionMs": 250,
+      "launchFullyOffscreen": true,
+      "launch": {
+        "x": 2100,
+        "y": 1533.6753167442491,
+        "radius": 30,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 1462.257172461483,
+          "height": 822.5196595095841,
+          "scale": 0.8753590162565719
+        },
+        "outside": true
+      },
+      "hit": true,
+      "firstWarningToHitMs": 241.59999999403954,
+      "edgePaintFrames": 14,
+      "haloPaintFrames": 6,
+      "firstWarning": {
+        "edge": {
+          "alpha": 1,
+          "at": 1159.2000000029802,
+          "x": 640,
+          "y": 90,
+          "distance": 405.71726111605017,
+          "speed": 1790.562821529041
+        },
+        "haloAt": 0,
+        "hitAt": 0
+      },
+      "firstReceivedFlight": {
+        "me": {
+          "x": 2049.25,
+          "y": 2049.25,
+          "state": "alive",
+          "protected": false,
+          "vx": 0,
+          "vy": 0
+        },
+        "shot": {
+          "x": 2070,
+          "y": 1503.6753167442491,
+          "vx": 1.1310939825042553e-13,
+          "vy": 1847.2166559235968,
+          "age": 0,
+          "left": 0,
+          "hit": false,
+          "by": "WfYVPtTt0"
+        },
+        "at": 1085.7000000029802,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 1468.9202864819667,
+          "height": 826.2676611461062,
+          "scale": 0.8713883331719607
+        },
+        "local": "AbZG2UKwU"
+      },
+      "end": {
+        "state": "dead",
+        "injury": 0,
+        "x": 2090,
+        "y": 2090
+      }
+    },
+    {
+      "platform": "phone emulation",
+      "viewport": [
+        412,
+        839
+      ],
+      "bodyWidth": 101.5,
+      "direction": "short",
+      "addedReactionMs": 250,
+      "launchFullyOffscreen": true,
+      "launch": {
+        "x": 1603.0238113508788,
+        "y": 2100,
+        "radius": 30,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 673.1785850575062,
+          "height": 1370.86609918264,
+          "scale": 0.6120218455327199
+        },
+        "outside": true
+      },
+      "hit": true,
+      "firstWarningToHitMs": 161.79999999701977,
+      "edgePaintFrames": 0,
+      "haloPaintFrames": 10,
+      "firstWarning": {
+        "haloAt": 1245.800000011921,
+        "hitAt": 0
+      },
+      "firstReceivedFlight": {
+        "me": {
+          "x": 2049.25,
+          "y": 2049.25,
+          "state": "alive",
+          "protected": false,
+          "vx": 0,
+          "vy": 0
+        },
+        "shot": {
+          "x": 1795.5226752650067,
+          "y": 2070,
+          "vx": 1768.7622282196098,
+          "vy": 0,
+          "age": 92,
+          "left": 2508,
+          "hit": false,
+          "by": "AqJ1diBuq"
+        },
+        "at": 1241.5,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 690.8838719202163,
+          "height": 1406.921282866654,
+          "scale": 0.5963375564910828
+        },
+        "local": "aBtQTxJD_"
+      },
+      "end": {
+        "state": "dead",
+        "injury": 0,
+        "x": 2090,
+        "y": 2090
+      }
+    },
+    {
+      "platform": "desktop",
+      "viewport": [
+        1280,
+        720
+      ],
+      "bodyWidth": 20,
+      "direction": "diagonal",
+      "addedReactionMs": 250,
+      "launchFullyOffscreen": true,
+      "launch": {
+        "x": 1609.3882413737745,
+        "y": 1609.3882413737745,
+        "radius": 30,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 1259.510673918703,
+          "height": 708.4747540792706,
+          "scale": 1.0162676875278465
+        },
+        "outside": true
+      },
+      "hit": true,
+      "firstWarningToHitMs": 395.79999999701977,
+      "edgePaintFrames": 22,
+      "haloPaintFrames": 7,
+      "firstWarning": {
+        "edge": {
+          "alpha": 1,
+          "at": 947.7000000029802,
+          "x": 370,
+          "y": 90,
+          "distance": 631.7673911196989,
+          "speed": 1825.3650526242573
+        },
+        "haloAt": 0,
+        "hitAt": 0
+      },
+      "firstReceivedFlight": {
+        "me": {
+          "x": 2090,
+          "y": 2090,
+          "state": "alive",
+          "protected": false,
+          "vx": 0,
+          "vy": 0
+        },
+        "shot": {
+          "x": 1623.2729936067271,
+          "y": 1623.2729936067271,
+          "vx": 1290.7280068515515,
+          "vy": 1290.7280068515513,
+          "age": 0,
+          "left": 2600,
+          "hit": false,
+          "by": "gXtNiD7Zl"
+        },
+        "at": 968,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 1259.510673918703,
+          "height": 708.4747540792706,
+          "scale": 1.0162676875278465
+        },
+        "local": "UsEVgivp3"
+      },
+      "end": {
+        "state": "dead",
+        "injury": 0,
+        "x": 2077.349418340791,
+        "y": 2102.650581659209
+      }
+    },
+    {
+      "platform": "phone emulation",
+      "viewport": [
+        412,
+        839
+      ],
+      "bodyWidth": 20,
+      "direction": "diagonal",
+      "addedReactionMs": 250,
+      "launchFullyOffscreen": true,
+      "launch": {
+        "x": 1673.7054766964256,
+        "y": 1673.7054766964256,
+        "radius": 30,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 579.840283433968,
+          "height": 1180.7912567987844,
+          "scale": 0.710540491529886
+        },
+        "outside": true
+      },
+      "hit": true,
+      "firstWarningToHitMs": 235.90000000596046,
+      "edgePaintFrames": 14,
+      "haloPaintFrames": 14,
+      "firstWarning": {
+        "edge": {
+          "alpha": 1,
+          "at": 1041.2999999970198,
+          "x": 18,
+          "y": 231.5,
+          "distance": 436.9775708467802,
+          "speed": 1788.6837172688151
+        },
+        "haloAt": 1041.2999999970198,
+        "hitAt": 0
+      },
+      "firstReceivedFlight": {
+        "me": {
+          "x": 2090,
+          "y": 2090,
+          "state": "alive",
+          "protected": false,
+          "vx": 0,
+          "vy": 0
+        },
+        "shot": {
+          "x": 1643.7054766964256,
+          "y": 1643.7054766964256,
+          "vx": 1306.179423724313,
+          "vy": 1306.1794237243128,
+          "age": 0,
+          "left": 0,
+          "hit": false,
+          "by": "71qajt-ZO"
+        },
+        "at": 1036.7999999970198,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 579.840283433968,
+          "height": 1180.7912567987844,
+          "scale": 0.710540491529886
+        },
+        "local": "TBIy64e1P"
+      },
+      "end": {
+        "state": "dead",
+        "injury": 0,
+        "x": 2090,
+        "y": 2090
+      }
+    },
+    {
+      "platform": "desktop",
+      "viewport": [
+        1280,
+        720
+      ],
+      "bodyWidth": 101.5,
+      "direction": "diagonal",
+      "addedReactionMs": 0,
+      "launchFullyOffscreen": true,
+      "launch": {
+        "x": 1597.373312625405,
+        "y": 1597.373312625405,
+        "radius": 30,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 1427.8077244111876,
+          "height": 803.141844981293,
+          "scale": 0.8964792514537334
+        },
+        "outside": true
+      },
+      "hit": true,
+      "firstWarningToHitMs": 347.70000000298023,
+      "edgePaintFrames": 21,
+      "haloPaintFrames": 11,
+      "firstWarning": {
+        "edge": {
+          "alpha": 1,
+          "at": 1114.199999988079,
+          "x": 370,
+          "y": 90,
+          "distance": 625.4187882282617,
+          "speed": 1817.078507820257
+        },
+        "haloAt": 0,
+        "hitAt": 0
+      },
+      "firstReceivedFlight": {
+        "me": {
+          "x": 2049.25,
+          "y": 2049.25,
+          "state": "alive",
+          "protected": false,
+          "vx": 0,
+          "vy": 0
+        },
+        "shot": {
+          "x": 1627.762133762323,
+          "y": 1627.7621337623227,
+          "vx": 1284.868534828037,
+          "vy": 1284.8685348280367,
+          "age": 34,
+          "left": 2566,
+          "hit": false,
+          "by": "KjPlkD99f"
+        },
+        "at": 1118.0999999940395,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 1462.2571724614825,
+          "height": 822.5196595095839,
+          "scale": 0.8753590162565721
+        },
+        "local": "St_8d1wz_"
+      },
+      "end": {
+        "state": "dead",
+        "injury": 0,
+        "x": 2059.7435225912614,
+        "y": 2120.2564774087396
+      }
+    },
+    {
+      "platform": "phone emulation",
+      "viewport": [
+        412,
+        839
+      ],
+      "bodyWidth": 101.5,
+      "direction": "diagonal",
+      "addedReactionMs": 0,
+      "launchFullyOffscreen": true,
+      "launch": {
+        "x": 1659.5210463611277,
+        "y": 1659.5210463611277,
+        "radius": 30,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 673.1600928619874,
+          "height": 1370.828441532057,
+          "scale": 0.6120386582162841
+        },
+        "outside": true
+      },
+      "hit": true,
+      "firstWarningToHitMs": 276.29999999701977,
+      "edgePaintFrames": 16,
+      "haloPaintFrames": 16,
+      "firstWarning": {
+        "edge": {
+          "alpha": 1,
+          "at": 1155.8999999910593,
+          "x": 18,
+          "y": 231.5,
+          "distance": 458.80173913397516,
+          "speed": 1789.3098661395193
+        },
+        "haloAt": 1155.7999999970198,
+        "hitAt": 0
+      },
+      "firstReceivedFlight": {
+        "me": {
+          "x": 2049.25,
+          "y": 2049.25,
+          "state": "alive",
+          "protected": false,
+          "vx": 0,
+          "vy": 0
+        },
+        "shot": {
+          "x": 1745.5781790381848,
+          "y": 1745.5781790381848,
+          "vx": 1265.2331399912478,
+          "vy": 1265.2331399912475,
+          "age": 81,
+          "left": 2519,
+          "hit": false,
+          "by": "AGp6O49lX"
+        },
+        "at": 1175.199999988079,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 696.4036500977921,
+          "height": 1418.161802019533,
+          "scale": 0.5916109140756874
+        },
+        "local": "xROjQbnLT"
+      },
+      "end": {
+        "state": "dead",
+        "injury": 0,
+        "x": 2071.4679852013032,
+        "y": 2108.5320147986968
+      }
+    },
+    {
+      "platform": "desktop",
+      "viewport": [
+        1280,
+        720
+      ],
+      "bodyWidth": 20,
+      "direction": "short",
+      "addedReactionMs": 0,
+      "launchFullyOffscreen": true,
+      "launch": {
+        "x": 2100,
+        "y": 1552.9001229603648,
+        "radius": 30,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 1259.510673918703,
+          "height": 708.4747540792706,
+          "scale": 1.0162676875278465
+        },
+        "outside": true
+      },
+      "hit": false,
+      "firstWarningToHitMs": null,
+      "edgePaintFrames": 7,
+      "haloPaintFrames": 0,
+      "firstWarning": {
+        "edge": {
+          "alpha": 1,
+          "at": 1105.5,
+          "x": 640,
+          "y": 90,
+          "distance": 483.2344570070111,
+          "speed": 1824.7262866464055
+        },
+        "haloAt": 0,
+        "hitAt": 0
+      },
+      "firstReceivedFlight": {
+        "me": {
+          "x": 2090,
+          "y": 2090,
+          "state": "alive",
+          "protected": false,
+          "vx": 0,
+          "vy": 0
+        },
+        "shot": {
+          "x": 2070,
+          "y": 1586.765542992989,
+          "vx": 1.1173226031307781e-13,
+          "vy": 1824.7262866464055,
+          "age": 0,
+          "left": 2600,
+          "hit": false,
+          "by": "BA09xHllW"
+        },
+        "at": 1100.7999999970198,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 1259.510673918703,
+          "height": 708.4747540792706,
+          "scale": 1.0162676875278465
+        },
+        "local": "CpOsV77B3"
+      },
+      "end": {
+        "state": "alive",
+        "injury": 0,
+        "x": 1790.5707375137656,
+        "y": 2090
+      }
+    },
+    {
+      "platform": "phone emulation",
+      "viewport": [
+        412,
+        839
+      ],
+      "bodyWidth": 20,
+      "direction": "short",
+      "addedReactionMs": 0,
+      "launchFullyOffscreen": true,
+      "launch": {
+        "x": 1617.217358283016,
+        "y": 2100,
+        "radius": 30,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 579.840283433968,
+          "height": 1180.7912567987844,
+          "scale": 0.710540491529886
+        },
+        "outside": true
+      },
+      "hit": true,
+      "firstWarningToHitMs": 171,
+      "edgePaintFrames": 10,
+      "haloPaintFrames": 6,
+      "firstWarning": {
+        "edge": {
+          "alpha": 1,
+          "at": 1156.2000000029802,
+          "x": 18,
+          "y": 419.5,
+          "distance": 397.379951849432,
+          "speed": 1817.078507820257
+        },
+        "haloAt": 0,
+        "hitAt": 0
+      },
+      "firstReceivedFlight": {
+        "me": {
+          "x": 2090,
+          "y": 2090,
+          "state": "alive",
+          "protected": false,
+          "vx": 0,
+          "vy": 0
+        },
+        "shot": {
+          "x": 1756.6293557597921,
+          "y": 2070,
+          "vx": 1787.4320767920021,
+          "vy": 0,
+          "age": 70,
+          "left": 2530,
+          "hit": false,
+          "by": "2TqTk8Phf"
+        },
+        "at": 1158.800000011921,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 579.840283433968,
+          "height": 1180.7912567987844,
+          "scale": 0.710540491529886
+        },
+        "local": "YIvuG3Y4d"
+      },
+      "end": {
+        "state": "dead",
+        "injury": 0,
+        "x": 2090,
+        "y": 2097.2509934838454
+      }
+    },
+    {
+      "platform": "desktop",
+      "viewport": [
+        1280,
+        720
+      ],
+      "bodyWidth": 20,
+      "direction": "short",
+      "addedReactionMs": 250,
+      "launchFullyOffscreen": true,
+      "launch": {
+        "x": 2100,
+        "y": 1552.9001229603648,
+        "radius": 30,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 1259.510673918703,
+          "height": 708.4747540792706,
+          "scale": 1.0162676875278465
+        },
+        "outside": true
+      },
+      "hit": true,
+      "firstWarningToHitMs": 244.20000000298023,
+      "edgePaintFrames": 15,
+      "haloPaintFrames": 4,
+      "firstWarning": {
+        "edge": {
+          "alpha": 1,
+          "at": 1078.4000000059605,
+          "x": 640,
+          "y": 90,
+          "distance": 483.2344570070111,
+          "speed": 1824.7262866464055
+        },
+        "haloAt": 0,
+        "hitAt": 0
+      },
+      "firstReceivedFlight": {
+        "me": {
+          "x": 2090,
+          "y": 2090,
+          "state": "alive",
+          "protected": false,
+          "vx": 0,
+          "vy": 0
+        },
+        "shot": {
+          "x": 2070,
+          "y": 1586.765542992989,
+          "vx": 1.1173226031307781e-13,
+          "vy": 1824.7262866464055,
+          "age": 0,
+          "left": 2600,
+          "hit": false,
+          "by": "4rMKHxZTz"
+        },
+        "at": 1086.4000000059605,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 1259.510673918703,
+          "height": 708.4747540792706,
+          "scale": 1.0162676875278465
+        },
+        "local": "qm8_HavrN"
+      },
+      "end": {
+        "state": "dead",
+        "injury": 0,
+        "x": 2090,
+        "y": 2090
+      }
+    },
+    {
+      "platform": "phone emulation",
+      "viewport": [
+        412,
+        839
+      ],
+      "bodyWidth": 20,
+      "direction": "short",
+      "addedReactionMs": 250,
+      "launchFullyOffscreen": true,
+      "launch": {
+        "x": 1617.217358283016,
+        "y": 2100,
+        "radius": 30,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 579.840283433968,
+          "height": 1180.7912567987844,
+          "scale": 0.710540491529886
+        },
+        "outside": true
+      },
+      "hit": true,
+      "firstWarningToHitMs": 203.8999999910593,
+      "edgePaintFrames": 10,
+      "haloPaintFrames": 5,
+      "firstWarning": {
+        "edge": {
+          "alpha": 1,
+          "at": 1017.8000000119209,
+          "x": 18,
+          "y": 419.5,
+          "distance": 399.16777027306034,
+          "speed": 1817.7145966070384
+        },
+        "haloAt": 0,
+        "hitAt": 0
+      },
+      "firstReceivedFlight": {
+        "me": {
+          "x": 2090,
+          "y": 2090,
+          "state": "alive",
+          "protected": false,
+          "vx": 0,
+          "vy": 0
+        },
+        "shot": {
+          "x": 1754.8709457399975,
+          "y": 2070,
+          "vx": 1788.057787511868,
+          "vy": 0,
+          "age": 81,
+          "left": 2519,
+          "hit": false,
+          "by": "hFYJqCZg6"
+        },
+        "at": 1032.6000000089407,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 579.840283433968,
+          "height": 1180.7912567987844,
+          "scale": 0.710540491529886
+        },
+        "local": "fTaa9gc84"
+      },
+      "end": {
+        "state": "dead",
+        "injury": 0,
+        "x": 2090,
+        "y": 2090
+      }
+    },
+    {
+      "platform": "desktop",
+      "viewport": [
+        1280,
+        720
+      ],
+      "bodyWidth": 20,
+      "direction": "top",
+      "addedReactionMs": 0,
+      "launchFullyOffscreen": true,
+      "launch": {
+        "x": 2100,
+        "y": 1552.9001229603648,
+        "radius": 30,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 1259.510673918703,
+          "height": 708.4747540792706,
+          "scale": 1.0162676875278465
+        },
+        "outside": true
+      },
+      "hit": false,
+      "firstWarningToHitMs": null,
+      "edgePaintFrames": 7,
+      "haloPaintFrames": 0,
+      "firstWarning": {
+        "edge": {
+          "alpha": 1,
+          "at": 1009.6000000089407,
+          "x": 640,
+          "y": 90,
+          "distance": 477.8330465158299,
+          "speed": 1822.8113295738267
+        },
+        "haloAt": 0,
+        "hitAt": 0
+      },
+      "firstReceivedFlight": {
+        "me": {
+          "x": 2090,
+          "y": 2090,
+          "state": "alive",
+          "protected": false,
+          "vx": 0,
+          "vy": 0
+        },
+        "shot": {
+          "x": 2070,
+          "y": 1592.16695348417,
+          "vx": 1.116150030106059e-13,
+          "vy": 1822.8113295738267,
+          "age": 0,
+          "left": 2600,
+          "hit": false,
+          "by": "wy8VYtvL-"
+        },
+        "at": 1030.2000000029802,
+        "view": {
+          "x": 2098.8221374522304,
+          "y": 2100,
+          "width": 1259.510673918703,
+          "height": 708.4747540792706,
+          "scale": 1.0162676875278465
+        },
+        "local": "T5zpKvQJE"
+      },
+      "end": {
+        "state": "alive",
+        "injury": 0,
+        "x": 1797.820714276285,
+        "y": 2090
+      }
+    },
+    {
+      "platform": "phone emulation",
+      "viewport": [
+        412,
+        839
+      ],
+      "bodyWidth": 20,
+      "direction": "top",
+      "addedReactionMs": 0,
+      "launchFullyOffscreen": true,
+      "launch": {
+        "x": 2100,
+        "y": 1316.7418716006077,
+        "radius": 30,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 579.840283433968,
+          "height": 1180.7912567987844,
+          "scale": 0.710540491529886
+        },
+        "outside": true
+      },
+      "hit": false,
+      "firstWarningToHitMs": null,
+      "edgePaintFrames": 9,
+      "haloPaintFrames": 3,
+      "firstWarning": {
+        "edge": {
+          "alpha": 1,
+          "at": 1057,
+          "x": 206,
+          "y": 18,
+          "distance": 696.0688816013637,
+          "speed": 1816.4426416255951
+        },
+        "haloAt": 0,
+        "hitAt": 0
+      },
+      "firstReceivedFlight": {
+        "me": {
+          "x": 2090,
+          "y": 2090,
+          "state": "alive",
+          "protected": false,
+          "vx": 0,
+          "vy": 0
+        },
+        "shot": {
+          "x": 2070,
+          "y": 1373.9311183986363,
+          "vx": 1.112250333450774e-13,
+          "vy": 1816.4426416255951,
+          "age": 26,
+          "left": 2574,
+          "hit": false,
+          "by": "NCuw7LGOT"
+        },
+        "at": 1054.5999999940395,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 579.840283433968,
+          "height": 1180.7912567987844,
+          "scale": 0.710540491529886
+        },
+        "local": "FIFgWAQyb"
+      },
+      "end": {
+        "state": "alive",
+        "injury": 0,
+        "x": 1812.7412712884818,
+        "y": 2090
+      }
+    },
+    {
+      "platform": "desktop",
+      "viewport": [
+        1280,
+        720
+      ],
+      "bodyWidth": 20,
+      "direction": "top",
+      "addedReactionMs": 250,
+      "launchFullyOffscreen": true,
+      "launch": {
+        "x": 2100,
+        "y": 1552.9001229603648,
+        "radius": 30,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 1259.510673918703,
+          "height": 708.4747540792706,
+          "scale": 1.0162676875278465
+        },
+        "outside": true
+      },
+      "hit": true,
+      "firstWarningToHitMs": 211.5,
+      "edgePaintFrames": 13,
+      "haloPaintFrames": 4,
+      "firstWarning": {
+        "edge": {
+          "alpha": 1,
+          "at": 1162.8999999910593,
+          "x": 640,
+          "y": 90,
+          "distance": 382.96686587125646,
+          "speed": 1789.3098661395195
+        },
+        "haloAt": 0,
+        "hitAt": 0
+      },
+      "firstReceivedFlight": {
+        "me": {
+          "x": 2090,
+          "y": 2090,
+          "state": "alive",
+          "protected": false,
+          "vx": 0,
+          "vy": 0
+        },
+        "shot": {
+          "x": 2070,
+          "y": 1522.9001229603648,
+          "vx": 1.1310939825042553e-13,
+          "vy": 1847.2166559235968,
+          "age": 0,
+          "left": 0,
+          "hit": false,
+          "by": "LcLLBbcNp"
+        },
+        "at": 1116.7000000029802,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 1259.510673918703,
+          "height": 708.4747540792706,
+          "scale": 1.0162676875278465
+        },
+        "local": "cllASrc7_"
+      },
+      "end": {
+        "state": "dead",
+        "injury": 0,
+        "x": 2090,
+        "y": 2090
+      }
+    },
+    {
+      "platform": "phone emulation",
+      "viewport": [
+        412,
+        839
+      ],
+      "bodyWidth": 20,
+      "direction": "top",
+      "addedReactionMs": 250,
+      "launchFullyOffscreen": true,
+      "launch": {
+        "x": 2100,
+        "y": 1316.7418716006077,
+        "radius": 30,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 579.840283433968,
+          "height": 1180.7912567987844,
+          "scale": 0.710540491529886
+        },
+        "outside": true
+      },
+      "hit": true,
+      "firstWarningToHitMs": 362.5,
+      "edgePaintFrames": 15,
+      "haloPaintFrames": 18,
+      "firstWarning": {
+        "edge": {
+          "alpha": 1,
+          "at": 1147.2000000029802,
+          "x": 206,
+          "y": 18,
+          "distance": 721.1957166101674,
+          "speed": 1825.3650526242573
+        },
+        "haloAt": 0,
+        "hitAt": 0
+      },
+      "firstReceivedFlight": {
+        "me": {
+          "x": 2090,
+          "y": 2090,
+          "state": "alive",
+          "protected": false,
+          "vx": 0,
+          "vy": 0
+        },
+        "shot": {
+          "x": 2070,
+          "y": 1348.8042833898326,
+          "vx": 1.1177137344858683e-13,
+          "vy": 1825.3650526242573,
+          "age": 28,
+          "left": 2572,
+          "hit": false,
+          "by": "3QbT6223X"
+        },
+        "at": 1144.9000000059605,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 579.840283433968,
+          "height": 1180.7912567987844,
+          "scale": 0.710540491529886
+        },
+        "local": "72sDwxZit"
+      },
+      "end": {
+        "state": "dead",
+        "injury": 0,
+        "x": 2090,
+        "y": 2090
+      }
+    },
+    {
+      "platform": "desktop",
+      "viewport": [
+        1280,
+        720
+      ],
+      "bodyWidth": 101.5,
+      "direction": "short",
+      "addedReactionMs": 0,
+      "launchFullyOffscreen": true,
+      "launch": {
+        "x": 2100,
+        "y": 1535.5578134321179,
+        "radius": 30,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 1448.7128315345562,
+          "height": 814.9009677381879,
+          "scale": 0.8835429438725642
+        },
+        "outside": true
+      },
+      "hit": true,
+      "firstWarningToHitMs": 294.79999999701977,
+      "edgePaintFrames": 17,
+      "haloPaintFrames": 10,
+      "firstWarning": {
+        "edge": {
+          "alpha": 1,
+          "at": 1111.3999999910593,
+          "x": 640,
+          "y": 90,
+          "distance": 479.0394967003301,
+          "speed": 1817.078507820257
+        },
+        "haloAt": 0,
+        "hitAt": 0
+      },
+      "firstReceivedFlight": {
+        "me": {
+          "x": 2049.25,
+          "y": 2049.25,
+          "state": "alive",
+          "protected": false,
+          "vx": 0,
+          "vy": 0
+        },
+        "shot": {
+          "x": 2070,
+          "y": 1505.5578134321179,
+          "vx": 1.1310939825042553e-13,
+          "vy": 1847.2166559235968,
+          "age": 0,
+          "left": 0,
+          "hit": false,
+          "by": "s386Aqc2p"
+        },
+        "at": 1056.199999988079,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 1455.5467747921468,
+          "height": 818.7450608205826,
+          "scale": 0.8793946180003628
+        },
+        "local": "U3pOHm_qi"
+      },
+      "end": {
+        "state": "dead",
+        "injury": 0,
+        "x": 2061.5615507303905,
+        "y": 2090
+      }
+    },
+    {
+      "platform": "phone emulation",
+      "viewport": [
+        412,
+        839
+      ],
+      "bodyWidth": 101.5,
+      "direction": "short",
+      "addedReactionMs": 0,
+      "launchFullyOffscreen": true,
+      "launch": {
+        "x": 1607.3839243451373,
+        "y": 2100,
+        "radius": 30,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 663.7801914978938,
+          "height": 1351.727137540614,
+          "scale": 0.620687398143467
+        },
+        "outside": true
+      },
+      "hit": true,
+      "firstWarningToHitMs": 171.5,
+      "edgePaintFrames": 11,
+      "haloPaintFrames": 11,
+      "firstWarning": {
+        "edge": {
+          "alpha": 1,
+          "at": 1135.9000000059605,
+          "x": 18,
+          "y": 419.5,
+          "distance": 332.008653515162,
+          "speed": 1790.562821529041
+        },
+        "haloAt": 1135.9000000059605,
+        "hitAt": 0
+      },
+      "firstReceivedFlight": {
+        "me": {
+          "x": 2049.25,
+          "y": 2049.25,
+          "state": "alive",
+          "protected": false,
+          "vx": 0,
+          "vy": 0
+        },
+        "shot": {
+          "x": 1737.991346484838,
+          "y": 2070,
+          "vx": 1790.562821529041,
+          "vy": 0,
+          "age": 84,
+          "left": 2516,
+          "hit": false,
+          "by": "v9w_K5RZ7"
+        },
+        "at": 1143.2000000029802,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 685.1878370185992,
+          "height": 1395.3218331519531,
+          "scale": 0.6012949701394311
+        },
+        "local": "fVRhJph32"
+      },
+      "end": {
+        "state": "dead",
+        "injury": 0,
+        "x": 2090,
+        "y": 2102.163948664064
+      }
+    },
+    {
+      "platform": "desktop",
+      "viewport": [
+        1280,
+        720
+      ],
+      "bodyWidth": 101.5,
+      "direction": "top",
+      "addedReactionMs": 0,
+      "launchFullyOffscreen": true,
+      "launch": {
+        "x": 2100,
+        "y": 1535.5689524972847,
+        "radius": 30,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 1448.67166868617,
+          "height": 814.8778136359707,
+          "scale": 0.8835680490396131
+        },
+        "outside": true
+      },
+      "hit": true,
+      "firstWarningToHitMs": 242.20000000298023,
+      "edgePaintFrames": 15,
+      "haloPaintFrames": 6,
+      "firstWarning": {
+        "edge": {
+          "alpha": 1,
+          "at": 1180,
+          "x": 640,
+          "y": 90,
+          "distance": 410.88639282184477,
+          "speed": 1793.0713650499174
+        },
+        "haloAt": 0,
+        "hitAt": 0
+      },
+      "firstReceivedFlight": {
+        "me": {
+          "x": 2049.25,
+          "y": 2049.25,
+          "state": "alive",
+          "protected": false,
+          "vx": 0,
+          "vy": 0
+        },
+        "shot": {
+          "x": 2070,
+          "y": 1505.5689524972847,
+          "vx": 1.1310939825042553e-13,
+          "vy": 1847.2166559235968,
+          "age": 0,
+          "left": 0,
+          "hit": false,
+          "by": "mm_LZ_w24"
+        },
+        "at": 1142.7999999970198,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 1468.9202864819674,
+          "height": 826.2676611461067,
+          "scale": 0.8713883331719603
+        },
+        "local": "-fGn9bWwu"
+      },
+      "end": {
+        "state": "dead",
+        "injury": 0,
+        "x": 2061.8092661550254,
+        "y": 2090
+      }
+    },
+    {
+      "platform": "phone emulation",
+      "viewport": [
+        412,
+        839
+      ],
+      "bodyWidth": 101.5,
+      "direction": "top",
+      "addedReactionMs": 0,
+      "launchFullyOffscreen": true,
+      "launch": {
+        "x": 2100,
+        "y": 1284.7005279070813,
+        "radius": 30,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 676.2278355731927,
+          "height": 1377.0756166162832,
+          "scale": 0.6092621130432695
+        },
+        "outside": true
+      },
+      "hit": true,
+      "firstWarningToHitMs": 392.79999999701977,
+      "edgePaintFrames": 15,
+      "haloPaintFrames": 21,
+      "firstWarning": {
+        "edge": {
+          "alpha": 1,
+          "at": 1235.2000000029802,
+          "x": 206,
+          "y": 18,
+          "distance": 731.684600648995,
+          "speed": 1817.7145966070384
+        },
+        "haloAt": 0,
+        "hitAt": 0
+      },
+      "firstReceivedFlight": {
+        "me": {
+          "x": 2049.25,
+          "y": 2049.25,
+          "state": "alive",
+          "protected": false,
+          "vx": 0,
+          "vy": 0
+        },
+        "shot": {
+          "x": 2070,
+          "y": 1338.315399351005,
+          "vx": 1.113029181249116e-13,
+          "vy": 1817.7145966070384,
+          "age": 39,
+          "left": 2561,
+          "hit": false,
+          "by": "QcS6_pzRO"
+        },
+        "at": 1238.4000000059605,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 696.4036500977924,
+          "height": 1418.1618020195335,
+          "scale": 0.5916109140756872
+        },
+        "local": "BgR0Q22Aw"
+      },
+      "end": {
+        "state": "dead",
+        "injury": 0,
+        "x": 2034.3604882250893,
+        "y": 2090
+      }
+    },
+    {
+      "platform": "desktop",
+      "viewport": [
+        1280,
+        720
+      ],
+      "bodyWidth": 101.5,
+      "direction": "top",
+      "addedReactionMs": 250,
+      "launchFullyOffscreen": true,
+      "launch": {
+        "x": 2100,
+        "y": 1535.5578134321179,
+        "radius": 30,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 1448.712831534556,
+          "height": 814.9009677381878,
+          "scale": 0.8835429438725644
+        },
+        "outside": true
+      },
+      "hit": true,
+      "firstWarningToHitMs": 273.30000001192093,
+      "edgePaintFrames": 17,
+      "haloPaintFrames": 6,
+      "firstWarning": {
+        "edge": {
+          "alpha": 1,
+          "at": 1178.8999999910593,
+          "x": 640,
+          "y": 90,
+          "distance": 477.2529397698536,
+          "speed": 1816.4426416255951
+        },
+        "haloAt": 0,
+        "hitAt": 0
+      },
+      "firstReceivedFlight": {
+        "me": {
+          "x": 2049.25,
+          "y": 2049.25,
+          "state": "alive",
+          "protected": false,
+          "vx": 0,
+          "vy": 0
+        },
+        "shot": {
+          "x": 2070,
+          "y": 1592.7470602301464,
+          "vx": 1.112250333450774e-13,
+          "vy": 1816.4426416255951,
+          "age": 43,
+          "left": 2557,
+          "hit": false,
+          "by": "Ccva6u9Ge"
+        },
+        "at": 1173.3999999910593,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 1475.4913439416805,
+          "height": 829.9638809671952,
+          "scale": 0.8675076307669567
+        },
+        "local": "EwBleibxB"
+      },
+      "end": {
+        "state": "dead",
+        "injury": 0,
+        "x": 2090,
+        "y": 2090
+      }
+    },
+    {
+      "platform": "phone emulation",
+      "viewport": [
+        412,
+        839
+      ],
+      "bodyWidth": 101.5,
+      "direction": "top",
+      "addedReactionMs": 250,
+      "launchFullyOffscreen": true,
+      "launch": {
+        "x": 2100,
+        "y": 1287.8565874954747,
+        "radius": 30,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 673.1785850575061,
+          "height": 1370.8660991826398,
+          "scale": 0.61202184553272
+        },
+        "outside": true
+      },
+      "hit": true,
+      "firstWarningToHitMs": 352.59999999403954,
+      "edgePaintFrames": 14,
+      "haloPaintFrames": 22,
+      "firstWarning": {
+        "edge": {
+          "alpha": 1,
+          "at": 1146.5,
+          "x": 206,
+          "y": 18,
+          "distance": 642.7314150277491,
+          "speed": 1787.4320767920021
+        },
+        "haloAt": 1146.4000000059605,
+        "hitAt": 0
+      },
+      "firstReceivedFlight": {
+        "me": {
+          "x": 2049.25,
+          "y": 2049.25,
+          "state": "alive",
+          "protected": false,
+          "vx": 0,
+          "vy": 0
+        },
+        "shot": {
+          "x": 2070,
+          "y": 1427.268584972251,
+          "vx": 1.0944864857683157e-13,
+          "vy": 1787.4320767920021,
+          "age": 78,
+          "left": 2522,
+          "hit": false,
+          "by": "iz6uGuodP"
+        },
+        "at": 1144,
+        "view": {
+          "x": 2100,
+          "y": 2100,
+          "width": 690.8838719202162,
+          "height": 1406.9212828666539,
+          "scale": 0.5963375564910829
+        },
+        "local": "7THBQUty-"
+      },
+      "end": {
+        "state": "dead",
+        "injury": 0,
+        "x": 2090,
+        "y": 2090
+      }
+    }
+  ],
+  "canonicalPhysics": {
+    "results": [
+      {
+        "kind": "missile",
+        "warned": true,
+        "hitAt": 250,
+        "gemsBefore": 100,
+        "gemsAfter": 62,
+        "injured": true
+      },
+      {
+        "kind": "turbine",
+        "warned": false,
+        "hitAt": 250,
+        "gemsBefore": 100,
+        "gemsAfter": 55,
+        "injured": true
+      }
+    ],
+    "clear": [
+      {
+        "width": 20,
+        "requiredSidewaysWorldUnits": 41,
+        "minimumMovementMs": 195.8333333333335,
+        "reactionPlusMovementMs": 445.8333333333335
+      },
+      {
+        "width": 101.5,
+        "requiredSidewaysWorldUnits": 81.75,
+        "minimumMovementMs": 454.1666666666663,
+        "reactionPlusMovementMs": 704.1666666666663
+      },
+      {
+        "width": 300,
+        "requiredSidewaysWorldUnits": 181,
+        "minimumMovementMs": 1183.3333333333305,
+        "reactionPlusMovementMs": 1433.3333333333305
+      }
+    ]
+  },
+  "existingDistantRegression": {
+    "passed": 6,
+    "profiles": [
+      "desktop Chrome",
+      "Android phone Chrome emulation"
+    ]
+  },
+  "firstPaintChecks": {
+    "passed": 2,
+    "distant": "edge arrow at alpha 1",
+    "nearEdge": "projectile halo at alpha 1, no initial edge arrow",
+    "limits": "The dedicated first-paint run has no dodge; image encoding cannot affect the separate reaction measurements."
+  }
+}
