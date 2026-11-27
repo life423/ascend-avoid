@@ -19,6 +19,9 @@ import android.content.pm.ActivityInfo;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.view.WindowManager;
+
+import androidx.browser.trusted.TrustedWebActivityDisplayMode;
 
 
 
@@ -27,6 +30,13 @@ public class LauncherActivity
 
 
 
+
+    @Override
+    protected TrustedWebActivityDisplayMode getDisplayMode() {
+        // Chrome owns the arena window. HUD controls respect the web safe-area insets.
+        return new TrustedWebActivityDisplayMode.ImmersiveMode(
+                true, WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

@@ -5,6 +5,7 @@
  */
 import { CANVAS, DEVICE_SETTINGS } from '../../server/constants/gameConstants'
 import { ScalingInfo } from '../types'
+import { recoverAndroidFullscreen } from '../ui/androidFullscreen'
 
 // Define types for ResponsiveManager
 interface DeviceCapabilities {
@@ -184,6 +185,8 @@ export default class ResponsiveManager {
      */
     handleVisibilityChange(): void {
         if (document.visibilityState === 'visible') {
+            // A resumed room can skip the join dialog. Use its first arena gesture.
+            this.canvas?.addEventListener('pointerup', recoverAndroidFullscreen, { once: true })
             // Force a resize check when tab becomes visible again
             this.handleResize()
         }
@@ -335,6 +338,7 @@ export default class ResponsiveManager {
         window.visualViewport?.removeEventListener('scroll', this.boundResize)
         if (this.resizeFrame !== null) cancelAnimationFrame(this.resizeFrame)
         document.removeEventListener('visibilitychange', this.boundVisibilityChange)
+        this.canvas?.removeEventListener('pointerup', recoverAndroidFullscreen)
         this.resizeObserver?.disconnect()
         this.resizeObserver = null
     }

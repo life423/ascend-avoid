@@ -1,6 +1,7 @@
 import { mouseControlEnabled, setMouseControl } from '../core/MouseControl';
 import { isGeneratedPlayerName, playerName, setPlayerName } from '../core/PlayerName';
 import { sound } from '../core/Sound';
+import { recoverAndroidFullscreen } from './androidFullscreen';
 import './join.css';
 
 export type JoinDestination = 'play' | 'tutorial';
@@ -151,6 +152,7 @@ export class JoinUI {
         const action = destination === 'play' ? this.play : this.tutorial;
         const idleLabel = action.textContent;
         action.focus({ preventScroll: true });
+        recoverAndroidFullscreen();
         this.setBusy(true);
         this.status.textContent = '';
         action.textContent = destination === 'play' ? 'Joining…' : 'Opening…';

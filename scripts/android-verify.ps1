@@ -36,7 +36,7 @@ $launcherMetadata = @($launchers[0].'meta-data')
 foreach ($required in @(
     @{name='android.support.customtabs.trusted.DEFAULT_URL';attribute='value';expected='@string/launchUrl'},
     @{name='android.support.customtabs.trusted.ADDITIONAL_TRUSTED_ORIGINS';attribute='resource';expected='@array/additional_trusted_origins'},
-    @{name='android.support.customtabs.trusted.DISPLAY_MODE';attribute='value';expected='immersive'}
+    @{name='android.support.customtabs.trusted.DISPLAY_MODE';attribute='value';expected='sticky-immersive'}
 )) {
     $entries = @($launcherMetadata | Where-Object { $_.GetAttribute('name',$androidNamespace) -eq $required.name })
     if ($entries.Count -ne 1 -or $entries[0].GetAttribute($required.attribute,$androidNamespace) -cne $required.expected) { throw "Bundle launcher metadata does not match: $($required.name)" }
@@ -89,7 +89,7 @@ foreach ($required in @(
     if ($entries.Count -ne 1 -or $entries[0] -notmatch ":$($required.attribute)\([^)]*\)=@$([regex]::Escape($resourceId))\b") { throw "APK launcher does not use the expected trusted resource: $($required.name)" }
 }
 $immersive = @($apkMetadata | Where-Object { $_ -match 'name\([^)]*\)="android\.support\.customtabs\.trusted\.DISPLAY_MODE"' })
-if ($immersive.Count -ne 1 -or $immersive[0] -notmatch ':value\([^)]*\)="immersive"') { throw 'APK launcher is not configured for immersive display' }
+if ($immersive.Count -ne 1 -or $immersive[0] -notmatch ':value\([^)]*\)="sticky-immersive"') { throw 'APK launcher is not configured for immersive display' }
 if (-not ($badging | Select-String -SimpleMatch "application-label:'$($targetConfig.name)'")) { throw 'APK label does not match the selected app' }
 $expectedLauncherIcon = if ($Target -eq 'test') { 'ic_launcher_test' } else { 'ic_launcher_production' }
 if ($manifest.manifest.application.GetAttribute('icon',$androidNamespace) -ne "@mipmap/$expectedLauncherIcon") { throw 'Launcher icon does not match the selected app' }

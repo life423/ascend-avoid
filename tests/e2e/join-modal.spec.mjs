@@ -9,6 +9,37 @@ const play = (page, returning = false) => joinScreen(page).getByRole('button', {
 const tutorial = page => joinScreen(page).getByRole('button', { name: 'Tutorial', exact: true });
 const steering = (page, mode) => joinScreen(page).getByRole('radio', { name: mode, exact: true });
 
+for (const [scenario, action, expectedRequests] of [
+  ['clipped app', 'Play now', 1],
+  ['clipped app', 'Tutorial', 1],
+  ['full-height app', 'Play now', 0],
+  ['browser tab', 'Play now', 0],
+  ['request denied', 'Play now', 1],
+]) {
+  test(`Android fullscreen recovery: ${scenario}, ${action}`, async ({ page }, info) => {
+    test.skip(info.project.name !== 'Android phone (Chrome)', 'Android launcher regression');
+    await page.addInitScript(scenario => {
+      const media = window.matchMedia.bind(window);
+      window.matchMedia = query => query === '(display-mode: fullscreen)'
+        ? media(scenario === 'browser tab' ? 'not all' : 'all') : media(query);
+      const height = () => innerHeight + (scenario === 'full-height app' ? 1 : 67);
+      Object.defineProperty(window, 'outerHeight', { get: height });
+      Object.defineProperty(screen, 'height', { get: height });
+      window.fullscreenAttempts = [];
+      const request = Element.prototype.requestFullscreen;
+      Element.prototype.requestFullscreen = function (options) {
+        window.fullscreenAttempts.push([navigator.userActivation.isActive, options.navigationUI]);
+        return scenario === 'request denied' ? Promise.reject(new Error('Denied')) : request.call(this, options);
+      };
+    }, scenario);
+    await page.goto('/');
+    await joinScreen(page).getByRole('button', { name: action, exact: true }).click();
+    await expect(joinScreen(page)).toBeHidden();
+    expect(await page.evaluate(() => window.fullscreenAttempts)).toEqual(expectedRequests ? [[true, 'hide']] : []);
+    expect(await page.evaluate(() => !!document.fullscreenElement)).toBe(scenario === 'clipped app');
+  });
+}
+
 const arena = page => page.evaluate(() => {
   const mode = window.game?.currentGameMode;
   const manager = mode?.multiplayerManager;
