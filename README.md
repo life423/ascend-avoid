@@ -142,7 +142,7 @@ npm run icons:sync
 
 That command also regenerates the existing maskable-specific image from `public/favicon.svg`; the supplied PNGs are not labeled as maskable. Native Android launcher artwork is managed separately under `android/branding/` and the target resource directories.
 
-The Android project is a Trusted Web Activity wrapper around the hosted game. **Ascend Avoid** opens production; **Ascend Avoid Test** has a separate package ID and opens staging. Both can be installed together. The checked-in build/install helpers currently target Windows with PowerShell 7:
+The Android app opens the hosted game in a native fullscreen WebView. **Ascend Avoid** opens production; **Ascend Avoid Test** has a separate package ID and opens staging. Both can be installed together. The checked-in build/install helpers currently target Windows with PowerShell 7:
 
 ```powershell
 npm run android:setup -- -AcceptLicenses
