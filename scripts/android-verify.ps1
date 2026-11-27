@@ -32,15 +32,7 @@ if ($manifest.manifest.package -ne $targetConfig.packageId -or $targetSdk -lt 36
 if ([int]$manifest.manifest.GetAttribute('versionCode',$androidNamespace) -ne $targetConfig.versionCode -or $manifest.manifest.GetAttribute('versionName',$androidNamespace) -cne $targetConfig.versionName) { throw 'Bundle version does not match the selected target' }
 $launchers = @($manifest.manifest.application.activity | Where-Object { $_.GetAttribute('name',$androidNamespace) -eq $targetConfig.launcher })
 if ($launchers.Count -ne 1) { throw 'The expected Android launcher is missing or duplicated' }
-$launcherMetadata = @($launchers[0].'meta-data')
-foreach ($required in @(
-    @{name='android.support.customtabs.trusted.DEFAULT_URL';attribute='value';expected='@string/launchUrl'},
-    @{name='android.support.customtabs.trusted.ADDITIONAL_TRUSTED_ORIGINS';attribute='resource';expected='@array/additional_trusted_origins'},
-    @{name='android.support.customtabs.trusted.DISPLAY_MODE';attribute='value';expected='sticky-immersive'}
-)) {
-    $entries = @($launcherMetadata | Where-Object { $_.GetAttribute('name',$androidNamespace) -eq $required.name })
-    if ($entries.Count -ne 1 -or $entries[0].GetAttribute($required.attribute,$androidNamespace) -cne $required.expected) { throw "Bundle launcher metadata does not match: $($required.name)" }
-}
+if ($manifest.manifest.application.GetAttribute('theme',$androidNamespace) -cne '@style/GameTheme') { throw 'Bundle must use the native game window theme' }
 $applicationTrust = @($manifest.manifest.application.'meta-data' | Where-Object { $_.GetAttribute('name',$androidNamespace) -eq 'asset_statements' })
 if ($applicationTrust.Count -ne 1 -or $applicationTrust[0].GetAttribute('resource',$androidNamespace) -cne '@string/assetStatements') { throw 'Bundle native website association is missing' }
 $badging = & (Join-Path $toolchain.sdkRoot 'build-tools/36.1.0/aapt2.exe') dump badging $apk
@@ -79,17 +71,13 @@ $apkManifest = & (Join-Path $toolchain.sdkRoot 'build-tools/36.1.0/aapt2.exe') d
 if ($LASTEXITCODE -ne 0) { throw 'APK launcher metadata inspection failed' }
 $apkMetadata = @(($apkManifest | Out-String) -split '(?m)^\s*E: ' | Where-Object { $_ -match '^meta-data\b' })
 foreach ($required in @(
-    @{name='asset_statements';attribute='resource';resource='string/assetStatements'},
-    @{name='android.support.customtabs.trusted.DEFAULT_URL';attribute='value';resource='string/launchUrl'},
-    @{name='android.support.customtabs.trusted.ADDITIONAL_TRUSTED_ORIGINS';attribute='resource';resource='array/additional_trusted_origins'}
+    @{name='asset_statements';attribute='resource';resource='string/assetStatements'}
 )) {
     $block = Get-ApkResourceBlock -ResourceName $required.resource
     $resourceId = ($block -split '\s+',2)[0]
     $entries = @($apkMetadata | Where-Object { $_ -match "name\([^)]*\)=`"$([regex]::Escape($required.name))`"" })
     if ($entries.Count -ne 1 -or $entries[0] -notmatch ":$($required.attribute)\([^)]*\)=@$([regex]::Escape($resourceId))\b") { throw "APK launcher does not use the expected trusted resource: $($required.name)" }
 }
-$immersive = @($apkMetadata | Where-Object { $_ -match 'name\([^)]*\)="android\.support\.customtabs\.trusted\.DISPLAY_MODE"' })
-if ($immersive.Count -ne 1 -or $immersive[0] -notmatch ':value\([^)]*\)="sticky-immersive"') { throw 'APK launcher is not configured for immersive display' }
 if (-not ($badging | Select-String -SimpleMatch "application-label:'$($targetConfig.name)'")) { throw 'APK label does not match the selected app' }
 $expectedLauncherIcon = if ($Target -eq 'test') { 'ic_launcher_test' } else { 'ic_launcher_production' }
 if ($manifest.manifest.application.GetAttribute('icon',$androidNamespace) -ne "@mipmap/$expectedLauncherIcon") { throw 'Launcher icon does not match the selected app' }
@@ -110,6 +98,6 @@ $proof['adaptiveLauncherVerified'] = $true
 $proof['trustedOrigins'] = @($targetConfig.trustedOrigins)
 $proof['additionalTrustedOrigins'] = @($compiledAdditionalOrigins)
 $proof['compiledNativeTrustVerified'] = $true
-$proof['immersiveDisplayModeVerified'] = $true
+$proof['nativeGameThemeVerified'] = $true
 $proof | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $artifactRoot 'verification.json') -Encoding utf8
 $proof | ConvertTo-Json

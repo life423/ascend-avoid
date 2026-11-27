@@ -1,15 +1,14 @@
 # Ascend Avoid for Android
 
-Native Trusted Web Activity project, initially generated with Google's Bubblewrap
-1.27.0 and Android Browser Helper 2.7.4. The checked-in Gradle project is the source
-for subsequent builds. It opens the existing live game at
-<https://ascendavoid.com/>; an internet connection is required.
+The Android app hosts the live arena in an edge-to-edge Android WebView. Its
+activity owns fullscreen from launch. The game, including the title screen and
+tutorials, still loads from the configured HTTPS origin and requires a connection.
+Production 1.0.2/code 3 opens ascendavoid.com. The separate Test package
+1.0.1/code 2 opens staging. Both use the same activity.
 
-The November 22 fullscreen correction updates production to version 1.0.1/code 2.
-It launches the canonical origin directly and explicitly trusts the previous and
-www origins. Install the signed update over the existing app; old APKs retain
-their original trust configuration. Package, signing key and artwork stay the
-same. The separate Test app still opens only staging.
+Updates retain the package, signing and icons. On the first update from a
+Chrome-backed build the embedded browser starts with its own saved name, settings
+and tutorial progress. The previous data stays in Chrome.
 
 See [Android build and release](../docs/ANDROID_RELEASE.md) for setup, signed APK/AAB
 builds, website verification, signing-key handling and remaining Play Console work.

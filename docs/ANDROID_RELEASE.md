@@ -1,5 +1,25 @@
 # Android build and release
 
+## November 27 native fullscreen candidate
+
+Production 1.0.2/code 3 and Test 1.0.1/code 2 use a native fullscreen activity.
+The WebView fills the window before loading the hosted title screen. Play uses
+the ordinary web entry path. Chrome keeps the older wrapper's local preferences
+and lesson history. The updated APK stores its preferences separately.
+
+The signed production APK passed ten portrait app cold launches on an Android 15
+emulator with a simulated camera cutout. The WebView measured 1080 × 2400 at
+(0,0) before and after Play on every run. Screenshots are in
+`.tmp/native-arena-emulator/`. Rotation, resume, the name keyboard and Android
+Back from the privacy policy also passed. Both release packages and bundles
+passed verification. Distribution requires an APK update.
+
+On a Pixel 10 Pro XL, the same signed 1.0.2 APK passed five portrait cold
+launches. The title screen filled the 1344 × 2992 display from (0,0) before
+Play in all five runs. The seven-second Play recordings showed the transition
+into the arena without the Chrome fullscreen notice. Local screenshots and
+recordings are in `.tmp/native-arena-pixel/`.
+
 ## November 22 Google Play distribution correction
 
 The user provided the correct existing Play Console account.

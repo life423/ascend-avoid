@@ -1,0 +1,8 @@
+<resources>
+    <style name="BaseGameTheme" parent="android:style/Theme.Material.NoActionBar.Fullscreen">
+        <item name="android:windowBackground">#001B34</item>
+    </style>
+    <style name="GameTheme" parent="BaseGameTheme" />
+    <string name="connection_error">Couldn’t reach the arena. Check your connection and try again.</string>
+    <string name="retry">Try again</string>
+</resources>
