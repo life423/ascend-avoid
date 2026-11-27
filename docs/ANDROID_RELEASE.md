@@ -385,3 +385,12 @@ evidence for these checks.
 Sources: [TWA setup](https://developer.chrome.com/docs/android/trusted-web-activity/quick-start),
 [target SDK requirements](https://developer.android.com/google/play/requirements/target-sdk),
 [new personal-account testing](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en).
+
+The Android launcher requests sticky immersive display and allows the arena behind short-edge camera cutouts. HUD controls use the web safe-area insets. This launcher change requires a new APK.
+
+On November 27 the updated launcher on a Pixel 10 Pro XL had a full 1344 × 2992
+window, but Chrome 158 placed its web content at y=200. A document fullscreen
+request on the affected phone moved the content to y=0 within the same session.
+The local web client requests this recovery on Play or Tutorial when the installed
+Android fullscreen view reports a short layout. A resumed room checks again on
+the first arena gesture. This client change takes effect with a web deployment.
